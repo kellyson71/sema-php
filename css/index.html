@@ -1,0 +1,320 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W3WFKPD3BN"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W3WFKPD3BN');
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estágio - Prefeitura de Pau dos Ferros</title>
+    <link rel="icon" href="./assets/prefeitura-logo.png" type="image/png">
+
+    <meta name="description" content="Participe do programa de estágio da Prefeitura de Pau dos Ferros. Cadastre-se para vagas de estágio em diversas áreas de atuação.">
+    <meta name="keywords" content="estágio, Pau dos Ferros, prefeitura, credenciamento, estágio municipal, edital de estágio, inscrição de estágio, vagas de estágio, áreas de estágio, RN, estágio público, programa de estágio">
+    <meta name="author" content="Prefeitura de Pau dos Ferros">
+
+    <meta property="og:title" content="Estágio - Prefeitura de Pau dos Ferros">
+    <meta property="og:description" content="Conheça o programa de estágio da Prefeitura de Pau dos Ferros e inscreva-se para oportunidades em diversas áreas.">
+    <meta property="og:image" content="./assets/prefeitura-logo.png">
+    <meta property="og:url" content="https://www.paudosferros.rn.gov.br/estagio">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Estágio - Prefeitura de Pau dos Ferros">
+    <meta name="twitter:description" content="Inscreva-se no programa de estágio da Prefeitura de Pau dos Ferros e participe de oportunidades em diferentes áreas.">
+    <meta name="twitter:image" content="./assets/prefeitura-logo.png">
+
+    <link rel="stylesheet" href="./css/index.css">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="./js/index.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="feedback" id="feedback">
+        
+    </div>
+    <header>
+        <nav>
+            <ul>
+                <a>
+                    <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
+                        <img src="./assets/instagram.png">
+                        </a>
+                    </li>
+                </a>
+                <a>
+                    <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
+                        <img src="./assets/facebook.png">
+                        </a>
+                </a>
+                <a>
+                    <li><a href="https://twitter.com/paudosferros">
+                        <img src="./assets/twitter.png">
+                        </a>
+                </a>
+                <a>
+                    <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
+                        <img src="./assets/youtube.png">
+                        </a>
+                </a>
+                <a>
+                    <li><a href="https://instagram.com">
+                        <img src="./assets/copy-url.png">
+                        </a>
+                </a>
+            </ul>
+        </nav>
+
+        <div class="user-options">
+            <p id="alter-font">Tamanho da fonte</p>
+            <button onclick="increaseFont()">A+</button>
+            <p>|</p>
+            <button onclick="decreaseFont()">A-</button>
+        </div>
+    </header>
+    <main>
+        <section>
+            <form id="form">
+                <div class="form-header">
+                    <img src="./assets/prefeitura-logo.png" alt="prefeitura de pau dos ferros">
+                    <h1>PAU DOS FERROS</h1>
+                    <p>CREDENCIAMENTO DE ESTAGIÁRIOS | EDITAL Nº 001/2024</p>
+                </div>
+    
+                <input required id="name" name="name" placeholder="Digite seu nome completo">
+                <input required type="email" name="email" placeholder="Digite seu email">
+                <div class="form-part-2">
+                <input oninput="mascara(this)" 
+                       type="text" 
+                       required 
+                       name="cpf" 
+                       id="cpf" 
+                       placeholder="000.000.000-00" 
+                       pattern="\d{3}\.\d{3}\.\d{3}-\d{2}"
+                       maxlength="14">
+                <script>
+                function mascara(i){
+                   
+                   var v = i.value;
+                   
+                   if(isNaN(v[v.length-1])){
+                      i.value = v.substring(0, v.length-1);
+                      return;
+                   }
+                   
+                   i.setAttribute("maxlength", "14");
+                   if (v.length == 3 || v.length == 7) i.value += ".";
+                   if (v.length == 11) i.value += "-";
+                
+                }
+                </script>
+
+                <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required name="phone" id="phone" placeholder="Digite seu Telefone">
+
+                    <input required name="universidade" placeholder="Sua universidade">
+                    <select required name="area" title="Área/Curso">
+                        <option value="" hidden>Área/Curso</option>
+                        <option value="Administração">Administração</option>
+                        <option value="Arquitetura">Arquitetura</option>
+                        <option value="AS">Assistência Social</option>
+                        <option value="Ciência da C">Ciências da Computação</option>
+                        <option value="Contabilidade">Contabilidade</option>
+                        <option value="Direito">Direito</option>
+                        <option value="Psicologia">Enfermagem</option>
+                        <option value="E Agricola">Engenharia Agrícola</option>
+                        <option value="E Ambiental">Engenharia Ambiental</option>
+                        <option value="E Civil">Engenharia Civil</option>
+                        <option value="E Eletrica">Engenharia Elétrica</option>
+                        <option value="E Florestal">Engenharia Florestal</option>
+                        <option value="E Mecanica">Engenharia Mecânica</option>
+                        <option value="E Quimica">Engenharia Química</option>
+                        <option value="E de Producao">Engenharia de Produção</option>
+                        <option value="Farmacia">Farmácia</option>
+                        <option value="Fisioterapia">Fisioterapia</option>
+                        <option value="Jornalismo">Jornalismo</option>
+                        <option value="Licenciatura">Licenciaturas</option>
+                        <option value="Medicina">Medicina</option>
+                        <option value="Odontologia">Odontologia</option>
+                        <option value="Pedagogia">Pedagogia</option>
+                        <option value="Psicologia">Psicologia</option>
+                        <option value="Outro">Outro</option>
+
+                    </select>
+                    <select required name="turno-estudo" title="Turno de estudo">
+                        <option value="" hidden>Turno de Estudo</option>
+                        <option value="Manha" >Manhã</option>
+                        <option value="Tarde" >Tarde</option>
+                        <option value="Noite" >Noite</option>
+                    </select>
+                    <input required name="ano-ingresso" placeholder="Digite seu ano de ingresso">
+                    <input required type="number" name="ira" placeholder="Informe seu IRA" min="0" max="100">
+                    
+                    <div class="multi-select" onclick="openMultiSelect()">
+                        <div>
+                            <label>
+                                <input onchange="updateCheckedOptions()" type="checkbox" name="horario" value="M">
+                                Matutino
+                            </label>
+                            <label>
+                                <input onchange="updateCheckedOptions()" type="checkbox" name="horario" value="V">
+                                Vespertino
+                            </label>
+                            <label>
+                                <input onchange="updateCheckedOptions()" type="checkbox" name="horario" value="N">
+                                Noturno
+                            </label>
+                            <span>Escolha um ou mais turnos</span>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="form-part-3">
+                    <div class="y-n-field">
+                        <p>Concluiu outra graduação anteriormente?</p>
+                        <label for="grad-1">
+                            <input required title="Sim" name="grad-anterior" id="grad-1" type="radio" value="true">
+                            Sim
+                        </label>
+                        <label for="grad-2">
+                            <input required title="Não" name="grad-anterior" id="grad-2" type="radio" value="false">
+                            Não
+                        </label>
+                    </div>
+                    <div class="y-n-field">
+                        <p>Possui alguma deficiência?</p>
+                        <label for="def-1">
+                            <input required title="Sim" name="deficiencia" id="def-1" type="radio" value="true">
+                            Sim
+                        </label>
+                        <label for="def-2">
+                            <input required title="Não" name="deficiencia" id="def-2" type="radio" value="false">
+                            Não
+                        </label>
+                    </div>
+                </div>
+    
+                <div class="form-files">
+                    <div>
+                        <img src="./assets/doc-foto.png">
+                        <input required id="doc-foto" type="file" accept="application/pdf" onchange="validatePDF(this)">
+                        <p>* Apenas arquivos PDF</p>
+                    </div>
+                    <div>
+                        <img src="./assets/historico-academico.png">
+                        <input required id="historico" type="file" accept="application/pdf" onchange="validatePDF(this)">
+                        <p>* Apenas arquivos PDF</p>
+                    </div>
+                    <div>
+                        <img src="./assets/curriculo.png">
+                        <input required id="curriculo" type="file" accept="application/pdf" onchange="validatePDF(this)">
+                        <p>* Apenas arquivos PDF</p>
+                    </div>
+                </div>
+
+                <script>
+                function validatePDF(input) {
+                    const file = input.files[0];
+                    const fileType = file['type'];
+                    const validTypes = ['application/pdf'];
+                    
+                    if (!validTypes.includes(fileType)) {
+                        showFeedback('Por favor, selecione apenas arquivos PDF', 'error');
+                        input.value = ''; // Limpa o input
+                        return false;
+                    }
+                    return true;
+                }
+                </script>
+    
+                <div class="form-part-4">
+                    <div>
+                        <input required type="checkbox">
+                        <label>Declaro ter ciência das condições previstas no edital de fluxo continuo para o credenciamento de estagiários.</label>    
+                    </div>
+                    <div>
+                        <input required type="checkbox">
+                        <label> Declaro que as informações prestadas são inteiramente verdadeiras.</label>                
+                    </div>
+                </div>
+    
+                <div class="captcha"></div>
+    
+                <button type="submit" id="botao">
+                    Enviar
+                </button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        <div>
+            <div>
+                <a href="./consultar/index.php" class="consulta-btn">
+                    <i class="fas fa-search"></i>
+                    <span>Consulte sua inscrição</span>
+                </a>
+            </div>
+            <div>
+                <img src="./assets/phone.png">
+                (84) 99858-6712
+            </div>
+            <div>
+                <img src="./assets/email.png">
+                pmpfestagio@gmail.com 
+            </div>
+        </div>
+        <div>
+            <span>
+                © 2023 - Todos os direitos reservados. Programa da&ensp;<a href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
+                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71" style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
+
+
+            </span>
+            <div>
+                <img src="./assets/Secretaria Municipal de Administração - SEAD.png" style="width: 100%; max-width: 200px; height: auto;">
+            </div>
+        </div>
+    </footer>
+
+<!-- Loading Spinner -->
+<div id="loading" class="loading" style="display: none;">
+    <div class="loading-spinner"></div>
+</div>
+
+<style>
+    .loading {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #009851;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+</body>
+</html>
