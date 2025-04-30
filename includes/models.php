@@ -191,6 +191,61 @@ class Requerimento extends Model
 
         return $contagem;
     }
+
+    /**
+     * Conta requerimentos por mês
+     * @param int $mes Mês (1-12)
+     * @param int $ano Ano (ex: 2023)
+     * @return int Número de requerimentos no mês/ano
+     */
+    public function contarPorMes($mes, $ano)
+    {
+        $primeiroDia = sprintf('%04d-%02d-01', $ano, $mes);
+        $ultimoDia = date('Y-m-t', strtotime($primeiroDia));
+
+        $sql = "SELECT COUNT(*) as total FROM {$this->table} WHERE data_envio BETWEEN :primeiro AND :ultimo";
+        $resultado = $this->db->query($sql, [
+            'primeiro' => $primeiroDia,
+            'ultimo' => $ultimoDia
+        ])->fetch();
+
+        return $resultado['total'];
+    }
+
+    /**
+     * Conta requerimentos por tipo de alvará
+     * @param int $tipoAlvaraId ID do tipo de alvará
+     * @return int Número de requerimentos do tipo
+     */
+    public function contarPorTipoAlvara($tipoAlvaraId)
+    {
+        $sql = "SELECT COUNT(*) as total FROM {$this->table} WHERE tipo_alvara = :tipo_id";
+        $resultado = $this->db->query($sql, ['tipo_id' => $tipoAlvaraId])->fetch();
+
+        return $resultado['total'];
+    }
+
+    /**
+     * Calcula o tempo médio de processamento por status
+     * @param string $status Status do requerimento
+     * @return float Tempo médio em dias
+     */
+    public function calcularTempoMedioPorStatus($status)
+    {
+        if ($status == 'analise') {
+            // Para requerimentos em análise, calcula o tempo desde a data de envio até hoje
+            $sql = "SELECT AVG(DATEDIFF(NOW(), data_envio)) as media FROM {$this->table} 
+                    WHERE status = 'analise'";
+            $resultado = $this->db->query($sql)->fetch();
+        } else {
+            // Para requerimentos aprovados/rejeitados, calcula o tempo entre envio e atualização
+            $sql = "SELECT AVG(DATEDIFF(data_atualizacao, data_envio)) as media FROM {$this->table} 
+                    WHERE status = :status";
+            $resultado = $this->db->query($sql, ['status' => $status])->fetch();
+        }
+
+        return round($resultado['media'] ?? 0, 1);
+    }
 }
 
 /**
@@ -218,6 +273,127 @@ class Documento extends Model
     public function buscarPorRequerimento($requerimento_id)
     {
         return $this->db->getRows($this->table, 'requerimento_id = :requerimento_id', ['requerimento_id' => $requerimento_id]);
+    }
+
+    /**
+     * Lista todos os documentos
+     * @return array Lista de documentos
+     */
+    public function listar()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY id ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Busca um documento pelo ID
+     * @param int $id ID do documento
+     * @return array|false Dados do documento ou false
+     */
+    public function buscarPorId($id)
+    {
+        return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Atualiza um documento
+     * @param int $id ID do documento
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Insere um novo documento
+     * @param array $dados Dados do documento
+     * @return int ID do documento inserido
+     */
+    public function inserir($dados)
+    {
+        return $this->db->insert($this->table, $dados);
+    }
+
+    /**
+     * Exclui um documento
+     * @param int $id ID do documento
+     * @return int Número de linhas afetadas
+     */
+    public function excluir($id)
+    {
+        return $this->db->delete($this->table, 'id = :id', ['id' => $id]);
+    }
+}
+
+/**
+ * Modelo para Documento Administrativo
+ */
+class DocumentoAdmin extends Model
+{
+    protected $table = 'documentos_admin';
+
+    /**
+     * Lista todos os documentos
+     * @return array Lista de documentos
+     */
+    public function listar()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY nome ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Busca um documento pelo ID
+     * @param int $id ID do documento
+     * @return array|false Dados do documento ou false
+     */
+    public function buscarPorId($id)
+    {
+        return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Atualiza um documento
+     * @param int $id ID do documento
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Insere um novo documento
+     * @param array $dados Dados do documento
+     * @return int ID do documento inserido
+     */
+    public function inserir($dados)
+    {
+        return $this->db->insert($this->table, $dados);
+    }
+
+    /**
+     * Exclui um documento
+     * @param int $id ID do documento
+     * @return int Número de linhas afetadas
+     */
+    public function excluir($id)
+    {
+        return $this->db->delete($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Busca documentos por tipo de alvará
+     * @param int $tipo_alvara_id ID do tipo de alvará
+     * @return array Lista de documentos
+     */
+    public function buscarPorTipoAlvara($tipo_alvara_id)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE FIND_IN_SET(:tipo_id, tipos_alvara) > 0 ORDER BY nome ASC";
+        return $this->db->query($sql, ['tipo_id' => $tipo_alvara_id])->fetchAll();
     }
 }
 
@@ -256,6 +432,71 @@ class Administrador extends Model
     {
         return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
     }
+
+    /**
+     * Lista todos os administradores
+     * @return array Lista de administradores
+     */
+    public function listar()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY nome ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Verifica se um email já existe
+     * @param string $email Email a verificar
+     * @return bool True se o email já existe
+     */
+    public function emailExiste($email)
+    {
+        $admin = $this->db->getRow($this->table, 'email = :email', ['email' => $email]);
+        return $admin !== false;
+    }
+
+    /**
+     * Atualiza um administrador
+     * @param int $id ID do administrador
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        // Se houver senha, faz o hash
+        if (isset($dados['senha']) && !empty($dados['senha'])) {
+            $dados['senha'] = password_hash($dados['senha'], PASSWORD_DEFAULT);
+        }
+
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Insere um novo administrador
+     * @param array $dados Dados do administrador
+     * @return int ID do administrador inserido
+     */
+    public function inserir($dados)
+    {
+        // Faz o hash da senha
+        if (isset($dados['senha']) && !empty($dados['senha'])) {
+            $dados['senha'] = password_hash($dados['senha'], PASSWORD_DEFAULT);
+        }
+
+        $dados['ativo'] = $dados['ativo'] ?? 1;
+        $dados['data_cadastro'] = date('Y-m-d H:i:s');
+
+        return $this->db->insert($this->table, $dados);
+    }
+
+    /**
+     * Exclui um administrador
+     * @param int $id ID do administrador
+     * @return int Número de linhas afetadas
+     */
+    public function excluir($id)
+    {
+        return $this->db->delete($this->table, 'id = :id', ['id' => $id]);
+    }
 }
 
 /**
@@ -266,12 +507,13 @@ class HistoricoAcao extends Model
     protected $table = 'historico_acoes';
 
     /**
-     * Registra uma nova ação
+     * Registra uma nova ação no histórico
      * @param array $dados Dados da ação
      * @return int ID da ação registrada
      */
     public function registrar($dados)
     {
+        $dados['data_acao'] = date('Y-m-d H:i:s');
         return $this->db->insert($this->table, $dados);
     }
 
@@ -282,12 +524,143 @@ class HistoricoAcao extends Model
      */
     public function buscarPorRequerimento($requerimento_id)
     {
-        $sql = "SELECT h.*, a.nome as admin_nome
-                FROM {$this->table} h
+        $sql = "SELECT h.*, a.nome as admin_nome FROM {$this->table} h 
                 LEFT JOIN administradores a ON h.admin_id = a.id
-                WHERE h.requerimento_id = :requerimento_id
+                WHERE h.requerimento_id = :requerimento_id 
                 ORDER BY h.data_acao DESC";
 
         return $this->db->query($sql, ['requerimento_id' => $requerimento_id])->fetchAll();
+    }
+}
+
+/**
+ * Modelo para Tipo de Alvará
+ */
+class TipoAlvara extends Model
+{
+    protected $table = 'tipos_alvara';
+
+    /**
+     * Lista todos os tipos de alvará
+     * @return array Lista de tipos de alvará
+     */
+    public function listar()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY nome ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Busca um tipo de alvará pelo ID
+     * @param int $id ID do tipo de alvará
+     * @return array|false Dados do tipo de alvará ou false
+     */
+    public function buscarPorId($id)
+    {
+        return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Atualiza um tipo de alvará
+     * @param int $id ID do tipo de alvará
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Insere um novo tipo de alvará
+     * @param array $dados Dados do tipo de alvará
+     * @return int ID do tipo de alvará inserido
+     */
+    public function inserir($dados)
+    {
+        return $this->db->insert($this->table, $dados);
+    }
+
+    /**
+     * Exclui um tipo de alvará
+     * @param int $id ID do tipo de alvará
+     * @return int Número de linhas afetadas
+     */
+    public function excluir($id)
+    {
+        return $this->db->delete($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Verifica se um tipo de alvará está em uso por algum requerimento
+     * @param int $id ID do tipo de alvará
+     * @return bool True se estiver em uso
+     */
+    public function verificarTipoEmUso($id)
+    {
+        $sql = "SELECT COUNT(*) as total FROM requerimentos WHERE tipo_alvara = :id";
+        $resultado = $this->db->query($sql, ['id' => $id])->fetch();
+        return $resultado['total'] > 0;
+    }
+}
+
+/**
+ * Modelo para Configurações do Sistema
+ */
+class Configuracao extends Model
+{
+    protected $table = 'configuracoes';
+
+    /**
+     * Lista todas as configurações
+     * @return array Lista de configurações
+     */
+    public function listarTodas()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY categoria ASC, nome ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Busca uma configuração pelo ID
+     * @param int $id ID da configuração
+     * @return array|false Dados da configuração ou false
+     */
+    public function buscarPorId($id)
+    {
+        return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Busca uma configuração pela chave
+     * @param string $chave Chave da configuração
+     * @return array|false Dados da configuração ou false
+     */
+    public function buscarPorChave($chave)
+    {
+        return $this->db->getRow($this->table, 'chave = :chave', ['chave' => $chave]);
+    }
+
+    /**
+     * Atualiza uma configuração
+     * @param int $id ID da configuração
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Obtém o valor de uma configuração pela chave
+     * @param string $chave Chave da configuração
+     * @param mixed $valorPadrao Valor padrão caso não exista
+     * @return mixed Valor da configuração
+     */
+    public function obterValor($chave, $valorPadrao = null)
+    {
+        $config = $this->buscarPorChave($chave);
+        return $config ? $config['valor'] : $valorPadrao;
     }
 }

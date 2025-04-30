@@ -57,153 +57,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" href="../assets/prefeitura-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #009851;
-            --primary-dark: #007840;
-            --secondary-color: #333;
-            --light-color: #f8f9fa;
-            --border-color: #e0e0e0;
-            --danger-color: #dc3545;
-            --success-color: #28a745;
-        }
+    :root {
+        --primary-color: #009851;
+        --primary-dark: #007840;
+        --secondary-color: #333;
+        --light-color: #f8f9fa;
+        --border-color: #e0e0e0;
+        --danger-color: #dc3545;
+        --success-color: #28a745;
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        body {
-            background-color: #f5f5f5;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+    body {
+        background-color: #f5f5f5;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-        main {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+    main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
 
-        .login-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            padding: 30px;
-            text-align: center;
-        }
+    .login-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        text-align: center;
+    }
 
-        .logo {
-            margin-bottom: 20px;
-        }
+    .logo {
+        margin-bottom: 20px;
+    }
 
-        .logo img {
-            max-width: 100px;
-            height: auto;
-        }
+    .logo img {
+        max-width: 100px;
+        height: auto;
+    }
 
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
+    h1 {
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        font-size: 24px;
+    }
 
-        form {
-            text-align: left;
-        }
+    form {
+        text-align: left;
+    }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+    .form-group {
+        margin-bottom: 20px;
+    }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: var(--secondary-color);
-            font-weight: 500;
-        }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--secondary-color);
+        font-weight: 500;
+    }
 
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
+    input[type="email"],
+    input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
 
-        input[type="email"]:focus,
-        input[type="password"]:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(0, 152, 81, 0.2);
-        }
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(0, 152, 81, 0.2);
+    }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+    button {
+        width: 100%;
+        padding: 12px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
 
-        button:hover {
-            background-color: var(--primary-dark);
-        }
+    button:hover {
+        background-color: var(--primary-dark);
+    }
 
-        .voltar-link {
-            display: block;
-            margin-top: 20px;
-            color: var(--primary-color);
-            text-decoration: none;
-        }
+    .voltar-link {
+        display: block;
+        margin-top: 20px;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
 
-        .voltar-link:hover {
-            text-decoration: underline;
-        }
+    .voltar-link:hover {
+        text-decoration: underline;
+    }
 
-        .mensagem {
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            text-align: center;
-        }
+    .mensagem {
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        text-align: center;
+    }
 
-        .mensagem-sucesso {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
+    .mensagem-sucesso {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
 
-        .mensagem-erro {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
+    .mensagem-erro {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
 
-        .mensagem-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
+    .mensagem-info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
 
-        .mensagem-alerta {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
+    .mensagem-alerta {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
     </style>
 </head>
 
@@ -216,9 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h1>Área Administrativa - SEMA</h1>
 
             <?php if ($mensagem): ?>
-                <div class="mensagem mensagem-<?php echo $mensagem['tipo']; ?>">
-                    <?php echo $mensagem['texto']; ?>
-                </div>
+            <div class="mensagem mensagem-<?php echo $mensagem['tipo']; ?>">
+                <?php echo $mensagem['texto']; ?>
+            </div>
             <?php endif; ?>
 
             <form method="post" action="">

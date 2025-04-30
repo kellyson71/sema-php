@@ -47,6 +47,299 @@ include_once 'tipos_alvara.php';
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="./js/index.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+    /* Estilos para ajustar a logo e outras melhorias */
+    .form-header {
+        margin-bottom: 30px;
+    }
+
+    .form-header img {
+        max-width: 200px;
+        height: auto;
+        margin-bottom: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .form-header h1 {
+        line-height: 1.4 !important;
+        margin-bottom: 15px;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+
+    .form-header p {
+        text-align: center;
+    }
+
+    /* Estilo para a seção de tipo de alvará */
+    .tipo-alvara-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
+    .tipo-alvara-titulo {
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        text-align: center;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tipo-alvara-titulo i {
+        margin-right: 10px;
+        color: #0DCAF0;
+    }
+
+    .tipo-alvara-container select {
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        font-weight: 600;
+        color: #024287;
+        padding: 14px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto 20px;
+        display: block;
+    }
+
+    .tipo-alvara-container select:hover {
+        border-color: rgba(13, 202, 240, 0.5);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .tipo-alvara-container select:focus {
+        border-color: #0DCAF0;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.25);
+    }
+
+    .tipo-alvara-container .form-part-2 {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto 20px;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* Ajuste para campos dinâmicos */
+    #campos_dinamicos {
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+    }
+
+    #campos_dinamicos textarea,
+    #campos_dinamicos input {
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #CED4DA;
+        background-color: white;
+        font-family: Montserrat, sans-serif;
+        font-size: 1rem;
+        color: #024287;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    #campos_dinamicos textarea:focus,
+    #campos_dinamicos input:focus {
+        border-color: #0DCAF0;
+        box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.25);
+        outline: none;
+    }
+
+    #campos_dinamicos textarea {
+        min-height: 120px;
+    }
+
+    .documentos-container {
+        width: 100%;
+        margin-top: 25px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .documentos-container>div {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .documento-container {
+        margin-top: 10px !important;
+        border: none !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    .documento-header {
+        background-color: #f8f9fa;
+        border-radius: 10px 10px 0 0;
+        padding: 20px 24px !important;
+        border-bottom: 2px solid #eef0f4 !important;
+    }
+
+    /* Estilos para mensagens */
+    .mensagem-inicial,
+    .mensagem-erro {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin: 20px auto;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #024287;
+        font-size: 16px;
+    }
+
+    .mensagem-inicial i,
+    .mensagem-erro i {
+        font-size: 32px;
+        margin-bottom: 15px;
+    }
+
+    .mensagem-inicial i {
+        color: #009640;
+    }
+
+    .mensagem-erro {
+        background-color: #fff8f8;
+        color: #d32f2f;
+    }
+
+    .mensagem-erro i {
+        color: #d32f2f;
+    }
+
+    /* Estilo para mensagem de carregamento */
+    .mensagem-carregando {
+        background-color: #f8f9fa;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+        margin: 20px auto;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #024287;
+        font-size: 16px;
+    }
+
+    .mensagem-carregando p {
+        margin-top: 15px;
+        color: #6C757D;
+    }
+
+    /* Animação do spinner */
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .spinner-border {
+        display: inline-block;
+        width: 2rem;
+        height: 2rem;
+        border: 0.25em solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+
+    /* Ajustes responsivos */
+    @media (max-width: 768px) {
+        .form-header img {
+            max-width: 160px;
+        }
+
+        .form-header h1 {
+            font-size: 48px !important;
+            line-height: 1.3 !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .form-header img {
+            max-width: 130px;
+        }
+
+        .form-header h1 {
+            font-size: 36px !important;
+            line-height: 1.4 !important;
+        }
+
+        .mensagem-inicial,
+        .mensagem-erro {
+            padding: 15px;
+        }
+    }
+
+    /* Estilo para a imagem do rodapé */
+    footer>div:nth-child(2) div img {
+        max-width: 150px;
+        height: auto;
+    }
+
+    /* Estilo para contatos no footer */
+    .footer-contatos {
+        background-color: rgba(0, 150, 81, 0.1);
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .footer-contatos h3 {
+        color: #009640;
+        font-size: 18px;
+        margin: 0 0 10px 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .footer-contatos h3 i {
+        margin-right: 10px;
+    }
+
+    .footer-contatos p {
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .footer-contatos p i {
+        margin-right: 10px;
+        color: #009640;
+        width: 16px;
+        text-align: center;
+    }
+    </style>
 </head>
 
 <body>
@@ -96,7 +389,7 @@ include_once 'tipos_alvara.php';
         <section>
             <form id="form" enctype="multipart/form-data" method="post" action="processar_formulario.php">
                 <div class="form-header">
-                    <img src="./assets/prefeitura-logo.png" alt="prefeitura de pau dos ferros">
+                    <img src="./assets/Logo_sema.png" alt="prefeitura de pau dos ferros">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
@@ -150,9 +443,13 @@ include_once 'tipos_alvara.php';
 
                 <!-- Seção 4: Tipo de Alvará -->
                 <div class="form-section">
-                    <div class="form-part-2">
+                    <div class="tipo-alvara-container">
+                        <div class="tipo-alvara-titulo">
+                            <i class="fas fa-clipboard-list"></i>
+                            SELECIONE O TIPO DE ALVARÁ
+                        </div>
                         <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Alvará">
-                            <option value="" hidden>Selecione o tipo de alvará...</option>
+                            <option value="" hidden>Selecione um tipo de alvará...</option>
                             <option value="construcao">Alvará de Construção</option>
                             <option value="habite_se">Alvará de Habite-se e Legalização</option>
                             <option value="funcionamento">Alvará de Funcionamento</option>
@@ -168,15 +465,14 @@ include_once 'tipos_alvara.php';
                             <option value="autorizacao_supressao">Autorização de Supressão Vegetal</option>
                             <option value="outros">Outros</option>
                         </select>
-                    </div>
 
-                    <div id="campos_dinamicos" class="form-part-2">
-                        <!-- Os campos específicos serão carregados aqui -->
-                    </div>
+                        <div id="campos_dinamicos">
+                            <!-- Os campos específicos serão carregados aqui -->
+                        </div>
 
-                    <div id="documentos_necessarios" class="form-part-2">
-                        <!-- A lista de documentos necessários será exibida aqui -->
-                        <p>Selecione um tipo de alvará para ver os documentos necessários.</p>
+                        <div id="documentos_necessarios" class="documentos-container">
+                            <!-- A lista de documentos necessários será exibida aqui -->
+                        </div>
                     </div>
                 </div>
 
@@ -213,6 +509,11 @@ include_once 'tipos_alvara.php';
             <div>
                 <img src="./assets/email.png">
                 pmpfestagio@gmail.com
+            </div>
+            <div class="footer-contatos">
+                <h3><i class="fas fa-headset"></i> Suporte e Contato</h3>
+                <p><i class="fab fa-whatsapp"></i> Dúvidas ou informações pelo WhatsApp (84) 99668-6413</p>
+                <p><i class="fas fa-envelope"></i> Envio de documentação: fiscalizacaosemapdf@gmail.com</p>
             </div>
         </div>
         <div>
@@ -413,6 +714,15 @@ include_once 'tipos_alvara.php';
         const mesmoSimRadio = document.getElementById('mesmo-sim');
         const mesmoNaoRadio = document.getElementById('mesmo-nao');
         const proprietarioFields = document.getElementById('proprietario-fields');
+        const documentosDiv = document.getElementById('documentos_necessarios');
+
+        // Adiciona a mensagem inicial
+        documentosDiv.innerHTML = `
+            <div class="mensagem-inicial">
+                <i class="fas fa-file-alt"></i>
+                <p>Selecione um tipo de alvará acima para visualizar os documentos necessários e iniciar o processo de requerimento.</p>
+            </div>
+        `;
 
         function toggleProprietarioFields() {
             if (mesmoSimRadio.checked) {
@@ -430,11 +740,18 @@ include_once 'tipos_alvara.php';
 
         // Carregamento de campos para o tipo de alvará
         const tipoAlvaraSelect = document.getElementById('tipo_alvara');
-        const documentosDiv = document.getElementById('documentos_necessarios');
 
         if (tipoAlvaraSelect) {
             tipoAlvaraSelect.addEventListener('change', function() {
                 const tipo = this.value;
+
+                // Mostrar loading enquanto carrega
+                documentosDiv.innerHTML = `
+                    <div class="mensagem-carregando">
+                        <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #009640; margin-bottom: 15px;"></div>
+                        <p>Carregando documentos necessários...</p>
+                    </div>
+                `;
 
                 // Fazemos uma requisição direta para a página PHP que processa os documentos
                 fetch('obter_documentos.php', {
@@ -456,17 +773,25 @@ include_once 'tipos_alvara.php';
                     })
                     .catch(error => {
                         console.error('Erro:', error);
-                        documentosDiv.innerHTML =
-                            '<p>Erro ao carregar os documentos necessários.</p>';
+                        documentosDiv.innerHTML = `
+                            <div class="mensagem-erro">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>Não foi possível carregar os documentos necessários. Por favor, tente novamente.</p>
+                            </div>
+                        `;
                     });
 
-                // Carregamento de campos dinâmicos específicos (mantido do código original)
+                // Carregamento de campos dinâmicos específicos
                 const camposDinamicos = document.getElementById('campos_dinamicos');
 
                 if (tipo === '') {
                     camposDinamicos.innerHTML = '';
-                    documentosDiv.innerHTML =
-                        '<p>Selecione um tipo de alvará para ver os documentos necessários.</p>';
+                    documentosDiv.innerHTML = `
+                        <div class="mensagem-inicial">
+                            <i class="fas fa-file-alt"></i>
+                            <p>Selecione um tipo de alvará acima para visualizar os documentos necessários e iniciar o processo de requerimento.</p>
+                        </div>
+                    `;
                     return;
                 }
 
@@ -474,18 +799,18 @@ include_once 'tipos_alvara.php';
                 let campos = '';
                 if (tipo === 'construcao') {
                     campos = `
-                            <input required name="area_construcao" placeholder="Área total de construção (m²) *">
-                            <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
-                        `;
+                        <input required name="area_construcao" placeholder="Área total de construção (m²) *">
+                        <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
+                    `;
                 } else if (tipo === 'licenca_operacao') {
                     campos = `
-                            <input required name="atividade" placeholder="Descrição da atividade *">
-                            <input required name="porte_empreendimento" placeholder="Porte do empreendimento *">
-                        `;
+                        <input required name="atividade" placeholder="Descrição da atividade *">
+                        <input required name="porte_empreendimento" placeholder="Porte do empreendimento *">
+                    `;
                 } else {
                     campos = `
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
-                        `;
+                        <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
+                    `;
                 }
 
                 camposDinamicos.innerHTML = campos;

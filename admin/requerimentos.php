@@ -580,6 +580,9 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
             <a href="tipos_alvara.php" class="menu-item">
                 <i class="fas fa-list"></i> Tipos de Alvará
             </a>
+            <a href="estatisticas.php" class="menu-item">
+                <i class="fas fa-chart-bar"></i> Estatísticas
+            </a>
             <?php if ($adminNivel == 'admin'): ?>
                 <a href="usuarios.php" class="menu-item">
                     <i class="fas fa-users"></i> Usuários

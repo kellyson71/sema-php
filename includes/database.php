@@ -134,4 +134,24 @@ class Database
             die("Erro ao obter registros: " . $e->getMessage());
         }
     }
+
+    /**
+     * Exclui registros de uma tabela
+     * @param string $table Nome da tabela
+     * @param string $where Condição para exclusão
+     * @param array $params Parâmetros para a condição
+     * @return int Número de registros afetados
+     */
+    public function delete($table, $where, $params = [])
+    {
+        $sql = "DELETE FROM {$table} WHERE {$where}";
+
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->rowCount();
+        } catch (PDOException $e) {
+            die("Erro ao excluir dados: " . $e->getMessage());
+        }
+    }
 }

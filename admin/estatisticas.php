@@ -15,11 +15,50 @@ $adminId = $_SESSION['admin_id'];
 $adminNome = $_SESSION['admin_nome'];
 $adminNivel = $_SESSION['admin_nivel'];
 
-// Buscar dados para o dashboard
+// Buscar dados para estatísticas
 $requerimentoModel = new Requerimento();
-$recentesRequerimentos = $requerimentoModel->listar(5);
 $totalRequerimentos = $requerimentoModel->contarTotal();
 $statusContagem = $requerimentoModel->contarPorStatus();
+
+// Estatísticas por mês (últimos 6 meses)
+$meses = [];
+$dadosMensais = [];
+$mesAtual = date('n');
+$anoAtual = date('Y');
+
+for ($i = 5; $i >= 0; $i--) {
+    $mes = $mesAtual - $i;
+    $ano = $anoAtual;
+
+    if ($mes <= 0) {
+        $mes += 12;
+        $ano--;
+    }
+
+    $nomeMes = formatarNomeMes($mes);
+    $meses[] = $nomeMes;
+
+    // Contar requerimentos por mês
+    $contagem = $requerimentoModel->contarPorMes($mes, $ano);
+    $dadosMensais[] = $contagem;
+}
+
+// Estatísticas por tipo de alvará
+$tipoAlvaraModel = new TipoAlvara();
+$tiposAlvara = $tipoAlvaraModel->listar();
+$dadosPorTipo = [];
+
+foreach ($tiposAlvara as $tipo) {
+    $contagem = $requerimentoModel->contarPorTipoAlvara($tipo['id']);
+    $dadosPorTipo[$tipo['nome']] = $contagem;
+}
+
+// Estatísticas de tempo médio de processamento
+$tempoMedioPorStatus = [
+    'analise' => $requerimentoModel->calcularTempoMedioPorStatus('analise'),
+    'aprovado' => $requerimentoModel->calcularTempoMedioPorStatus('aprovado'),
+    'rejeitado' => $requerimentoModel->calcularTempoMedioPorStatus('rejeitado')
+];
 
 // Lidar com ações de logout
 if (isset($_GET['logout'])) {
@@ -45,9 +84,10 @@ if (isset($_GET['logout'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - SEMA</title>
+    <title>Estatísticas - SEMA</title>
     <link rel="icon" href="../assets/prefeitura-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #009851;
@@ -300,142 +340,31 @@ if (isset($_GET['logout'])) {
             color: var(--gray-color);
         }
 
-        /* Dashboard Sections */
-        .dashboard-section {
+        /* Chart Sections */
+        .chart-section {
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 30px;
+            padding: 20px;
         }
 
-        .section-header {
-            padding: 15px 20px;
+        .chart-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .section-title {
+        .chart-title {
             font-size: 18px;
             color: var(--secondary-color);
             font-weight: 600;
         }
 
-        .section-action {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-size: 14px;
-            transition: color 0.3s;
-        }
-
-        .section-action:hover {
-            color: var(--primary-dark);
-            text-decoration: underline;
-        }
-
-        .section-content {
-            padding: 20px;
-        }
-
-        /* Table Styles */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            background-color: #f8f9fa;
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--secondary-color);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .data-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--dark-color);
-        }
-
-        .data-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .data-table tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        /* Status Badge */
-        .status-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: 500;
-            text-align: center;
-            min-width: 90px;
-        }
-
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .status-processing {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .status-approved {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .status-rejected {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        /* Action Buttons */
-        .action-btn {
-            padding: 5px 10px;
-            border-radius: 4px;
-            color: white;
-            text-decoration: none;
-            font-size: 12px;
-            transition: background-color 0.3s;
-            margin-right: 5px;
-            display: inline-block;
-        }
-
-        .action-btn:last-child {
-            margin-right: 0;
-        }
-
-        .btn-view {
-            background-color: var(--info-color);
-        }
-
-        .btn-view:hover {
-            background-color: #138496;
-        }
-
-        .btn-edit {
-            background-color: var(--primary-color);
-        }
-
-        .btn-edit:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .btn-delete {
-            background-color: var(--danger-color);
-        }
-
-        .btn-delete:hover {
-            background-color: #c82333;
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
         }
 
         /* Alert Messages */
@@ -504,7 +433,7 @@ if (isset($_GET['logout'])) {
         </div>
 
         <div class="sidebar-menu">
-            <a href="dashboard.php" class="menu-item active">
+            <a href="dashboard.php" class="menu-item">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </a>
             <a href="requerimentos.php" class="menu-item">
@@ -516,7 +445,7 @@ if (isset($_GET['logout'])) {
             <a href="tipos_alvara.php" class="menu-item">
                 <i class="fas fa-list"></i> Tipos de Alvará
             </a>
-            <a href="estatisticas.php" class="menu-item">
+            <a href="estatisticas.php" class="menu-item active">
                 <i class="fas fa-chart-bar"></i> Estatísticas
             </a>
             <?php if ($adminNivel == 'admin'): ?>
@@ -527,40 +456,28 @@ if (isset($_GET['logout'])) {
                     <i class="fas fa-cog"></i> Configurações
                 </a>
             <?php endif; ?>
-            <a href="perfil.php" class="menu-item">
-                <i class="fas fa-user"></i> Meu Perfil
-            </a>
         </div>
 
         <div class="sidebar-footer">
             <div class="user-info">
                 <div class="user-avatar">
-                    <?php if (!empty($admin['foto_perfil'])): ?>
-                        <img src="<?php echo BASE_URL . '/' . $admin['foto_perfil']; ?>" alt="Foto de Perfil">
-                    <?php else: ?>
-                        <?php echo strtoupper(substr($adminNome, 0, 1)); ?>
-                    <?php endif; ?>
+                    <?php echo strtoupper(substr($adminNome, 0, 1)); ?>
                 </div>
                 <div class="user-details">
                     <div class="user-name"><?php echo sanitize($adminNome); ?></div>
                     <div class="user-role"><?php echo $adminNivel == 'admin' ? 'Administrador' : 'Operador'; ?></div>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px;">
-                <a href="perfil.php" style="flex: 1;" class="logout-btn">
-                    <i class="fas fa-user-cog"></i> Perfil
-                </a>
-                <a href="?logout=1" style="flex: 1;" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </a>
-            </div>
+            <a href="?logout=1" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
         </div>
     </div>
 
     <!-- Content Area -->
     <div class="content">
         <div class="page-header">
-            <h1 class="page-title">Dashboard</h1>
+            <h1 class="page-title">Estatísticas</h1>
             <div class="header-actions">
                 <a href="../index.php" target="_blank"><i class="fas fa-home"></i> Ver Site</a>
             </div>
@@ -614,59 +531,43 @@ if (isset($_GET['logout'])) {
             </div>
         </div>
 
-        <div class="dashboard-section">
-            <div class="section-header">
-                <h2 class="section-title">Requerimentos Recentes</h2>
-                <a href="requerimentos.php" class="section-action">Ver todos</a>
+        <!-- Gráfico de Evolução Mensal -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">Evolução Mensal de Requerimentos</h2>
             </div>
-            <div class="section-content">
-                <?php if (count($recentesRequerimentos) > 0): ?>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Protocolo</th>
-                                <th>Tipo</th>
-                                <th>Requerente</th>
-                                <th>Data</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($recentesRequerimentos as $req): ?>
-                                <tr>
-                                    <td><?php echo sanitize($req['protocolo']); ?></td>
-                                    <td><?php echo sanitize($req['tipo_alvara']); ?></td>
-                                    <td>
-                                        <?php
-                                        $requerenteModel = new Requerente();
-                                        $requerente = $requerenteModel->buscarPorId($req['requerente_id']);
-                                        echo $requerente ? sanitize($requerente['nome']) : 'N/A';
-                                        ?>
-                                    </td>
-                                    <td><?php echo formatarData($req['data_envio']); ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo strtolower($req['status']); ?>">
-                                            <?php echo formatarStatus($req['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="visualizar_requerimento.php?id=<?php echo $req['id']; ?>" class="action-btn btn-view">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                        <a href="editar_requerimento.php?id=<?php echo $req['id']; ?>" class="action-btn btn-edit">
-                                            <i class="fas fa-edit"></i> Editar
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p style="text-align: center; padding: 20px; color: #6c757d;">
-                        Não há requerimentos para exibir.
-                    </p>
-                <?php endif; ?>
+            <div class="chart-container">
+                <canvas id="graficoMensal"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Distribuição por Tipo -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">Distribuição por Tipo de Alvará</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="graficoPorTipo"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Status -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">Distribuição por Status</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="graficoPorStatus"></canvas>
+            </div>
+        </div>
+
+        <!-- Tempo Médio de Processamento -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">Tempo Médio de Processamento (dias)</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="graficoTempoProcessamento"></canvas>
             </div>
         </div>
     </div>
@@ -682,6 +583,128 @@ if (isset($_GET['logout'])) {
                     sidebar.classList.toggle('active');
                 });
             }
+
+            // Gráfico de Evolução Mensal
+            const ctxMensal = document.getElementById('graficoMensal').getContext('2d');
+            new Chart(ctxMensal, {
+                type: 'line',
+                data: {
+                    labels: <?php echo json_encode($meses); ?>,
+                    datasets: [{
+                        label: 'Requerimentos',
+                        data: <?php echo json_encode($dadosMensais); ?>,
+                        backgroundColor: 'rgba(0, 152, 81, 0.2)',
+                        borderColor: 'rgba(0, 152, 81, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de Distribuição por Tipo
+            const ctxPorTipo = document.getElementById('graficoPorTipo').getContext('2d');
+            new Chart(ctxPorTipo, {
+                type: 'bar',
+                data: {
+                    labels: <?php echo json_encode(array_keys($dadosPorTipo)); ?>,
+                    datasets: [{
+                        label: 'Requerimentos',
+                        data: <?php echo json_encode(array_values($dadosPorTipo)); ?>,
+                        backgroundColor: [
+                            'rgba(0, 152, 81, 0.7)',
+                            'rgba(255, 193, 7, 0.7)',
+                            'rgba(23, 162, 184, 0.7)',
+                            'rgba(220, 53, 69, 0.7)',
+                            'rgba(108, 117, 125, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de Status
+            const ctxPorStatus = document.getElementById('graficoPorStatus').getContext('2d');
+            new Chart(ctxPorStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pendentes', 'Em Análise', 'Aprovados', 'Rejeitados'],
+                    datasets: [{
+                        data: [
+                            <?php echo $statusContagem['pendente'] ?? 0; ?>,
+                            <?php echo $statusContagem['analise'] ?? 0; ?>,
+                            <?php echo $statusContagem['aprovado'] ?? 0; ?>,
+                            <?php echo $statusContagem['rejeitado'] ?? 0; ?>
+                        ],
+                        backgroundColor: [
+                            'rgba(255, 193, 7, 0.7)',
+                            'rgba(23, 162, 184, 0.7)',
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Gráfico de Tempo Médio de Processamento
+            const ctxTempoProcessamento = document.getElementById('graficoTempoProcessamento').getContext('2d');
+            new Chart(ctxTempoProcessamento, {
+                type: 'bar',
+                data: {
+                    labels: ['Em Análise', 'Aprovados', 'Rejeitados'],
+                    datasets: [{
+                        label: 'Dias',
+                        data: [
+                            <?php echo $tempoMedioPorStatus['analise'] ?? 0; ?>,
+                            <?php echo $tempoMedioPorStatus['aprovado'] ?? 0; ?>,
+                            <?php echo $tempoMedioPorStatus['rejeitado'] ?? 0; ?>
+                        ],
+                        backgroundColor: [
+                            'rgba(23, 162, 184, 0.7)',
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
         });
     </script>
 </body>

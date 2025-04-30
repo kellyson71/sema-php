@@ -37,13 +37,24 @@ function salvarArquivo($arquivo, $diretorio, $prefixo = '')
     $nome_original = $arquivo['name'];
     $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
     $novo_nome = $prefixo . '_' . uniqid() . '.' . $extensao;
+
+    // Garantir que o diretório não termine com barra
+    $diretorio = rtrim($diretorio, '/\\');
+
+    // Caminho do sistema de arquivos para salvar o arquivo
     $caminho_arquivo = $diretorio . '/' . $novo_nome;
+
+    // Caminho relativo para o banco de dados (URL)
+    // Ajusta o caminho para usar a BASE_URL e garantir que não tenha barras duplas
+    $caminho_relativo = str_replace('../', '', $diretorio) . '/' . $novo_nome;
+    $caminho_relativo = str_replace('//', '/', $caminho_relativo);
 
     // Move o arquivo enviado para o diretório de uploads
     if (move_uploaded_file($arquivo['tmp_name'], $caminho_arquivo)) {
         return [
             'nome_original' => $nome_original,
-            'caminho' => $caminho_arquivo,
+            'caminho' => $caminho_relativo, // Caminho relativo para o banco de dados
+            'caminho_completo' => $caminho_arquivo, // Caminho completo no sistema de arquivos
             'tamanho' => $arquivo['size'],
             'tipo' => $arquivo['type'],
             'nome_salvo' => $novo_nome
@@ -148,6 +159,10 @@ function formatarData($data)
  */
 function formatarDataHora($data)
 {
+    if (empty($data)) {
+        return 'Data não informada';
+    }
+
     $timestamp = strtotime($data);
     return date('d/m/Y \à\s H:i:s', $timestamp);
 }
@@ -177,4 +192,29 @@ function formatarTamanho($bytes)
     }
 
     return round($bytes / 1073741824, 2) . ' GB';
+}
+
+/**
+ * Retorna o nome do mês em português
+ * @param int $mes Número do mês (1-12)
+ * @return string Nome do mês
+ */
+function formatarNomeMes($mes)
+{
+    $meses = [
+        1 => 'Janeiro',
+        2 => 'Fevereiro',
+        3 => 'Março',
+        4 => 'Abril',
+        5 => 'Maio',
+        6 => 'Junho',
+        7 => 'Julho',
+        8 => 'Agosto',
+        9 => 'Setembro',
+        10 => 'Outubro',
+        11 => 'Novembro',
+        12 => 'Dezembro'
+    ];
+
+    return $meses[$mes] ?? '';
 }

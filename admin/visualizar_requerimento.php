@@ -671,14 +671,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
             <a href="dashboard.php" class="menu-item">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </a>
-            <a href="requerimentos.php" class="menu-item active">
+            <a href="requerimentos.php" class="menu-item">
                 <i class="fas fa-file-alt"></i> Requerimentos
             </a>
-            <a href="documentos.php" class="menu-item">
-                <i class="fas fa-folder-open"></i> Documentos
-            </a>
-            <a href="tipos_alvara.php" class="menu-item">
-                <i class="fas fa-list"></i> Tipos de Alvará
+            <a href="estatisticas.php" class="menu-item">
+                <i class="fas fa-chart-bar"></i> Estatísticas
             </a>
             <?php if ($adminNivel == 'admin'): ?>
                 <a href="usuarios.php" class="menu-item">
@@ -900,10 +897,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
                                         <div class="timeline-content">
                                             <div class="timeline-header">
                                                 <div class="timeline-title">
-                                                    <?php echo $acao['admin_nome'] ? sanitize($acao['admin_nome']) : 'Sistema'; ?>
+                                                    <?php echo isset($acao['admin_nome']) && $acao['admin_nome'] ? sanitize($acao['admin_nome']) : 'Sistema'; ?>
                                                 </div>
                                                 <div class="timeline-date">
-                                                    <?php echo formatarDataHora($acao['data_acao']); ?>
+                                                    <?php echo formatarDataHora($acao['data_acao'] ?? $acao['data'] ?? null); ?>
                                                 </div>
                                             </div>
                                             <div class="timeline-body">

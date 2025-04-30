@@ -9,34 +9,119 @@ if (!isset($_SESSION['admin_id'])) {
     redirect('index.php');
 }
 
+// Verificar se o usuário tem permissão de administrador
+if ($_SESSION['admin_nivel'] != 'admin') {
+    setMensagem('erro', 'Você não tem permissão para acessar esta área.');
+    redirect('dashboard.php');
+}
+
 // Inicializar variáveis
 $mensagem = getMensagem();
 $adminId = $_SESSION['admin_id'];
 $adminNome = $_SESSION['admin_nome'];
 $adminNivel = $_SESSION['admin_nivel'];
 
-// Buscar dados para o dashboard
-$requerimentoModel = new Requerimento();
-$recentesRequerimentos = $requerimentoModel->listar(5);
-$totalRequerimentos = $requerimentoModel->contarTotal();
-$statusContagem = $requerimentoModel->contarPorStatus();
+// Buscar dados para usuários
+$adminModel = new Administrador();
+$usuarios = $adminModel->listar();
 
-// Lidar com ações de logout
-if (isset($_GET['logout'])) {
-    // Registrar ação de logout no histórico
-    $historicoModel = new HistoricoAcao();
-    $historicoModel->registrar([
-        'admin_id' => $adminId,
-        'requerimento_id' => null,
-        'acao' => 'Logout do sistema administrativo'
-    ]);
+// Processar ação de exclusão
+if (isset($_GET['excluir']) && is_numeric($_GET['excluir'])) {
+    $id = (int)$_GET['excluir'];
 
-    // Limpar sessão
-    session_unset();
-    session_destroy();
+    // Não permitir excluir o próprio usuário
+    if ($id == $adminId) {
+        setMensagem('erro', 'Você não pode excluir seu próprio usuário.');
+    } else {
+        if ($adminModel->excluir($id)) {
+            // Registrar ação no histórico
+            $historicoModel = new HistoricoAcao();
+            $historicoModel->registrar([
+                'admin_id' => $adminId,
+                'requerimento_id' => null,
+                'acao' => 'Exclusão de usuário administrador (ID: ' . $id . ')'
+            ]);
 
-    // Redirecionar para login
-    redirect('index.php');
+            setMensagem('sucesso', 'Usuário excluído com sucesso!');
+        } else {
+            setMensagem('erro', 'Erro ao excluir o usuário.');
+        }
+    }
+
+    redirect('usuarios.php');
+}
+
+// Processar ação de adição ou edição de usuário
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id = isset($_POST['id']) ? (int)$_POST['id'] : null;
+    $dados = [
+        'nome' => $_POST['nome'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'nivel' => $_POST['nivel'] ?? 'operador',
+        'senha' => $_POST['senha'] ?? ''
+    ];
+
+    // Validação básica
+    if (empty($dados['nome']) || empty($dados['email'])) {
+        setMensagem('erro', 'Nome e email são obrigatórios.');
+    } else {
+        // Verificar se o email já existe (para novos usuários)
+        if (!$id && $adminModel->emailExiste($dados['email'])) {
+            setMensagem('erro', 'Este email já está cadastrado.');
+        } else {
+            // Se não for informada nova senha em edição, manter a atual
+            if ($id && empty($dados['senha'])) {
+                unset($dados['senha']);
+            }
+
+            if ($id) {
+                // Atualização
+                if ($adminModel->atualizar($id, $dados)) {
+                    // Registrar ação no histórico
+                    $historicoModel = new HistoricoAcao();
+                    $historicoModel->registrar([
+                        'admin_id' => $adminId,
+                        'requerimento_id' => null,
+                        'acao' => 'Atualização de usuário administrador (ID: ' . $id . ')'
+                    ]);
+
+                    setMensagem('sucesso', 'Usuário atualizado com sucesso!');
+                } else {
+                    setMensagem('erro', 'Erro ao atualizar o usuário.');
+                }
+            } else {
+                // Inserção - senha é obrigatória
+                if (empty($dados['senha'])) {
+                    setMensagem('erro', 'A senha é obrigatória para novos usuários.');
+                } else {
+                    // Inserção
+                    if ($novoId = $adminModel->inserir($dados)) {
+                        // Registrar ação no histórico
+                        $historicoModel = new HistoricoAcao();
+                        $historicoModel->registrar([
+                            'admin_id' => $adminId,
+                            'requerimento_id' => null,
+                            'acao' => 'Cadastro de novo usuário administrador (ID: ' . $novoId . ')'
+                        ]);
+
+                        setMensagem('sucesso', 'Usuário cadastrado com sucesso!');
+                    } else {
+                        setMensagem('erro', 'Erro ao cadastrar o usuário.');
+                    }
+                }
+            }
+
+            redirect('usuarios.php');
+        }
+    }
+
+    $mensagem = getMensagem();
+}
+
+// Preparar dados para edição
+$usuario = null;
+if (isset($_GET['editar']) && is_numeric($_GET['editar'])) {
+    $usuario = $adminModel->buscarPorId((int)$_GET['editar']);
 }
 ?>
 <!DOCTYPE html>
@@ -45,7 +130,7 @@ if (isset($_GET['logout'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - SEMA</title>
+    <title>Usuários - SEMA</title>
     <link rel="icon" href="../assets/prefeitura-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -233,109 +318,98 @@ if (isset($_GET['logout'])) {
             background-color: var(--primary-dark);
         }
 
-        /* Dashboard Cards */
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
+        /* Form Styles */
+        .form-section {
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
             padding: 20px;
-            display: flex;
-            align-items: center;
-            transition: transform 0.3s, box-shadow 0.3s;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            color: white;
-            font-size: 20px;
-        }
-
-        .stat-icon.bg-primary {
-            background-color: var(--primary-color);
-        }
-
-        .stat-icon.bg-warning {
-            background-color: var(--warning-color);
-        }
-
-        .stat-icon.bg-success {
-            background-color: var(--success-color);
-        }
-
-        .stat-icon.bg-danger {
-            background-color: var(--danger-color);
-        }
-
-        .stat-content {
-            flex: 1;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
+        .form-section h2 {
+            margin-bottom: 20px;
             color: var(--secondary-color);
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: var(--gray-color);
-        }
-
-        /* Dashboard Sections */
-        .dashboard-section {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 30px;
-        }
-
-        .section-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .section-title {
             font-size: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
             color: var(--secondary-color);
-            font-weight: 600;
         }
 
-        .section-action {
-            color: var(--primary-color);
-            text-decoration: none;
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
             font-size: 14px;
-            transition: color 0.3s;
+            transition: border-color 0.3s;
         }
 
-        .section-action:hover {
-            color: var(--primary-dark);
-            text-decoration: underline;
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0, 152, 81, 0.2);
         }
 
-        .section-content {
-            padding: 20px;
+        .form-text {
+            font-size: 12px;
+            color: var(--gray-color);
+            margin-top: 5px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .form-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
         }
 
         /* Table Styles */
@@ -367,35 +441,23 @@ if (isset($_GET['logout'])) {
             background-color: #f8f9fa;
         }
 
-        /* Status Badge */
-        .status-badge {
+        /* Badge for Admin Level */
+        .badge {
             display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 12px;
             font-weight: 500;
-            text-align: center;
-            min-width: 90px;
         }
 
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
+        .badge-admin {
+            background-color: var(--primary-color);
+            color: white;
         }
 
-        .status-processing {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .status-approved {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .status-rejected {
-            background-color: #f8d7da;
-            color: #721c24;
+        .badge-operator {
+            background-color: var(--info-color);
+            color: white;
         }
 
         /* Action Buttons */
@@ -412,14 +474,6 @@ if (isset($_GET['logout'])) {
 
         .action-btn:last-child {
             margin-right: 0;
-        }
-
-        .btn-view {
-            background-color: var(--info-color);
-        }
-
-        .btn-view:hover {
-            background-color: #138496;
         }
 
         .btn-edit {
@@ -504,7 +558,7 @@ if (isset($_GET['logout'])) {
         </div>
 
         <div class="sidebar-menu">
-            <a href="dashboard.php" class="menu-item active">
+            <a href="dashboard.php" class="menu-item">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </a>
             <a href="requerimentos.php" class="menu-item">
@@ -520,49 +574,39 @@ if (isset($_GET['logout'])) {
                 <i class="fas fa-chart-bar"></i> Estatísticas
             </a>
             <?php if ($adminNivel == 'admin'): ?>
-                <a href="usuarios.php" class="menu-item">
+                <a href="usuarios.php" class="menu-item active">
                     <i class="fas fa-users"></i> Usuários
                 </a>
                 <a href="configuracoes.php" class="menu-item">
                     <i class="fas fa-cog"></i> Configurações
                 </a>
             <?php endif; ?>
-            <a href="perfil.php" class="menu-item">
-                <i class="fas fa-user"></i> Meu Perfil
-            </a>
         </div>
 
         <div class="sidebar-footer">
             <div class="user-info">
                 <div class="user-avatar">
-                    <?php if (!empty($admin['foto_perfil'])): ?>
-                        <img src="<?php echo BASE_URL . '/' . $admin['foto_perfil']; ?>" alt="Foto de Perfil">
-                    <?php else: ?>
-                        <?php echo strtoupper(substr($adminNome, 0, 1)); ?>
-                    <?php endif; ?>
+                    <?php echo strtoupper(substr($adminNome, 0, 1)); ?>
                 </div>
                 <div class="user-details">
                     <div class="user-name"><?php echo sanitize($adminNome); ?></div>
                     <div class="user-role"><?php echo $adminNivel == 'admin' ? 'Administrador' : 'Operador'; ?></div>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px;">
-                <a href="perfil.php" style="flex: 1;" class="logout-btn">
-                    <i class="fas fa-user-cog"></i> Perfil
-                </a>
-                <a href="?logout=1" style="flex: 1;" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </a>
-            </div>
+            <a href="dashboard.php?logout=1" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
         </div>
     </div>
 
     <!-- Content Area -->
     <div class="content">
         <div class="page-header">
-            <h1 class="page-title">Dashboard</h1>
+            <h1 class="page-title">Gerenciar Usuários</h1>
             <div class="header-actions">
-                <a href="../index.php" target="_blank"><i class="fas fa-home"></i> Ver Site</a>
+                <?php if (!isset($_GET['editar']) && !isset($_GET['adicionar'])): ?>
+                    <a href="?adicionar"><i class="fas fa-user-plus"></i> Novo Usuário</a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -572,91 +616,92 @@ if (isset($_GET['logout'])) {
             </div>
         <?php endif; ?>
 
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <div class="stat-icon bg-primary">
-                    <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value"><?php echo $totalRequerimentos; ?></div>
-                    <div class="stat-label">Total de Requerimentos</div>
-                </div>
-            </div>
+        <?php if (isset($_GET['adicionar']) || isset($_GET['editar'])): ?>
+            <!-- Formulário de adicionar/editar usuário -->
+            <div class="form-section">
+                <h2><?php echo isset($_GET['editar']) ? 'Editar Usuário' : 'Novo Usuário'; ?></h2>
 
-            <div class="stat-card">
-                <div class="stat-icon bg-warning">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value"><?php echo $statusContagem['pendente'] ?? 0; ?></div>
-                    <div class="stat-label">Pendentes</div>
-                </div>
-            </div>
+                <form method="post" action="">
+                    <?php if ($usuario): ?>
+                        <input type="hidden" name="id" value="<?php echo $usuario['id']; ?>">
+                    <?php endif; ?>
 
-            <div class="stat-card">
-                <div class="stat-icon bg-success">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value"><?php echo $statusContagem['aprovado'] ?? 0; ?></div>
-                    <div class="stat-label">Aprovados</div>
-                </div>
-            </div>
+                    <div class="form-group">
+                        <label for="nome">Nome Completo*</label>
+                        <input type="text" class="form-control" id="nome" name="nome" value="<?php echo $usuario ? sanitize($usuario['nome']) : ''; ?>" required>
+                    </div>
 
-            <div class="stat-card">
-                <div class="stat-icon bg-danger">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value"><?php echo $statusContagem['rejeitado'] ?? 0; ?></div>
-                    <div class="stat-label">Rejeitados</div>
-                </div>
-            </div>
-        </div>
+                    <div class="form-group">
+                        <label for="email">Email*</label>
+                        <input type="email" class="form-control" id="email" name="email" value="<?php echo $usuario ? sanitize($usuario['email']) : ''; ?>" required>
+                    </div>
 
-        <div class="dashboard-section">
-            <div class="section-header">
-                <h2 class="section-title">Requerimentos Recentes</h2>
-                <a href="requerimentos.php" class="section-action">Ver todos</a>
+                    <div class="form-group">
+                        <label for="senha">Senha <?php echo $usuario ? '' : '*'; ?></label>
+                        <input type="password" class="form-control" id="senha" name="senha">
+                        <?php if ($usuario): ?>
+                            <div class="form-text">Deixe em branco para manter a senha atual.</div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nivel">Nível de Acesso*</label>
+                        <select class="form-control" id="nivel" name="nivel" required>
+                            <option value="operador" <?php echo ($usuario && $usuario['nivel'] == 'operador') ? 'selected' : ''; ?>>Operador</option>
+                            <option value="admin" <?php echo ($usuario && $usuario['nivel'] == 'admin') ? 'selected' : ''; ?>>Administrador</option>
+                        </select>
+                        <div class="form-text">
+                            <strong>Operador:</strong> Pode gerenciar requerimentos, documentos e tipos de alvará.<br>
+                            <strong>Administrador:</strong> Acesso completo ao sistema, incluindo gerenciamento de usuários e configurações.
+                        </div>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> <?php echo isset($_GET['editar']) ? 'Atualizar' : 'Salvar'; ?>
+                        </button>
+                        <a href="usuarios.php" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="section-content">
-                <?php if (count($recentesRequerimentos) > 0): ?>
+        <?php else: ?>
+            <!-- Lista de usuários -->
+            <div class="form-section">
+                <h2>Usuários Cadastrados</h2>
+
+                <?php if (count($usuarios) > 0): ?>
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Protocolo</th>
-                                <th>Tipo</th>
-                                <th>Requerente</th>
-                                <th>Data</th>
-                                <th>Status</th>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Nível</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($recentesRequerimentos as $req): ?>
+                            <?php foreach ($usuarios as $user): ?>
                                 <tr>
-                                    <td><?php echo sanitize($req['protocolo']); ?></td>
-                                    <td><?php echo sanitize($req['tipo_alvara']); ?></td>
+                                    <td><?php echo $user['id']; ?></td>
+                                    <td><?php echo sanitize($user['nome']); ?></td>
+                                    <td><?php echo sanitize($user['email']); ?></td>
                                     <td>
-                                        <?php
-                                        $requerenteModel = new Requerente();
-                                        $requerente = $requerenteModel->buscarPorId($req['requerente_id']);
-                                        echo $requerente ? sanitize($requerente['nome']) : 'N/A';
-                                        ?>
-                                    </td>
-                                    <td><?php echo formatarData($req['data_envio']); ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo strtolower($req['status']); ?>">
-                                            <?php echo formatarStatus($req['status']); ?>
+                                        <span class="badge badge-<?php echo $user['nivel'] == 'admin' ? 'admin' : 'operator'; ?>">
+                                            <?php echo $user['nivel'] == 'admin' ? 'Administrador' : 'Operador'; ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="visualizar_requerimento.php?id=<?php echo $req['id']; ?>" class="action-btn btn-view">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                        <a href="editar_requerimento.php?id=<?php echo $req['id']; ?>" class="action-btn btn-edit">
+                                        <a href="?editar=<?php echo $user['id']; ?>" class="action-btn btn-edit">
                                             <i class="fas fa-edit"></i> Editar
                                         </a>
+                                        <?php if ($user['id'] != $adminId): ?>
+                                            <a href="?excluir=<?php echo $user['id']; ?>" class="action-btn btn-delete" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
+                                                <i class="fas fa-trash"></i> Excluir
+                                            </a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -664,11 +709,11 @@ if (isset($_GET['logout'])) {
                     </table>
                 <?php else: ?>
                     <p style="text-align: center; padding: 20px; color: #6c757d;">
-                        Não há requerimentos para exibir.
+                        Não há usuários cadastrados. <a href="?adicionar">Adicionar um novo usuário</a>.
                     </p>
                 <?php endif; ?>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
 
     <script>
