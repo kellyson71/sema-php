@@ -50,227 +50,273 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consultar Requerimento - Secretaria Municipal de Meio Ambiente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Consulta de Alvarás - Secretaria Municipal de Meio Ambiente</title>
     <link rel="icon" href="../assets/prefeitura-logo.png" type="image/png">
+
+    <meta name="description" content="Consulte o status do seu alvará na Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
+    <meta name="keywords" content="alvará, consulta, meio ambiente, Pau dos Ferros, prefeitura, SEMA">
+    <meta name="author" content="Prefeitura de Pau dos Ferros">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="../css/index.css">
+
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .consulta-container {
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        }
 
-        .consulta-form {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-        .consulta-form h2 {
-            color: #009851;
-            margin-bottom: 20px;
-        }
-
-        .consulta-form p {
-            margin-bottom: 15px;
-            color: #555;
-        }
-
-        .protocolo-input {
-            display: flex;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .protocolo-input input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px 0 0 4px;
-            font-size: 16px;
-        }
-
-        .protocolo-input button {
-            padding: 12px 20px;
-            background-color: #009851;
-            color: white;
-            border: none;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .protocolo-input button:hover {
-            background-color: #007840;
-        }
-
-        .resultado-container {
-            margin-top: 20px;
-        }
-
-        .resultado-titulo {
-            color: #009851;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        .info-bloco {
-            margin-bottom: 25px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            padding: 15px;
-        }
-
-        .info-bloco h3 {
-            margin-top: 0;
-            color: #444;
-            font-size: 18px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        @media (max-width: 600px) {
-            .info-grid {
-                grid-template-columns: 1fr;
+    <!-- Tailwind para estilização avançada -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Segoe UI', 'Roboto', 'sans-serif'],
+                    },
+                }
             }
         }
+    </script>
 
-        .info-item {
-            margin-bottom: 10px;
+    <style>
+        /* Estilos específicos para a caixa de consulta */
+        .box-consulta {
+            max-width: 800px;
+            margin: 50px auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
         }
 
-        .info-item label {
-            display: block;
-            font-weight: bold;
-            color: #666;
-            margin-bottom: 5px;
-            font-size: 14px;
+        .box-consulta::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #009640, #0dcaf0);
+            z-index: 1;
         }
 
-        .info-valor {
+        .box-consulta h2 {
+            color: #024287;
+            font-size: 28px;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .box-consulta .icone {
+            font-size: 48px;
+            color: #009851;
+            margin-bottom: 20px;
+        }
+
+        .campo-consulta {
+            position: relative;
+            margin: 30px 0;
+        }
+
+        .campo-consulta input {
+            width: 100%;
+            padding: 16px 50px 16px 20px;
+            border: 2px solid rgba(2, 66, 135, 0.2);
+            border-radius: 12px;
             font-size: 16px;
-            color: #333;
+            color: #024287;
+            transition: all 0.3s;
         }
 
-        .documentos-lista {
-            list-style: none;
-            padding: 0;
+        .campo-consulta input:focus {
+            border-color: #0dcaf0;
+            box-shadow: 0 0 0 4px rgba(13, 202, 240, 0.25);
+            outline: none;
         }
 
-        .documento-item {
-            padding: 10px 15px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .documento-info {
-            flex: 1;
-        }
-
-        .documento-nome {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .documento-meta {
-            font-size: 14px;
-            color: #777;
-        }
-
-        .status {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 14px;
-            color: white;
+        .botao-consulta {
             display: inline-block;
+            padding: 15px 40px;
+            background-color: #009640;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0, 150, 64, 0.2);
+        }
+
+        .botao-consulta:hover {
+            background-color: #008748;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 150, 64, 0.3);
+        }
+
+        .botao-consulta i {
+            margin-right: 10px;
+        }
+
+        /* Adicionando margem no final da página para evitar que o footer fique encostado */
+        main {
+            min-height: calc(100vh - 350px);
+            /* Garante altura mínima considerando o tamanho do footer */
+            margin-bottom: 80px;
+            /* Adiciona espaço entre o conteúdo principal e o footer */
+        }
+
+        /* Estilo para mensagens de erro/sucesso */
+        .mensagem {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .erro {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border-left: 4px solid #ef4444;
+        }
+
+        .sucesso {
+            background-color: #f0fdf4;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+
+        /* Estilos para os resultados da consulta */
+        .resultado-consulta {
+            text-align: left;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background: linear-gradient(90deg, #009640, #047857);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .card-body {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+            border: 1px solid #e5e7eb;
+            border-top: none;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
         }
 
         .status-analise {
-            background-color: #ffc107;
+            background-color: #fff9c2;
+            color: #854d0e;
         }
 
         .status-aprovado {
-            background-color: #28a745;
+            background-color: #dcfce7;
+            color: #166534;
         }
 
         .status-reprovado {
-            background-color: #dc3545;
+            background-color: #fee2e2;
+            color: #991b1b;
         }
 
         .status-pendente {
-            background-color: #6c757d;
+            background-color: #dbeafe;
+            color: #1e40af;
         }
 
-        .documento-acao a {
-            padding: 8px 12px;
-            background-color: #009851;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
+        .info-label {
             font-size: 14px;
-            transition: background-color 0.3s;
+            color: #6b7280;
+            margin-bottom: 4px;
         }
 
-        .documento-acao a:hover {
-            background-color: #007840;
+        .info-value {
+            font-size: 16px;
+            color: #1f2937;
+            margin-bottom: 15px;
         }
 
-        .empty-result {
-            text-align: center;
-            padding: 20px;
+        .section-title {
+            font-size: 18px;
+            color: #047857;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
         }
 
-        .empty-result i {
-            font-size: 48px;
-            color: #ccc;
-            margin-bottom: 20px;
+        /* Botão para voltar à página inicial */
+        .botao-voltar {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #024287;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            box-shadow: 0 4px 12px rgba(2, 66, 135, 0.2);
+            text-decoration: none;
         }
 
-        .mensagem {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            font-weight: bold;
+        .botao-voltar:hover {
+            background-color: #013a77;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(2, 66, 135, 0.3);
         }
 
-        .mensagem-sucesso {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .botao-voltar i {
+            margin-right: 8px;
         }
 
-        .mensagem-erro {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .mensagem-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .mensagem-alerta {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
+        .acoes-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
         }
     </style>
 </head>
@@ -279,32 +325,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
     <header>
         <nav>
             <ul>
-                <a>
-                    <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
-                            <img src="../assets/instagram.png">
-                        </a>
-                    </li>
-                </a>
-                <a>
-                    <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
-                            <img src="../assets/facebook.png">
-                        </a>
-                </a>
-                <a>
-                    <li><a href="https://twitter.com/paudosferros">
-                            <img src="../assets/twitter.png">
-                        </a>
-                </a>
-                <a>
-                    <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
-                            <img src="../assets/youtube.png">
-                        </a>
-                </a>
-                <a>
-                    <li><a href="https://instagram.com">
-                            <img src="../assets/copy-url.png">
-                        </a>
-                </a>
+                <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
+                        <img src="../assets/instagram.png" alt="Instagram">
+                    </a>
+                </li>
+                <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
+                        <img src="../assets/facebook.png" alt="Facebook">
+                    </a>
+                </li>
+                <li><a href="https://twitter.com/paudosferros">
+                        <img src="../assets/twitter.png" alt="Twitter">
+                    </a>
+                </li>
+                <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
+                        <img src="../assets/youtube.png" alt="YouTube">
+                    </a>
+                </li>
+                <li><a href="https://instagram.com">
+                        <img src="../assets/copy-url.png" alt="URL">
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -317,162 +357,205 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
     </header>
 
     <main>
-        <div class="consulta-container">
-            <div class="consulta-form">
-                <h2>Consultar Requerimento</h2>
-                <p>Informe o número do protocolo para consultar o status do seu requerimento.</p>
+        <section>
+            <div class="box-consulta">
+                <div class="icone">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h2>Consulta de Alvará</h2>
 
                 <?php if ($mensagem): ?>
-                    <div class="mensagem mensagem-<?php echo $mensagem['tipo']; ?>">
+                    <div class="mensagem <?php echo $mensagem['tipo']; ?>">
                         <?php echo $mensagem['texto']; ?>
                     </div>
                 <?php endif; ?>
 
-                <form method="post" action="">
-                    <div class="protocolo-input">
-                        <input type="text" name="protocolo" placeholder="Digite o número do protocolo"
-                            value="<?php echo isset($_POST['protocolo']) ? htmlspecialchars($_POST['protocolo']) : ''; ?>" required>
-                        <button type="submit"><i class="fas fa-search"></i> Consultar</button>
+                <?php if (!$resultado): ?>
+                    <p>Digite o número do protocolo para verificar o status do seu alvará ou requerimento junto à Secretaria Municipal de Meio Ambiente.</p>
+                    <form action="" method="post">
+                        <div class="campo-consulta">
+                            <input type="text" id="protocolo" name="protocolo" placeholder="Digite o número do protocolo..." required>
+                        </div>
+                        <button type="submit" class="botao-consulta" id="btn-consultar">
+                            <i class="fas fa-search"></i> Consultar
+                        </button>
+                    </form>
+
+                    <div class="acoes-container">
+                        <a href="../index.php" class="botao-voltar">
+                            <i class="fas fa-home"></i> Página Inicial
+                        </a>
                     </div>
-                </form>
-            </div>
 
-            <?php if (isset($resultado) && $resultado): ?>
-                <div class="resultado-container">
-                    <h3 class="resultado-titulo">Detalhes do Requerimento</h3>
+                <?php else: ?>
+                    <!-- Resultado da Consulta -->
+                    <div class="resultado-consulta">
+                        <div class="card-header flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas fa-clipboard-list mr-2"></i>
+                                <span>Detalhes do Requerimento</span>
+                            </div>
+                            <div>
+                                <?php
+                                $statusClass = 'bg-gray-100 text-gray-800';
+                                $statusText = 'Desconhecido';
 
-                    <?php if ($requerimento): ?>
-                        <div class="info-bloco">
-                            <h3>Informações Gerais</h3>
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <label>Protocolo:</label>
-                                    <div class="info-valor"><?php echo sanitize($requerimento['protocolo']); ?></div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Tipo de Alvará:</label>
-                                    <div class="info-valor"><?php echo sanitize($requerimento['tipo_alvara']); ?></div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Status:</label>
-                                    <div class="info-valor"><?php echo formatarStatus($requerimento['status']); ?></div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Data de Envio:</label>
-                                    <div class="info-valor"><?php echo formatarData($requerimento['data_envio']); ?></div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Última Atualização:</label>
-                                    <div class="info-valor"><?php echo formatarData($requerimento['data_atualizacao']); ?></div>
-                                </div>
+                                switch ($requerimento['status']) {
+                                    case 'analise':
+                                        $statusClass = 'status-analise';
+                                        $statusText = 'Em Análise';
+                                        break;
+                                    case 'aprovado':
+                                        $statusClass = 'status-aprovado';
+                                        $statusText = 'Aprovado';
+                                        break;
+                                    case 'reprovado':
+                                        $statusClass = 'status-reprovado';
+                                        $statusText = 'Reprovado';
+                                        break;
+                                    case 'pendente':
+                                        $statusClass = 'status-pendente';
+                                        $statusText = 'Pendente';
+                                        break;
+                                }
+                                ?>
+                                <span class="status-badge <?php echo $statusClass; ?>">
+                                    <?php echo $statusText; ?>
+                                </span>
                             </div>
                         </div>
 
-                        <?php if ($requerimento['observacoes']): ?>
-                            <div class="info-bloco">
-                                <h3>Observações</h3>
-                                <div class="info-item">
-                                    <div class="info-valor"><?php echo nl2br(sanitize($requerimento['observacoes'])); ?></div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="info-label">Protocolo</div>
+                                    <div class="info-value font-bold text-xl"><?php echo sanitize($requerimento['protocolo']); ?></div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Tipo de Alvará</div>
+                                    <div class="info-value"><?php echo sanitize($requerimento['tipo_alvara']); ?></div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Data de Envio</div>
+                                    <div class="info-value"><?php echo formatarData($requerimento['data_envio']); ?></div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Última Atualização</div>
+                                    <div class="info-value"><?php echo formatarData($requerimento['data_atualizacao']); ?></div>
                                 </div>
                             </div>
-                        <?php endif; ?>
 
-                        <?php if ($requerente): ?>
-                            <div class="info-bloco">
-                                <h3>Dados do Requerente</h3>
-                                <div class="info-grid">
-                                    <div class="info-item">
-                                        <label>Nome:</label>
-                                        <div class="info-valor"><?php echo sanitize($requerente['nome']); ?></div>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>CPF/CNPJ:</label>
-                                        <div class="info-valor"><?php echo sanitize($requerente['cpf_cnpj']); ?></div>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>E-mail:</label>
-                                        <div class="info-valor"><?php echo sanitize($requerente['email']); ?></div>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>Telefone:</label>
-                                        <div class="info-valor"><?php echo sanitize($requerente['telefone']); ?></div>
+                            <?php if (!empty($requerimento['endereco_objetivo'])): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-map-marker-alt mr-2"></i> Endereço do Objetivo</div>
+                                    <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                        <?php echo sanitize($requerimento['endereco_objetivo']); ?>
                                     </div>
                                 </div>
-                            </div>
-                        <?php endif; ?>
+                            <?php endif; ?>
 
-                        <?php if ($proprietario): ?>
-                            <div class="info-bloco">
-                                <h3>Dados do Proprietário</h3>
-                                <div class="info-grid">
-                                    <div class="info-item">
-                                        <label>Nome:</label>
-                                        <div class="info-valor"><?php echo sanitize($proprietario['nome']); ?></div>
+                            <?php if (!empty($requerimento['observacoes'])): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-comment-alt mr-2"></i> Observações</div>
+                                    <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                        <?php echo nl2br(sanitize($requerimento['observacoes'])); ?>
                                     </div>
-                                    <div class="info-item">
-                                        <label>CPF/CNPJ:</label>
-                                        <div class="info-valor"><?php echo sanitize($proprietario['cpf_cnpj']); ?></div>
-                                    </div>
-                                    <?php if ($proprietario['mesmo_requerente']): ?>
-                                        <div class="info-item">
-                                            <label>Observação:</label>
-                                            <div class="info-valor">O proprietário é o mesmo que o requerente.</div>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if ($requerente): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-user mr-2"></i> Dados do Requerente</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <div class="info-label">Nome</div>
+                                            <div class="info-value"><?php echo sanitize($requerente['nome']); ?></div>
                                         </div>
-                                    <?php endif; ?>
+                                        <div>
+                                            <div class="info-label">CPF/CNPJ</div>
+                                            <div class="info-value"><?php echo sanitize($requerente['cpf_cnpj']); ?></div>
+                                        </div>
+                                        <div>
+                                            <div class="info-label">Email</div>
+                                            <div class="info-value"><?php echo sanitize($requerente['email']); ?></div>
+                                        </div>
+                                        <div>
+                                            <div class="info-label">Telefone</div>
+                                            <div class="info-value"><?php echo sanitize($requerente['telefone']); ?></div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        <?php endif; ?>
+                            <?php endif; ?>
 
-                        <div class="info-bloco">
-                            <h3>Endereço do Objetivo</h3>
-                            <div class="info-item">
-                                <div class="info-valor"><?php echo sanitize($requerimento['endereco_objetivo']); ?></div>
-                            </div>
-                        </div>
-
-                        <?php if ($documentos && count($documentos) > 0): ?>
-                            <div class="info-bloco">
-                                <h3>Documentos Enviados</h3>
-                                <ul class="documentos-lista">
-                                    <?php foreach ($documentos as $documento): ?>
-                                        <li class="documento-item">
-                                            <div class="documento-info">
-                                                <div class="documento-nome"><?php echo sanitize($documento['nome_original']); ?></div>
-                                                <div class="documento-meta">
-                                                    Tipo: <?php echo sanitize($documento['campo_formulario']); ?> |
-                                                    Tamanho: <?php echo formatarTamanho($documento['tamanho']); ?> |
-                                                    Enviado em: <?php echo formatarData($documento['data_upload']); ?>
+                            <?php if ($proprietario): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-home mr-2"></i> Dados do Proprietário</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <div class="info-label">Nome</div>
+                                            <div class="info-value"><?php echo sanitize($proprietario['nome']); ?></div>
+                                        </div>
+                                        <div>
+                                            <div class="info-label">CPF/CNPJ</div>
+                                            <div class="info-value"><?php echo sanitize($proprietario['cpf_cnpj']); ?></div>
+                                        </div>
+                                        <?php if ($proprietario['mesmo_requerente']): ?>
+                                            <div class="col-span-2">
+                                                <div class="bg-blue-100 text-blue-800 p-2 rounded-md mt-2">
+                                                    <i class="fas fa-info-circle mr-2"></i> O proprietário é o mesmo que o requerente.
                                                 </div>
                                             </div>
-                                            <!-- As URLs de arquivos são desabilitadas pois exigiriam mais segurança -->
-                                            <!--
-                            <div class="documento-acao">
-                                <a href="../<?php echo sanitize($documento['caminho']); ?>" target="_blank">
-                                    <i class="fas fa-download"></i> Baixar
-                                </a>
-                            </div>
-                            -->
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                        <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
 
-                    <?php else: ?>
-                        <div class="empty-result">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <p>Nenhum requerimento encontrado com este protocolo.</p>
+                            <?php if ($documentos && count($documentos) > 0): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-file-pdf mr-2"></i> Documentos Enviados</div>
+                                    <div class="divide-y divide-gray-200">
+                                        <?php foreach ($documentos as $documento): ?>
+                                            <div class="py-3">
+                                                <div class="flex items-start">
+                                                    <i class="fas fa-file-alt text-red-500 mr-3 mt-1"></i>
+                                                    <div>
+                                                        <div class="font-medium"><?php echo sanitize($documento['nome_original']); ?></div>
+                                                        <div class="text-sm text-gray-500 mt-1 flex flex-wrap gap-x-4 gap-y-2">
+                                                            <span class="flex items-center">
+                                                                <i class="fas fa-tag text-gray-400 mr-1"></i>
+                                                                <?php echo sanitize($documento['campo_formulario']); ?>
+                                                            </span>
+                                                            <span class="flex items-center">
+                                                                <i class="fas fa-database text-gray-400 mr-1"></i>
+                                                                <?php echo formatarTamanho($documento['tamanho']); ?>
+                                                            </span>
+                                                            <span class="flex items-center">
+                                                                <i class="fas fa-calendar text-gray-400 mr-1"></i>
+                                                                <?php echo formatarData($documento['data_upload']); ?>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
 
-            <div class="consulta-form" style="margin-top: 30px;">
-                <a href="../index.php" style="color: #009851; text-decoration: none;">
-                    <i class="fas fa-arrow-left"></i> Voltar para o formulário
-                </a>
+                        <!-- Botões de ação -->
+                        <div class="acoes-container">
+                            <a href="../index.php" class="botao-voltar">
+                                <i class="fas fa-home"></i> Página Inicial
+                            </a>
+                            <a href="index.php" class="botao-consulta">
+                                <i class="fas fa-search"></i> Nova Consulta
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
-        </div>
+        </section>
     </main>
 
     <footer>
@@ -480,37 +563,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
             <div>
                 <a href="../consultar/index.php" class="consulta-btn">
                     <i class="fas fa-search"></i>
-                    <span>Consulte sua inscrição</span>
+                    <span>Consulte seu Alvará</span>
                 </a>
             </div>
             <div>
-                <img src="../assets/phone.png">
-                (84) 99858-6712
+                <img src="../assets/phone.png" alt="Telefone">
+                WhatsApp (84) 99668-6413
             </div>
             <div>
-                <img src="../assets/email.png">
-                pmpfestagio@gmail.com
+                <img src="../assets/email.png" alt="Email">
+                fiscalizacaosemapdf@gmail.com
             </div>
         </div>
         <div>
             <span>
-                © 2023 - Todos os direitos reservados. Programa da&ensp;<a href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
-                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71" style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
+                © 2025 - Todos os direitos reservados. Programa da&ensp;<a
+                    href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
+                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71"
+                        style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
             </span>
             <div>
-                <img src="../assets/Secretaria Municipal de Administração - SEAD.png" style="width: 100%; max-width: 200px; height: auto;">
+                <img src="../assets/Logo.png" alt="SEAD">
             </div>
         </div>
     </footer>
 
     <script>
+        // Funções para alterar o tamanho da fonte
         function increaseFont() {
-            document.body.style.fontSize = parseInt(window.getComputedStyle(document.body).fontSize) + 1 + "px";
+            const root = document.documentElement;
+            const fontSize = getComputedStyle(root).getPropertyValue('font-size');
+            const currentSize = parseFloat(fontSize);
+            root.style.fontSize = `${currentSize + 1}px`;
         }
 
         function decreaseFont() {
-            document.body.style.fontSize = parseInt(window.getComputedStyle(document.body).fontSize) - 1 + "px";
+            const root = document.documentElement;
+            const fontSize = getComputedStyle(root).getPropertyValue('font-size');
+            const currentSize = parseFloat(fontSize);
+
+            // Não permitir fontes muito pequenas
+            if (currentSize > 12) {
+                root.style.fontSize = `${currentSize - 1}px`;
+            }
         }
+
+        // Permitir consultar ao pressionar Enter no campo de texto
+        document.addEventListener('DOMContentLoaded', function() {
+            const protocoloInput = document.getElementById('protocolo');
+            if (protocoloInput) {
+                protocoloInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.getElementById('btn-consultar').click();
+                    }
+                });
+            }
+        });
     </script>
 </body>
 
