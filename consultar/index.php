@@ -397,30 +397,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
                             </div>
                             <div>
                                 <?php
-                                $statusClass = 'bg-gray-100 text-gray-800';
-                                $statusText = 'Desconhecido';
-
-                                switch ($requerimento['status']) {
-                                    case 'analise':
-                                        $statusClass = 'status-analise';
-                                        $statusText = 'Em Análise';
-                                        break;
-                                    case 'aprovado':
-                                        $statusClass = 'status-aprovado';
-                                        $statusText = 'Aprovado';
-                                        break;
-                                    case 'reprovado':
-                                        $statusClass = 'status-reprovado';
-                                        $statusText = 'Reprovado';
-                                        break;
-                                    case 'pendente':
-                                        $statusClass = 'status-pendente';
-                                        $statusText = 'Pendente';
-                                        break;
-                                }
+                                $statusClass = 'status-' . strtolower($requerimento['status']);
                                 ?>
                                 <span class="status-badge <?php echo $statusClass; ?>">
-                                    <?php echo $statusText; ?>
+                                    <?php echo formatarStatus($requerimento['status']); ?>
                                 </span>
                             </div>
                         </div>

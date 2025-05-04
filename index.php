@@ -353,7 +353,45 @@ include_once 'tipos_alvara.php';
                 });
             }
         });
+
+        // Função para validar que apenas arquivos PDF sejam enviados
+        function validarArquivoPDF(input) {
+            var filePath = input.value;
+            var allowedExtensions = /(\.pdf)$/i;
+
+            if (!allowedExtensions.exec(filePath)) {
+                alert('Por favor, selecione apenas arquivos em formato PDF.');
+                input.value = '';
+                return false;
+            }
+
+            // Verificar tamanho do arquivo (máximo 10MB)
+            if (input.files[0].size > 10485760) {
+                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 10MB.');
+                input.value = '';
+                return false;
+            }
+
+            return true;
+        }
     </script>
+
+    <style>
+        /* Estilo para a mensagem de formato de arquivo */
+        .formato-arquivo {
+            display: block;
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        /* Estilo para destacar quando o arquivo é inválido */
+        input[type="file"].invalid-file {
+            border: 1px solid #dc3545;
+            background-color: #fff8f8;
+        }
+    </style>
 </body>
 
 </html>

@@ -303,6 +303,8 @@ function criarItemUpload($id, $label, $title)
 {
     return '<div class="upload-item">
                 <label for="' . $id . '">' . $label . '</label>
-                <input type="file" id="' . $id . '" name="' . $id . '" title="' . $title . '">
+                <input type="file" id="' . $id . '" name="' . $id . '" title="' . $title . '" accept=".pdf" 
+                   onchange="validarArquivoPDF(this)">
+                <small class="formato-arquivo">Somente arquivos em formato PDF (.pdf)</small>
             </div>';
 }

@@ -94,6 +94,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Diretório para upload dos arquivos
     $diretorio_upload = UPLOAD_DIR . $protocolo;
 
+    // Verificar tipos de arquivo antes de processar
+    $erro_arquivo = false;
+    foreach ($_FILES as $campo => $arquivo) {
+        if ($arquivo['error'] === UPLOAD_ERR_OK) {
+            $nome_original = $arquivo['name'];
+            $extensao = strtolower(pathinfo($nome_original, PATHINFO_EXTENSION));
+            $tipo = $arquivo['type'];
+
+            if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
+                $erro_arquivo = true;
+                setMensagem('erro', 'Apenas arquivos PDF são permitidos. Por favor, converta seus documentos para PDF e tente novamente.');
+                redirect('index.php');
+            }
+        }
+    }
+
     // Processar os arquivos enviados
     foreach ($_FILES as $campo => $arquivo) {
         if ($arquivo['error'] === UPLOAD_ERR_OK) {

@@ -363,7 +363,7 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
         }
 
         .data-table td {
-            padding: 12px 15px;
+            padding: 15px;
             border-bottom: 1px solid var(--border-color);
             color: var(--dark-color);
         }
@@ -372,8 +372,32 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
             border-bottom: none;
         }
 
+        .data-table tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
         .data-table tr:hover {
-            background-color: #f8f9fa;
+            background-color: #f0f7f4;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 152, 81, 0.1);
+        }
+
+        /* Indicador visual de que a linha é clicável */
+        .data-table tr::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .data-table tr:hover::after {
+            width: 100%;
         }
 
         /* Status Badge */
@@ -409,18 +433,25 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
 
         /* Action Buttons */
         .action-btn {
-            padding: 5px 10px;
+            padding: 6px 12px;
             border-radius: 4px;
             color: white;
             text-decoration: none;
             font-size: 12px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
             margin-right: 5px;
             display: inline-block;
+            position: relative;
+            z-index: 2;
         }
 
         .action-btn:last-child {
             margin-right: 0;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .btn-view {
@@ -445,6 +476,52 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
 
         .btn-delete:hover {
             background-color: #c82333;
+        }
+
+        .btn-primary,
+        .btn-secondary,
+        .action-btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary:after,
+        .btn-secondary:after,
+        .action-btn:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        .btn-primary:focus:not(:active)::after,
+        .btn-secondary:focus:not(:active)::after,
+        .action-btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+
+            20% {
+                transform: scale(25, 25);
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(40, 40);
+            }
         }
 
         /* Pagination */
@@ -673,6 +750,10 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
             </div>
             <div class="card-body">
                 <?php if (count($requerimentos) > 0): ?>
+                    <div class="alert alert-info" style="display: flex; align-items: center;">
+                        <i class="fas fa-info-circle" style="font-size: 18px; margin-right: 10px;"></i>
+                        <span>Dica: Clique em qualquer linha para visualizar os detalhes completos do requerimento.</span>
+                    </div>
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -687,7 +768,7 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
                         </thead>
                         <tbody>
                             <?php foreach ($requerimentos as $req): ?>
-                                <tr>
+                                <tr onclick="window.location='visualizar_requerimento.php?id=<?php echo $req['id']; ?>'" title="Clique para visualizar os detalhes deste requerimento" class="requerimento-row">
                                     <td><?php echo sanitize($req['protocolo']); ?></td>
                                     <td><?php echo sanitize($req['tipo_alvara']); ?></td>
                                     <td>
@@ -794,8 +875,8 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
     </div>
 
     <script>
-        // Para futura implementação de toggle de sidebar em mobile
         document.addEventListener('DOMContentLoaded', function() {
+            // Para futura implementação de toggle de sidebar em mobile
             const menuToggle = document.querySelector('.menu-toggle');
             const sidebar = document.querySelector('.sidebar');
 
@@ -804,6 +885,13 @@ $tipos_alvara = $db->query($sql_tipos)->fetchAll(PDO::FETCH_COLUMN);
                     sidebar.classList.toggle('active');
                 });
             }
+
+            // Prevenir que cliques nos botões de ação propaguem para a linha da tabela
+            document.querySelectorAll('.action-btn').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            });
         });
     </script>
 </body>

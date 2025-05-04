@@ -349,9 +349,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
         .card {
             background-color: white;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 5px 15px rgba(0, 152, 81, 0.15);
+            transform: translateY(-3px);
         }
 
         .card-header {
@@ -511,6 +517,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
             text-decoration: underline;
         }
 
+        /* Botão para visualizar o PDF */
+        .btn-view-pdf {
+            background-color: var(--primary-color);
+            color: white !important;
+            /* Adicionando !important para garantir prioridade */
+            border: none;
+            border-radius: 4px;
+            padding: 7px 14px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-view-pdf:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            color: white !important;
+            /* Adicionando !important para garantir prioridade */
+        }
+
+        .btn-view-pdf:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-view-pdf i {
+            margin-right: 6px;
+            font-size: 14px;
+            color: white;
+        }
+
         /* Formulário de Status */
         .form-group {
             margin-bottom: 15px;
@@ -651,6 +695,163 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
 
             .sidebar.active {
                 width: var(--sidebar-width);
+            }
+        }
+
+        /* Modal de visualização de PDF */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .pdf-modal {
+            width: 90%;
+            height: 90%;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+        }
+
+        .modal-overlay.active .pdf-modal {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .pdf-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .pdf-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            max-width: 80%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pdf-modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+
+        .pdf-modal-close:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pdf-modal-body {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            background-color: #f0f0f0;
+        }
+
+        .pdf-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 10;
+            transition: opacity 0.3s;
+            opacity: 0.6;
+        }
+
+        .pdf-controls:hover {
+            opacity: 1;
+        }
+
+        .pdf-control-btn {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .pdf-control-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .pdf-control-btn i {
+            margin-right: 5px;
+        }
+
+        .pdf-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .pdf-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--gray-color);
+        }
+
+        .pdf-loading i {
+            font-size: 40px;
+            margin-bottom: 10px;
+            animation: spin 1.5s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
             }
         }
     </style>
@@ -866,6 +1067,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
                                             </div>
                                         </div>
                                         <div class="doc-action">
+                                            <?php if ($ext === 'pdf'): ?>
+                                                <a href="javascript:void(0);" class="btn-view-pdf" onclick="openPdfModal('<?php echo sanitize($documento['nome_original']); ?>', '../<?php echo sanitize($documento['caminho']); ?>')">
+                                                    <i class="fas fa-eye"></i> Visualizar
+                                                </a>
+                                            <?php endif; ?>
                                             <a href="../<?php echo sanitize($documento['caminho']); ?>" target="_blank">
                                                 <i class="fas fa-download"></i> Baixar
                                             </a>
@@ -982,6 +1188,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_status'])) 
                 });
             }
         });
+
+        // Função para abrir o modal de visualização de PDF
+        function openPdfModal(title, url) {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'modal-overlay';
+            modalOverlay.id = 'pdfModal';
+
+            // Estrutura do modal
+            modalOverlay.innerHTML = `
+                <div class="pdf-modal">
+                    <div class="pdf-modal-header">
+                        <div class="pdf-modal-title">${title}</div>
+                        <button class="pdf-modal-close">&times;</button>
+                    </div>
+                    <div class="pdf-modal-body">
+                        <div class="pdf-loading">
+                            <i class="fas fa-circle-notch"></i>
+                            <p>Carregando documento...</p>
+                        </div>
+                        <iframe class="pdf-frame" src="${url}"></iframe>
+                        <div class="pdf-controls">
+                            <button class="pdf-control-btn" id="pdfZoomOut">
+                                <i class="fas fa-search-minus"></i> Reduzir
+                            </button>
+                            <button class="pdf-control-btn" id="pdfZoomIn">
+                                <i class="fas fa-search-plus"></i> Ampliar
+                            </button>
+                            <button class="pdf-control-btn" id="pdfDownload">
+                                <i class="fas fa-download"></i> Baixar
+                            </button>
+                            <button class="pdf-control-btn" id="pdfPrint">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modalOverlay);
+
+            // Adicionar eventos após anexar ao DOM
+            setTimeout(() => {
+                modalOverlay.classList.add('active');
+
+                // Evento para fechar modal
+                const closeBtn = modalOverlay.querySelector('.pdf-modal-close');
+                closeBtn.addEventListener('click', () => {
+                    modalOverlay.classList.remove('active');
+                    setTimeout(() => document.body.removeChild(modalOverlay), 300);
+                });
+
+                // Evento para clicar fora do modal e fechar
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === modalOverlay) {
+                        modalOverlay.classList.remove('active');
+                        setTimeout(() => document.body.removeChild(modalOverlay), 300);
+                    }
+                });
+
+                // Suporte para teclas
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        // Fechar com ESC
+                        modalOverlay.classList.remove('active');
+                        setTimeout(() => document.body.removeChild(modalOverlay), 300);
+                    } else if (e.key === '+' || e.key === '=') {
+                        // Aumentar zoom com +
+                        e.preventDefault();
+                        zoomInBtn.click();
+                    } else if (e.key === '-') {
+                        // Diminuir zoom com -
+                        e.preventDefault();
+                        zoomOutBtn.click();
+                    }
+                });
+
+                // Controles do PDF
+                const iframe = modalOverlay.querySelector('.pdf-frame');
+                let currentZoom = 100;
+
+                // Botão de zoom in
+                const zoomInBtn = modalOverlay.querySelector('#pdfZoomIn');
+                zoomInBtn.addEventListener('click', () => {
+                    currentZoom += 25;
+                    if (currentZoom > 200) currentZoom = 200;
+                    iframe.style.transform = `scale(${currentZoom/100})`;
+                    iframe.style.transformOrigin = 'center';
+                });
+
+                // Botão de zoom out
+                const zoomOutBtn = modalOverlay.querySelector('#pdfZoomOut');
+                zoomOutBtn.addEventListener('click', () => {
+                    currentZoom -= 25;
+                    if (currentZoom < 50) currentZoom = 50;
+                    iframe.style.transform = `scale(${currentZoom/100})`;
+                    iframe.style.transformOrigin = 'center';
+                });
+
+                // Botão de download
+                const downloadBtn = modalOverlay.querySelector('#pdfDownload');
+                downloadBtn.addEventListener('click', () => {
+                    window.open(url, '_blank');
+                });
+
+                // Botão de impressão
+                const printBtn = modalOverlay.querySelector('#pdfPrint');
+                printBtn.addEventListener('click', () => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                });
+
+                // Ocultar loading quando o iframe carregar
+                iframe.onload = () => {
+                    const loading = modalOverlay.querySelector('.pdf-loading');
+                    loading.style.display = 'none';
+                };
+            }, 50);
+        }
     </script>
 </body>
 

@@ -29,13 +29,20 @@ function salvarArquivo($arquivo, $diretorio, $prefixo = '')
         return false;
     }
 
+    // Verifica se é um arquivo PDF
+    $nome_original = $arquivo['name'];
+    $extensao = strtolower(pathinfo($nome_original, PATHINFO_EXTENSION));
+    $tipo = $arquivo['type'];
+
+    if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
+        return false;
+    }
+
     // Cria o diretório se não existir
     if (!file_exists($diretorio)) {
         mkdir($diretorio, 0777, true);
     }
 
-    $nome_original = $arquivo['name'];
-    $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
     $novo_nome = $prefixo . '_' . uniqid() . '.' . $extensao;
 
     // Garantir que o diretório não termine com barra
@@ -116,29 +123,33 @@ function sanitize($string)
 /**
  * Obtém o status formatado de um requerimento
  * @param string $status Status do requerimento
- * @return string HTML formatado com o status
+ * @return string Status formatado
  */
 function formatarStatus($status)
 {
-    $class = '';
-    switch ($status) {
-        case 'Em análise':
-            $class = 'status-analise';
+    $statusText = $status;
+
+    // Normalizar o status para garantir consistência
+    switch (strtolower($status)) {
+        case 'analise':
+        case 'em análise':
+        case 'em analise':
+            $statusText = 'Em Análise';
             break;
-        case 'Aprovado':
-            $class = 'status-aprovado';
+        case 'aprovado':
+            $statusText = 'Aprovado';
             break;
-        case 'Reprovado':
-            $class = 'status-reprovado';
+        case 'rejeitado':
+        case 'reprovado':
+            $statusText = 'Rejeitado';
             break;
-        case 'Pendente':
-            $class = 'status-pendente';
+        case 'pendente':
+            $statusText = 'Pendente';
             break;
-        default:
-            $class = 'status-outro';
     }
 
-    return '<span class="status ' . $class . '">' . $status . '</span>';
+    // Não retorna HTML, apenas o texto formatado
+    return $statusText;
 }
 
 /**
