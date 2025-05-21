@@ -1,6 +1,6 @@
 # SEMA-PHP
 
-Sistema de gerenciamento para a Secretaria Municipal de Meio Ambiente.
+Sistema de gerenciamento para a Secretaria Municipal de Meio Ambiente
 
 ## Estrutura do Projeto
 
