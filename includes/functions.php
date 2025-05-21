@@ -206,6 +206,24 @@ function formatarTamanho($bytes)
 }
 
 /**
+ * Formata o tamanho de um arquivo em bytes para uma representação legível
+ * @param int $tamanho Tamanho do arquivo em bytes
+ * @return string Tamanho formatado (KB, MB, GB)
+ */
+function formatarTamanhoArquivo($tamanho)
+{
+    $unidades = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $i = 0;
+
+    while ($tamanho >= 1024 && $i < count($unidades) - 1) {
+        $tamanho /= 1024;
+        $i++;
+    }
+
+    return round($tamanho, 2) . ' ' . $unidades[$i];
+}
+
+/**
  * Retorna o nome do mês em português
  * @param int $mes Número do mês (1-12)
  * @return string Nome do mês
@@ -228,4 +246,40 @@ function formatarNomeMes($mes)
     ];
 
     return $meses[$mes] ?? '';
+}
+
+/**
+ * Formata CPF ou CNPJ com máscara
+ * @param string $cpf_cnpj CPF ou CNPJ a ser formatado
+ * @return string CPF ou CNPJ formatado
+ */
+function formatarCpfCnpj($cpf_cnpj)
+{
+    // Remove caracteres não numéricos
+    $cpf_cnpj = preg_replace('/[^0-9]/', '', $cpf_cnpj);
+
+    // Se não tiver nada, retorna vazio
+    if (empty($cpf_cnpj)) {
+        return 'Não informado';
+    }
+
+    // Formata como CPF (###.###.###-##)
+    if (strlen($cpf_cnpj) <= 11) {
+        // Completa com zeros à esquerda se necessário
+        $cpf_cnpj = str_pad($cpf_cnpj, 11, '0', STR_PAD_LEFT);
+        return substr($cpf_cnpj, 0, 3) . '.' .
+            substr($cpf_cnpj, 3, 3) . '.' .
+            substr($cpf_cnpj, 6, 3) . '-' .
+            substr($cpf_cnpj, 9, 2);
+    }
+    // Formata como CNPJ (##.###.###/####-##)
+    else {
+        // Completa com zeros à esquerda se necessário
+        $cpf_cnpj = str_pad($cpf_cnpj, 14, '0', STR_PAD_LEFT);
+        return substr($cpf_cnpj, 0, 2) . '.' .
+            substr($cpf_cnpj, 2, 3) . '.' .
+            substr($cpf_cnpj, 5, 3) . '/' .
+            substr($cpf_cnpj, 8, 4) . '-' .
+            substr($cpf_cnpj, 12, 2);
+    }
 }

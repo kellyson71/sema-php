@@ -117,20 +117,27 @@ class Requerimento extends Model
     {
         return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
     }
-
     /**
      * Atualiza o status de um requerimento
      * @param int $id ID do requerimento
      * @param string $status Novo status
      * @param string $observacoes Observações sobre a atualização (opcional)
+     * @param int $admin_id ID do administrador que realizou a alteração (opcional)
      * @return int Número de linhas afetadas
      */
-    public function atualizarStatus($id, $status, $observacoes = null)
+    public function atualizarStatus($id, $status, $observacoes = null, $admin_id = null)
     {
-        $dados = ['status' => $status];
+        $dados = [
+            'status' => $status,
+            'data_atualizacao' => date('Y-m-d H:i:s')
+        ];
 
         if ($observacoes !== null) {
             $dados['observacoes'] = $observacoes;
+        }
+
+        if ($admin_id !== null) {
+            $dados['admin_id'] = $admin_id;
         }
 
         return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
@@ -178,20 +185,18 @@ class Requerimento extends Model
     /**
      * Conta requerimentos por status
      * @return array Array associativo com contagem por status
-     */
-    public function contarPorStatus()
+     */    public function contarPorStatus()
     {
         $sql = "SELECT status, COUNT(*) as total FROM {$this->table} GROUP BY status";
         $resultados = $this->db->query($sql)->fetchAll();
 
         $contagem = [];
         foreach ($resultados as $resultado) {
-            $contagem[strtolower($resultado['status'])] = $resultado['total'];
+            $contagem[$resultado['status']] = $resultado['total'];
         }
 
         return $contagem;
     }
-
     /**
      * Conta requerimentos por mês
      * @param int $mes Mês (1-12)
@@ -211,6 +216,65 @@ class Requerimento extends Model
 
         return $resultado['total'];
     }
+    /**
+     * Lista requerimentos com base em filtros
+     * @param array $filtros Filtros a serem aplicados ['status', 'tipo_alvara_id', 'busca', 'data_inicio', 'data_fim']
+     * @param int $limite Limite de resultados por página
+     * @param int $offset Offset para paginação
+     * @return array Lista de requerimentos com dados do requerente
+     */
+    public function listarComFiltros($filtros, $limite = null, $offset = 0)
+    {
+        $where = [];
+        $params = [];
+
+        // Filtro por status
+        if (!empty($filtros['status'])) {
+            $where[] = "r.status = :status";
+            $params['status'] = $filtros['status'];
+        }
+
+        // Filtro por tipo de alvará
+        if (!empty($filtros['tipo_alvara_id'])) {
+            $where[] = "r.tipo_alvara = :tipo_alvara";
+            $params['tipo_alvara'] = $filtros['tipo_alvara_id'];
+        }
+
+        // Filtro por busca (protocolo ou requerente)
+        if (!empty($filtros['busca'])) {
+            $where[] = "(r.protocolo LIKE :busca OR req.nome LIKE :busca_nome)";
+            $params['busca'] = '%' . $filtros['busca'] . '%';
+            $params['busca_nome'] = '%' . $filtros['busca'] . '%';
+        }
+
+        // Filtro por data de início
+        if (!empty($filtros['data_inicio'])) {
+            $where[] = "r.data_envio >= :data_inicio";
+            $params['data_inicio'] = $filtros['data_inicio'] . ' 00:00:00';
+        }
+
+        // Filtro por data final
+        if (!empty($filtros['data_fim'])) {
+            $where[] = "r.data_envio <= :data_fim";
+            $params['data_fim'] = $filtros['data_fim'] . ' 23:59:59';
+        }
+
+        // Montar cláusula WHERE
+        $whereClause = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
+
+        // Montar SQL com JOIN para buscar dados do requerente
+        $sql = "SELECT r.*, req.nome as nome_requerente, req.cpf_cnpj 
+                FROM {$this->table} r 
+                LEFT JOIN requerentes req ON r.requerente_id = req.id
+                {$whereClause} 
+                ORDER BY r.data_envio DESC";
+
+        if ($limite !== null) {
+            $sql .= " LIMIT {$limite} OFFSET {$offset}";
+        }
+
+        return $this->db->query($sql, $params)->fetchAll();
+    }
 
     /**
      * Conta requerimentos por tipo de alvará
@@ -224,7 +288,6 @@ class Requerimento extends Model
 
         return $resultado['total'];
     }
-
     /**
      * Calcula o tempo médio de processamento por status
      * @param string $status Status do requerimento
@@ -245,6 +308,59 @@ class Requerimento extends Model
         }
 
         return round($resultado['media'] ?? 0, 1);
+    }
+    /**
+     * Conta requerimentos com base em filtros
+     * @param array $filtros Filtros a serem aplicados ['status', 'tipo_alvara_id', 'busca', 'data_inicio', 'data_fim']
+     * @return int Total de requerimentos que correspondem aos filtros
+     */
+    public function contarComFiltros($filtros)
+    {
+        $where = [];
+        $params = [];
+
+        // Filtro por status
+        if (!empty($filtros['status'])) {
+            $where[] = "r.status = :status";
+            $params['status'] = $filtros['status'];
+        }
+
+        // Filtro por tipo de alvará
+        if (!empty($filtros['tipo_alvara_id'])) {
+            $where[] = "r.tipo_alvara = :tipo_alvara";
+            $params['tipo_alvara'] = $filtros['tipo_alvara_id'];
+        }
+
+        // Filtro por busca (protocolo ou requerente)
+        if (!empty($filtros['busca'])) {
+            $where[] = "(r.protocolo LIKE :busca OR req.nome LIKE :busca_nome)";
+            $params['busca'] = '%' . $filtros['busca'] . '%';
+            $params['busca_nome'] = '%' . $filtros['busca'] . '%';
+        }
+
+        // Filtro por data de início
+        if (!empty($filtros['data_inicio'])) {
+            $where[] = "r.data_envio >= :data_inicio";
+            $params['data_inicio'] = $filtros['data_inicio'] . ' 00:00:00';
+        }
+
+        // Filtro por data final
+        if (!empty($filtros['data_fim'])) {
+            $where[] = "r.data_envio <= :data_fim";
+            $params['data_fim'] = $filtros['data_fim'] . ' 23:59:59';
+        }
+
+        // Montar cláusula WHERE
+        $whereClause = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
+
+        // Montar SQL para contagem com JOIN para buscar dados do requerente
+        $sql = "SELECT COUNT(*) as total 
+                FROM {$this->table} r
+                LEFT JOIN requerentes req ON r.requerente_id = req.id
+                {$whereClause}";
+        $resultado = $this->db->query($sql, $params)->fetch();
+
+        return $resultado['total'];
     }
 }
 
@@ -662,5 +778,97 @@ class Configuracao extends Model
     {
         $config = $this->buscarPorChave($chave);
         return $config ? $config['valor'] : $valorPadrao;
+    }
+}
+
+/**
+ * Modelo para Usuários do Sistema
+ */
+class Usuario extends Model
+{
+    protected $table = 'usuarios';
+
+    /**
+     * Autentica um usuário
+     * @param string $email Email
+     * @param string $senha Senha
+     * @return array|false Dados do usuário ou false
+     */
+    public function autenticar($email, $senha)
+    {
+        $usuario = $this->db->getRow($this->table, 'email = :email AND ativo = 1', ['email' => $email]);
+
+        if ($usuario && password_verify($senha, $usuario['senha'])) {
+            // Atualiza o último acesso
+            $this->db->update($this->table, ['ultimo_acesso' => date('Y-m-d H:i:s')], 'id = :id', ['id' => $usuario['id']]);
+            return $usuario;
+        }
+
+        return false;
+    }
+
+    /**
+     * Busca um usuário pelo ID
+     * @param int $id ID do usuário
+     * @return array|false Dados do usuário ou false
+     */
+    public function buscarPorId($id)
+    {
+        return $this->db->getRow($this->table, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Lista todos os usuários
+     * @return array Lista de usuários
+     */
+    public function listar()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY nome ASC";
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * Verifica se um email já existe
+     * @param string $email Email a verificar
+     * @return bool True se o email já existe
+     */
+    public function emailExiste($email)
+    {
+        $usuario = $this->db->getRow($this->table, 'email = :email', ['email' => $email]);
+        return $usuario !== false;
+    }
+
+    /**
+     * Atualiza um usuário
+     * @param int $id ID do usuário
+     * @param array $dados Novos dados
+     * @return int Número de linhas afetadas
+     */
+    public function atualizar($id, $dados)
+    {
+        // Se houver senha, faz o hash
+        if (isset($dados['senha']) && !empty($dados['senha'])) {
+            $dados['senha'] = password_hash($dados['senha'], PASSWORD_DEFAULT);
+        }
+
+        return $this->db->update($this->table, $dados, 'id = :id', ['id' => $id]);
+    }
+
+    /**
+     * Insere um novo usuário
+     * @param array $dados Dados do usuário
+     * @return int ID do usuário inserido
+     */
+    public function inserir($dados)
+    {
+        // Faz o hash da senha
+        if (isset($dados['senha']) && !empty($dados['senha'])) {
+            $dados['senha'] = password_hash($dados['senha'], PASSWORD_DEFAULT);
+        }
+
+        $dados['ativo'] = $dados['ativo'] ?? 1;
+        $dados['data_cadastro'] = date('Y-m-d H:i:s');
+
+        return $this->db->insert($this->table, $dados);
     }
 }

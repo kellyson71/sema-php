@@ -36,7 +36,7 @@ try {
     }
 
     // Ler o conteúdo do arquivo SQL
-    $sql = file_get_contents('includes/schema.sql');
+    $sql = file_get_contents('database/schema.sql');
 
     if ($isConsole) {
         consoleOutput("Arquivo schema.sql lido com sucesso.");

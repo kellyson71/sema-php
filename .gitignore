@@ -1,6 +1,7 @@
 /includes/config.php
 
 /uploads/*
+!uploads/.gitkeep
 
 *.tmp
 *.temp
@@ -9,23 +10,24 @@
 
 /vendor/
 
-assets/
 .env
 .env.backup
 
 .vscode/
 
-
 *.log
 error_log
 php_errors.log
 
+# Ignorar arquivos SQL exceto os da pasta database
 *.sql
+!database/*.sql
+
 *.sqlite
 *.sqlite3
 *.db
 
-
+# Scripts temporários
 corrigir_senha.php
 corrigir_tabela.php
 fix_admin.php

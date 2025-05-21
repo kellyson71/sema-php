@@ -538,7 +538,7 @@ footer > div:nth-child(2) img {
     height: 54px; /* Reduzido de 90px para 54px */
     font-size: 18px; /* Reduzido de 32px para 18px */
   }
-  
+
   /* Ajustes para o container de alvará no mobile */
   .tipo-alvara-container {
     padding: 20px 15px; /* Reduzido o padding */
@@ -546,7 +546,7 @@ footer > div:nth-child(2) img {
     width: calc(100% - 20px);
     overflow-x: hidden;
   }
-  
+
   .tipo-alvara-titulo {
     font-size: 18px; /* Reduzido de 24px para 18px */
     margin-bottom: 20px;
@@ -554,16 +554,16 @@ footer > div:nth-child(2) img {
     justify-content: center;
     padding: 0 0 15px 0;
   }
-  
+
   .tipo-alvara-titulo i {
     margin-right: 8px;
     font-size: 18px;
   }
-  
+
   .consulta-btn {
     padding: 10px 16px;
   }
-  
+
   .consulta-btn span {
     font-size: 13px;
   }
@@ -575,34 +575,34 @@ footer > div:nth-child(2) img {
     width: 95%;
     padding: 20px 0 60px 0;
   }
-  
+
   div.form-header h1 {
     font-size: 20px; /* Ainda mais reduzido para telas muito pequenas */
   }
-  
+
   div.form-header img {
     max-width: 120px;
     margin-bottom: 15px;
   }
-  
+
   .tipo-alvara-container select {
     font-size: 14px;
     padding: 12px 15px;
   }
-  
+
   button[type="submit"] {
     height: 48px;
     font-size: 16px;
   }
-  
+
   .tipo-alvara-titulo {
     font-size: 16px;
   }
-  
+
   #campos_dinamicos textarea {
     min-height: 120px;
   }
-  
+
   footer > div:nth-child(1) div {
     height: auto;
     padding: 15px 10px;
@@ -610,7 +610,7 @@ footer > div:nth-child(2) img {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .form-part-4 {
     font-size: 14px;
   }
@@ -879,13 +879,13 @@ footer > div:nth-child(2) img {
 }
 
 .form-section-alvara::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -25px;
   left: 50%;
   transform: translateX(-50%);
   width: 50px;
   height: 4px;
-  background: linear-gradient(90deg, #009640, #0DCAF0);
+  background: linear-gradient(90deg, #009640, #0dcaf0);
   border-radius: 2px;
 }

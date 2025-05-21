@@ -24,7 +24,7 @@ include_once 'tipos_alvara.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Requerimento de Alvará - Secretaria Municipal de Meio Ambiente</title>
-    <link rel="icon" href="./assets/prefeitura-logo.png" type="image/png">
+    <link rel="icon" href="./assets/img/prefeitura-logo.png" type="image/png">
 
     <meta name="description"
         content="Requerimento de Alvará Ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
@@ -35,14 +35,14 @@ include_once 'tipos_alvara.php';
     <meta property="og:title" content="Requerimento de Alvará - SEMA Pau dos Ferros">
     <meta property="og:description"
         content="Solicite seu alvará ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
-    <meta property="og:image" content="./assets/prefeitura-logo.png">
+    <meta property="og:image" content="./assets/img/prefeitura-logo.png">
     <meta property="og:url" content="https://www.paudosferros.rn.gov.br/sema">
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Requerimento de Alvará - Secretaria Municipal de Meio Ambiente">
     <meta name="twitter:description"
         content="Requerimento de Alvará Ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
-    <meta name="twitter:image" content="./assets/prefeitura-logo.png">
+    <meta name="twitter:image" content="./assets/img/prefeitura-logo.png">
 
     <!-- CSS -->
     <link rel="stylesheet" href="./css/index.css">
@@ -63,23 +63,23 @@ include_once 'tipos_alvara.php';
         <nav>
             <ul>
                 <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
-                        <img src="./assets/instagram.png" alt="Instagram">
+                        <img src="./assets/img/instagram.png" alt="Instagram">
                     </a>
                 </li>
                 <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
-                        <img src="./assets/facebook.png" alt="Facebook">
+                        <img src="./assets/img/facebook.png" alt="Facebook">
                     </a>
                 </li>
                 <li><a href="https://twitter.com/paudosferros">
-                        <img src="./assets/twitter.png" alt="Twitter">
+                        <img src="./assets/img/twitter.png" alt="Twitter">
                     </a>
                 </li>
                 <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
-                        <img src="./assets/youtube.png" alt="YouTube">
+                        <img src="./assets/img/youtube.png" alt="YouTube">
                     </a>
                 </li>
                 <li><a href="https://instagram.com">
-                        <img src="./assets/copy-url.png" alt="URL">
+                        <img src="./assets/img/copy-url.png" alt="URL">
                     </a>
                 </li>
             </ul>
@@ -97,7 +97,7 @@ include_once 'tipos_alvara.php';
         <section>
             <form id="form" enctype="multipart/form-data" method="post" action="processar_formulario.php">
                 <div class="form-header">
-                    <img src="./assets/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
+                    <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
@@ -218,11 +218,11 @@ include_once 'tipos_alvara.php';
                 </a>
             </div>
             <div>
-                <img src="./assets/phone.png" alt="Telefone">
+                <img src="./assets/img/phone.png" alt="Telefone">
                 WhatsApp (84) 99668-6413
             </div>
             <div>
-                <img src="./assets/email.png" alt="Email">
+                <img src="./assets/img/email.png" alt="Email">
                 fiscalizacaosemapdf@gmail.com
             </div>
         </div>
@@ -234,7 +234,7 @@ include_once 'tipos_alvara.php';
                         style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
             </span>
             <div>
-                <img src="./assets/Logo.png" alt="SEAD">
+                <img src="./assets/img/Logo.png" alt="SEAD">
             </div>
         </div>
     </footer>

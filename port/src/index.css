@@ -1,0 +1,118 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 71% 4%; /* Deep Navy */
+    --foreground: 210 20% 98%; /* Almost White */
+    
+    --card: 223 47% 11%; /* Dark Blue Gray */
+    --card-foreground: 210 20% 98%;
+ 
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --primary: 260 85% 66%; /* Vibrant Violet */
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 300 85% 66%; /* Vibrant Pink/Magenta */
+    --secondary-foreground: 210 20% 98%;
+ 
+    --muted: 215 28% 17%; /* Muted Blue */
+    --muted-foreground: 210 20% 80%; /* Lighter Gray */
+ 
+    --accent: 173 90% 40%; /* Bright Teal */
+    --accent-foreground: 224 71% 4%;
+ 
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 260 85% 66%;
+ 
+    --radius: 0.75rem;
+  }
+ 
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 20% 98%;
+    
+    --card: 223 47% 11%;
+    --card-foreground: 210 20% 98%;
+ 
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --primary: 260 85% 66%;
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 300 85% 66%;
+    --secondary-foreground: 210 20% 98%;
+ 
+    --muted: 215 28% 17%;
+    --muted-foreground: 210 20% 80%;
+ 
+    --accent: 173 90% 40%;
+    --accent-foreground: 224 71% 4%;
+ 
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 260 85% 66%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/80;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+  h1 {
+    @apply text-5xl md:text-6xl lg:text-7xl;
+  }
+  h2 {
+    @apply text-4xl md:text-5xl;
+  }
+  h3 {
+    @apply text-3xl;
+  }
+}
+
+.glassmorphism-card {
+  @apply bg-card/30 backdrop-blur-lg border border-border/50 shadow-xl;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+}
+
+.section-title {
+  @apply text-4xl font-bold mb-12 text-center text-gradient animate-text-gradient;
+}
+  
