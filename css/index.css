@@ -34,7 +34,7 @@
 
 body {
   background-color: var(--background);
-  background-image: url(../assets/background.jpg);
+  background-image: url(../assets/img/background.jpg);
   background-size: contain;
 }
 
@@ -78,7 +78,8 @@ header button {
   background: none;
   font-family: Roboto, sans-serif;
   font-weight: 700;
-  padding: 3px 10px 0 10pxF;
+  padding: 3px 10px 0 10px;
+  cursor: pointer;
 }
 
 header div.user-options {

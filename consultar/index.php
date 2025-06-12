@@ -1,49 +1,8 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/functions.php';
-require_once '../includes/models.php';
-
-$mensagem = getMensagem();
-$resultado = null;
-$requerimento = null;
-$requerente = null;
-$proprietario = null;
-$documentos = null;
-
-// Verificar se foi enviado um protocolo
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
-    $protocolo = trim($_POST['protocolo']);
-
-    if (empty($protocolo)) {
-        setMensagem('erro', 'Por favor, informe o número do protocolo.');
-    } else {
-        // Buscar o requerimento pelo protocolo
-        $requerimentoModel = new Requerimento();
-        $requerimento = $requerimentoModel->buscarPorProtocolo($protocolo);
-
-        if ($requerimento) {
-            // Buscar dados do requerente
-            $requerenteModel = new Requerente();
-            $requerente = $requerenteModel->buscarPorId($requerimento['requerente_id']);
-
-            // Buscar dados do proprietário
-            if (!empty($requerimento['proprietario_id'])) {
-                $proprietarioModel = new Proprietario();
-                $proprietario = $proprietarioModel->buscarPorId($requerimento['proprietario_id']);
-            }
-
-            // Buscar documentos do requerimento
-            $documentoModel = new Documento();
-            $documentos = $documentoModel->buscarPorRequerimento($requerimento['id']);
-
-            $resultado = true;
-        } else {
-            setMensagem('erro', 'Protocolo não encontrado. Verifique o número informado.');
-        }
-    }
-
-    $mensagem = getMensagem();
-}
+// Redirecionar automaticamente para o portal da prefeitura
+header("Location: https://www.paudosferros.rn.gov.br/");
+exit;
+?>
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -326,23 +285,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
         <nav>
             <ul>
                 <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
-                        <img src="../assets/instagram.png" alt="Instagram">
+                        <img src="../assets/img/instagram.png" alt="Instagram">
                     </a>
                 </li>
                 <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
-                        <img src="../assets/facebook.png" alt="Facebook">
+                        <img src="../assets/img/facebook.png" alt="Facebook">
                     </a>
                 </li>
                 <li><a href="https://twitter.com/paudosferros">
-                        <img src="../assets/twitter.png" alt="Twitter">
+                        <img src="../assets/img/twitter.png" alt="Twitter">
                     </a>
                 </li>
                 <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
-                        <img src="../assets/youtube.png" alt="YouTube">
+                        <img src="../assets/img/youtube.png" alt="YouTube">
                     </a>
                 </li>
                 <li><a href="https://instagram.com">
-                        <img src="../assets/copy-url.png" alt="URL">
+                        <img src="../assets/img/copy-url.png" alt="URL">
                     </a>
                 </li>
             </ul>

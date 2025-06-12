@@ -22,7 +22,7 @@ unset($_SESSION['sucesso']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Requerimento Enviado - Secretaria Municipal de Meio Ambiente</title>
-    <link rel="icon" href="./assets/prefeitura-logo.png" type="image/png">
+    <link rel="icon" href="./assets/img/prefeitura-logo.png" type="image/png">
     <link rel="stylesheet" href="./css/index.css">
     <style>
         .sucesso-container {
@@ -101,28 +101,28 @@ unset($_SESSION['sucesso']);
             <ul>
                 <a>
                     <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
-                            <img src="./assets/instagram.png">
+                            <img src="./assets/img/instagram.png">
                         </a>
                     </li>
                 </a>
                 <a>
                     <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
-                            <img src="./assets/facebook.png">
+                            <img src="./assets/img/facebook.png">
                         </a>
                 </a>
                 <a>
                     <li><a href="https://twitter.com/paudosferros">
-                            <img src="./assets/twitter.png">
+                            <img src="./assets/img/twitter.png">
                         </a>
                 </a>
                 <a>
                     <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
-                            <img src="./assets/youtube.png">
+                            <img src="./assets/img/youtube.png">
                         </a>
                 </a>
                 <a>
                     <li><a href="https://instagram.com">
-                            <img src="./assets/copy-url.png">
+                            <img src="./assets/img/copy-url.png">
                         </a>
                 </a>
             </ul>
@@ -145,45 +145,45 @@ unset($_SESSION['sucesso']);
             <div class="protocolo">
                 Número do Protocolo: <?php echo $protocolo; ?>
             </div>
-
             <div class="instrucoes">
                 <p><strong>Importante:</strong></p>
                 <p>1. Guarde o número do protocolo para consultas futuras.</p>
-                <p>2. Acompanhe o status do seu requerimento através da página de consulta.</p>
-                <p>3. Em caso de dúvidas, entre em contato com a Secretaria Municipal de Meio Ambiente pelo telefone (84) 99668-6413.</p>
+                <p>2. <strong>Este número de protocolo gerado é para controle interno. O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado via email para o endereço cadastrado.</strong></p>
+                <p>3. Acompanhe o status do seu requerimento através do sistema de tributos municipais.</p>
+                <p>4. Em caso de dúvidas, entre em contato com a Secretaria Municipal de Meio Ambiente pelo telefone (84) 99668-6413.</p>
             </div>
-
             <div class="botoes">
                 <a href="index.php" class="botao secundario">Voltar ao Início</a>
-                <a href="./consultar/index.php" class="botao">Consultar Requerimento</a>
+                <a href="https://gestor.tributosmunicipais.com.br/redesim/views/publico/prefWeb/modulos/processo/consulta/processos.xhtml" class="botao">Consultar Requerimento</a>
             </div>
         </div>
     </main>
-
     <footer>
         <div>
             <div>
                 <a href="./consultar/index.php" class="consulta-btn">
                     <i class="fas fa-search"></i>
-                    <span>Consulte sua inscrição</span>
+                    <span>Consulte seu Alvará</span>
                 </a>
             </div>
             <div>
-                <img src="./assets/phone.png">
-                (84) 99858-6712
+                <img src="./assets/img/phone.png" alt="Telefone">
+                WhatsApp (84) 99668-6413
             </div>
             <div>
-                <img src="./assets/email.png">
-                pmpfestagio@gmail.com
+                <img src="./assets/img/email.png" alt="Email">
+                fiscalizacaosemapdf@gmail.com
             </div>
         </div>
         <div>
             <span>
-                © 2023 - Todos os direitos reservados. Programa da&ensp;<a href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
-                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71" style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
+                © 2023 - Todos os direitos reservados. Programa da&ensp;<a
+                    href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
+                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71"
+                        style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
             </span>
             <div>
-                <img src="./assets/Secretaria Municipal de Administração - SEAD.png" style="width: 100%; max-width: 200px; height: auto;">
+                <img src="./assets/img/Logo.png" alt="SEAD">
             </div>
         </div>
     </footer>

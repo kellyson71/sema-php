@@ -9,6 +9,7 @@ session_start();
 require_once 'includes/config.php';
 require_once 'includes/functions.php';
 require_once 'includes/models.php';
+require_once 'includes/email_service.php';
 
 // Verificar se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -108,10 +109,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect('index.php');
             }
         }
-    }
-
-    // Processar os arquivos enviados
+    }    // Processar os arquivos enviados
     foreach ($_FILES as $campo => $arquivo) {
+        // Verificar se é um documento opcional que foi marcado como "não preciso enviar"
+        $checkbox_nao_preciso = $campo . '_nao_preciso';
+        $nao_precisa_enviar = isset($_POST[$checkbox_nao_preciso]) && $_POST[$checkbox_nao_preciso] === 'on';
+
         if ($arquivo['error'] === UPLOAD_ERR_OK) {
             // Salvar o arquivo
             $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo);
@@ -130,11 +133,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $documentoModel->criar($documento);
             }
+        } elseif ($nao_precisa_enviar) {
+            // Registrar que o documento foi marcado como "não preciso enviar"
+            $documento = [
+                'requerimento_id' => $requerimento_id,
+                'campo_formulario' => $campo,
+                'nome_original' => 'NÃO ENVIADO - Marcado como opcional',
+                'nome_salvo' => '',
+                'caminho' => '',
+                'tipo_arquivo' => 'opcional_nao_enviado',
+                'tamanho' => 0
+            ];
+
+            $documentoModel->criar($documento);
         }
+    } // Redirecionar para a página de sucesso com o protocolo
+    $_SESSION['protocolo'] = $protocolo;
+
+    // Enviar email de confirmação
+    try {
+        $emailService = new EmailService();
+        $tipo_alvara_nome = $tipos_alvara[$_POST['tipo_alvara']]['nome'] ?? $_POST['tipo_alvara'];
+        $dados_requerimento = [
+            'id' => $requerimento_id,
+            'data_envio' => date('Y-m-d H:i:s'),
+            'endereco_objetivo' => $_POST['endereco_objetivo'] ?? ''
+        ];
+
+        $email_enviado = $emailService->enviarEmailProtocolo(
+            $requerente['email'],
+            $requerente['nome'],
+            $protocolo,
+            $tipo_alvara_nome,
+            $dados_requerimento
+        );
+
+        if ($email_enviado) {
+            error_log("Email de confirmação enviado com sucesso para: " . $requerente['email']);
+        } else {
+            error_log("Falha ao enviar email de confirmação para: " . $requerente['email']);
+        }
+    } catch (Exception $e) {
+        error_log("Erro ao enviar email de confirmação: " . $e->getMessage());
     }
 
-    // Redirecionar para a página de sucesso com o protocolo
-    $_SESSION['protocolo'] = $protocolo;
     setMensagem('sucesso', 'Requerimento enviado com sucesso!');
     redirect('sucesso.php');
 } else {

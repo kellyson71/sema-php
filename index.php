@@ -1,16 +1,3 @@
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-W3WFKPD3BN"></script>
-<script>
-    window.dataLayer = window.dataLayer || [];
-
-    function gtag() {
-        dataLayer.push(arguments);
-    }
-    gtag('js', new Date());
-
-    gtag('config', 'G-W3WFKPD3BN');
-</script>
-
 <?php
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
@@ -43,6 +30,19 @@ include_once 'tipos_alvara.php';
     <meta name="twitter:description"
         content="Requerimento de Alvará Ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
     <meta name="twitter:image" content="./assets/img/prefeitura-logo.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W3WFKPD3BN"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+
+        gtag('config', 'G-W3WFKPD3BN');
+    </script>
 
     <!-- CSS -->
     <link rel="stylesheet" href="./css/index.css">
@@ -162,6 +162,7 @@ include_once 'tipos_alvara.php';
                                     <option value="" hidden>Selecione um tipo de alvará...</option>
                                     <option value="construcao">Alvará de Construção</option>
                                     <option value="habite_se">Alvará de Habite-se e Legalização</option>
+                                    <option value="habite_se_simples">Alvará de Habite-se Simples</option>
                                     <option value="funcionamento">Alvará de Funcionamento</option>
                                     <option value="desmembramento">Alvará de Desmembramento e Remembramento</option>
                                     <option value="demolicao">Alvará de Demolição</option>
@@ -290,7 +291,7 @@ include_once 'tipos_alvara.php';
                 `;
 
                     // Fazemos uma requisição direta para a página PHP que processa os documentos
-                    fetch('obter_documentos.php', {
+                    fetch('scripts/obter_documentos.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',

@@ -100,11 +100,7 @@ include 'header.php';
                                     <td><?php echo $req['protocolo']; ?></td>
                                     <td><?php echo $req['requerente']; ?></td>
                                     <td><?php echo $req['tipo_alvara']; ?></td>
-                                    <td>
-                                        <span class="badge badge-status status-<?php echo strtolower(str_replace(' ', '-', $req['status'])); ?>">
-                                            <?php echo $req['status']; ?>
-                                        </span>
-                                    </td>
+                                    <td><?php echo $req['status']; ?></td>
                                     <td><?php echo formataData($req['data_envio']); ?></td>
                                 </tr>
                             <?php endforeach; ?>

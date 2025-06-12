@@ -52,9 +52,18 @@ function salvarArquivo($arquivo, $diretorio, $prefixo = '')
     $caminho_arquivo = $diretorio . '/' . $novo_nome;
 
     // Caminho relativo para o banco de dados (URL)
-    // Ajusta o caminho para usar a BASE_URL e garantir que não tenha barras duplas
-    $caminho_relativo = str_replace('../', '', $diretorio) . '/' . $novo_nome;
-    $caminho_relativo = str_replace('//', '/', $caminho_relativo);
+    // Extrair apenas a parte relativa do caminho
+    $uploads_base = realpath(dirname(__DIR__) . '/uploads');
+    $diretorio_real = realpath($diretorio);
+
+    if ($diretorio_real && $uploads_base) {
+        $caminho_relativo = str_replace($uploads_base, '', $diretorio_real) . '/' . $novo_nome;
+        $caminho_relativo = str_replace('\\', '/', $caminho_relativo); // Converter barras do Windows
+        $caminho_relativo = ltrim($caminho_relativo, '/'); // Remover barra inicial
+    } else {
+        // Fallback caso realpath falhe
+        $caminho_relativo = basename($diretorio) . '/' . $novo_nome;
+    }
 
     // Move o arquivo enviado para o diretório de uploads
     if (move_uploaded_file($arquivo['tmp_name'], $caminho_arquivo)) {

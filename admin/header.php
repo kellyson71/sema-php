@@ -476,7 +476,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <div class="sidebar">
         <div class="sidebar-header">
             <a href="index.php" class="sidebar-brand">
-                <img src="../assets/images/Logo SEMA Vertical 3.png" alt="SEMA" class="sidebar-logo">
+                <img src="../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
             </a>
         </div>
         <div class="sidebar-menu">

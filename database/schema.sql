@@ -90,4 +90,18 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     opcoes TEXT,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-); 
+);
+
+-- Tabela de log de emails
+CREATE TABLE IF NOT EXISTS email_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requerimento_id INT,
+    email_destino VARCHAR(191) NOT NULL,
+    assunto VARCHAR(255) NOT NULL,
+    mensagem TEXT,
+    usuario_envio VARCHAR(100),
+    status ENUM('SUCESSO', 'ERRO') NOT NULL,
+    erro TEXT,
+    data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
+);

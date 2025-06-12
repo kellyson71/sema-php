@@ -1,0 +1,16 @@
+{
+  "name": "sema/requerimentos",
+  "description": "Sistema de Requerimentos de Alvarás Ambientais - SEMA Pau dos Ferros/RN",
+  "type": "project",
+  "require": {
+    "php": ">=7.4",
+    "phpmailer/phpmailer": "^6.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sema\\": "src/"
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

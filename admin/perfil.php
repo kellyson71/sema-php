@@ -11,6 +11,30 @@ if (!file_exists($uploadDir)) {
     mkdir($uploadDir, 0777, true);
 }
 
+// Função para gerenciar foto de perfil via arquivo (sem banco de dados)
+function getFotoPerfil($adminId, $uploadDir)
+{
+    $extensoes = ['jpg', 'jpeg', 'png', 'gif'];
+    foreach ($extensoes as $ext) {
+        $arquivo = $uploadDir . 'admin_' . $adminId . '.' . $ext;
+        if (file_exists($arquivo)) {
+            return 'admin_' . $adminId . '.' . $ext;
+        }
+    }
+    return null;
+}
+
+function removerFotoAnterior($adminId, $uploadDir)
+{
+    $extensoes = ['jpg', 'jpeg', 'png', 'gif'];
+    foreach ($extensoes as $ext) {
+        $arquivo = $uploadDir . 'admin_' . $adminId . '.' . $ext;
+        if (file_exists($arquivo)) {
+            unlink($arquivo);
+        }
+    }
+}
+
 $mensagem = '';
 $mensagemTipo = '';
 
@@ -35,10 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mensagemTipo = "danger";
         } else {
             try {
-                $pdo->beginTransaction();
-
-                // Verificar se há upload de foto
-                $fotoNome = $admin['foto_perfil']; // Manter a foto atual por padrão
+                $pdo->beginTransaction(); // Verificar se há upload de foto
+                $fotoAtual = getFotoPerfil($adminId, $uploadDir); // Buscar foto atual no sistema de arquivos
 
                 if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
                     $fotoTmp = $_FILES['foto']['tmp_name'];
@@ -48,17 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Validar extensão
                     $extensoesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
                     if (in_array($fotoExtensao, $extensoesPermitidas)) {
-                        // Gerar nome único para a foto
-                        $fotoNome = 'admin_' . $adminId . '_' . time() . '.' . $fotoExtensao;
+                        // Remover foto anterior se existir
+                        removerFotoAnterior($adminId, $uploadDir);
+
+                        // Gerar nome para a nova foto
+                        $fotoNome = 'admin_' . $adminId . '.' . $fotoExtensao;
                         $fotoDestino = $uploadDir . $fotoNome;
 
                         // Mover arquivo
-                        if (move_uploaded_file($fotoTmp, $fotoDestino)) {
-                            // Se houver uma foto anterior, apagar
-                            if (!empty($admin['foto_perfil']) && file_exists($uploadDir . $admin['foto_perfil'])) {
-                                unlink($uploadDir . $admin['foto_perfil']);
-                            }
-                        } else {
+                        if (!move_uploaded_file($fotoTmp, $fotoDestino)) {
                             throw new Exception("Erro ao fazer upload da foto.");
                         }
                     } else {
@@ -66,9 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                // Atualizar dados básicos
-                $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ?, foto_perfil = ? WHERE id = ?");
-                $stmt->execute([$nome, $email, $fotoNome, $adminId]);
+                // Atualizar apenas dados básicos (sem foto_perfil)
+                $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ? WHERE id = ?");
+                $stmt->execute([$nome, $email, $adminId]);
 
                 // Atualizar senha se fornecida
                 if (!empty($senhaAtual) && !empty($novaSenha)) {
@@ -128,8 +148,10 @@ include 'header.php';
             </div>
             <div class="card-body text-center">
                 <div class="mb-4">
-                    <?php if (!empty($admin['foto_perfil']) && file_exists($uploadDir . $admin['foto_perfil'])): ?>
-                        <img src="<?php echo '../uploads/perfil/' . $admin['foto_perfil']; ?>" alt="Foto de Perfil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                    <?php
+                    $fotoAtual = getFotoPerfil($adminId, $uploadDir);
+                    if ($fotoAtual && file_exists($uploadDir . $fotoAtual)): ?>
+                        <img src="<?php echo '../uploads/perfil/' . $fotoAtual; ?>" alt="Foto de Perfil" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                     <?php else: ?>
                         <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px;">
                             <i class="fas fa-user fa-5x text-secondary"></i>
