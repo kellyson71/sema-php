@@ -11,25 +11,15 @@ $erro = '';
 
 // Processar formulário de login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $usuario = trim($_POST['usuario'] ?? '');
     $senha = trim($_POST['senha'] ?? '');
 
-    // Credenciais fixas para teste
-    if ($email === 'kellyson' && $senha === 'k') {
-        $_SESSION['admin_id'] = 1;
-        $_SESSION['admin_nome'] = 'Kellyson';
-        $_SESSION['admin_email'] = 'kellyson@teste.com';
-        $_SESSION['admin_nivel'] = 1;
-        header("Location: index.php");
-        exit;
-    }
-
-    if (empty($email) || empty($senha)) {
+    if (empty($usuario) || empty($senha)) {
         $erro = "Por favor, preencha todos os campos.";
     } else {
-        // Verificar credenciais no banco
-        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE email = ? AND ativo = 1");
-        $stmt->execute([$email]);
+        // Verificar credenciais no banco pelo nome do usuário
+        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE nome = ? AND ativo = 1");
+        $stmt->execute([$usuario]);
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
@@ -38,14 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_email'] = $admin['email'];
             $_SESSION['admin_nivel'] = $admin['nivel'];
 
-            // Atualizar último acesso
+            // Atualizar último acessao
             $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
             $stmt->execute([$admin['id']]);
 
             header("Location: index.php");
             exit;
         } else {
-            $erro = "E-mail ou senha incorretos.";
+            $erro = "Usuário ou senha incorretos.";
         }
     }
 }
@@ -77,7 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         body {
-            background: linear-gradient(135deg, var(--primary-light), #ffffff);
+            background: linear-gradient(135deg, #1e3c72, #2a5298, #4a90e2, #87ceeb);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -86,11 +78,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 1rem;
         }
 
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
         .login-container {
-            background-color: #fff;
+            background-color: rgba(255, 255, 255, 0.95);
             border-radius: 16px;
             padding: 2.5rem;
-            box-shadow: var(--shadow);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             width: 400px;
             max-width: 100%;
             position: relative;
@@ -224,33 +232,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-exclamation-circle"></i>
                 <?php echo $erro; ?>
             </div>
-        <?php endif; ?>
-
-        <form class="login-form" method="post" action="">
+        <?php endif; ?> <form class="login-form" method="post" action="">
             <div class="form-group">
-                <label class="form-label" for="email">Usuário</label>
+                <label class="form-label" for="usuario">Usuário</label>
                 <div class="form-control-wrapper">
-                    <i class="fas fa-user input-icon"></i>
-                    <input type="text"
+                    <i class="fas fa-user input-icon"></i> <input type="text"
                         class="form-control"
-                        id="email"
-                        name="email"
+                        id="usuario"
+                        name="usuario"
                         required
-                        placeholder="Digite seu usuário"
-                        value="kellyson">
+                        placeholder="Digite seu usuário">
                 </div>
             </div>
             <div class="form-group">
                 <label class="form-label" for="senha">Senha</label>
                 <div class="form-control-wrapper">
-                    <i class="fas fa-lock input-icon"></i>
-                    <input type="password"
+                    <i class="fas fa-lock input-icon"></i> <input type="password"
                         class="form-control"
                         id="senha"
                         name="senha"
                         required
-                        placeholder="Digite sua senha"
-                        value="k">
+                        placeholder="Digite sua senha">
                 </div>
             </div>
             <button type="submit" class="btn btn-primary">

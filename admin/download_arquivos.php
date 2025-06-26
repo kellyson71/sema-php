@@ -1,12 +1,6 @@
 <?php
-session_start();
-require_once '../includes/config.php';
-
-// Verificar se o usuário está logado como admin
-if (!isset($_SESSION['admin_id'])) {
-    header("Location: login.php");
-    exit;
-}
+require_once 'conexao.php';
+verificaLogin();
 
 if (!isset($_GET['requerimento_id'])) {
     header("Location: requerimentos.php");

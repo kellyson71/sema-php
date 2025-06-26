@@ -972,13 +972,18 @@ include 'header.php';
                 <div class="modern-card-header">
                     <i class="fas fa-folder-open icon"></i>
                     <h6>Documentos (<?php echo count($documentos); ?>)</h6>
-                    <?php if (count($documentos) > 0): ?>
-                        <div class="ms-auto">
+                    <div class="ms-auto">
+                        <!-- Botão Baixar Capa do Processo -->
+                        <button class="btn btn-sm btn-outline-primary me-2" onclick="window.open('protocolo-capa.php?id=<?php echo $id; ?>', '_blank')" title="Baixar capa do processo">
+                            <i class="fas fa-file-alt me-1"></i>Baixar Capa
+                        </button>
+                        <?php if (count($documentos) > 0): ?>
+                            <!-- Botão Baixar Todos os Documentos -->
                             <button class="btn btn-sm btn-outline-secondary" onclick="downloadAllFiles()" title="Baixar todos os documentos">
                                 <i class="fas fa-download me-1"></i>Baixar Todos
                             </button>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <div class="data-table-body">
                     <?php if (count($documentos) > 0): ?>
@@ -1089,13 +1094,14 @@ include 'header.php';
         <div class="col-12">
             <div class="modern-card">
                 <div class="modern-card-header">
-                    <i class="fas fa-cogs icon"></i>
+                    <i class="fas fa-cog icon"></i>
                     <h6>Ações Administrativas</h6>
                 </div>
-                <div class="p-4">
-                    <div class="row g-4">
+                <div class="card-body">
+                    <div class="row g-3">
+
                         <!-- Atualizar Status -->
-                        <div class="col-md-6">
+                        <div class="col-md-6 col-lg-3">
                             <div class="admin-action-card">
                                 <div class="admin-action-header">
                                     <i class="fas fa-edit text-primary"></i>
@@ -1123,7 +1129,7 @@ include 'header.php';
                                 </form>
                             </div>
                         </div> <!-- Conclusão do Processo -->
-                        <div class="col-md-6">
+                        <div class="col-md-6 col-lg-3">
                             <div class="admin-action-card">
                                 <div class="admin-action-header">
                                     <i class="fas fa-check-circle text-success"></i>

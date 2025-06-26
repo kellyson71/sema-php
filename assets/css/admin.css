@@ -299,12 +299,12 @@ body {
     overflow: hidden;
 }
 
-/* Garantir exibição correta dos menus dropdown */
 .user-dropdown-content, .notifications-dropdown {
     right: 0;
     top: 100%;
     border: 1px solid var(--border-color);
     border-top: none;
+}
 .dropdown-content.show {
     display: block;
     z-index: 1001;
@@ -986,6 +986,31 @@ body {
 .btn-success:hover {
     background-color: #218838;
     border-color: #1e7e34;
+}
+
+/* Botões Outline */
+.btn-outline-primary {
+    color: var(--primary-color);
+    background-color: transparent;
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    color: var(--white-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-secondary {
+    color: var(--gray-color);
+    background-color: transparent;
+    border-color: var(--gray-color);
+}
+
+.btn-outline-secondary:hover {
+    color: var(--white-color);
+    background-color: var(--gray-color);
+    border-color: var(--gray-color);
 }
 
 /* ===== MENSAGENS ===== */
