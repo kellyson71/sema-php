@@ -88,16 +88,19 @@ function formatarData($data)
         .pagina {
             background: white;
             width: 21cm;
-            height: 29.7cm;
+            min-height: 29.7cm;
             margin: auto;
-            padding: 1.5cm;
+            padding: 1.2cm;
             box-sizing: border-box;
             color: #000;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .conteudo {
-            min-height: calc(29.7cm - 3cm - 80px);
+            flex: 1;
         }
 
         .logo {
@@ -114,19 +117,21 @@ function formatarData($data)
             font-weight: bold;
             font-size: 14pt;
             margin-top: 5px;
+            margin-bottom: 15px;
         }
 
         h1 {
             text-align: center;
-            margin-top: 30px;
-            font-size: 24pt;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-size: 22pt;
             letter-spacing: 1px;
         }
 
         .dados {
-            margin-top: 30px;
+            margin-top: 20px;
             font-size: 12pt;
-            line-height: 1.8;
+            line-height: 1.6;
         }
 
         .negrito {
@@ -142,14 +147,11 @@ function formatarData($data)
         }
 
         .rodape {
-            position: absolute;
-            bottom: 1.5cm;
-            left: 1.5cm;
-            right: 1.5cm;
             padding-top: 20px;
             font-size: 10pt;
             text-align: center;
             border-top: 1px solid #ddd;
+            margin-top: auto;
         }
 
         .rodape span {
@@ -257,10 +259,13 @@ function formatarData($data)
             <h1>PROCESSO</h1>
 
             <div class="dados">
-                <div><span class="negrito">Nº DO PROCESSO SEMA:</span> <?php echo htmlspecialchars($requerimento['id']); ?></div>
+                <div><span class="negrito">Nº DO PROCESSO SEMA:</span> ___________________________________</div>
                 <div><span class="negrito">ANO:</span> <?php echo $anoAtual; ?></div>
+                <div><span class="negrito">PREFIXO:</span> PMPF</div>
+                <div><span class="negrito">Nº DE PROTOCOLO SISTEMA:</span> <?php echo htmlspecialchars($requerimento['protocolo']); ?></div>
+                <div><span class="negrito">Nº DE PROTOCOLO GERAL:</span> ___________________________________</div>
 
-                <br><br>
+                <br>
 
                 <div><span class="negrito">ASSUNTO:</span> <?php echo htmlspecialchars($requerimento['tipo_alvara']); ?></div>
                 <div><span class="negrito">INTERESSADO:</span> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?></div>
@@ -328,7 +333,5 @@ function formatarData($data)
     </script>
 
 </body>
-/* <div><span class="negrito">PREFIXO:</span> PMPF</div>
-<div><span class="negrito">Nº DE PROTOCOLO:</span> <?php echo htmlspecialchars($requerimento['protocolo']); ?></div> */
 
 </html>
