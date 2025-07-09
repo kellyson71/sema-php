@@ -7,271 +7,197 @@
     <title>Processo Indeferido - SEMA</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 600px;
             margin: 0 auto;
+            background-color: #f4f4f4;
             padding: 20px;
-            background-color: #f8f9fa;
         }
 
-        .email-container {
-            background: white;
-            border-radius: 8px;
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
             padding: 30px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            border-bottom: 3px solid #dc2626;
             padding-bottom: 20px;
-            border-bottom: 2px solid #dc2626;
+            margin-bottom: 30px;
         }
 
         .logo {
             max-width: 150px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
-        .title {
+        .titulo {
             color: #dc2626;
             font-size: 24px;
             font-weight: bold;
             margin: 0;
         }
 
-        .subtitle {
-            color: #6b7280;
-            font-size: 16px;
-            margin: 5px 0 0 0;
-        }
-
-        .content {
-            margin: 25px 0;
-        }
-
-        .alert-box {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-left: 4px solid #dc2626;
-            border-radius: 6px;
-            padding: 15px;
+        .status-indeferido {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
             margin: 20px 0;
         }
 
-        .alert-title {
+        .status-titulo {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .protocolo-numero {
+            font-size: 18px;
             font-weight: bold;
             color: #dc2626;
-            margin-bottom: 8px;
+            margin: 10px 0;
         }
 
-        .protocol-info {
-            background: #f3f4f6;
-            border-radius: 6px;
+        .motivo-box {
+            background-color: #fef2f2;
+            border-left: 4px solid #dc2626;
             padding: 15px;
             margin: 20px 0;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-        }
-
-        .info-label {
-            font-weight: bold;
-            color: #374151;
-        }
-
-        .info-value {
-            color: #6b7280;
-        }
-
-        .motivo-section {
-            background: #fffbeb;
-            border: 1px solid #fed7aa;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 25px 0;
+            border-radius: 0 6px 6px 0;
         }
 
         .motivo-title {
             font-weight: bold;
-            color: #92400e;
+            color: #dc2626;
             margin-bottom: 10px;
-            font-size: 16px;
         }
 
-        .motivo-text {
-            color: #451a03;
-            line-height: 1.7;
-            white-space: pre-line;
-        }
-
-        .orientacoes-section {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 25px 0;
+        .orientacoes-box {
+            background-color: #fff7ed;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
         }
 
         .orientacoes-title {
             font-weight: bold;
-            color: #1e40af;
+            color: #f59e0b;
             margin-bottom: 10px;
-            font-size: 16px;
         }
 
-        .orientacoes-text {
-            color: #1e3a8a;
-            line-height: 1.7;
-            white-space: pre-line;
+        .info-box {
+            background-color: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
         }
 
-        .next-steps {
-            background: #f0f9ff;
-            border: 1px solid #0ea5e9;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 25px 0;
-        }
-
-        .next-steps-title {
+        .info-title {
             font-weight: bold;
-            color: #0369a1;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-
-        .next-steps ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .next-steps li {
-            margin: 8px 0;
-            color: #0c4a6e;
+            color: #3b82f6;
+            margin-bottom: 10px;
         }
 
         .footer {
+            text-align: center;
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .contato {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .contato h4 {
+            color: #009851;
+            margin-top: 0;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #009851, #007a3d);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 0;
         }
 
         .signature {
-            margin-top: 25px;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
             padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .contact-info {
-            background: #f9fafb;
-            border-radius: 6px;
-            padding: 15px;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #374151;
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-
-            .email-container {
-                padding: 20px;
-            }
-
-            .info-row {
-                flex-direction: column;
-            }
+            text-align: center;
         }
     </style>
 </head>
 
 <body>
-    <div class="email-container">
+    <div class="container">
         <div class="header">
-            <h1 class="title">Processo Indeferido</h1>
-            <p class="subtitle">Secretaria do Meio Ambiente</p>
+            <h1 class="titulo">Secretaria Municipal de Meio Ambiente</h1>
+            <p style="margin: 5px 0; color: #666;">Prefeitura de Pau dos Ferros - RN</p>
         </div>
 
-        <div class="content">
-            <p>Olá, <strong><?php echo htmlspecialchars($nome_destinatario); ?></strong>,</p>
+        <p><strong>Prezado(a) <?php echo htmlspecialchars($nome_destinatario); ?>,</strong></p>
 
-            <p>Informamos que seu requerimento foi analisado pela equipe técnica da Secretaria do Meio Ambiente.</p>
+        <p>Informamos que seu requerimento foi analisado pela equipe técnica da Secretaria do Meio Ambiente.</p>
 
-            <div class="alert-box">
-                <div class="alert-title">⚠️ Processo Indeferido</div>
-                <p>Infelizmente, seu requerimento <strong>não foi aprovado</strong> pelos motivos descritos abaixo.</p>
+        <div class="status-indeferido">
+            <div class="status-titulo">PROCESSO INDEFERIDO</div>
+        </div>
+
+        <p>Infelizmente, o processo de protocolo <span class="protocolo-numero">#<?php echo htmlspecialchars($protocolo_oficial); ?></span> foi indeferido pelos seguintes motivos:</p>
+
+        <div class="motivo-box">
+            <div class="motivo-title">📋 Motivos do Indeferimento:</div>
+            <p><?php echo nl2br(htmlspecialchars($motivo_indeferimento)); ?></p>
+        </div>
+
+        <?php if (!empty($orientacoes_adicionais)): ?>
+            <div class="orientacoes-box">
+                <div class="orientacoes-title">💡 Orientações para Correção:</div>
+                <p><?php echo nl2br(htmlspecialchars($orientacoes_adicionais)); ?></p>
             </div>
+        <?php endif; ?>
 
-            <div class="protocol-info">
-                <div class="info-row">
-                    <span class="info-label">Protocolo:</span>
-                    <span class="info-value">#<?php echo htmlspecialchars($protocolo); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Tipo de Alvará:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($tipo_alvara); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Data da Análise:</span>
-                    <span class="info-value"><?php echo date('d/m/Y H:i'); ?></span>
-                </div>
-            </div>
+        <div class="info-box">
+            <div class="info-title">🔄 Para dar continuidade ao processo:</div>
+            <ul>
+                <li>Envie um novo requerimento através do nosso sistema online</li>
+                <li>Corrija todos os pontos indicados acima</li>
+                <li>Apresente toda a documentação novamente, conforme as exigências atuais</li>
+            </ul>
+        </div>
 
-            <div class="motivo-section">
-                <div class="motivo-title">📋 Motivo do Indeferimento</div>
-                <div class="motivo-text"><?php echo htmlspecialchars($motivo_indeferimento); ?></div>
-            </div>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://www.paudosferros.rn.gov.br/" class="btn">Acessar Portal da Prefeitura</a>
+        </div>
 
-            <?php if (!empty($orientacoes_adicionais)): ?>
-                <div class="orientacoes-section">
-                    <div class="orientacoes-title">💡 Orientações Adicionais</div>
-                    <div class="orientacoes-text"><?php echo htmlspecialchars($orientacoes_adicionais); ?></div>
-                </div>
-            <?php endif; ?>
-
-            <div class="next-steps">
-                <div class="next-steps-title">🔄 Próximos Passos</div>
-                <p>Para dar continuidade ao seu processo, você poderá:</p>
-                <ul>
-                    <li><strong>Enviar um novo requerimento</strong> através do nosso sistema online</li>
-                    <li><strong>Corrigir os pontos</strong> citados no motivo do indeferimento</li>
-                    <li><strong>Apresentar nova documentação</strong> se necessário</li>
-                    <li><strong>Entrar em contato</strong> conosco em caso de dúvidas</li>
-                </ul>
-            </div>
-
-            <p>Caso tenha dúvidas sobre os motivos do indeferimento ou necessite de esclarecimentos adicionais, entre em contato conosco pelos canais oficiais.</p>
-
-            <div class="signature">
-                <p><strong>Atenciosamente,</strong></p>
-                <p><strong>Secretaria do Meio Ambiente</strong><br>
-                    Prefeitura Municipal</p>
-            </div>
-
-            <div class="contact-info">
-                <strong>📞 Contato:</strong><br>
-                Email: sema@prefeitura.gov.br<br>
-                Telefone: (XX) XXXX-XXXX<br>
-                <br>
-                <strong>🌐 Portal Online:</strong><br>
-                Acesse nosso sistema para novos requerimentos
-            </div>
+        <div class="signature">
+            <p>Atenciosamente,</p>
+            <p><strong>Secretaria Municipal de Meio Ambiente</strong></p>
         </div>
 
         <div class="footer">
-            <p>Esta é uma mensagem automática. Por favor, não responda este email.</p>
-            <p><small>Secretaria do Meio Ambiente - Prefeitura Municipal</small></p>
+            <p>Este é um email automático, não responda a esta mensagem.</p>
+            <p>© <?php echo date('Y'); ?> - Secretaria Municipal de Meio Ambiente - Prefeitura de Pau dos Ferros/RN</p>
+            <p>Desenvolvido pela equipe de TI da Prefeitura</p>
         </div>
     </div>
 </body>
