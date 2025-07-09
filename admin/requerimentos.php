@@ -461,7 +461,14 @@ include 'header.php';
                     </thead>
                     <tbody>
                         <?php foreach ($requerimentos as $req): ?>
-                            <tr class="<?php echo $req['visualizado'] == 0 ? 'unread' : ''; ?> cursor-pointer transition-all hover:bg-gray-50"
+                            <?php
+                            $isCompleted = (strtolower($req['status']) === 'finalizado' || strtolower($req['status']) === 'indeferido');
+                            $rowClasses = '';
+                            $rowClasses .= $req['visualizado'] == 0 ? 'unread ' : '';
+                            $rowClasses .= $isCompleted ? 'opacity-60 ' : '';
+                            $rowClasses .= 'cursor-pointer transition-all hover:bg-gray-50';
+                            ?>
+                            <tr class="<?php echo $rowClasses; ?>"
                                 onclick="window.location.href='visualizar_requerimento.php?id=<?php echo $req['id']; ?>'">
 
                                 <td class="font-medium text-gray-900">
@@ -486,34 +493,46 @@ include 'header.php';
                                 <td>
                                     <?php
                                     $statusDotColor = '';
+                                    $statusTextColor = 'text-gray-700';
+
                                     switch (strtolower($req['status'])) {
                                         case 'pendente':
                                             $statusDotColor = '#f59e0b'; // amarelo
+                                            $statusTextColor = 'text-yellow-700';
                                             break;
                                         case 'aprovado':
                                             $statusDotColor = '#10b981'; // verde
+                                            $statusTextColor = 'text-green-700';
                                             break;
                                         case 'finalizado':
-                                            $statusDotColor = '#8b5cf6'; // roxo
+                                            $statusDotColor = '#6b7280'; // cinza - concluído
+                                            $statusTextColor = 'text-gray-500';
                                             break;
                                         case 'reprovado':
-                                        case 'rejeitado':
                                             $statusDotColor = '#ef4444'; // vermelho
+                                            $statusTextColor = 'text-red-700';
                                             break;
                                         case 'em análise':
                                         case 'em_analise':
                                             $statusDotColor = '#3b82f6'; // azul
+                                            $statusTextColor = 'text-blue-700';
                                             break;
                                         case 'cancelado':
                                             $statusDotColor = '#6b7280'; // cinza
+                                            $statusTextColor = 'text-gray-500';
+                                            break;
+                                        case 'indeferido':
+                                            $statusDotColor = '#6b7280'; // cinza - concluído
+                                            $statusTextColor = 'text-gray-500';
                                             break;
                                         default:
                                             $statusDotColor = '#6b7280'; // cinza
+                                            $statusTextColor = 'text-gray-500';
                                     }
                                     ?>
                                     <div class="flex items-center">
                                         <span class="w-2 h-2 rounded-full mr-2" style="background-color: <?php echo $statusDotColor; ?>"></span>
-                                        <span class="text-sm text-gray-700 font-medium"><?php echo $req['status']; ?></span>
+                                        <span class="text-sm <?php echo $statusTextColor; ?> font-medium"><?php echo $req['status']; ?></span>
                                     </div>
                                 </td>
 
