@@ -16,9 +16,12 @@ $stmt = $pdo->prepare("
            req.nome as requerente_nome, 
            req.cpf_cnpj as requerente_cpf_cnpj, 
            req.telefone as requerente_telefone, 
-           req.email as requerente_email
+           req.email as requerente_email,
+           p.nome as proprietario_nome,
+           p.cpf_cnpj as proprietario_cpf_cnpj
     FROM requerimentos r
     JOIN requerentes req ON r.requerente_id = req.id
+    LEFT JOIN proprietarios p ON r.proprietario_id = p.id
     WHERE r.id = ?
 ");
 $stmt->execute([$id]);
@@ -271,6 +274,26 @@ function formatarData($data)
                 <div><span class="negrito">INTERESSADO:</span> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?></div>
                 <div><span class="negrito">E-MAIL REMETENTE:</span> <?php echo htmlspecialchars($requerimento['requerente_email']); ?></div>
                 <div><span class="negrito">DATA DE ENTRADA:</span> <?php echo formatarData($requerimento['data_envio']); ?></div>
+
+                <br>
+
+                <?php
+                // Verificar se o proprietário é diferente do requerente
+                $proprietario_diferente = false;
+                if (!empty($requerimento['proprietario_id']) && !empty($requerimento['proprietario_nome'])) {
+                    // Comparar se o proprietário é diferente do requerente
+                    if (
+                        $requerimento['proprietario_nome'] !== $requerimento['requerente_nome'] ||
+                        $requerimento['proprietario_cpf_cnpj'] !== $requerimento['requerente_cpf_cnpj']
+                    ) {
+                        $proprietario_diferente = true;
+                    }
+                }
+
+                if ($proprietario_diferente): ?>
+                    <div><span class="negrito">PROPRIETÁRIO:</span> <?php echo htmlspecialchars($requerimento['proprietario_nome']); ?></div>
+                    <div><span class="negrito">CPF/CNPJ PROPRIETÁRIO:</span> <?php echo htmlspecialchars($requerimento['proprietario_cpf_cnpj']); ?></div>
+                <?php endif; ?>
             </div>
         </div>
 

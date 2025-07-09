@@ -89,7 +89,8 @@ $estatisticas = [
     'total' => $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn(),
     'nao_lidos' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
     'pendentes' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
-    'aprovados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn()
+    'aprovados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
+    'finalizados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn()
 ];
 
 // Listas para filtros
@@ -321,7 +322,7 @@ include 'header.php';
         <?php endif; ?>
 
         <!-- Estatísticas -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <div class="stat-card">
                 <div class="flex items-center justify-between">
                     <div>
@@ -366,6 +367,18 @@ include 'header.php';
                     </div>
                     <div class="text-green-600">
                         <i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Finalizados</p>
+                        <p class="text-2xl font-bold text-purple-600"><?php echo number_format($estatisticas['finalizados']); ?></p>
+                    </div>
+                    <div class="text-purple-600">
+                        <i class="fas fa-flag-checkered text-2xl"></i>
                     </div>
                 </div>
             </div>
@@ -442,6 +455,7 @@ include 'header.php';
                             <th class="text-left">Protocolo</th>
                             <th class="text-left">Requerente</th>
                             <th class="text-left">Tipo de Alvará</th>
+                            <th class="text-left">Status</th>
                             <th class="text-left">Data de Envio</th>
                         </tr>
                     </thead>
@@ -466,6 +480,44 @@ include 'header.php';
                                 <td>
                                     <span class="type-badge">
                                         <?php echo ucfirst(str_replace('_', ' ', $req['tipo_alvara'])); ?>
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    $statusClass = '';
+                                    $statusIcon = '';
+                                    switch (strtolower($req['status'])) {
+                                        case 'pendente':
+                                            $statusClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                                            $statusIcon = 'fas fa-clock';
+                                            break;
+                                        case 'aprovado':
+                                            $statusClass = 'bg-green-100 text-green-800 border-green-200';
+                                            $statusIcon = 'fas fa-check-circle';
+                                            break;
+                                        case 'finalizado':
+                                            $statusClass = 'bg-purple-100 text-purple-800 border-purple-200';
+                                            $statusIcon = 'fas fa-flag-checkered';
+                                            break;
+                                        case 'reprovado':
+                                        case 'rejeitado':
+                                            $statusClass = 'bg-red-100 text-red-800 border-red-200';
+                                            $statusIcon = 'fas fa-times-circle';
+                                            break;
+                                        case 'em análise':
+                                        case 'em_analise':
+                                            $statusClass = 'bg-blue-100 text-blue-800 border-blue-200';
+                                            $statusIcon = 'fas fa-search';
+                                            break;
+                                        default:
+                                            $statusClass = 'bg-gray-100 text-gray-800 border-gray-200';
+                                            $statusIcon = 'fas fa-info-circle';
+                                    }
+                                    ?>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border <?php echo $statusClass; ?>">
+                                        <i class="<?php echo $statusIcon; ?> mr-1"></i>
+                                        <?php echo $req['status']; ?>
                                     </span>
                                 </td>
 

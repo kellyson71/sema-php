@@ -155,6 +155,10 @@ include 'header.php';
         --primary-50: #ecfdf5;
         --primary-100: #d1fae5;
 
+        --green-600: #059669;
+        --green-700: #047857;
+        --green-50: #ecfdf5;
+
         --gray-50: #f9fafb;
         --gray-100: #f3f4f6;
         --gray-200: #e5e7eb;
@@ -164,6 +168,12 @@ include 'header.php';
         --gray-600: #4b5563;
         --gray-700: #374151;
         --gray-800: #1f2937;
+
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --transition: all 0.2s ease;
+        --radius: 8px;
+        --radius-sm: 6px;
 
         /* Componentes base atualizados */
         .card-modern,
@@ -321,6 +331,11 @@ include 'header.php';
 
         .bg-success {
             background-color: var(--green-600) !important;
+            color: white;
+        }
+
+        .bg-purple {
+            background-color: #8b5cf6 !important;
             color: white;
         }
 
@@ -533,14 +548,14 @@ include 'header.php';
         }
 
         .btn-action-success {
-            background: var(--green-600);
+            background: #059669;
             color: white;
         }
 
         .btn-action-success:hover {
             background: #047857;
             transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             color: white;
         }
 
@@ -752,7 +767,7 @@ include 'header.php';
                     </form>
                 </div>
                 <div class="mb-2">
-                    <span class="badge bg-light text-dark fs-6 px-3 py-2 badge-status" style="border: 1px solid #ddd;">
+                    <span class="badge bg-<?php echo getStatusClass($requerimento['status']); ?> fs-6 px-3 py-2 badge-status">
                         <?php echo $requerimento['status']; ?>
                     </span>
                 </div>
@@ -819,7 +834,7 @@ include 'header.php';
                     <div class="data-row">
                         <div class="data-label">Status:</div>
                         <div class="data-value">
-                            <span class="badge bg-light text-dark" style="border: 1px solid #ddd;">
+                            <span class="badge bg-<?php echo getStatusClass($requerimento['status']); ?>">
                                 <?php echo $requerimento['status']; ?>
                             </span>
                         </div>
@@ -1113,6 +1128,7 @@ include 'header.php';
                                         <select class="form-select modern-select" id="status" name="status" required>
                                             <option value="Em análise" <?php echo $requerimento['status'] == 'Em análise' ? 'selected' : ''; ?>>Em análise</option>
                                             <option value="Aprovado" <?php echo $requerimento['status'] == 'Aprovado' ? 'selected' : ''; ?>>Aprovado</option>
+                                            <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
                                             <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
                                             <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
                                             <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
@@ -1149,14 +1165,6 @@ include 'header.php';
                                 <button type="button" class="btn-action btn-action-success w-100 mb-3"
                                     onclick="showProtocolConfirmModal()">
                                     <i class="fas fa-paper-plane me-2"></i>Enviar Protocolo Oficial
-                                </button> <!-- Marcar como não lido -->
-                                <div class="action-description mb-2">
-                                    <i class="fas fa-undo text-dark me-2"></i>
-                                    <small class="text-muted">Retornar requerimento para a lista de não lidos</small>
-                                </div>
-                                <button type="button" class="btn-action btn-action-outline-warning w-100"
-                                    onclick="showUnreadConfirmModal()">
-                                    <i class="fas fa-eye-slash me-2"></i>Marcar como Não Lido
                                 </button>
                             </div>
                         </div>
@@ -1494,6 +1502,8 @@ function getStatusClass($status)
     switch ($status) {
         case 'Aprovado':
             return 'success';
+        case 'Finalizado':
+            return 'purple';
         case 'Reprovado':
             return 'danger';
         case 'Em análise':
