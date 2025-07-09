@@ -7,9 +7,13 @@ verificaLogin();
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM requerimentos");
 $totalRequerimentos = $stmt->fetch()['total'];
 
-// Total por status
-$stmt = $pdo->query("SELECT status, COUNT(*) as total FROM requerimentos GROUP BY status");
-$totalPorStatus = $stmt->fetchAll();
+// Requerimentos em análise (mais importante)
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM requerimentos WHERE status = 'Em análise'");
+$emAnalise = $stmt->fetch()['total'];
+
+// Requerimentos não visualizados
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM requerimentos WHERE visualizado = 0");
+$naoVisualizados = $stmt->fetch()['total'];
 
 // Últimos requerimentos recebidos
 $stmt = $pdo->query("
@@ -21,13 +25,66 @@ $stmt = $pdo->query("
 ");
 $ultimosRequerimentos = $stmt->fetchAll();
 
+// Histórico de ações recentes
+$stmt = $pdo->query("
+    SELECT ha.acao, ha.data_acao, a.nome as admin_nome, r.protocolo
+    FROM historico_acoes ha
+    LEFT JOIN administradores a ON ha.admin_id = a.id
+    LEFT JOIN requerimentos r ON ha.requerimento_id = r.id
+    ORDER BY ha.data_acao DESC
+    LIMIT 8
+");
+$historicoAcoes = $stmt->fetchAll();
+
+// Últimos emails enviados
+$stmt = $pdo->query("
+    SELECT el.email_destino, el.assunto, el.status, el.data_envio, r.protocolo
+    FROM email_logs el
+    LEFT JOIN requerimentos r ON el.requerimento_id = r.id
+    WHERE el.eh_teste = 0 OR el.eh_teste IS NULL
+    ORDER BY el.data_envio DESC
+    LIMIT 8
+");
+$ultimosEmails = $stmt->fetchAll();
+
 include 'header.php';
 ?>
+
+<style>
+    .timeline-activity,
+    .email-activity {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        font-size: 0.85rem;
+        transition: background-color 0.2s;
+    }
+
+    .activity-item:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .clickable-row:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    .badge-sm {
+        font-size: 0.7rem;
+    }
+</style>
 
 <h2 class="section-title">Dashboard</h2>
 
 <div class="row">
-    <!-- Card principal - Total de requerimentos -->
+    <!-- Cards de estatísticas resumidas -->
     <div class="col-md-3 mb-4">
         <div class="card h-100 border-info">
             <div class="card-body">
@@ -44,77 +101,63 @@ include 'header.php';
         </div>
     </div>
 
-    <?php
-    // Estatísticas principais (mais relevantes)
-    $statusPrincipais = [
-        'Em análise' => ['icon' => 'fas fa-hourglass-half', 'color' => 'warning'],
-        'Aprovado' => ['icon' => 'fas fa-check-circle', 'color' => 'success'],
-        'Finalizado' => ['icon' => 'fas fa-flag-checkered', 'color' => 'primary'],
-        'Reprovado' => ['icon' => 'fas fa-times-circle', 'color' => 'danger']
-    ];
-
-    // Organizar estatísticas por status
-    $estatisticasPorStatus = [];
-    foreach ($totalPorStatus as $status) {
-        $estatisticasPorStatus[$status['status']] = $status['total'];
-    }
-
-    // Mostrar apenas os status principais
-    foreach ($statusPrincipais as $statusNome => $config):
-        $total = $estatisticasPorStatus[$statusNome] ?? 0;
-        if ($total > 0 || in_array($statusNome, ['Em análise', 'Aprovado'])): // Sempre mostrar Em análise e Aprovado
-    ?>
-            <div class="col-md-3 mb-4">
-                <div class="card h-100 border-<?php echo $config['color']; ?>">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted mb-2"><?php echo $statusNome; ?></h6>
-                                <h2 class="mb-0 text-<?php echo $config['color']; ?>"><?php echo $total; ?></h2>
-                            </div>
-                            <div class="rounded-circle bg-<?php echo $config['color']; ?> bg-opacity-10 p-3">
-                                <i class="<?php echo $config['icon']; ?> fa-2x text-<?php echo $config['color']; ?>"></i>
-                            </div>
-                        </div>
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-2">Em Análise</h6>
+                        <h2 class="mb-0 text-warning"><?php echo $emAnalise; ?></h2>
                     </div>
-                </div>
-            </div>
-        <?php
-        endif;
-    endforeach;
-
-    // Mostrar outros status em um card resumido se existirem
-    $outrosStatus = array_diff_key($estatisticasPorStatus, $statusPrincipais);
-    if (!empty($outrosStatus)):
-        $totalOutros = array_sum($outrosStatus);
-        ?>
-        <div class="col-md-3 mb-4">
-            <div class="card h-100 border-secondary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-2">Outros Status</h6>
-                            <h2 class="mb-0 text-secondary"><?php echo $totalOutros; ?></h2>
-                            <small class="text-muted">
-                                <?php echo implode(', ', array_keys($outrosStatus)); ?>
-                            </small>
-                        </div>
-                        <div class="rounded-circle bg-secondary bg-opacity-10 p-3">
-                            <i class="fas fa-ellipsis-h fa-2x text-secondary"></i>
-                        </div>
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="fas fa-hourglass-half fa-2x text-warning"></i>
                     </div>
                 </div>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-2">Não Visualizados</h6>
+                        <h2 class="mb-0 text-danger"><?php echo $naoVisualizados; ?></h2>
+                    </div>
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                        <i class="fas fa-envelope fa-2x text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-2">Ver Relatórios</h6>
+                        <a href="estatisticas.php" class="btn btn-success btn-sm">
+                            <i class="fas fa-chart-bar me-1"></i> Estatísticas
+                        </a>
+                    </div>
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                        <i class="fas fa-chart-pie fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row">
-    <!-- Últimos requerimentos -->
-    <div class="col-12">
+    <!-- Últimos requerimentos - Card principal -->
+    <div class="col-md-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Últimos Requerimentos</span>
+                <h5 class="mb-0"><i class="fas fa-inbox me-2"></i>Últimos Requerimentos</h5>
                 <a href="requerimentos.php" class="btn btn-sm btn-outline-primary">Ver Todos</a>
             </div>
             <div class="card-body">
@@ -122,7 +165,6 @@ include 'header.php';
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Protocolo</th>
                                 <th>Requerente</th>
                                 <th>Tipo</th>
                                 <th>Status</th>
@@ -132,20 +174,88 @@ include 'header.php';
                         <tbody>
                             <?php foreach ($ultimosRequerimentos as $req): ?>
                                 <tr class="clickable-row" data-href="visualizar_requerimento.php?id=<?php echo $req['id']; ?>">
-                                    <td><?php echo $req['protocolo']; ?></td>
                                     <td><?php echo $req['requerente']; ?></td>
                                     <td><?php echo $req['tipo_alvara']; ?></td>
-                                    <td><?php echo $req['status']; ?></td>
+                                    <td>
+                                        <?php
+                                        $statusColor = match ($req['status']) {
+                                            'Em análise' => '#ffc107',
+                                            'Aprovado' => '#198754',
+                                            'Finalizado' => '#0d6efd',
+                                            'Reprovado' => '#dc3545',
+                                            'Pendente' => '#0dcaf0',
+                                            'Cancelado' => '#6c757d',
+                                            'Indeferido' => '#212529',
+                                            default => '#e9ecef'
+                                        };
+                                        ?>
+                                        <span class="d-flex align-items-center">
+                                            <span class="status-dot me-2" style="width: 8px; height: 8px; border-radius: 50%; background-color: <?php echo $statusColor; ?>; display: inline-block;"></span>
+                                            <?php echo $req['status']; ?>
+                                        </span>
+                                    </td>
                                     <td><?php echo formataData($req['data_envio']); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($ultimosRequerimentos) == 0): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center">Nenhum requerimento encontrado</td>
+                                    <td colspan="4" class="text-center text-muted">Nenhum requerimento encontrado</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Atividades recentes -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-history me-2"></i>Histórico de Ações</h6>
+            </div>
+            <div class="card-body p-2">
+                <div class="timeline-activity">
+                    <?php foreach ($historicoAcoes as $acao): ?>
+                        <div class="activity-item mb-2 p-2 border-start border-2 border-primary">
+                            <small class="text-muted d-block"><?php echo date('d/m H:i', strtotime($acao['data_acao'])); ?></small>
+                            <div class="fw-medium"><?php echo $acao['admin_nome'] ?? 'Sistema'; ?></div>
+                            <small><?php echo htmlspecialchars($acao['acao']); ?></small>
+                            <?php if ($acao['protocolo']): ?>
+                                <small class="text-primary d-block">Protocolo: <?php echo $acao['protocolo']; ?></small>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if (count($historicoAcoes) == 0): ?>
+                        <p class="text-muted small">Nenhuma ação registrada</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-envelope me-2"></i>Últimos Emails</h6>
+            </div>
+            <div class="card-body p-2">
+                <div class="email-activity">
+                    <?php foreach ($ultimosEmails as $email): ?>
+                        <div class="activity-item mb-2 p-2 border-start border-2 <?php echo $email['status'] == 'SUCESSO' ? 'border-success' : 'border-danger'; ?>">
+                            <small class="text-muted d-block"><?php echo date('d/m H:i', strtotime($email['data_envio'])); ?></small>
+                            <div class="fw-medium"><?php echo $email['email_destino']; ?></div>
+                            <small><?php echo htmlspecialchars($email['assunto']); ?></small>
+                            <span class="badge bg-<?php echo $email['status'] == 'SUCESSO' ? 'success' : 'danger'; ?> badge-sm">
+                                <?php echo $email['status']; ?>
+                            </span>
+                            <?php if ($email['protocolo']): ?>
+                                <small class="text-primary d-block">Protocolo: <?php echo $email['protocolo']; ?></small>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if (count($ultimosEmails) == 0): ?>
+                        <p class="text-muted small">Nenhum email enviado</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
