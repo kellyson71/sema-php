@@ -66,6 +66,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
     }
 }
 
+// Processar indeferimento de processo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])) {
+    $motivoIndeferimento = trim($_POST['motivo_indeferimento']);
+    $orientacoesAdicionais = trim($_POST['orientacoes_adicionais']);
+
+    if (empty($motivoIndeferimento)) {
+        $mensagem = "É necessário informar o motivo do indeferimento.";
+        $mensagemTipo = "danger";
+    } elseif (strlen($motivoIndeferimento) < 10) {
+        $mensagem = "O motivo do indeferimento deve ter pelo menos 10 caracteres.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $emailService = new EmailService();
+            $email_enviado = $emailService->enviarEmailIndeferimento(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $requerimento['tipo_alvara'],
+                $motivoIndeferimento,
+                $orientacoesAdicionais
+            );
+
+            if ($email_enviado) {
+                try {
+                    $pdo->beginTransaction();
+
+                    // Criar observações combinadas
+                    $observacoesCombinadas = "PROCESSO INDEFERIDO\n\nMotivo: " . $motivoIndeferimento;
+                    if (!empty($orientacoesAdicionais)) {
+                        $observacoesCombinadas .= "\n\nOrientações: " . $orientacoesAdicionais;
+                    }
+
+                    // Atualizar status para "Indeferido" automaticamente
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+                    $stmt->execute([$observacoesCombinadas, $id]);
+
+                    // Registrar no histórico de ações
+                    $acao = "Indeferiu o processo e enviou email de notificação - Motivo: {$motivoIndeferimento}";
+                    $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+                    $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+                    $pdo->commit();
+
+                    // Recarregar dados do requerimento para refletir as mudanças
+                    $requerimento = buscarDadosRequerimento($pdo, $id);
+
+                    $mensagem = "✅ Processo indeferido com sucesso! O requerente foi notificado por email.";
+                    $mensagemTipo = "success";
+                } catch (PDOException $e) {
+                    $pdo->rollBack();
+                    $mensagem = "Email enviado, mas houve erro ao atualizar o status: " . $e->getMessage();
+                    $mensagemTipo = "warning";
+                }
+            } else {
+                $mensagem = "Erro ao enviar email. Verifique as configurações de email.";
+                $mensagemTipo = "danger";
+            }
+        } catch (Exception $e) {
+            $mensagem = "Erro ao enviar email: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
+    }
+}
+
+// Processar reabertura de processo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_processo'])) {
+    $novoStatus = $_POST['novo_status'];
+    $motivoReabertura = trim($_POST['motivo_reabertura']);
+
+    try {
+        $pdo->beginTransaction();
+
+        // Atualizar status do requerimento
+        $stmt = $pdo->prepare("UPDATE requerimentos SET status = ?, data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$novoStatus, $id]);
+
+        // Registrar no histórico de ações
+        $acao = "Reabriu o processo finalizado e alterou status para '{$novoStatus}'";
+        if (!empty($motivoReabertura)) {
+            $acao .= " - Motivo: {$motivoReabertura}";
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+        $pdo->commit();
+
+        // Recarregar dados do requerimento para refletir as mudanças
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+
+        $mensagem = "✅ Processo reaberto com sucesso! Status alterado para '{$novoStatus}'.";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        $mensagem = "Erro ao reabrir o processo: " . $e->getMessage();
+        $mensagemTipo = "danger";
+    }
+}
+
 // Processar envio de email com protocolo oficial
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocolo'])) {
     $protocolo_oficial = trim($_POST['protocolo_oficial']);
@@ -475,10 +575,56 @@ include 'header.php';
         pointer-events: none;
     }
 
+    /* Estilos para processos indeferidos */
+    .indeferido-card {
+        background: #fef2f2 !important;
+        border-color: #fecaca !important;
+        opacity: 0.8;
+    }
+
+    .indeferido-header {
+        background: #fee2e2 !important;
+        border-color: #fecaca !important;
+    }
+
+    .indeferido-body {
+        background: #fef2f2 !important;
+    }
+
+    .indeferido-card .admin-action-card {
+        background: #fee2e2 !important;
+        border-color: #fecaca !important;
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .indeferido-card .btn-action {
+        background: #6c757d !important;
+        border-color: #6c757d !important;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .indeferido-card input,
+    .indeferido-card select,
+    .indeferido-card textarea {
+        background: #fee2e2 !important;
+        border-color: #fecaca !important;
+        color: #6c757d !important;
+        pointer-events: none;
+    }
+
     /* Estilo para card principal quando finalizado */
     .finalized-main-card {
         background: linear-gradient(45deg, #f8f9fa, #e9ecef) !important;
         border-color: #dee2e6 !important;
+        opacity: 0.9;
+    }
+
+    /* Estilo para card principal quando indeferido */
+    .indeferido-main-card {
+        background: linear-gradient(45deg, #fef2f2, #fee2e2) !important;
+        border-color: #fecaca !important;
         opacity: 0.9;
     }
 
@@ -494,6 +640,31 @@ include 'header.php';
         margin-left: 10px;
     }
 
+    .indeferido-status-badge {
+        background: #dc2626 !important;
+        color: white !important;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-left: 10px;
+    }
+
+    /* Botões de ação para indeferimento */
+    .btn-action-danger {
+        background: var(--red-600);
+        color: white;
+    }
+
+    .btn-action-danger:hover {
+        background: #b91c1c;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        color: white;
+    }
+
     /* Botões modernos */
     .btn-modern {
         border-radius: var(--radius-sm);
@@ -506,6 +677,34 @@ include 'header.php';
     .btn-modern:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow-md);
+    }
+
+    /* Botão de reabertura */
+    .btn-reopen {
+        background: linear-gradient(45deg, #f59e0b, #d97706);
+        border: none;
+        color: white;
+        border-radius: var(--radius-sm);
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-reopen:hover {
+        background: linear-gradient(45deg, #d97706, #b45309);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+        color: white;
+    }
+
+    /* Estilo especial para processo finalizado com reabertura */
+    .finalized-reopen-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px dashed #dee2e6;
+        border-radius: var(--radius);
+        padding: 2rem;
+        margin: 1rem 0;
     }
 
     /* Navegação de abas moderna */
@@ -546,13 +745,15 @@ include 'header.php';
 </style>
 
 <?php
-// Verificar se o processo está finalizado
+// Verificar se o processo está finalizado ou indeferido
 $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
+$isIndeferido = (strtolower($requerimento['status']) === 'indeferido');
+$isBlocked = $isFinalized || $isIndeferido;
 ?>
 
 <div class="container-fluid px-4">
     <!-- RESUMO DO REQUERIMENTO -->
-    <div class="card-modern mb-4 <?php echo $isFinalized ? 'finalized-main-card' : ''; ?>">
+    <div class="card-modern mb-4 <?php echo $isFinalized ? 'finalized-main-card' : ($isIndeferido ? 'indeferido-main-card' : ''); ?>">
         <div class="card-body d-flex flex-wrap align-items-center justify-content-between">
             <div>
                 <div class="d-flex align-items-center mb-2">
@@ -560,7 +761,7 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
                         Protocolo <span class="fw-bold" style="color: var(--primary-600);">#<?php echo $requerimento['protocolo']; ?></span>
                     </h4>
                     <!-- Botão Marcar como Não Lido -->
-                    <?php if (!$isFinalized): ?>
+                    <?php if (!$isBlocked): ?>
                         <form method="post" action="" class="d-inline">
                             <button type="submit" name="marcar_nao_lido" class="btn btn-outline-dark btn-sm"
                                 onclick="return confirm('Deseja marcar este requerimento como não lido?')"
@@ -902,37 +1103,86 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
     <!-- Seção de Ações Administrativas -->
     <div class="row mt-4">
         <div class="col-12">
-            <div class="modern-card <?php echo $isFinalized ? 'finalized-card' : ''; ?>">
-                <div class="modern-card-header <?php echo $isFinalized ? 'finalized-header' : ''; ?>">
-                    <i class="fas fa-cog icon <?php echo $isFinalized ? 'text-muted' : ''; ?>"></i>
-                    <h6 class="<?php echo $isFinalized ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
+            <div class="modern-card <?php echo $isFinalized ? 'finalized-card' : ($isIndeferido ? 'indeferido-card' : ''); ?>">
+                <div class="modern-card-header <?php echo $isFinalized ? 'finalized-header' : ($isIndeferido ? 'indeferido-header' : ''); ?>">
+                    <i class="fas fa-cog icon <?php echo $isBlocked ? 'text-muted' : ''; ?>"></i>
+                    <h6 class="<?php echo $isBlocked ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
                     <?php if ($isFinalized): ?>
                         <div class="ms-auto">
                             <span class="badge bg-secondary">
                                 <i class="fas fa-check-circle me-1"></i>Finalizado
                             </span>
                         </div>
+                    <?php elseif ($isIndeferido): ?>
+                        <div class="ms-auto">
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times-circle me-1"></i>Indeferido
+                            </span>
+                        </div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ''; ?>">
+                <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ($isIndeferido ? 'indeferido-body' : ''); ?>">
                     <?php if ($isFinalized): ?>
-                        <!-- Mensagem para processo finalizado -->
-                        <div class="text-center py-5">
+                        <!-- Mensagem para processo finalizado com opção de reabertura -->
+                        <div class="text-center py-4">
                             <div class="mb-3">
                                 <i class="fas fa-check-circle text-muted" style="font-size: 3rem;"></i>
                             </div>
                             <h5 class="text-muted mb-2">Processo Finalizado</h5>
-                            <p class="text-muted mb-0">
+                            <p class="text-muted mb-4">
                                 Este requerimento já foi finalizado e não permite mais alterações.
                                 <br>
                                 <small>O protocolo oficial já foi enviado ao requerente.</small>
                             </p>
+
+                            <!-- Botão para reabrir processo -->
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-warning btn-sm"
+                                    onclick="showReopenModal()"
+                                    title="Reabrir processo para novas alterações">
+                                    <i class="fas fa-unlock me-2"></i>Reabrir Processo
+                                </button>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        Use apenas quando necessário fazer alterações no processo
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    <?php elseif ($isIndeferido): ?>
+                        <!-- Mensagem para processo indeferido com opção de reabertura -->
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="fas fa-times-circle text-danger" style="font-size: 3rem;"></i>
+                            </div>
+                            <h5 class="text-danger mb-2">Processo Indeferido</h5>
+                            <p class="text-muted mb-4">
+                                Este requerimento foi indeferido e não permite mais alterações.
+                                <br>
+                                <small>O requerente foi notificado por email sobre o indeferimento.</small>
+                            </p>
+
+                            <!-- Botão para reabrir processo -->
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-warning btn-sm"
+                                    onclick="showReopenModal()"
+                                    title="Reabrir processo para novas alterações">
+                                    <i class="fas fa-unlock me-2"></i>Reabrir Processo
+                                </button>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        Use apenas quando necessário fazer alterações no processo
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     <?php else: ?>
                         <!-- Ações normais para processos não finalizados -->
                         <div class="row g-3">
                             <!-- Atualizar Status -->
-                            <div class="col-md-6 col-lg-6">
+                            <div class="col-md-4 col-lg-4">
                                 <div class="admin-action-card">
                                     <div class="admin-action-header">
                                         <i class="fas fa-edit text-primary"></i>
@@ -948,6 +1198,7 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
                                                 <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
                                                 <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
                                                 <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
+                                                <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
                                             </select>
                                         </div>
                                         <div class="mb-3">
@@ -963,7 +1214,7 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
                             </div>
 
                             <!-- Conclusão do Processo -->
-                            <div class="col-md-6 col-lg-6">
+                            <div class="col-md-4 col-lg-4">
                                 <div class="admin-action-card">
                                     <div class="admin-action-header">
                                         <i class="fas fa-check-circle text-success"></i>
@@ -988,10 +1239,150 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Indeferimento do Processo -->
+                            <div class="col-md-4 col-lg-4">
+                                <div class="admin-action-card">
+                                    <div class="admin-action-header">
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                        <h6>Indeferir Processo</h6>
+                                    </div>
+                                    <div class="action-description mb-3" style="border-left-color: var(--red-600);">
+                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                        <small class="text-muted">Negue o requerimento informando os motivos detalhados</small>
+                                    </div>
+                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e;">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento.
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="motivo_indeferimento" class="form-label">Motivo do Indeferimento</label>
+                                        <textarea class="form-control modern-textarea" id="motivo_indeferimento" name="motivo_indeferimento" rows="3"
+                                            placeholder="Descreva detalhadamente o motivo do indeferimento..." required></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="orientacoes_adicionais" class="form-label">Orientações Adicionais <small class="text-muted">(opcional)</small></label>
+                                        <textarea class="form-control modern-textarea" id="orientacoes_adicionais" name="orientacoes_adicionais" rows="2"
+                                            placeholder="Orientações para correção ou reenvio do processo..."></textarea>
+                                    </div>
+                                    <button type="button" class="btn-action btn-action-danger w-100"
+                                        onclick="showIndeferimentoModal()">
+                                        <i class="fas fa-times me-2"></i>Indeferir Processo
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Indeferimento de Processo -->
+<div class="modal fade" id="indeferimentoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle text-danger me-2"></i>
+                    Indeferir Processo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento do processo.
+                </div>
+
+                <div class="mb-3">
+                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?>
+                </div>
+                <div class="mb-3">
+                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email']); ?>
+                </div>
+                <div class="mb-3">
+                    <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
+                </div>
+                <div class="mb-3">
+                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($requerimento['tipo_alvara']); ?>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Motivo do Indeferimento:</strong> <span id="motivo-display"></span>
+                </div>
+
+                <div class="mb-3" id="orientacoes-display-container" style="display: none;">
+                    <strong>Orientações Adicionais:</strong> <span id="orientacoes-display"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <form method="post" action="" style="display: inline;">
+                    <input type="hidden" id="hidden_motivo_indeferimento" name="motivo_indeferimento">
+                    <input type="hidden" id="hidden_orientacoes_adicionais" name="orientacoes_adicionais">
+                    <button type="submit" name="indeferir_processo" class="btn btn-danger">
+                        <i class="fas fa-times me-2"></i>Confirmar Indeferimento
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Reabertura de Processo -->
+<div class="modal fade" id="reopenProcessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-unlock text-warning me-2"></i>
+                    Reabrir Processo Finalizado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="post" action="">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> Esta ação irá reabrir o processo finalizado, permitindo novas alterações.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="novo_status" class="form-label">Novo Status</label>
+                        <select class="form-select" id="novo_status" name="novo_status" required>
+                            <option value="Em análise">Em análise</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
+                            <option value="Pendente">Pendente</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="motivo_reabertura" class="form-label">Motivo da Reabertura</label>
+                        <textarea class="form-control" id="motivo_reabertura" name="motivo_reabertura"
+                            rows="3" placeholder="Descreva o motivo da reabertura do processo..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Protocolo Atual:</strong> #<?php echo $requerimento['protocolo']; ?>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Requerente:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" name="reabrir_processo" class="btn btn-warning">
+                        <i class="fas fa-unlock me-2"></i>Confirmar Reabertura
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1063,6 +1454,49 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
         window.location.href = 'download_arquivos.php?requerimento_id=' + requerimentoId;
     }
 
+    // Função para mostrar modal de indeferimento
+    function showIndeferimentoModal() {
+        const motivoInput = document.getElementById('motivo_indeferimento');
+        const motivoValue = motivoInput.value.trim();
+
+        if (!motivoValue) {
+            alert('Por favor, informe o motivo do indeferimento antes de continuar.');
+            motivoInput.focus();
+            return;
+        }
+
+        if (motivoValue.length < 10) {
+            alert('O motivo do indeferimento deve ter pelo menos 10 caracteres.');
+            motivoInput.focus();
+            return;
+        }
+
+        // Buscar orientações adicionais
+        const orientacoesInput = document.getElementById('orientacoes_adicionais');
+        const orientacoesValue = orientacoesInput ? orientacoesInput.value.trim() : '';
+
+        document.getElementById('motivo-display').textContent = motivoValue;
+        document.getElementById('hidden_motivo_indeferimento').value = motivoValue;
+
+        if (orientacoesValue) {
+            document.getElementById('orientacoes-display').textContent = orientacoesValue;
+            document.getElementById('hidden_orientacoes_adicionais').value = orientacoesValue;
+            document.getElementById('orientacoes-display-container').style.display = 'block';
+        } else {
+            document.getElementById('orientacoes-display-container').style.display = 'none';
+            document.getElementById('hidden_orientacoes_adicionais').value = '';
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('indeferimentoModal'));
+        modal.show();
+    }
+
+    // Função para mostrar modal de reabertura
+    function showReopenModal() {
+        const modal = new bootstrap.Modal(document.getElementById('reopenProcessModal'));
+        modal.show();
+    }
+
     // Função para mostrar modal de confirmação de protocolo
     function showProtocolConfirmModal() {
         const protocolInput = document.getElementById('protocolo_oficial');
@@ -1113,6 +1547,8 @@ function getStatusDotColor($status)
             return '#10b981'; // verde
         case 'finalizado':
             return '#8b5cf6'; // roxo
+        case 'indeferido':
+            return '#dc2626'; // vermelho forte
         case 'reprovado':
         case 'rejeitado':
             return '#ef4444'; // vermelho

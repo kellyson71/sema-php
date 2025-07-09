@@ -210,6 +210,32 @@ class EmailService
     }
 
     /**
+     * Enviar email de indeferimento do processo
+     * 
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $protocolo Protocolo do requerimento
+     * @param string $tipo_alvara Tipo de alvará solicitado
+     * @param string $motivo_indeferimento Motivo do indeferimento
+     * @param string $orientacoes_adicionais Orientações adicionais para o requerente
+     * @param int $requerimento_id ID do requerimento
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailIndeferimento($to_email, $to_name, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais = '', $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Indeferido";
+
+            $body = $this->carregarTemplateIndeferimento($to_name, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais);
+
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de indeferimento: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Carregar template de email para confirmação de protocolo
      */
     private function carregarTemplateProtocolo($nome, $protocolo, $tipo_alvara, $dados = [])
@@ -226,6 +252,16 @@ class EmailService
     {
         ob_start();
         include __DIR__ . '/../templates/email_protocolo_oficial.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Carregar template de email para indeferimento de processo
+     */
+    private function carregarTemplateIndeferimento($nome_destinatario, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_indeferimento.php';
         return ob_get_clean();
     }
 }
