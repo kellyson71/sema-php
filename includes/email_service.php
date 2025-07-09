@@ -11,7 +11,7 @@ require_once(__DIR__ . '/database.php');
 /**
  * Registra o log de email no banco de dados
  */
-function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status, $erro = null)
+function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status, $erro = null, $eh_teste = false)
 {
     try {
         // Validar dados obrigatórios
@@ -28,6 +28,16 @@ function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status
         }
         $usuario = isset($_SESSION['admin_nome']) ? $_SESSION['admin_nome'] : 'Sistema';
 
+        // Detectar automaticamente se é teste baseado no email ou assunto
+        $eh_teste_auto = $eh_teste ||
+            strpos($email_destino, '@example.com') !== false ||
+            strpos($email_destino, 'teste') !== false ||
+            strpos($email_destino, 'test') !== false ||
+            strpos($assunto, '[TESTE]') !== false ||
+            strpos($assunto, 'teste') !== false ||
+            strpos($assunto, 'test') !== false ||
+            EMAIL_TEST_MODE;
+
         $data = [
             'requerimento_id' => $requerimento_id,
             'email_destino' => $email_destino,
@@ -35,7 +45,9 @@ function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status
             'mensagem' => $mensagem,
             'usuario_envio' => $usuario,
             'status' => $status,
-            'erro' => $erro
+            'erro' => $erro,
+            'eh_teste' => $eh_teste_auto ? 1 : 0,
+            'detalhes_envio' => $eh_teste_auto ? 'Enviado em modo de teste' : 'Enviado via SMTP: ' . SMTP_HOST
         ];
 
         return $db->insert('email_logs', $data);
@@ -61,9 +73,29 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         error_log("============================");
 
         if ($requerimento_id) {
-            logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO');
+            // Marcar claramente como teste nos logs
+            logEmail($requerimento_id, $email, "[TESTE] " . $assunto, $mensagem, 'SUCESSO', 'Enviado em modo de teste - não foi enviado realmente', true);
         }
         return true;
+    }
+
+    // Validações básicas antes de tentar enviar
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erro = "Email inválido: " . $email;
+        error_log($erro);
+        if ($requerimento_id) {
+            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
+        }
+        return false;
+    }
+
+    if (empty(SMTP_USERNAME) || empty(SMTP_PASSWORD)) {
+        $erro = "Credenciais SMTP não configuradas";
+        error_log($erro);
+        if ($requerimento_id) {
+            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
+        }
+        return false;
     }
 
     try {
@@ -96,13 +128,15 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
             $erro = $mail->ErrorInfo;
             error_log("Erro ao enviar email: " . $erro);
             if ($requerimento_id) {
-                logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
+                logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
             }
             return false;
         } else {
             error_log("Email enviado com sucesso para: " . $email);
             if ($requerimento_id) {
-                logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO');
+                // Registrar sucesso com informações adicionais
+                $detalhes_sucesso = "Email enviado via SMTP: " . SMTP_HOST;
+                logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO', $detalhes_sucesso, false);
             }
             return true;
         }
@@ -110,7 +144,7 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         $erro = $e->getMessage();
         error_log("Exceção ao enviar email: " . $erro);
         if ($requerimento_id) {
-            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
+            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
         }
         return false;
     }

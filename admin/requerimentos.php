@@ -485,40 +485,36 @@ include 'header.php';
 
                                 <td>
                                     <?php
-                                    $statusClass = '';
-                                    $statusIcon = '';
+                                    $statusDotColor = '';
                                     switch (strtolower($req['status'])) {
                                         case 'pendente':
-                                            $statusClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                            $statusIcon = 'fas fa-clock';
+                                            $statusDotColor = '#f59e0b'; // amarelo
                                             break;
                                         case 'aprovado':
-                                            $statusClass = 'bg-green-100 text-green-800 border-green-200';
-                                            $statusIcon = 'fas fa-check-circle';
+                                            $statusDotColor = '#10b981'; // verde
                                             break;
                                         case 'finalizado':
-                                            $statusClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                                            $statusIcon = 'fas fa-flag-checkered';
+                                            $statusDotColor = '#8b5cf6'; // roxo
                                             break;
                                         case 'reprovado':
                                         case 'rejeitado':
-                                            $statusClass = 'bg-red-100 text-red-800 border-red-200';
-                                            $statusIcon = 'fas fa-times-circle';
+                                            $statusDotColor = '#ef4444'; // vermelho
                                             break;
                                         case 'em análise':
                                         case 'em_analise':
-                                            $statusClass = 'bg-blue-100 text-blue-800 border-blue-200';
-                                            $statusIcon = 'fas fa-search';
+                                            $statusDotColor = '#3b82f6'; // azul
+                                            break;
+                                        case 'cancelado':
+                                            $statusDotColor = '#6b7280'; // cinza
                                             break;
                                         default:
-                                            $statusClass = 'bg-gray-100 text-gray-800 border-gray-200';
-                                            $statusIcon = 'fas fa-info-circle';
+                                            $statusDotColor = '#6b7280'; // cinza
                                     }
                                     ?>
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border <?php echo $statusClass; ?>">
-                                        <i class="<?php echo $statusIcon; ?> mr-1"></i>
-                                        <?php echo $req['status']; ?>
-                                    </span>
+                                    <div class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full mr-2" style="background-color: <?php echo $statusDotColor; ?>"></span>
+                                        <span class="text-sm text-gray-700 font-medium"><?php echo $req['status']; ?></span>
+                                    </div>
                                 </td>
 
                                 <td class="text-gray-600">
