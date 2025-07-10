@@ -91,6 +91,22 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             margin-bottom: 10px;
         }
 
+        .sidebar-footer {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .version-text {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
         .sidebar-menu {
             padding: 20px 0;
         }
@@ -528,6 +544,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
             </ul>
+        </div>
+
+        <!-- Versão do sistema - discreta -->
+        <div class="sidebar-footer">
+            <span class="version-text">v2.3</span>
         </div>
     </div>
 
