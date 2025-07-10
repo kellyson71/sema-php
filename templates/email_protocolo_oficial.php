@@ -53,7 +53,7 @@
 
             <p>Encaminhamos o número de protocolo referente ao processo requerido: <span class="protocol-number"><?= htmlspecialchars($protocolo_oficial) ?></span></p>
             <p>O protocolo pode ser acompanhado pelo sistema de tributos municipais no link
-                <a href="https://gestor.tributosmunicipais.com.br/redesim/views/publico/prefWeb/modulos/processo/consulta/processos.xhtml" class="link">gestor.tributosmunicipais.com.br</a>
+                <a href="https://gestor.tributosmunicipais.com.br/redesim/prefeitura/paudosferros/views/publico/portaldocontribuinte/index.xhtml" class="link">gestor.tributosmunicipais.com.br</a>
                 (digite o protocolo enviado para acompanhar o processo).
             </p>
 

@@ -4,8 +4,8 @@ $tipos_alvara = [
     'construcao' => [
         'nome' => 'ALVARÁ DE CONSTRUÇÃO, REFORMA E/OU AMPLIAÇÃO',
         'documentos' => [
-            '1. Documento pessoal com foto e CPF do requerente;',
-            '2. Documento pessoal com foto e CPF do proprietário;',
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '3. Comprovante de residência do proprietário e do requerente;',
             '4. Documento do terreno;',
             '5. Cadastro imobiliário;',
@@ -37,8 +37,8 @@ $tipos_alvara = [
     'habite_se' => [
         'nome' => 'ALVARÁ DE HABITE-SE E LEGALIZAÇÃO',
         'documentos' => [
-            '1. Documento pessoal com foto e CPF do requerente;',
-            '2. Documento pessoal com foto e CPF do proprietário;',
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '3. Comprovante de residência do proprietário e do requerente;',
             '4. Documento do terreno e Cadastro imobiliário;',
             '5. ART ou RRT do projetos e execução (assinada pelo responsável técnico e contratante);',
@@ -63,8 +63,8 @@ $tipos_alvara = [
     'habite_se_simples' => [
         'nome' => 'ALVARÁ DE HABITE-SE',
         'documentos' => [
-            '1. Documento pessoal com foto e CPF do requerente;',
-            '2. Documento pessoal com foto e CPF do proprietário;',
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '3. Comprovante de residência do proprietário e do requerente;',
             '4. Documento do terreno e Cadastro imobiliário;',
             '5. Alvará de construção vigente;',
@@ -88,7 +88,7 @@ $tipos_alvara = [
     'funcionamento' => [
         'nome' => 'ALVARÁ DE FUNCIONAMENTO',
         'pessoa_fisica' => [
-            '1. RG e CPF do solicitante e do responsável pelo empreendimento;',
+            '1. RG e CPF/CNPJ do solicitante e do responsável pelo empreendimento;',
             '2. Comprovante de endereço pessoal;',
             '3. Comprovante de endereço da empresa;',
             '4. Autorização do Corpo de Bombeiros (dependendo do empreendimento, se houver alto risco);',
@@ -98,7 +98,7 @@ $tipos_alvara = [
             '1. CNPJ;',
             '2. Certificado de microempreendedor individual;',
             '3. Contrato social (quando for sociedade);',
-            '4. RG e CPF;',
+            '4. RG e CPF/CNPJ;',
             '5. Comprovante de endereço pessoal;',
             '6. Comprovante de endereço da empresa;',
             '7. Autorização do Corpo de Bombeiros (dependendo do empreendimento, se houver alto risco);',
@@ -116,8 +116,8 @@ $tipos_alvara = [
     'desmembramento' => [
         'nome' => 'ALVARÁ DE DESMEMBRAMENTO E REMEMBRAMENTO',
         'documentos' => [
-            '1. Documento pessoal com foto e CPF do requerente;',
-            '2. Documento pessoal com foto e CPF do proprietário;',
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '3. Comprovante de residência do proprietário e do requerente;',
             '4. Documento do terreno;',
             '5. Certidão atualizada de gleba;',
@@ -142,7 +142,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta (assinada pelo responsável técnico e contratante);',
             '3. Documento do terreno;',
             '4. Cadastro imobiliário;',
-            '5. Documento pessoal com foto e CPF;',
+            '5. Documento pessoal com foto e CPF/CNPJ;',
             '6. Comprovante de residência do proprietário e do requerente.',
         ],
         'observacoes' => [
@@ -221,8 +221,8 @@ $tipos_alvara = [
             '3. Planta de baixa com coordenada geográfica indicando os nomes das ruas e a distância das esquinas mais próximas; (assinada pelo responsável técnico e contratante);',
             '4. Documento do terreno;',
             '5. Cadastro imobiliário;',
-            '6. Documento pessoal com foto e CPF;',
-            '7. Documento pessoal com foto e CPF do proprietário (caso for CNPJ, enviar o contrato social)',
+            '6. Documento pessoal com foto e CPF/CNPJ;',
+            '7. Documento pessoal com foto e CPF/CNPJ do proprietário (caso for CNPJ, enviar o contrato social)',
             '8. Comprovante de residência do proprietário e do requerente.',
         ],
         'observacoes' => [
@@ -237,7 +237,7 @@ $tipos_alvara = [
     'parques_circos' => [
         'nome' => 'ALVARÁ PROVISÓRIO PARA PARQUES DE DIVERSÕES E CIRCOS',
         'documentos' => [
-            '1. Documento pessoal com foto e CPF do proprietário;',
+            '1. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '2. Comprovante de residência do proprietário;',
             '3. Contrato de aluguel do terreno;',
             '4. ART de projeto e execução de instalações mecânicas;',

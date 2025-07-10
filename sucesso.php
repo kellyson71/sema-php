@@ -154,7 +154,7 @@ unset($_SESSION['sucesso']);
             </div>
             <div class="botoes">
                 <a href="index.php" class="botao secundario">Voltar ao Início</a>
-                <a href="https://gestor.tributosmunicipais.com.br/redesim/views/publico/prefWeb/modulos/processo/consulta/processos.xhtml" class="botao">Consultar Requerimento</a>
+                <a href="https://gestor.tributosmunicipais.com.br/redesim/prefeitura/paudosferros/views/publico/portaldocontribuinte/index.xhtml" class="botao">Consultar Requerimento</a>
             </div>
         </div>
     </main>
