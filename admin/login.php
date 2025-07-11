@@ -1,5 +1,14 @@
 <?php
-require_once 'conexao.php';
+        // Verificação de redirecionamento para o domínio principal
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
+            $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
+            header("HTTP/1.1 301 Moved Permanently");
+            header("Location: $redirect_url");
+            exit();
+        }
+
+        require_once 'conexao.php';
 
 // Verificar se já está logado
 if (isset($_SESSION['admin_id'])) {
