@@ -548,7 +548,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <!-- Versão do sistema - discreta -->
         <div class="sidebar-footer">
-            <span class="version-text">v2.5</span>
+            <span class="version-text">v2.6</span>
         </div>
     </div>
 
