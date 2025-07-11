@@ -8,9 +8,77 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
     exit();
 }
 
-// Redirecionar automaticamente para o portal da prefeitura
-header("Location: https://www.paudosferros.rn.gov.br/");
-exit;
+                // Incluir arquivos necessários
+                require_once '../includes/config.php';
+                require_once '../includes/database.php';
+                require_once '../includes/functions.php';
+
+                // Inicializar variáveis
+                $mensagem = null;
+                $resultado = false;
+                $requerimento = null;
+                $requerente = null;
+                $proprietario = null;
+                $documentos = [];
+
+                // Processar formulário de consulta
+                if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
+                    $protocolo = trim($_POST['protocolo']);
+
+                    if (!empty($protocolo)) {
+                        try {
+                            // Conectar ao banco de dados
+                            $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                            $pdo->exec("SET NAMES utf8");
+
+                            // Buscar requerimento
+                            $stmt = $pdo->prepare("
+                SELECT r.*, ta.nome as tipo_alvara 
+                FROM requerimentos r 
+                LEFT JOIN tipos_alvara ta ON r.tipo_alvara = ta.id 
+                WHERE r.protocolo = ?
+            ");
+                            $stmt->execute([$protocolo]);
+                            $requerimento = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                            if ($requerimento) {
+                                $resultado = true;
+
+                                // Buscar dados do requerente
+                                $stmt = $pdo->prepare("SELECT * FROM requerentes WHERE id = ?");
+                                $stmt->execute([$requerimento['requerente_id']]);
+                                $requerente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                                // Buscar dados do proprietário
+                                $stmt = $pdo->prepare("SELECT * FROM proprietarios WHERE id = ?");
+                                $stmt->execute([$requerimento['proprietario_id']]);
+                                $proprietario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                                // Buscar documentos
+                                $stmt = $pdo->prepare("SELECT * FROM documentos WHERE requerimento_id = ? ORDER BY campo_formulario");
+                                $stmt->execute([$requerimento['id']]);
+                                $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                            } else {
+                                $mensagem = [
+                                    'tipo' => 'erro',
+                                    'texto' => 'Protocolo não encontrado. Verifique o número digitado e tente novamente.'
+                                ];
+                            }
+                        } catch (Exception $e) {
+                            $mensagem = [
+                                'tipo' => 'erro',
+                                'texto' => 'Erro ao consultar o protocolo. Tente novamente mais tarde.'
+                            ];
+                        }
+                    } else {
+                        $mensagem = [
+                            'tipo' => 'erro',
+                            'texto' => 'Por favor, digite um número de protocolo.'
+                        ];
+                    }
+                }
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
