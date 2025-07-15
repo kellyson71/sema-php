@@ -108,7 +108,7 @@ include_once 'tipos_alvara.php';
                 <div class="form-header">
                     <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
-                    <p>aa REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
+                    <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
 
                 <!-- Seção 1: Dados do Requerente -->
