@@ -254,30 +254,6 @@ include_once 'tipos_alvara.php';
         <div class="loading-spinner"></div>
     </div>
 
-    <!-- Modal de Confirmação para Substituição de Documento -->
-    <div id="modal-substituir-documento" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Substituir Documento</h3>
-            </div>
-            <div class="modal-body">
-                <p>Você já selecionou um documento para este campo. Deseja substituí-lo pelo novo arquivo?</p>
-                <div class="documento-info">
-                    <strong>Documento atual:</strong> <span id="documento-atual-nome"></span>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancelar" onclick="cancelarSubstituicao()">
-                    <i class="fas fa-times"></i> Cancelar
-                </button>
-                <button type="button" class="btn-confirmar" onclick="confirmarSubstituicao()">
-                    <i class="fas fa-check"></i> Substituir
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Função para mostrar/esconder campos do proprietário
         document.addEventListener('DOMContentLoaded', function() {
@@ -339,6 +315,9 @@ include_once 'tipos_alvara.php';
                             const inputsFile = documentosDiv.querySelectorAll('input[type="file"]');
                             inputsFile.forEach(input => {
                                 input.setAttribute('form', 'form');
+                                input.addEventListener('change', function() {
+                                    validarArquivoPDF(this);
+                                });
                             });
                         })
                         .catch(error => {
@@ -388,10 +367,6 @@ include_once 'tipos_alvara.php';
             }
         });
 
-        // Variáveis para controle do modal de substituição
-        let arquivoTemporario = null;
-        let inputTemporario = null;
-
         // Função para validar que apenas arquivos PDF sejam enviados
         function validarArquivoPDF(input) {
             if (!input.files || input.files.length === 0) {
@@ -416,348 +391,130 @@ include_once 'tipos_alvara.php';
 
             return true;
         }
-
-        // Função para atualizar o status visual do arquivo
-        function atualizarStatusArquivo(input, nomeArquivo = null) {
-            const statusElement = document.getElementById('status-' + input.id);
-            if (statusElement) {
-                if (nomeArquivo) {
-                    statusElement.innerHTML = '<span class="file-selected">' + nomeArquivo + '</span>';
-                } else {
-                    statusElement.innerHTML = '<span class="file-placeholder">Nenhum arquivo selecionado</span>';
-                }
-            }
-        }
-
-        // Função para verificar se já existe arquivo e mostrar modal de confirmação
-        function verificarSubstituicaoDocumento(input) {
-            console.log('Verificando substituição para:', input.id);
-            console.log('Arquivo anterior:', input.dataset.arquivoAnterior);
-            console.log('Arquivos selecionados:', input.files.length);
-
-            // Se não há arquivo selecionado, não faz nada
-            if (!input.files || input.files.length === 0) {
-                atualizarStatusArquivo(input);
-                return true;
-            }
-
-            // Verifica se já havia um arquivo selecionado anteriormente
-            if (input.dataset.arquivoAnterior) {
-                // Armazena o novo arquivo temporariamente
-                arquivoTemporario = input.files[0];
-                inputTemporario = input;
-
-                // Mostra o nome do arquivo atual no modal
-                document.getElementById('documento-atual-nome').textContent = input.dataset.arquivoAnterior;
-
-                // Remove o arquivo atual (volta ao estado vazio temporariamente)
-                const dataTransfer = new DataTransfer();
-                input.files = dataTransfer.files;
-
-                // Mantém o status visual do arquivo anterior
-                atualizarStatusArquivo(input, input.dataset.arquivoAnterior);
-
-                // Mostra o modal
-                document.getElementById('modal-substituir-documento').style.display = 'flex';
-
-                return false; // Impede o processamento normal
-            } else {
-                // Primeira vez selecionando um arquivo - valida e armazena o nome
-                if (validarArquivoPDF(input)) {
-                    const nomeArquivo = input.files[0].name;
-                    input.dataset.arquivoAnterior = nomeArquivo;
-                    atualizarStatusArquivo(input, nomeArquivo);
-                    console.log('Arquivo armazenado:', input.dataset.arquivoAnterior);
-                    return true;
-                } else {
-                    atualizarStatusArquivo(input);
-                    return false;
-                }
-            }
-        }
-
-        // Função para confirmar a substituição do documento
-        function confirmarSubstituicao() {
-            if (inputTemporario && arquivoTemporario) {
-                console.log('Confirmando substituição:', arquivoTemporario.name);
-
-                // Valida o novo arquivo primeiro
-                if (arquivoTemporario.name.toLowerCase().endsWith('.pdf') && arquivoTemporario.size <= 10485760) {
-                    // Cria um novo FileList com o arquivo temporário
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(arquivoTemporario);
-                    inputTemporario.files = dataTransfer.files;
-
-                    // Atualiza o nome do arquivo anterior
-                    inputTemporario.dataset.arquivoAnterior = arquivoTemporario.name;
-
-                    // Atualiza o status visual
-                    atualizarStatusArquivo(inputTemporario, arquivoTemporario.name);
-
-                    console.log('Arquivo substituído com sucesso:', inputTemporario.dataset.arquivoAnterior);
-                } else {
-                    alert('Arquivo inválido. Selecione um arquivo PDF válido com menos de 10MB.');
-                    // Restaura o arquivo anterior visualmente
-                    atualizarStatusArquivo(inputTemporario, inputTemporario.dataset.arquivoAnterior);
-                }
-
-                // Limpa as variáveis temporárias
-                arquivoTemporario = null;
-                inputTemporario = null;
-            }
-
-            // Fecha o modal
-            document.getElementById('modal-substituir-documento').style.display = 'none';
-        }
-
-        // Função para cancelar a substituição do documento
-        function cancelarSubstituicao() {
-            console.log('Cancelando substituição');
-
-            // Se havia um input temporário, restaura o status visual
-            if (inputTemporario && inputTemporario.dataset.arquivoAnterior) {
-                atualizarStatusArquivo(inputTemporario, inputTemporario.dataset.arquivoAnterior);
-                console.log('Mantendo arquivo anterior:', inputTemporario.dataset.arquivoAnterior);
-            }
-
-            // Limpa as variáveis temporárias
-            arquivoTemporario = null;
-            inputTemporario = null;
-
-            // Fecha o modal
-            document.getElementById('modal-substituir-documento').style.display = 'none';
-        }
-
-        // Função para fechar modal clicando fora dele
-        document.addEventListener('click', function(event) {
-            const modal = document.getElementById('modal-substituir-documento');
-            if (modal && event.target === modal) {
-                cancelarSubstituicao();
-            }
-        });
     </script>
 
     <style>
         /* Estilo para a mensagem de formato de arquivo */
         .formato-arquivo {
             display: block;
-            color: #dc3545;
+            color: #6c757d;
             font-size: 12px;
-            margin-top: 6px;
-            font-style: italic;
-        }
-
-        /* Estilo para destacar quando o arquivo é inválido */
-        input[type="file"].invalid-file {
-            border: 1px solid #dc3545;
-            background-color: #fff8f8;
-        }
-
-        /* Modal de Confirmação para Substituição de Documento */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s ease-in-out;
+            margin-top: 4px;
         }
 
         /* Estilo para o container do input de arquivo */
         .file-input-container {
-            position: relative;
-        }
-
-        .file-status {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            pointer-events: none;
-            font-size: 14px;
-        }
-
-        .file-placeholder {
-            color: #6c757d;
-            font-style: italic;
-        }
-
-        .file-selected {
-            color: #009640;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .file-selected::before {
-            content: "📄";
-            font-size: 16px;
-        }
-
-        .upload-item input[type="file"] {
-            position: relative;
-            z-index: 1;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .upload-item input[type="file"]:focus+.file-status {
-            border-color: #009640;
-            box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .modal-header {
-            padding: 20px 24px 0;
-            text-align: center;
-            border-bottom: 1px solid #e9ecef;
             margin-bottom: 20px;
         }
 
-        .modal-header i {
-            font-size: 3rem;
-            color: #ffc107;
-            margin-bottom: 10px;
+        .file-input-container label {
+            display: block;
+            margin-bottom: 8px;
+            color: #024287;
+            font-weight: 500;
         }
 
-        .modal-header h3 {
-            margin: 0;
-            color: #333;
-            font-size: 1.5rem;
-            font-weight: 600;
+        .file-input-container input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #fff;
+            font-size: 14px;
         }
 
-        .modal-body {
-            padding: 0 24px 20px;
-            text-align: center;
+        .file-input-container input[type="file"]:hover {
+            border-color: #009640;
         }
 
-        .modal-body p {
-            margin: 0 0 15px;
-            color: #666;
-            line-height: 1.5;
+        .file-input-container input[type="file"]:focus {
+            border-color: #009640;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
         }
 
-        .documento-info {
-            background: #f8f9fa;
-            padding: 12px;
+        /* Estilo para a lista de documentos */
+        .documentos-lista {
+            background-color: #fff;
             border-radius: 8px;
-            margin-top: 15px;
-            text-align: left;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .documento-info strong {
-            color: #333;
+        .documentos-lista h3 {
+            color: #024287;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e9ecef;
         }
 
-        #documento-atual-nome {
+        .documentos-section {
+            margin-bottom: 30px;
+        }
+
+        .documentos-section h4 {
             color: #009640;
-            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 15px;
         }
 
-        .modal-footer {
-            padding: 20px 24px;
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            border-top: 1px solid #e9ecef;
+        .observacoes-lista {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
 
-        .btn-cancelar,
-        .btn-confirmar {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: 120px;
-            justify-content: center;
+        .observacoes-lista li {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
         }
 
-        .btn-cancelar {
-            background: #6c757d;
-            color: white;
+        .observacoes-lista li:before {
+            content: "•";
+            color: #009640;
+            position: absolute;
+            left: 0;
         }
 
-        .btn-cancelar:hover {
-            background: #5a6268;
-            transform: translateY(-1px);
+        /* Mensagens de feedback */
+        .mensagem-inicial,
+        .mensagem-erro,
+        .mensagem-carregando {
+            text-align: center;
+            padding: 30px;
+            border-radius: 8px;
+            background-color: #fff;
         }
 
-        .btn-confirmar {
-            background: #009640;
-            color: white;
+        .mensagem-inicial i,
+        .mensagem-erro i,
+        .mensagem-carregando i {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #009640;
         }
 
-        .btn-confirmar:hover {
-            background: #007a35;
-            transform: translateY(-1px);
+        .mensagem-erro i {
+            color: #dc3545;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+        .spinner-border {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 0.25em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px) scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .modal-content {
-                width: 95%;
-                margin: 10px;
-            }
-
-            .modal-footer {
-                flex-direction: column;
-            }
-
-            .btn-cancelar,
-            .btn-confirmar {
-                width: 100%;
-                min-width: auto;
-            }
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
         }
     </style>
 </body>
