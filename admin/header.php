@@ -107,6 +107,26 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             letter-spacing: 0.5px;
         }
 
+        /* Estilos para o link de suporte */
+        .support-link {
+            display: block;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            text-decoration: none;
+            padding: 8px 0;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .support-link:hover {
+            color: #fff;
+        }
+
+        .support-link i {
+            margin-right: 5px;
+            font-size: 0.9rem;
+        }
+
         .sidebar-menu {
             padding: 20px 0;
         }
@@ -548,6 +568,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <!-- Versão do sistema - discreta -->
         <div class="sidebar-footer">
+            <!-- Link de suporte -->
+            <a href="https://wa.me/5584981087357" target="_blank" class="support-link" title="Fale conosco no WhatsApp">
+                <i class="fab fa-whatsapp"></i>
+                <span>Problemas? Fale conosco</span>
+            </a>
             <span class="version-text">v2.6</span>
         </div>
     </div>
