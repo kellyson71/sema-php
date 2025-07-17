@@ -742,6 +742,197 @@ include 'header.php';
         height: 2px;
         background: var(--primary-600);
     }
+
+    /* Estilos específicos para o modal de pré-visualização de email */
+    #emailPreviewModal .modal-dialog {
+        max-width: 800px;
+    }
+
+    #emailPreviewModal .modal-header {
+        background: linear-gradient(135deg, var(--primary-50), var(--gray-50));
+        border-bottom: 2px solid var(--primary-100);
+    }
+
+    #emailPreviewModal .modal-title {
+        color: var(--primary-700);
+        font-weight: 600;
+    }
+
+    .email-preview-info {
+        background: var(--gray-50);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+    }
+
+    .email-preview-info small {
+        color: var(--gray-500);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+
+    .email-preview-info strong {
+        color: var(--gray-900);
+        font-weight: 600;
+    }
+
+    #email-preview-content {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-sm);
+        background: #f8f9fa;
+        min-height: 200px;
+    }
+
+    /* Animação suave para os botões de pré-visualização */
+    .btn-outline-info {
+        border-color: #0ea5e9;
+        color: #0ea5e9;
+        transition: var(--transition);
+    }
+
+    .btn-outline-info:hover {
+        background: #0ea5e9;
+        border-color: #0ea5e9;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Estilo para o botão de copiar conteúdo */
+    .btn-primary {
+        background: var(--primary-600);
+        border-color: var(--primary-600);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-700);
+        border-color: var(--primary-700);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Feedback visual para quando o conteúdo é copiado */
+    .btn-success {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+    }
+
+    /* Melhorar a responsividade do modal */
+    @media (max-width: 768px) {
+        #emailPreviewModal .modal-dialog {
+            max-width: 95%;
+            margin: 1rem;
+        }
+        
+        #emailPreviewModal .modal-body {
+            padding: 0.75rem;
+        }
+        
+        .email-preview-info .row {
+            flex-direction: column;
+        }
+        
+        .email-preview-info .col-md-6 {
+            margin-bottom: 0.75rem;
+        }
+    }
+
+    /* Estilos melhorados para os botões dos modais */
+    .modal-footer .btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+        min-width: 120px;
+        font-size: 0.875rem;
+    }
+
+    .modal-footer .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-footer .btn-outline-secondary {
+        border-color: var(--gray-400);
+        color: var(--gray-600);
+    }
+
+    .modal-footer .btn-outline-secondary:hover {
+        background-color: var(--gray-100);
+        border-color: var(--gray-500);
+        color: var(--gray-700);
+    }
+
+    .modal-footer .btn-outline-info {
+        border-color: #0ea5e9;
+        color: #0ea5e9;
+    }
+
+    .modal-footer .btn-outline-info:hover {
+        background-color: #0ea5e9;
+        border-color: #0ea5e9;
+        color: white;
+    }
+
+    .modal-footer .btn-success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-color: #10b981;
+        color: white;
+    }
+
+    .modal-footer .btn-success:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+        border-color: #059669;
+        color: white;
+    }
+
+    .modal-footer .btn-danger {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border-color: #ef4444;
+        color: white;
+    }
+
+    .modal-footer .btn-danger:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        border-color: #dc2626;
+        color: white;
+    }
+
+    .modal-footer .btn-primary {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        border-color: var(--primary-600);
+        color: white;
+    }
+
+    .modal-footer .btn-primary:hover {
+        background: linear-gradient(135deg, var(--primary-700), #047857);
+        border-color: var(--primary-700);
+        color: white;
+    }
+
+    /* Melhorar o layout dos botões */
+    .modal-footer .d-flex.gap-2 {
+        gap: 0.75rem !important;
+    }
+
+    /* Responsividade para os botões */
+    @media (max-width: 576px) {
+        .modal-footer {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .modal-footer .d-flex.gap-2 {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .modal-footer .btn {
+            min-width: auto;
+            flex: 1;
+        }
+    }
 </style>
 
 <?php
@@ -1317,17 +1508,22 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <strong>Orientações Adicionais:</strong> <span id="orientacoes-display"></span>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer d-flex justify-content-between align-items-center">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Cancelar
+                    Cancelar
                 </button>
-                <form method="post" action="" style="display: inline;">
-                    <input type="hidden" id="hidden_motivo_indeferimento" name="motivo_indeferimento">
-                    <input type="hidden" id="hidden_orientacoes_adicionais" name="orientacoes_adicionais">
-                    <button type="submit" name="indeferir_processo" class="btn btn-danger">
-                        <i class="fas fa-times me-2"></i>Confirmar Indeferimento
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewIndeferimentoEmail()">
+                        Pré-visualizar Email
                     </button>
-                </form>
+                    <form method="post" action="" style="display: inline;">
+                        <input type="hidden" id="hidden_motivo_indeferimento" name="motivo_indeferimento">
+                        <input type="hidden" id="hidden_orientacoes_adicionais" name="orientacoes_adicionais">
+                        <button type="submit" name="indeferir_processo" class="btn btn-danger">
+                            Confirmar Indeferimento
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -1413,16 +1609,65 @@ $isBlocked = $isFinalized || $isIndeferido;
                     O requerente receberá um email com o protocolo oficial da prefeitura.
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer d-flex justify-content-between align-items-center">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Cancelar
+                    Cancelar
                 </button>
-                <form method="post" action="" style="display: inline;">
-                    <input type="hidden" id="hidden_protocolo_oficial" name="protocolo_oficial">
-                    <button type="submit" name="enviar_email_protocolo" class="btn btn-success">
-                        <i class="fas fa-check me-2"></i>Confirmar Envio
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewProtocolEmail()">
+                        Pré-visualizar Email
                     </button>
-                </form>
+                    <form method="post" action="" style="display: inline;">
+                        <input type="hidden" id="hidden_protocolo_oficial" name="protocolo_oficial">
+                        <button type="submit" name="enviar_email_protocolo" class="btn btn-success">
+                            Confirmar Envio
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Pré-visualização de Email -->
+<div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye text-primary me-2"></i>
+                    Pré-visualização do Email
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="border-bottom bg-light p-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Para:</small>
+                            <strong id="preview-destinatario"></strong>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Email:</small>
+                            <strong id="preview-email"></strong>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted d-block">Assunto:</small>
+                            <strong id="preview-assunto"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3" style="max-height: 500px; overflow-y: auto;">
+                    <div id="email-preview-content" style="font-family: Arial, sans-serif; line-height: 1.6;"></div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    Fechar Pré-visualização
+                </button>
+                <button type="button" class="btn btn-primary" onclick="copyEmailContent()">
+                    Copiar Conteúdo
+                </button>
             </div>
         </div>
     </div>
@@ -1495,6 +1740,151 @@ $isBlocked = $isFinalized || $isIndeferido;
     function showReopenModal() {
         const modal = new bootstrap.Modal(document.getElementById('reopenProcessModal'));
         modal.show();
+    }
+
+    // Função para pré-visualizar email de protocolo oficial
+    function previewProtocolEmail() {
+        const protocolInput = document.getElementById('protocolo_oficial');
+        const protocolValue = protocolInput.value.trim();
+
+        if (!protocolValue) {
+            alert('Por favor, informe o protocolo oficial antes de visualizar.');
+            protocolInput.focus();
+            return;
+        }
+
+        // Dados para o template
+        const dados = {
+            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'])); ?>',
+            protocolo_oficial: protocolValue
+        };
+
+        // Conteúdo do email de protocolo oficial
+        const emailContent = `
+            <div style="max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+                <div style="background-color: #ffffff; border-radius: 5px; padding: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                    <div style="margin: 20px 0; text-align: left;">
+                        <p>Prezado(a) <strong>${dados.nome_destinatario}</strong>,</p>
+
+                        <p>Encaminhamos o número de protocolo referente ao processo requerido: <strong style="color: #009851;">${dados.protocolo_oficial}</strong></p>
+                        
+                        <p>O protocolo pode ser acompanhado pelo site da Prefeitura no link 
+                            <a href="https://www.paudosferros.rn.gov.br" style="color: #009851; text-decoration: none;">www.paudosferros.rn.gov.br</a> 
+                            na aba <strong>SERVIÇOS > PORTAL DO CONTRIBUINTE > PROTOCOLO > ACOMPANHAMENTO</strong> (aqui digite o protocolo enviado).
+                        </p>
+
+                        <p>O alvará poderá ser retirado na Secretaria de Meio Ambiente / Setor de Obras quando a taxa for paga na Secretaria de Tributação.</p>
+
+                        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <p>Atenciosamente,</p>
+                            <p><strong>Setor de fiscalização ambiental<br>
+                                    Secretaria Municipal de Meio Ambiente</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Preencher dados do modal
+        document.getElementById('preview-destinatario').textContent = dados.nome_destinatario;
+        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email']); ?>';
+        document.getElementById('preview-assunto').textContent = 'Protocolo Oficial - Secretaria de Meio Ambiente';
+        document.getElementById('email-preview-content').innerHTML = emailContent;
+
+        // Mostrar modal
+        const previewModal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+        previewModal.show();
+    }
+
+    // Função para pré-visualizar email de indeferimento
+    function previewIndeferimentoEmail() {
+        const motivoValue = document.getElementById('hidden_motivo_indeferimento').value;
+        const orientacoesValue = document.getElementById('hidden_orientacoes_adicionais').value;
+
+        if (!motivoValue) {
+            alert('Dados do indeferimento não encontrados.');
+            return;
+        }
+
+        // Dados para o template
+        const dados = {
+            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'])); ?>',
+            protocolo: '<?php echo $requerimento['protocolo']; ?>',
+            motivo_indeferimento: motivoValue,
+            orientacoes_adicionais: orientacoesValue
+        };
+
+        // Conteúdo do email de indeferimento
+        let emailContent = `
+            <div style="max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+                <div style="background-color: #ffffff; border-radius: 5px; padding: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                    <div style="margin: 20px 0; text-align: left;">
+                        <p>Prezado(a) <strong>${dados.nome_destinatario}</strong>,</p>
+
+                        <p>Informamos que seu requerimento foi analisado pela equipe técnica da Secretaria do Meio Ambiente.</p>
+
+                        <p><strong>PROCESSO INDEFERIDO</strong></p>
+
+                        <p>Infelizmente, o processo de protocolo <strong style="color: #009851;">#${dados.protocolo}</strong> foi indeferido pelos seguintes motivos:</p>
+
+                        <p><strong>${dados.motivo_indeferimento.replace(/\n/g, '<br>')}</strong></p>
+        `;
+
+        if (dados.orientacoes_adicionais) {
+            emailContent += `
+                        <p><strong>Orientações para Correção:</strong></p>
+                        <p>${dados.orientacoes_adicionais.replace(/\n/g, '<br>')}</p>
+            `;
+        }
+
+        emailContent += `
+                        <p><strong>Para dar continuidade ao processo:</strong></p>
+                        <ul>
+                            <li>Envie um novo requerimento através do nosso sistema online</li>
+                            <li>Corrija todos os pontos indicados acima</li>
+                            <li>Apresente toda a documentação novamente, conforme as exigências atuais</li>
+                        </ul>
+
+                        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <p>Atenciosamente,<br>
+                                <strong>Secretaria Municipal de Meio Ambiente</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Preencher dados do modal
+        document.getElementById('preview-destinatario').textContent = dados.nome_destinatario;
+        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email']); ?>';
+        document.getElementById('preview-assunto').textContent = 'Processo Indeferido - Secretaria de Meio Ambiente';
+        document.getElementById('email-preview-content').innerHTML = emailContent;
+
+        // Mostrar modal
+        const previewModal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+        previewModal.show();
+    }
+
+    // Função para copiar conteúdo do email
+    function copyEmailContent() {
+        const content = document.getElementById('email-preview-content').innerText;
+        navigator.clipboard.writeText(content).then(function() {
+            // Feedback visual
+            const button = event.target.closest('button');
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check me-2"></i>Copiado!';
+            button.classList.add('btn-success');
+            button.classList.remove('btn-primary');
+            
+            setTimeout(function() {
+                button.innerHTML = originalContent;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-primary');
+            }, 2000);
+        }).catch(function(err) {
+            alert('Erro ao copiar conteúdo: ' + err);
+        });
     }
 
     // Função para mostrar modal de confirmação de protocolo

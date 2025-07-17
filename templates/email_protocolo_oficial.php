@@ -52,9 +52,10 @@
             <p>Prezado(a) <strong><?= htmlspecialchars($nome_destinatario) ?></strong>,</p>
 
             <p>Encaminhamos o número de protocolo referente ao processo requerido: <span class="protocol-number"><?= htmlspecialchars($protocolo_oficial) ?></span></p>
-            <p>O protocolo pode ser acompanhado pelo sistema de tributos municipais no link
-                <a href="https://gestor.tributosmunicipais.com.br/redesim/prefeitura/paudosferros/views/publico/portaldocontribuinte/index.xhtml" class="link">gestor.tributosmunicipais.com.br</a>
-                (digite o protocolo enviado para acompanhar o processo).
+            
+            <p>O protocolo pode ser acompanhado pelo site da Prefeitura no link 
+                <a href="https://www.paudosferros.rn.gov.br" class="link">www.paudosferros.rn.gov.br</a> 
+                na aba <strong>SERVIÇOS > PORTAL DO CONTRIBUINTE > PROTOCOLO > ACOMPANHAMENTO</strong> (aqui digite o protocolo enviado).
             </p>
 
             <p>O alvará poderá ser retirado na Secretaria de Meio Ambiente / Setor de Obras quando a taxa for paga na Secretaria de Tributação.</p>
