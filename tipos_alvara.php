@@ -261,7 +261,21 @@ $tipos_alvara = [
     'licenca_previa' => [
         'nome' => 'LICENÇA PRÉVIA',
         'documentos' => [
-            'Entre em contato com a Secretaria de Meio Ambiente para obter informações sobre a documentação necessária para este tipo de licença.'
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
+            '3. Comprovante de residência do proprietário e do requerente;',
+            '4. Documento do terreno (quando se tratar de escritura particular autenticada em cartório);',
+            '5. ART ou RRT do projeto e execução (assinada pelo responsável técnico e contratante);',
+            '6. Projetos arquitetônicos: (assinados pelo responsável técnico e proprietário)
+               - Planta de situação com coordenada geográfica indicando os nomes das ruas e distância das esquinas mais próximas;
+               - Planta de locação da construção no terreno e coberta;
+               - Planta baixa e cortes.',
+            '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+        ],
+        'observacoes' => [
+            'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
+            'O arquivo enviado não pode ultrapassar 10MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
