@@ -49,7 +49,6 @@ try {
             $zip->addFile($filePath, $doc['nome_original']);
             $addedFiles++;
         } else {
-            // Log para debug
             error_log("Arquivo não encontrado: " . $filePath . " (caminho no banco: " . $doc['caminho'] . ")");
         }
     }
