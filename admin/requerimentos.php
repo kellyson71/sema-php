@@ -39,6 +39,9 @@ if (isset($_GET['success'])) {
         case 'acoes_massa':
             $mensagem = "✅ " . ($_GET['msg'] ?? 'Ação executada com sucesso!');
             break;
+        case 'arquivado':
+            $mensagem = "✅ Processo arquivado com sucesso! O requerimento foi movido para o arquivo.";
+            break;
     }
 }
 

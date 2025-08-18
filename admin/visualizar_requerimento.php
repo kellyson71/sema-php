@@ -131,6 +131,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
     }
 }
 
+// Processar arquivamento de processo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['arquivar_processo'])) {
+    $motivoArquivamento = trim($_POST['motivo_arquivamento']);
+
+    if (empty($motivoArquivamento)) {
+        $mensagem = "É necessário informar o motivo do arquivamento.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // Buscar todos os dados do requerimento com relacionamentos
+            $stmt = $pdo->prepare("
+                SELECT r.*, 
+                       req.nome as requerente_nome, 
+                       req.cpf_cnpj as requerente_cpf_cnpj, 
+                       req.telefone as requerente_telefone, 
+                       req.email as requerente_email,
+                       p.nome as proprietario_nome,
+                       p.cpf_cnpj as proprietario_cpf_cnpj
+                FROM requerimentos r
+                JOIN requerentes req ON r.requerente_id = req.id
+                LEFT JOIN proprietarios p ON r.proprietario_id = p.id
+                WHERE r.id = ?
+            ");
+            $stmt->execute([$id]);
+            $dadosCompletos = $stmt->fetch();
+
+            if (!$dadosCompletos) {
+                throw new Exception("Requerimento não encontrado.");
+            }
+
+            // Inserir na tabela de arquivados
+            $stmt = $pdo->prepare("
+                INSERT INTO requerimentos_arquivados (
+                    requerimento_id, protocolo, tipo_alvara, requerente_id, proprietario_id,
+                    endereco_objetivo, status, observacoes, data_envio, data_atualizacao,
+                    admin_arquivamento, motivo_arquivamento, requerente_nome, requerente_email,
+                    requerente_cpf_cnpj, requerente_telefone, proprietario_nome, proprietario_cpf_cnpj
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $dadosCompletos['id'],
+                $dadosCompletos['protocolo'],
+                $dadosCompletos['tipo_alvara'],
+                $dadosCompletos['requerente_id'],
+                $dadosCompletos['proprietario_id'],
+                $dadosCompletos['endereco_objetivo'],
+                $dadosCompletos['status'],
+                $dadosCompletos['observacoes'],
+                $dadosCompletos['data_envio'],
+                $dadosCompletos['data_atualizacao'],
+                $_SESSION['admin_id'],
+                $motivoArquivamento,
+                $dadosCompletos['requerente_nome'],
+                $dadosCompletos['requerente_email'],
+                $dadosCompletos['requerente_cpf_cnpj'],
+                $dadosCompletos['requerente_telefone'],
+                $dadosCompletos['proprietario_nome'] ?? null,
+                $dadosCompletos['proprietario_cpf_cnpj'] ?? null
+            ]);
+
+            // Registrar no histórico antes de deletar
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, "Arquivou o processo - Motivo: {$motivoArquivamento}"]);
+
+            // Remover das tabelas principais (cascade vai remover documentos e histórico)
+            $stmt = $pdo->prepare("DELETE FROM requerimentos WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $pdo->commit();
+
+            // Redirecionar para a lista com mensagem de sucesso
+            header("Location: requerimentos.php?success=arquivado");
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $mensagem = "Erro ao arquivar o processo: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
+    }
+}
+
 // Processar reabertura de processo
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_processo'])) {
     $novoStatus = $_POST['novo_status'];
@@ -1045,9 +1128,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </div>
                     <div class="data-row">
                         <div class="data-label">Tipo de Alvará:</div>
-                        <div class="data-value"><?php echo htmlspecialchars($requerimento['tipo_alvara']); ?></div>
+                        <div class="data-value"><?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?></div>
                         <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['tipo_alvara']); ?>', this)" title="Copiar tipo de alvará">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?>', this)" title="Copiar tipo de alvará">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -1058,9 +1141,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </div>
                     <div class="data-row">
                         <div class="data-label">Endereço:</div>
-                        <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['endereco_objetivo'])); ?></div>
+                        <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['endereco_objetivo'] ?? '')); ?></div>
                         <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['endereco_objetivo']); ?>', this)" title="Copiar endereço">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['endereco_objetivo'] ?? ''); ?>', this)" title="Copiar endereço">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -1068,9 +1151,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <?php if (!empty($requerimento['observacoes'])): ?>
                         <div class="data-row">
                             <div class="data-label">Observações:</div>
-                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['observacoes'])); ?></div>
-                            <div class="data-actions">
-                                <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['observacoes']); ?>', this)" title="Copiar observações">
+                                                    <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['observacoes'] ?? '')); ?></div>
+                        <div class="data-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?>', this)" title="Copiar observações">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -1089,10 +1172,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <div class="data-row">
                         <div class="data-label">Nome:</div>
                         <div class="data-value">
-                            <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['requerente_nome']); ?></span>
+                            <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?></span>
                         </div>
                         <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['requerente_nome']); ?>', this)" title="Copiar nome">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>', this)" title="Copiar nome">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -1145,20 +1228,20 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <div class="card-body p-0">
                         <div class="data-row">
                             <div class="data-label">Nome:</div>
-                            <div class="data-value">
-                                <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['proprietario_nome']); ?></span>
-                            </div>
-                            <div class="data-actions">
-                                <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['proprietario_nome']); ?>', this)" title="Copiar nome do proprietário">
+                                                    <div class="data-value">
+                            <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['proprietario_nome'] ?? ''); ?></span>
+                        </div>
+                        <div class="data-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['proprietario_nome'] ?? ''); ?>', this)" title="Copiar nome do proprietário">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="data-row">
                             <div class="data-label">CPF/CNPJ:</div>
-                            <div class="data-value"><?php echo $requerimento['proprietario_cpf_cnpj']; ?></div>
-                            <div class="data-actions">
-                                <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['proprietario_cpf_cnpj']; ?>', this)" title="Copiar CPF/CNPJ do proprietário">
+                                                    <div class="data-value"><?php echo $requerimento['proprietario_cpf_cnpj'] ?? ''; ?></div>
+                        <div class="data-actions">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['proprietario_cpf_cnpj'] ?? ''; ?>', this)" title="Copiar CPF/CNPJ do proprietário">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -1326,17 +1409,22 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <small>O protocolo oficial já foi enviado ao requerente.</small>
                             </p>
 
-                            <!-- Botão para reabrir processo -->
+                            <!-- Botões de ação -->
                             <div class="mt-4">
-                                <button type="button" class="btn btn-warning btn-sm"
+                                <button type="button" class="btn btn-warning btn-sm me-2"
                                     onclick="showReopenModal()"
                                     title="Reabrir processo para novas alterações">
                                     <i class="fas fa-unlock me-2"></i>Reabrir Processo
                                 </button>
+                                <button type="button" class="btn btn-danger btn-sm"
+                                    onclick="showArquivarModal()"
+                                    title="Arquivar processo definitivamente">
+                                    <i class="fas fa-archive me-2"></i>Arquivar Processo
+                                </button>
                                 <div class="mt-2">
                                     <small class="text-muted">
                                         <i class="fas fa-exclamation-triangle me-1"></i>
-                                        Use apenas quando necessário fazer alterações no processo
+                                        Use apenas quando necessário. Arquivamento remove o processo da lista principal.
                                     </small>
                                 </div>
                             </div>
@@ -1354,17 +1442,22 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <small>O requerente foi notificado por email sobre o indeferimento.</small>
                             </p>
 
-                            <!-- Botão para reabrir processo -->
+                            <!-- Botões de ação -->
                             <div class="mt-4">
-                                <button type="button" class="btn btn-warning btn-sm"
+                                <button type="button" class="btn btn-warning btn-sm me-2"
                                     onclick="showReopenModal()"
                                     title="Reabrir processo para novas alterações">
                                     <i class="fas fa-unlock me-2"></i>Reabrir Processo
                                 </button>
+                                <button type="button" class="btn btn-danger btn-sm"
+                                    onclick="showArquivarModal()"
+                                    title="Arquivar processo definitivamente">
+                                    <i class="fas fa-archive me-2"></i>Arquivar Processo
+                                </button>
                                 <div class="mt-2">
                                     <small class="text-muted">
                                         <i class="fas fa-exclamation-triangle me-1"></i>
-                                        Use apenas quando necessário fazer alterações no processo
+                                        Use apenas quando necessário. Arquivamento remove o processo da lista principal.
                                     </small>
                                 </div>
                             </div>
@@ -1373,7 +1466,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <!-- Ações normais para processos não finalizados -->
                         <div class="row g-3">
                             <!-- Atualizar Status -->
-                            <div class="col-md-4 col-lg-4">
+                            <div class="col-md-6 col-lg-3">
                                 <div class="admin-action-card">
                                     <div class="admin-action-header">
                                         <i class="fas fa-edit text-primary"></i>
@@ -1395,7 +1488,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                         <div class="mb-3">
                                             <label for="observacoes" class="form-label">Observações</label>
                                             <textarea class="form-control modern-textarea" id="observacoes" name="observacoes" rows="3"
-                                                placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes']); ?></textarea>
+                                                placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?></textarea>
                                         </div>
                                         <button type="submit" class="btn-action btn-action-primary w-100">
                                             <i class="fas fa-save me-2"></i>Salvar Alterações
@@ -1405,7 +1498,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
 
                             <!-- Conclusão do Processo -->
-                            <div class="col-md-4 col-lg-4">
+                            <div class="col-md-6 col-lg-3">
                                 <div class="admin-action-card">
                                     <div class="admin-action-header">
                                         <i class="fas fa-check-circle text-success"></i>
@@ -1432,7 +1525,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
 
                             <!-- Indeferimento do Processo -->
-                            <div class="col-md-4 col-lg-4">
+                            <div class="col-md-6 col-lg-3">
                                 <div class="admin-action-card">
                                     <div class="admin-action-header">
                                         <i class="fas fa-times-circle text-danger"></i>
@@ -1462,6 +1555,33 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Card de Arquivamento -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="admin-action-card">
+                                    <div class="admin-action-header">
+                                        <i class="fas fa-archive text-secondary"></i>
+                                        <h6>Arquivar Processo</h6>
+                                    </div>
+                                    <div class="action-description mb-3" style="border-left-color: var(--gray-400);">
+                                        <i class="fas fa-info-circle text-secondary me-2"></i>
+                                        <small class="text-muted">Remove o processo da lista principal sem deletar permanentemente</small>
+                                    </div>
+                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e;">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        <strong>Atenção:</strong> O processo será movido para arquivo e ficará oculto da lista principal.
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
+                                        <textarea class="form-control modern-textarea" id="motivo_arquivamento" name="motivo_arquivamento" rows="3"
+                                            placeholder="Descreva o motivo do arquivamento..." required></textarea>
+                                    </div>
+                                    <button type="button" class="btn-action" style="background: var(--gray-600); color: white; width: 100%;"
+                                        onclick="showArquivarModal()">
+                                        <i class="fas fa-archive me-2"></i>Arquivar Processo
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -1488,16 +1608,16 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
 
                 <div class="mb-3">
-                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?>
+                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email']); ?>
+                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
                     <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($requerimento['tipo_alvara']); ?>
+                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?>
                 </div>
 
                 <div class="mb-3">
@@ -1567,7 +1687,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <strong>Protocolo Atual:</strong> #<?php echo $requerimento['protocolo']; ?>
                     </div>
                     <div class="mb-3">
-                        <strong>Requerente:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?>
+                        <strong>Requerente:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1596,10 +1716,10 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?>
+                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email']); ?>
+                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
                     <strong>Protocolo:</strong> <span id="protocol-display"></span>
@@ -1625,6 +1745,58 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Arquivamento de Processo -->
+<div class="modal fade" id="arquivarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-archive text-warning me-2"></i>
+                    Arquivar Processo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="post" action="">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> O processo será movido para o arquivo e ficará oculto da lista principal.
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Requerente:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Status Atual:</strong> <?php echo $requerimento['status']; ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal_motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
+                        <textarea class="form-control" id="modal_motivo_arquivamento" name="motivo_arquivamento"
+                            rows="3" placeholder="Descreva o motivo do arquivamento..." required></textarea>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Informação:</strong> O processo não será deletado permanentemente e pode ser recuperado posteriormente se necessário.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" name="arquivar_processo" class="btn btn-warning">
+                        <i class="fas fa-archive me-2"></i>Confirmar Arquivamento
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1742,6 +1914,20 @@ $isBlocked = $isFinalized || $isIndeferido;
         modal.show();
     }
 
+    // Função para mostrar modal de arquivamento
+    function showArquivarModal() {
+        const motivoInput = document.getElementById('motivo_arquivamento');
+        const motivoValue = motivoInput ? motivoInput.value.trim() : '';
+
+        // Se há um motivo preenchido no formulário, usar ele no modal
+        if (motivoValue) {
+            document.getElementById('modal_motivo_arquivamento').value = motivoValue;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('arquivarModal'));
+        modal.show();
+    }
+
     // Função para pré-visualizar email de protocolo oficial
     function previewProtocolEmail() {
         const protocolInput = document.getElementById('protocolo_oficial');
@@ -1755,7 +1941,7 @@ $isBlocked = $isFinalized || $isIndeferido;
 
         // Dados para o template
         const dados = {
-            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'])); ?>',
+            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'] ?? '')); ?>',
             protocolo_oficial: protocolValue
         };
 
@@ -1787,7 +1973,7 @@ $isBlocked = $isFinalized || $isIndeferido;
 
         // Preencher dados do modal
         document.getElementById('preview-destinatario').textContent = dados.nome_destinatario;
-        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email']); ?>';
+        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>';
         document.getElementById('preview-assunto').textContent = 'Protocolo Oficial - Secretaria de Meio Ambiente';
         document.getElementById('email-preview-content').innerHTML = emailContent;
 
@@ -1808,7 +1994,7 @@ $isBlocked = $isFinalized || $isIndeferido;
 
         // Dados para o template
         const dados = {
-            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'])); ?>',
+            nome_destinatario: '<?php echo addslashes(htmlspecialchars($requerimento['requerente_nome'] ?? '')); ?>',
             protocolo: '<?php echo $requerimento['protocolo']; ?>',
             motivo_indeferimento: motivoValue,
             orientacoes_adicionais: orientacoesValue
@@ -1857,7 +2043,7 @@ $isBlocked = $isFinalized || $isIndeferido;
 
         // Preencher dados do modal
         document.getElementById('preview-destinatario').textContent = dados.nome_destinatario;
-        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email']); ?>';
+        document.getElementById('preview-email').textContent = '<?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>';
         document.getElementById('preview-assunto').textContent = 'Processo Indeferido - Secretaria de Meio Ambiente';
         document.getElementById('email-preview-content').innerHTML = emailContent;
 

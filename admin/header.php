@@ -534,6 +534,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
+                    <a href="requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-archive"></i>
+                        <span>Arquivados</span>
+                    </a>
+                </li>
+                <li>
                     <a href="estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>">
                         <i class="fas fa-chart-bar"></i>
                         <span>Estatísticas</span>
