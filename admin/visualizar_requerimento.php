@@ -513,24 +513,112 @@ include 'header.php';
         border-color: var(--gray-300);
     }
 
+    /* Container para ações administrativas em layout vertical */
+    .admin-actions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    /* Cards grandes para ações administrativas */
+    .admin-action-card-large {
+        background: white;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        padding: 2rem;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+    }
+
+    .admin-action-card-large:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--gray-300);
+        transform: translateY(-2px);
+        background: var(--gray-50);
+    }
+
+    .admin-action-card-large.collapsed:hover {
+        background: var(--gray-50);
+        border-color: var(--gray-300);
+    }
+
     .admin-action-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 1.25rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid var(--gray-200);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--gray-200);
     }
 
     .admin-action-header i {
-        font-size: 1.125rem;
+        font-size: 1.25rem;
+        width: 24px;
+        text-align: center;
     }
 
     .admin-action-header h6 {
         margin: 0;
         font-weight: 600;
         color: var(--gray-800);
-        font-size: 1rem;
+        font-size: 1.125rem;
+        letter-spacing: 0.025em;
+    }
+
+    /* Estilos para sistema de colapso */
+    .collapsible-header {
+        cursor: pointer;
+        user-select: none;
+        transition: var(--transition);
+        position: relative;
+    }
+
+    .collapsible-header:hover {
+        background: var(--gray-100);
+        border-radius: var(--radius-sm);
+    }
+
+    .collapsible-header::after {
+        content: 'Clique para fechar';
+        position: absolute;
+        right: 2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.75rem;
+        color: var(--gray-500);
+        opacity: 0;
+        transition: var(--transition);
+    }
+
+    .collapsible-header:hover::after {
+        opacity: 1;
+    }
+
+    .collapse-icon {
+        transition: var(--transition);
+        color: var(--gray-500);
+        font-size: 0.875rem;
+    }
+
+    .collapsible-card.collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .collapsible-content {
+        overflow: hidden;
+        transition: all 0.3s ease;
+        max-height: 1000px;
+        opacity: 1;
+    }
+
+    .collapsible-card.collapsed .collapsible-content {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0;
     }
 
     /* Formulários modernos */
@@ -541,10 +629,11 @@ include 'header.php';
     .form-select {
         border: 1px solid var(--gray-300);
         border-radius: var(--radius-sm);
-        padding: 0.75rem;
+        padding: 0.875rem;
         font-size: 0.875rem;
         transition: var(--transition);
         background: white;
+        box-shadow: var(--shadow-sm);
     }
 
     .modern-select:focus,
@@ -553,15 +642,17 @@ include 'header.php';
     .form-control:focus,
     .form-select:focus {
         border-color: var(--primary-600);
-        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1), var(--shadow-sm);
         outline: none;
+        transform: translateY(-1px);
     }
 
     .form-label {
-        font-weight: 500;
+        font-weight: 600;
         color: var(--gray-700);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
         font-size: 0.875rem;
+        letter-spacing: 0.025em;
     }
 
     /* Botões de ação modernos */
@@ -570,7 +661,7 @@ include 'header.php';
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
+        padding: 0.875rem 1.75rem;
         border-radius: var(--radius-sm);
         font-weight: 500;
         font-size: 0.875rem;
@@ -578,7 +669,13 @@ include 'header.php';
         cursor: pointer;
         transition: var(--transition);
         text-decoration: none;
-        min-height: 2.5rem;
+        min-height: 2.75rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
     }
 
     .btn-action-primary {
@@ -609,14 +706,16 @@ include 'header.php';
     .action-description {
         background: var(--gray-50);
         border-radius: var(--radius-sm);
-        padding: 0.75rem;
-        border-left: 3px solid var(--gray-300);
-        margin-bottom: 1rem;
+        padding: 1rem;
+        border-left: 4px solid var(--gray-300);
+        margin-bottom: 1.25rem;
+        box-shadow: var(--shadow-sm);
     }
 
     .action-description small {
         color: var(--gray-600);
-        font-size: 0.8125rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
     }
 
     /* Estilos para processos finalizados */
@@ -999,23 +1098,112 @@ include 'header.php';
         gap: 0.75rem !important;
     }
 
-    /* Responsividade para os botões */
-    @media (max-width: 576px) {
-        .modal-footer {
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        
-        .modal-footer .d-flex.gap-2 {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .modal-footer .btn {
-            min-width: auto;
-            flex: 1;
-        }
-    }
+         /* Responsividade para os botões */
+     @media (max-width: 576px) {
+         .modal-footer {
+             flex-direction: column;
+             gap: 0.75rem;
+         }
+         
+         .modal-footer .d-flex.gap-2 {
+             width: 100%;
+             justify-content: center;
+         }
+         
+         .modal-footer .btn {
+             min-width: auto;
+             flex: 1;
+         }
+     }
+
+     /* Estilos para a mensagem tutorial discreta */
+     .tutorial-message {
+         animation: slideInDown 0.3s ease-out;
+         opacity: 0.85;
+         transition: opacity 0.3s ease;
+     }
+
+     .tutorial-message:hover {
+         opacity: 1;
+     }
+
+     .tutorial-message .alert {
+         border-radius: var(--radius-sm);
+         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+         background-color: #fafbfc;
+         border: 1px solid #e1e5e9;
+         font-size: 0.75rem;
+     }
+
+     .tutorial-message .btn-sm {
+         font-size: 0.65rem;
+         padding: 0.2rem 0.4rem;
+         border-radius: var(--radius-sm);
+         transition: var(--transition);
+         border-width: 1px;
+         min-height: auto;
+     }
+
+     .tutorial-message .btn-sm:hover {
+         transform: none;
+         box-shadow: none;
+         background-color: #f8f9fa;
+     }
+
+     .tutorial-message .btn-close-sm {
+         font-size: 0.65rem;
+         opacity: 0.5;
+         transition: opacity 0.2s ease;
+     }
+
+     .tutorial-message .btn-close-sm:hover {
+         opacity: 0.8;
+     }
+
+     @keyframes slideInDown {
+         from {
+             opacity: 0;
+             transform: translateY(-10px);
+         }
+         to {
+             opacity: 1;
+             transform: translateY(0);
+         }
+     }
+
+     /* Responsividade para a mensagem tutorial */
+     @media (max-width: 768px) {
+         .tutorial-message .d-flex {
+             flex-direction: column;
+             align-items: stretch;
+         }
+         
+         .tutorial-message .flex-grow-1 {
+             flex-direction: column !important;
+             align-items: stretch !important;
+         }
+         
+         .tutorial-message .btn-sm {
+             width: 100%;
+             margin-bottom: 0.5rem;
+             font-size: 0.7rem;
+             padding: 0.3rem 0.5rem;
+         }
+         
+         .tutorial-message .gap-1 {
+             gap: 0.5rem !important;
+         }
+         
+         .tutorial-message .alert {
+             font-size: 0.7rem;
+             padding: 0.5rem 0.75rem;
+         }
+         
+         .tutorial-message .ms-2 {
+             margin-left: 0 !important;
+             margin-top: 0.5rem;
+         }
+     }
 </style>
 
 <?php
@@ -1462,124 +1650,178 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 </div>
                             </div>
                         </div>
-                    <?php else: ?>
-                        <!-- Ações normais para processos não finalizados -->
-                        <div class="row g-3">
+                                         <?php else: ?>
+                         <!-- Ações normais para processos não finalizados -->
+                         
+                         <!-- Mensagem Tutorial Discreta -->
+                         <div id="tutorial-message" class="tutorial-message mb-2" style="display: none;">
+                             <div class="alert alert-light border-start border-primary border-1 py-1 px-2" style="font-size: 0.75rem; opacity: 0.9;">
+                                 <div class="d-flex align-items-center">
+                                     <div class="me-2">
+                                         <i class="fas fa-lightbulb text-warning" style="font-size: 0.7rem;"></i>
+                                     </div>
+                                     <div class="flex-grow-1 d-flex align-items-center justify-content-between">
+                                         <small class="text-muted" style="font-size: 0.7rem;">
+                                             <strong>Dica:</strong> Agora os cards abrem e fecham para melhor organização
+                                         </small>
+                                         <div class="d-flex align-items-center gap-1 ms-2">
+                                             <button type="button" class="btn btn-sm btn-outline-success btn-sm" onclick="rateUI('like')" style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-width: 1px;">
+                                                 <i class="fas fa-thumbs-up me-1"></i>Gostei
+                                             </button>
+                                             <button type="button" class="btn btn-sm btn-outline-secondary btn-sm" onclick="rateUI('dislike')" style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-width: 1px;">
+                                                 <i class="fas fa-thumbs-down me-1"></i>Prefiro antigo
+                                             </button>
+                                         </div>
+                                     </div>
+                                     <button type="button" class="btn-close btn-close-sm ms-2" onclick="hideTutorialPermanently()" aria-label="Fechar" style="font-size: 0.65rem; opacity: 0.6;"></button>
+                                 </div>
+                             </div>
+                         </div>
+                         
+                         <div class="admin-actions-container">
                             <!-- Atualizar Status -->
-                            <div class="col-md-6 col-lg-3">
-                                <div class="admin-action-card">
-                                    <div class="admin-action-header">
-                                        <i class="fas fa-edit text-primary"></i>
-                                        <h6>Atualizar Status</h6>
+                            <div class="admin-action-card-large collapsible-card" data-card-id="status-card" onclick="openCard('status-card')">
+                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('status-card')">
+                                    <i class="fas fa-edit text-primary"></i>
+                                    <h6>Atualizar Status</h6>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-chevron-down collapse-icon" id="icon-status-card"></i>
                                     </div>
+                                </div>
+                                <div class="collapsible-content" id="content-status-card">
                                     <form method="post" action="">
-                                        <div class="mb-3">
-                                            <label for="status" class="form-label">Status</label>
-                                            <select class="form-select modern-select" id="status" name="status" required>
-                                                <option value="Em análise" <?php echo $requerimento['status'] == 'Em análise' ? 'selected' : ''; ?>>Em análise</option>
-                                                <option value="Aprovado" <?php echo $requerimento['status'] == 'Aprovado' ? 'selected' : ''; ?>>Aprovado</option>
-                                                <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
-                                                <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                                                <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
-                                                <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
-                                                <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
-                                            </select>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="status" class="form-label">Status</label>
+                                                <select class="form-select modern-select" id="status" name="status" required>
+                                                    <option value="Em análise" <?php echo $requerimento['status'] == 'Em análise' ? 'selected' : ''; ?>>Em análise</option>
+                                                    <option value="Aprovado" <?php echo $requerimento['status'] == 'Aprovado' ? 'selected' : ''; ?>>Aprovado</option>
+                                                    <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
+                                                    <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
+                                                    <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
+                                                    <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
+                                                    <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="observacoes" class="form-label">Observações</label>
+                                                <textarea class="form-control modern-textarea" id="observacoes" name="observacoes" rows="3"
+                                                    placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?></textarea>
+                                            </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="observacoes" class="form-label">Observações</label>
-                                            <textarea class="form-control modern-textarea" id="observacoes" name="observacoes" rows="3"
-                                                placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?></textarea>
+                                        <div class="mt-3">
+                                            <button type="submit" class="btn-action btn-action-primary">
+                                                <i class="fas fa-save me-2"></i>Salvar Alterações
+                                            </button>
                                         </div>
-                                        <button type="submit" class="btn-action btn-action-primary w-100">
-                                            <i class="fas fa-save me-2"></i>Salvar Alterações
-                                        </button>
                                     </form>
                                 </div>
                             </div>
 
-                            <!-- Conclusão do Processo -->
-                            <div class="col-md-6 col-lg-3">
-                                <div class="admin-action-card">
-                                    <div class="admin-action-header">
-                                        <i class="fas fa-check-circle text-success"></i>
-                                        <h6>Finalização do Processo</h6>
+                                                        <!-- Conclusão do Processo -->
+                            <div class="admin-action-card-large collapsible-card" data-card-id="finalizacao-card" onclick="openCard('finalizacao-card')">
+                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('finalizacao-card')">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <h6>Finalização do Processo</h6>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-chevron-down collapse-icon" id="icon-finalizacao-card"></i>
                                     </div>
+                                </div>
+                                <div class="collapsible-content" id="content-finalizacao-card">
                                     <div class="action-description mb-3">
                                         <i class="fas fa-info-circle text-info me-2"></i>
                                         <small class="text-muted">Finalize o processo enviando o protocolo oficial para o requerente</small>
                                     </div>
-                                    <div class="alert alert-info alert-sm mb-3" style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background-color: #e3f2fd; border: 1px solid #bbdefb; color: #1976d2;">
+                                    <div class="alert alert-info alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #e3f2fd; border: 1px solid #bbdefb; color: #1976d2; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                         <i class="fas fa-info-circle me-1"></i>
                                         <strong>Atenção:</strong> Ao enviar o email, o status será automaticamente alterado para "Finalizado".
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="protocolo_oficial" class="form-label">Protocolo Oficial da Prefeitura</label>
-                                        <input type="text" class="form-control modern-input" id="protocolo_oficial" name="protocolo_oficial"
-                                            placeholder="Ex: 2025001234-SEMA" required>
+                                    <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <label for="protocolo_oficial" class="form-label">Protocolo Oficial da Prefeitura</label>
+                                            <input type="text" class="form-control modern-input" id="protocolo_oficial" name="protocolo_oficial"
+                                                placeholder="Ex: 2025001234-SEMA" required>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button type="button" class="btn-action btn-action-success w-100"
+                                                onclick="showProtocolConfirmModal()">
+                                                <i class="fas fa-paper-plane me-2"></i>Enviar Protocolo Oficial
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn-action btn-action-success w-100"
-                                        onclick="showProtocolConfirmModal()">
-                                        <i class="fas fa-paper-plane me-2"></i>Enviar Protocolo Oficial
-                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Indeferimento do Processo -->
-                            <div class="col-md-6 col-lg-3">
-                                <div class="admin-action-card">
-                                    <div class="admin-action-header">
-                                        <i class="fas fa-times-circle text-danger"></i>
-                                        <h6>Indeferir Processo</h6>
+                                                        <!-- Indeferimento do Processo -->
+                            <div class="admin-action-card-large collapsible-card" data-card-id="indeferimento-card" onclick="openCard('indeferimento-card')">
+                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('indeferimento-card')">
+                                    <i class="fas fa-times-circle text-danger"></i>
+                                    <h6>Indeferir Processo</h6>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-chevron-down collapse-icon" id="icon-indeferimento-card"></i>
                                     </div>
+                                </div>
+                                <div class="collapsible-content" id="content-indeferimento-card">
                                     <div class="action-description mb-3" style="border-left-color: var(--red-600);">
                                         <i class="fas fa-exclamation-circle text-danger me-2"></i>
                                         <small class="text-muted">Negue o requerimento informando os motivos detalhados</small>
                                     </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e;">
+                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                         <i class="fas fa-exclamation-triangle me-1"></i>
                                         <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento.
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="motivo_indeferimento" class="form-label">Motivo do Indeferimento</label>
-                                        <textarea class="form-control modern-textarea" id="motivo_indeferimento" name="motivo_indeferimento" rows="3"
-                                            placeholder="Descreva detalhadamente o motivo do indeferimento..." required></textarea>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="motivo_indeferimento" class="form-label">Motivo do Indeferimento</label>
+                                            <textarea class="form-control modern-textarea" id="motivo_indeferimento" name="motivo_indeferimento" rows="3"
+                                                placeholder="Descreva detalhadamente o motivo do indeferimento..." required></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="orientacoes_adicionais" class="form-label">Orientações Adicionais <small class="text-muted">(opcional)</small></label>
+                                            <textarea class="form-control modern-textarea" id="orientacoes_adicionais" name="orientacoes_adicionais" rows="3"
+                                                placeholder="Orientações para correção ou reenvio do processo..."></textarea>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="orientacoes_adicionais" class="form-label">Orientações Adicionais <small class="text-muted">(opcional)</small></label>
-                                        <textarea class="form-control modern-textarea" id="orientacoes_adicionais" name="orientacoes_adicionais" rows="2"
-                                            placeholder="Orientações para correção ou reenvio do processo..."></textarea>
+                                    <div class="mt-3">
+                                        <button type="button" class="btn-action btn-action-danger"
+                                            onclick="showIndeferimentoModal()">
+                                            <i class="fas fa-times me-2"></i>Indeferir Processo
+                                        </button>
                                     </div>
-                                    <button type="button" class="btn-action btn-action-danger w-100"
-                                        onclick="showIndeferimentoModal()">
-                                        <i class="fas fa-times me-2"></i>Indeferir Processo
-                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Card de Arquivamento -->
-                            <div class="col-md-6 col-lg-3">
-                                <div class="admin-action-card">
-                                    <div class="admin-action-header">
-                                        <i class="fas fa-archive text-secondary"></i>
-                                        <h6>Arquivar Processo</h6>
+                                                        <!-- Card de Arquivamento -->
+                            <div class="admin-action-card-large collapsible-card" data-card-id="arquivamento-card" onclick="openCard('arquivamento-card')">
+                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('arquivamento-card')">
+                                    <i class="fas fa-archive text-secondary"></i>
+                                    <h6>Arquivar Processo</h6>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-chevron-down collapse-icon" id="icon-arquivamento-card"></i>
                                     </div>
+                                </div>
+                                <div class="collapsible-content" id="content-arquivamento-card">
                                     <div class="action-description mb-3" style="border-left-color: var(--gray-400);">
                                         <i class="fas fa-info-circle text-secondary me-2"></i>
                                         <small class="text-muted">Remove o processo da lista principal sem deletar permanentemente</small>
                                     </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e;">
+                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                         <i class="fas fa-exclamation-triangle me-1"></i>
                                         <strong>Atenção:</strong> O processo será movido para arquivo e ficará oculto da lista principal.
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
-                                        <textarea class="form-control modern-textarea" id="motivo_arquivamento" name="motivo_arquivamento" rows="3"
-                                            placeholder="Descreva o motivo do arquivamento..." required></textarea>
+                                    <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <label for="motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
+                                            <textarea class="form-control modern-textarea" id="motivo_arquivamento" name="motivo_arquivamento" rows="3"
+                                                placeholder="Descreva o motivo do arquivamento..." required></textarea>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button type="button" class="btn-action" style="background: var(--gray-600); color: white;"
+                                                onclick="showArquivarModal()">
+                                                <i class="fas fa-archive me-2"></i>Arquivar Processo
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn-action" style="background: var(--gray-600); color: white; width: 100%;"
-                                        onclick="showArquivarModal()">
-                                        <i class="fas fa-archive me-2"></i>Arquivar Processo
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -2090,6 +2332,127 @@ $isBlocked = $isFinalized || $isIndeferido;
         const modal = new bootstrap.Modal(document.getElementById('protocolConfirmModal'));
         modal.show();
     }
+
+    // Função para abrir o card (clique em qualquer lugar)
+    function openCard(cardId) {
+        const card = document.querySelector(`[data-card-id="${cardId}"]`);
+        const content = document.getElementById(`content-${cardId}`);
+        const icon = document.getElementById(`icon-${cardId}`);
+        
+        // Só abre se estiver fechado
+        if (card.classList.contains('collapsed')) {
+            card.classList.remove('collapsed');
+            content.style.maxHeight = content.scrollHeight + 'px';
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    // Função para alternar o colapso dos cards (apenas no cabeçalho)
+    function toggleCard(cardId) {
+        const card = document.querySelector(`[data-card-id="${cardId}"]`);
+        const content = document.getElementById(`content-${cardId}`);
+        const icon = document.getElementById(`icon-${cardId}`);
+        
+        if (card.classList.contains('collapsed')) {
+            // Expandir
+            card.classList.remove('collapsed');
+            content.style.maxHeight = content.scrollHeight + 'px';
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            // Recolher
+            card.classList.add('collapsed');
+            content.style.maxHeight = '0';
+            icon.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+         // Inicializar cards colapsados por padrão
+     document.addEventListener('DOMContentLoaded', function() {
+         const cards = document.querySelectorAll('.collapsible-card');
+         cards.forEach(card => {
+             card.classList.add('collapsed');
+         });
+         
+         // Verificar se deve mostrar a mensagem tutorial
+         showTutorialIfNeeded();
+     });
+
+     // Função para verificar se deve mostrar o tutorial
+     function showTutorialIfNeeded() {
+         const tutorialHidden = localStorage.getItem('sema_tutorial_hidden');
+         const tutorialMessage = document.getElementById('tutorial-message');
+         
+         if (!tutorialHidden && tutorialMessage) {
+             tutorialMessage.style.display = 'block';
+         }
+     }
+
+     // Função para esconder o tutorial temporariamente
+     function hideTutorial() {
+         const tutorialMessage = document.getElementById('tutorial-message');
+         if (tutorialMessage) {
+             tutorialMessage.style.display = 'none';
+         }
+     }
+
+     // Função para avaliar a UI (like/dislike)
+     function rateUI(preference) {
+         localStorage.setItem('sema_ui_preference', preference);
+         hideTutorial();
+         
+         // Salvar feedback no sistema local
+         saveFeedbackToLocal(preference);
+         
+         const button = event.target.closest('button');
+         const originalContent = button.innerHTML;
+         const isLike = preference === 'like';
+         
+         button.innerHTML = isLike ? '<i class="fas fa-check me-1"></i>Obrigado!' : '<i class="fas fa-times me-1"></i>Entendido';
+         button.classList.add(isLike ? 'btn-success' : 'btn-secondary');
+         button.classList.remove(isLike ? 'btn-outline-success' : 'btn-outline-secondary');
+         
+         setTimeout(function() {
+             button.innerHTML = originalContent;
+             button.classList.remove(isLike ? 'btn-success' : 'btn-secondary');
+             button.classList.add(isLike ? 'btn-outline-success' : 'btn-outline-secondary');
+         }, 1500);
+     }
+
+     // Função para salvar feedback no sistema local
+     function saveFeedbackToLocal(preference) {
+         const feedbackData = {
+             action: 'submit_feedback',
+             type: 'ui_improvement',
+             rating: preference,
+             page: 'visualizar_requerimento.php',
+             comment: 'Feedback sobre cards colapsíveis'
+         };
+
+         fetch('feedback_handler.php', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify(feedbackData)
+         })
+         .then(response => response.json())
+         .then(data => {
+             if (data.success) {
+                 console.log('Feedback salvo com sucesso:', data.feedback_id);
+             } else {
+                 console.warn('Erro ao salvar feedback:', data.error);
+             }
+         })
+         .catch(error => {
+             console.error('Erro na requisição de feedback:', error);
+         });
+     }
+
+     // Função para esconder o tutorial permanentemente
+     function hideTutorialPermanently() {
+         localStorage.setItem('sema_tutorial_hidden', 'true');
+         hideTutorial();
+     }
 </script>
 
 <?php
