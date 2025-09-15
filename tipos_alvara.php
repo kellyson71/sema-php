@@ -75,6 +75,8 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+            '9. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
+            '10. Cópia da Licença solicitada junto ao IDEMA (de acordo com a Resolução nº 02/2014 do CONEMA);',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
