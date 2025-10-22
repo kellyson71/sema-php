@@ -2,7 +2,7 @@
 // Verificação de redirecionamento para o domínio principal
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
+    $redirect_url = 'http://sematemp.protocolosead.com' . $_SERVER['REQUEST_URI'];
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: $redirect_url");
     exit();
@@ -35,9 +35,9 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
 
                             // Buscar requerimento
                             $stmt = $pdo->prepare("
-                SELECT r.*, ta.nome as tipo_alvara 
-                FROM requerimentos r 
-                LEFT JOIN tipos_alvara ta ON r.tipo_alvara = ta.id 
+                SELECT r.*, ta.nome as tipo_alvara
+                FROM requerimentos r
+                LEFT JOIN tipos_alvara ta ON r.tipo_alvara = ta.id
                 WHERE r.protocolo = ?
             ");
                             $stmt->execute([$protocolo]);

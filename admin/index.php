@@ -2,7 +2,7 @@
 // Verificação de redirecionamento para o domínio principal
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
+    $redirect_url = 'http://sematemp.protocolosead.com' . $_SERVER['REQUEST_URI'];
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: $redirect_url");
     exit();
@@ -26,7 +26,7 @@ $naoVisualizados = $stmt->fetch()['total'];
 
 // Últimos requerimentos recebidos
 $stmt = $pdo->query("
-    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente 
+    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente
     FROM requerimentos r
     JOIN requerentes req ON r.requerente_id = req.id
     ORDER BY r.data_envio DESC
