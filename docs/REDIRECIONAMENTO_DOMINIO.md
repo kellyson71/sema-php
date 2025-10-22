@@ -2,7 +2,7 @@
 
 ## Resumo
 
-Foi implementado um sistema de redirecionamento automático do domínio `https://sema.protocolosead.com/` para o alias oficial `http://sematemp.protocolosead.com/`.
+Foi implementado um sistema de redirecionamento automático do domínio `https://sema.protocolosead.com/` para o alias oficial `http://sema.paudosferros.rn.gov.br/`.
 
 ## Arquivos Criados
 
@@ -49,7 +49,7 @@ Foi implementado um sistema de redirecionamento automático do domínio `https:/
 
 ```apache
 RewriteCond %{HTTP_HOST} ^(www\.)?sema\.protocolosead\.com$ [NC]
-RewriteRule ^(.*)$ http://sematemp.protocolosead.com/$1 [R=301,L]
+RewriteRule ^(.*)$ http://sema.paudosferros.rn.gov.br/$1 [R=301,L]
 ```
 
 ### 2. Redirecionamento via PHP (backup)
@@ -57,7 +57,7 @@ RewriteRule ^(.*)$ http://sematemp.protocolosead.com/$1 [R=301,L]
 ```php
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sematemp.protocolosead.com' . $_SERVER['REQUEST_URI'];
+    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: $redirect_url");
     exit();
@@ -70,7 +70,7 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
 - **Domínios origem**:
   - sema.protocolosead.com
   - www.sema.protocolosead.com
-- **Domínio destino**: sematemp.protocolosead.com
+- **Domínio destino**: sema.paudosferros.rn.gov.br
 - **Preservação**: Mantém paths e parâmetros da URL original
 - **SEO-friendly**: Redirecionamento permanente informa aos buscadores sobre a mudança
 
@@ -83,8 +83,8 @@ Execute `teste_redirecionamento.php` para verificar a configuração.
 ### 2. Teste Manual
 
 1. Acesse `sema.protocolosead.com` em um navegador
-2. Verifique se é redirecionado para `sematemp.protocolosead.com`
-3. Teste URLs internas: `sema.protocolosead.com/admin/` → `sematemp.protocolosead.com/admin/`
+2. Verifique se é redirecionado para `sema.paudosferros.rn.gov.br`
+3. Teste URLs internas: `sema.protocolosead.com/admin/` → `sema.paudosferros.rn.gov.br/admin/`
 4. Teste tanto HTTP quanto HTTPS
 
 ## Vantagens da Implementação
@@ -106,4 +106,4 @@ Execute `teste_redirecionamento.php` para verificar a configuração.
 
 ✅ **IMPLEMENTADO E TESTADO**
 
-O redirecionamento está funcionando corretamente. Usuários que acessarem `sema.protocolosead.com` serão automaticamente redirecionados para `sematemp.protocolosead.com`.
+O redirecionamento está funcionando corretamente. Usuários que acessarem `sema.protocolosead.com` serão automaticamente redirecionados para `sema.paudosferros.rn.gov.br`.

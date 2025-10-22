@@ -2,7 +2,7 @@
 // Verificação de redirecionamento para o domínio principal
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sematemp.protocolosead.com' . $_SERVER['REQUEST_URI'];
+    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: $redirect_url");
     exit();
@@ -30,7 +30,6 @@ include_once 'tipos_alvara.php';
 
     <meta property="og:title" content="Requerimento de Alvará - SEMA Pau dos Ferros">
     <meta property="og:description"
-        content="Solicite seu alvará ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
     <meta property="og:image" content="./assets/img/prefeitura-logo.png">
     <meta property="og:url" content="https://www.paudosferros.rn.gov.br/sema">
 
