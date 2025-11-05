@@ -3246,7 +3246,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              } else {
                  lista.innerHTML = '';
                  data.pareceres.forEach(p => {
-                     const viewerUrl = `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                     const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
                      const iconClass = p.tipo === 'html' ? 'fa-file-code' : 'fa-file-pdf';
                      const iconColor = p.tipo === 'html' ? '#059669' : '#dc2626';
 

@@ -1156,8 +1156,18 @@ class ParecerService
                             $parecerData['documento_id'] = $jsonData['documento_id'];
                         }
                     } else {
-                        $stmt = $pdo->prepare("SELECT documento_id FROM assinaturas_digitais WHERE requerimento_id = ? AND nome_arquivo = ? LIMIT 1");
-                        $stmt->execute([$requerimento_id, $file]);
+                        // Buscar documento_id na tabela de assinaturas digitais
+                        // Tentar buscar pelo nome do arquivo ou pelo caminho
+                        $stmt = $pdo->prepare("
+                            SELECT documento_id
+                            FROM assinaturas_digitais
+                            WHERE requerimento_id = ?
+                            AND (nome_arquivo = ? OR caminho_arquivo LIKE ?)
+                            LIMIT 1
+                        ");
+                        $nomeArquivo = $file;
+                        $caminhoPattern = '%/' . $requerimento_id . '/' . $nomeArquivo;
+                        $stmt->execute([$requerimento_id, $nomeArquivo, $caminhoPattern]);
                         $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
                         if ($resultado) {
                             $parecerData['documento_id'] = $resultado['documento_id'];
