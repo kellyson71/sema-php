@@ -66,11 +66,8 @@ class AssinaturaDigitalService
         $success = openssl_sign($hash, $signature, $pkeyid, OPENSSL_ALGO_SHA256);
 
         if (!$success) {
-            openssl_free_key($pkeyid);
             throw new Exception('Erro ao assinar hash');
         }
-
-        openssl_free_key($pkeyid);
 
         return base64_encode($signature);
     }
@@ -90,8 +87,6 @@ class AssinaturaDigitalService
 
         $signature = base64_decode($assinaturaCriptografada);
         $result = openssl_verify($hash, $signature, $pkeyid, OPENSSL_ALGO_SHA256);
-
-        openssl_free_key($pkeyid);
 
         return $result === 1;
     }
