@@ -591,9 +591,13 @@ try {
             ]);
 
             $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+            error_log("DEBUG BASE_URL: " . $baseUrl);
+            error_log("DEBUG SCRIPT_NAME: " . ($_SERVER['SCRIPT_NAME'] ?? 'N/A'));
+            error_log("DEBUG DOCUMENT_ROOT: " . ($_SERVER['DOCUMENT_ROOT'] ?? 'N/A'));
             $urlViewer = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
                         $_SERVER['HTTP_HOST'] .
                         $baseUrl . '/admin/parecer_viewer.php?id=' . $documentoId;
+            error_log("DEBUG URL_VIEWER: " . $urlViewer);
 
             echo json_encode([
                 'success' => true,
