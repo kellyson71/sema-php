@@ -202,7 +202,7 @@ class AssinaturaDigitalService
         return [
             'valido' => true,
             'dados' => $assinatura,
-            'metadados' => json_decode($assinatura['metadados_json'], true)
+            'metadados' => !empty($assinatura['metadados_json']) ? json_decode($assinatura['metadados_json'], true) : null
         ];
     }
 }

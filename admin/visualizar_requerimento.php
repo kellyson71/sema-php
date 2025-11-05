@@ -3244,24 +3244,33 @@ $isBlocked = $isFinalized || $isIndeferido;
              if (data.pareceres.length === 0) {
                  lista.innerHTML = '<p class="text-muted small">Nenhum parecer gerado ainda.</p>';
              } else {
-                 lista.innerHTML = '<h6 class="mb-2">Pareceres Gerados:</h6>';
+                 lista.innerHTML = '';
                  data.pareceres.forEach(p => {
+                     const viewerUrl = `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                     const iconClass = p.tipo === 'html' ? 'fa-file-code' : 'fa-file-pdf';
+                     const iconColor = p.tipo === 'html' ? '#059669' : '#dc2626';
+
                      lista.innerHTML += `
-                         <div class="d-flex align-items-center justify-content-between border-bottom py-2">
-                             <div>
-                                 <i class="fas fa-file-pdf text-danger me-2"></i>
-                                 <strong>${p.nome}</strong>
-                                 <small class="text-muted ms-2">${p.data}</small>
-                             </div>
-                             <div>
-                                 <a href="parecer_handler.php?action=download_parecer&arquivo=${p.arquivo}&requerimento_id=<?php echo $id; ?>" class="btn btn-sm btn-primary me-1">
-                                     <i class="fas fa-download"></i> Download
-                                 </a>
-                                 <button onclick="excluirParecer('${p.arquivo}')" class="btn btn-sm btn-danger">
-                                     <i class="fas fa-trash"></i>
-                                 </button>
-                             </div>
-                         </div>
+                        <div class="data-row">
+                            <div class="data-label" style="min-width: 40px;">
+                                <i class="fas ${iconClass}" style="color: ${iconColor}; font-size: 20px;"></i>
+                            </div>
+                            <div class="data-value">
+                                <div class="fw-semibold">${p.nome}</div>
+                                <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
+                            </div>
+                            <div class="data-actions">
+                                <a href="${viewerUrl}"
+                                   class="copy-btn me-1"
+                                   target="_blank"
+                                   title="Visualizar parecer">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir parecer" style="color: #dc2626;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
                      `;
                  });
              }

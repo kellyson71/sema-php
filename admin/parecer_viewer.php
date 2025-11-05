@@ -153,28 +153,6 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             color: #000;
             background: #f0f0f0;
         }
-        .acoes {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            gap: 10px;
-        }
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            text-decoration: none;
-            font-size: 12px;
-            background: #dc3545;
-            color: white;
-        }
-        .btn:hover {
-            opacity: 0.8;
-        }
         .pagina {
             position: relative;
             width: 210mm;
@@ -279,9 +257,6 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                 padding: 0;
                 margin: 0;
             }
-            .acoes {
-                display: none !important;
-            }
             .pagina {
                 margin: 0;
                 box-shadow: none;
@@ -297,14 +272,6 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
     </style>
 </head>
 <body>
-    <div class="acoes">
-        <?php if (!empty($urlVerificacao)): ?>
-        <a href="<?php echo htmlspecialchars($urlVerificacao); ?>" target="_blank" class="btn" style="background: #059669;">
-            🔍 Verificar Autenticidade
-        </a>
-        <?php endif; ?>
-        <button onclick="window.close()" class="btn">✖ Fechar</button>
-    </div>
 
     <div class="pagina">
         <?php if (!empty($logoBase64)): ?>

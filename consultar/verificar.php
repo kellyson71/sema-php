@@ -85,10 +85,7 @@ if (!empty($documentoId)) {
                         <hr>
 
                         <div class="text-center">
-                            <?php
-                            $caminhoPdf = '../uploads/' . str_replace(dirname(__DIR__) . '/uploads/', '', $resultado['dados']['caminho_arquivo']);
-                            ?>
-                            <a href="<?php echo htmlspecialchars($caminhoPdf); ?>"
+                            <a href="<?php echo htmlspecialchars('../admin/parecer_viewer.php?id=' . $resultado['dados']['documento_id']); ?>"
                                target="_blank"
                                class="btn btn-primary btn-lg">
                                 <i class="fas fa-file-pdf me-2"></i>Ver Documento Original
