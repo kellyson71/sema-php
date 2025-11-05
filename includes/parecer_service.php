@@ -57,7 +57,7 @@ class ParecerService
     {
         $ext = pathinfo($nomeTemplate, PATHINFO_EXTENSION);
         if (strtolower($ext) === 'html') {
-            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false) {
+            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false || strpos(strtolower($nomeTemplate), 'licenca_previa_projeto') !== false) {
                 return 'oficial_a4';
             }
             return 'html';
@@ -65,7 +65,7 @@ class ParecerService
         return 'docx';
     }
 
-    public function preencherDados($requerimento)
+    public function preencherDados($requerimento, $adminData = null)
     {
         $dados = [
             'protocolo' => $requerimento['protocolo'] ?? '',
@@ -80,8 +80,18 @@ class ParecerService
             'data_atual' => date('d/m/Y'),
             'nome_proprietario' => $requerimento['proprietario_nome'] ?? '',
             'cpf_cnpj_proprietario' => $requerimento['proprietario_cpf_cnpj'] ?? '',
-            'observacoes' => $requerimento['observacoes'] ?? ''
+            'observacoes' => $requerimento['observacoes'] ?? '',
+            'responsavel_tecnico_nome' => $requerimento['responsavel_tecnico_nome'] ?? '',
+            'responsavel_tecnico_registro' => $requerimento['responsavel_tecnico_registro'] ?? '',
+            'responsavel_tecnico_numero' => $requerimento['responsavel_tecnico_numero'] ?? '',
+            'especificacao' => $requerimento['especificacao'] ?? ''
         ];
+
+        if ($adminData !== null) {
+            $dados['admin_nome_completo'] = $adminData['nome_completo'] ?? $adminData['nome'] ?? '';
+            $dados['admin_cargo'] = $adminData['cargo'] ?? '';
+            $dados['admin_matricula_portaria'] = $adminData['matricula_portaria'] ?? '';
+        }
 
         return $dados;
     }

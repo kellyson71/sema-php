@@ -55,7 +55,12 @@ try {
             }
 
             $templatePath = $parecerService->carregarTemplate($template);
-            $dados = $parecerService->preencherDados($requerimento);
+
+            $stmtAdmin = $pdo->prepare("SELECT nome, nome_completo, email, cpf, cargo, matricula_portaria FROM administradores WHERE id = ?");
+            $stmtAdmin->execute([$_SESSION['admin_id']]);
+            $adminData = $stmtAdmin->fetch(PDO::FETCH_ASSOC);
+
+            $dados = $parecerService->preencherDados($requerimento, $adminData);
             $html = $parecerService->substituirVariaveisDocx($templatePath, $dados);
 
             echo json_encode([
@@ -333,7 +338,7 @@ try {
             $posicaoXPercent = ($posicaoX * 100) . '%';
             $posicaoYPercent = ($posicaoY * 100) . '%';
 
-            $ehTemplateA4 = strpos($template, 'template_oficial_a4') !== false;
+            $ehTemplateA4 = strpos($template, 'template_oficial_a4') !== false || strpos($template, 'licenca_previa_projeto') !== false;
 
             if ($ehTemplateA4) {
                 $parser = new DOMDocument();

@@ -2666,7 +2666,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                  document.getElementById('etapa-selecao-template').style.display = 'none';
                  document.getElementById('etapa-editor').style.display = 'block';
 
-                 const ehTemplateA4 = template.includes('template_oficial_a4');
+                 const ehTemplateA4 = template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto');
                  if (ehTemplateA4) {
                      document.getElementById('etapa-editor').innerHTML = `
                          <div class="alert alert-info mb-3">
@@ -2909,7 +2909,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              };
 
              templateAtual = document.getElementById('template-select').value;
-             const ehTemplateA4 = templateAtual.includes('template_oficial_a4');
+             const ehTemplateA4 = templateAtual.includes('template_oficial_a4') || templateAtual.includes('licenca_previa_projeto');
 
              if (ehTemplateA4) {
                  prepararEtapaPosicionamento();

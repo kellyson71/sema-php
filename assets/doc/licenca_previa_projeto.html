@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 150px;
+        left: 60px;
+        width: calc(100% - 120px);
+        z-index: 2;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.8;
+        color: #000;
+      }
+      .titulo-licenca {
+        font-size: 16pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+      }
+      .campo {
+        margin-bottom: 12px;
+      }
+      .campo-label {
+        font-weight: bold;
+        display: inline-block;
+        min-width: 150px;
+      }
+      .campo-valor {
+        display: inline-block;
+      }
+      .responsavel-tecnico {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      .responsavel-tecnico .campo {
+        margin-bottom: 8px;
+      }
+      .endereco {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      .status-box {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      .status-item {
+        margin-bottom: 8px;
+      }
+      .especificacao {
+        margin-top: 25px;
+        margin-bottom: 25px;
+        text-align: justify;
+      }
+      .data-local {
+        margin-top: 30px;
+        text-align: right;
+      }
+      .assinaturas {
+        margin-top: 60px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .assinatura-esquerda,
+      .assinatura-direita {
+        width: 45%;
+        text-align: center;
+      }
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 60px;
+        padding-top: 5px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .cargo-assinante {
+        font-size: 11pt;
+        margin-bottom: 5px;
+      }
+      .matricula-assinante {
+        font-size: 11pt;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        cursor: move;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 12px;
+        text-align: left;
+      }
+      .assinatura-bloco strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo-licenca">
+          LICENÇA PRÉVIA DE PROJETO DE OBRA {{protocolo}}
+        </div>
+
+        <div class="campo">
+          <span class="campo-label">REQUERENTE:</span>
+          <span class="campo-valor">{{nome_requerente}}</span>
+        </div>
+
+        <div class="campo">
+          <span class="campo-label">CPF:</span>
+          <span class="campo-valor">{{cpf_cnpj_requerente}}</span>
+        </div>
+
+        <div class="responsavel-tecnico">
+          <div style="font-weight: bold; margin-bottom: 10px">
+            RESPONSÁVEL TÉCNICO
+          </div>
+          <div class="campo">
+            <span class="campo-valor">{{responsavel_tecnico_nome}} </span>
+          </div>
+          <div class="campo">
+            <span class="campo-label">Registro:</span>
+            <span class="campo-valor">{{responsavel_tecnico_registro}} </span>
+          </div>
+          <div class="campo">
+            <span class="campo-label">Nº</span>
+            <span class="campo-valor">{{responsavel_tecnico_numero}} </span>
+          </div>
+        </div>
+
+        <div class="endereco">
+          <div class="campo">
+            <span class="campo-label">ENDEREÇO DA OBRA:</span>
+          </div>
+          <div class="campo-valor" style="margin-left: 0">
+            {{endereco_objetivo}}
+          </div>
+        </div>
+
+        <div class="status-box">
+          <div class="status-item">
+            <span class="campo-label">PROJETO:</span>
+            <span class="campo-valor">APROVADO</span>
+          </div>
+          <div class="status-item">
+            <span class="campo-label">LICENÇA PRÉVIA:</span>
+            <span class="campo-valor">APROVADA</span>
+          </div>
+          <div class="status-item">
+            <span class="campo-label">VALIDADE:</span>
+            <span class="campo-valor">180 DIAS</span>
+          </div>
+        </div>
+
+        <div class="especificacao">
+          <strong>ESPECIFICAÇÃO:</strong> {{especificacao}} TRATA-SE DA
+          APROVAÇÃO PRÉVIA DO PROJETO PARA A EDIFICAÇÃO RESIDENCIAL COM 80,00 M²
+          DE ACORDO COM AS DIRETRIZES QUE ORIENTAM E QUE REGULAMENTAM AS
+          EDIFICAÇÕES NO MUNICÍPIO DE PAU DOS FERROS – RN. A OBRA DEVE SEGUIR OS
+          PADRÕES BÁSICOS DA CONSTRUÇÃO CIVIL, RESPEITANDO AS BOAS PRÁTICAS DA
+          ENGENHARIA, BEM COMO ATENDER A SOLICITAÇÃO DE DOCUMENTOS EXIGIDOS PELO
+          MUNICIPIO. ESTÁ LICENÇA NÃO SUBSTITUI A NECESSIDADE DE ALVARÁ DE
+          CONSTRUÇÃO.
+        </div>
+
+        <div class="data-local">Pau dos Ferros, {{data_atual}}</div>
+
+        <div class="assinaturas">
+          <div class="assinatura-esquerda">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <div class="cargo-assinante">{{admin_cargo}}</div>
+              <div class="matricula-assinante">
+                {{admin_matricula_portaria}}
+              </div>
+            </div>
+          </div>
+          <div class="assinatura-direita">
+            <div class="linha-assinatura">
+              <div class="nome-assinante"></div>
+              <div class="cargo-assinante"></div>
+              <div class="matricula-assinante"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="area-assinatura" style="display: none">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
