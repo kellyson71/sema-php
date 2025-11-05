@@ -216,9 +216,10 @@ try {
 
             $resultadoAssinatura = $assinaturaService->registrarAssinatura($dadosAssinatura);
 
+            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
             $urlVerificacao = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
                               $_SERVER['HTTP_HOST'] .
-                              '/sema-php/consultar/verificar.php?id=' . $resultadoAssinatura['documento_id'];
+                              $baseUrl . '/consultar/verificar.php?id=' . $resultadoAssinatura['documento_id'];
 
             $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacao);
 
@@ -329,9 +330,10 @@ try {
 
             $documentoId = bin2hex(random_bytes(32));
 
+            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
             $urlVerificacao = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
                               $_SERVER['HTTP_HOST'] .
-                              '/sema-php/consultar/verificar.php?id=' . $documentoId;
+                              $baseUrl . '/consultar/verificar.php?id=' . $documentoId;
 
             $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacao);
 
@@ -588,9 +590,10 @@ try {
                 "Gerou e assinou digitalmente parecer técnico (ID: {$documentoId}) usando template: {$template}"
             ]);
 
+            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
             $urlViewer = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
                         $_SERVER['HTTP_HOST'] .
-                        '/sema-php/admin/parecer_viewer.php?id=' . $documentoId;
+                        $baseUrl . '/admin/parecer_viewer.php?id=' . $documentoId;
 
             echo json_encode([
                 'success' => true,
