@@ -216,10 +216,22 @@ try {
 
             $resultadoAssinatura = $assinaturaService->registrarAssinatura($dadosAssinatura);
 
-            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
-            $urlVerificacao = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
-                              $_SERVER['HTTP_HOST'] .
-                              $baseUrl . '/consultar/verificar.php?id=' . $resultadoAssinatura['documento_id'];
+            $protocolo = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? '';
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+            $scriptDir = dirname($scriptName);
+            $basePath = '';
+            if ($scriptDir !== '/' && $scriptDir !== '\\' && $scriptDir !== '.') {
+                $basePath = rtrim($scriptDir, '/\\');
+                if (strpos($basePath, '/admin') !== false) {
+                    $basePath = str_replace('/admin', '', $basePath);
+                }
+                if (strpos($basePath, '\\admin') !== false) {
+                    $basePath = str_replace('\\admin', '', $basePath);
+                }
+                $basePath = rtrim($basePath, '/\\');
+            }
+            $urlVerificacao = $protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $resultadoAssinatura['documento_id'];
 
             $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacao);
 
@@ -330,10 +342,22 @@ try {
 
             $documentoId = bin2hex(random_bytes(32));
 
-            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
-            $urlVerificacao = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
-                              $_SERVER['HTTP_HOST'] .
-                              $baseUrl . '/consultar/verificar.php?id=' . $documentoId;
+            $protocolo = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? '';
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+            $scriptDir = dirname($scriptName);
+            $basePath = '';
+            if ($scriptDir !== '/' && $scriptDir !== '\\' && $scriptDir !== '.') {
+                $basePath = rtrim($scriptDir, '/\\');
+                if (strpos($basePath, '/admin') !== false) {
+                    $basePath = str_replace('/admin', '', $basePath);
+                }
+                if (strpos($basePath, '\\admin') !== false) {
+                    $basePath = str_replace('\\admin', '', $basePath);
+                }
+                $basePath = rtrim($basePath, '/\\');
+            }
+            $urlVerificacao = $protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $documentoId;
 
             $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacao);
 
@@ -590,14 +614,7 @@ try {
                 "Gerou e assinou digitalmente parecer técnico (ID: {$documentoId}) usando template: {$template}"
             ]);
 
-            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
-            error_log("DEBUG BASE_URL: " . $baseUrl);
-            error_log("DEBUG SCRIPT_NAME: " . ($_SERVER['SCRIPT_NAME'] ?? 'N/A'));
-            error_log("DEBUG DOCUMENT_ROOT: " . ($_SERVER['DOCUMENT_ROOT'] ?? 'N/A'));
-            $urlViewer = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') .
-                        $_SERVER['HTTP_HOST'] .
-                        $baseUrl . '/admin/parecer_viewer.php?id=' . $documentoId;
-            error_log("DEBUG URL_VIEWER: " . $urlViewer);
+            $urlViewer = 'parecer_viewer.php?id=' . $documentoId;
 
             echo json_encode([
                 'success' => true,
