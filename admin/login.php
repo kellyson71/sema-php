@@ -18,8 +18,27 @@ if (isset($_SESSION['admin_id'])) {
 
 $erro = '';
 
+if (!isset($_SESSION['login_attempts'])) {
+    $_SESSION['login_attempts'] = 0;
+    $_SESSION['last_attempt_time'] = time();
+}
+
+if (time() - $_SESSION['last_attempt_time'] > 900) {
+    $_SESSION['login_attempts'] = 0;
+}
+
+if ($_SESSION['login_attempts'] >= 5) {
+    $tempo_restante = 900 - (time() - $_SESSION['last_attempt_time']);
+    if ($tempo_restante > 0) {
+        $erro = "Muitas tentativas de login. Tente novamente em " . ceil($tempo_restante / 60) . " minutos.";
+        $_SESSION['login_attempts'] = 5;
+    } else {
+        $_SESSION['login_attempts'] = 0;
+    }
+}
+
 // Processar formulário de login
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     $usuario = trim($_POST['usuario'] ?? '');
     $senha = trim($_POST['senha'] ?? '');
 
@@ -32,18 +51,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
+            $_SESSION['login_attempts'] = 0;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_nome'] = $admin['nome'];
+            $_SESSION['admin_nome_completo'] = $admin['nome_completo'] ?? $admin['nome'];
             $_SESSION['admin_email'] = $admin['email'];
             $_SESSION['admin_nivel'] = $admin['nivel'];
+            $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
+            $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
+            $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
 
-            // Atualizar último acessao
             $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
             $stmt->execute([$admin['id']]);
 
             header("Location: index.php");
             exit;
         } else {
+            $_SESSION['login_attempts']++;
+            $_SESSION['last_attempt_time'] = time();
             $erro = "Usuário ou senha incorretos.";
         }
     }

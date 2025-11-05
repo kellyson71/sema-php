@@ -17,7 +17,7 @@ $totalNaoVisualizados = $stmt->fetch()['total'];
 
 // Buscar notificações recentes
 $stmt = $pdo->prepare("
-    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente 
+    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente
     FROM requerimentos r
     JOIN requerentes req ON r.requerente_id = req.id
     ORDER BY r.data_envio DESC
@@ -39,6 +39,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tiny.cloud/1/djvd4vhwlkk5pio6pmjhmqd0a0j0iwziovpy9rz7k4jvzboi/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Brush+Script+MT&family=Lucida+Handwriting&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-color: #2D8661;
@@ -680,7 +683,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <?php
                 // Buscar todos os requerimentos para a sidebar
                 $stmt = $pdo->prepare("
-                    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome as requerente 
+                    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome as requerente
                     FROM requerimentos r
                     JOIN requerentes req ON r.requerente_id = req.id
                     ORDER BY r.data_envio DESC

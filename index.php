@@ -11,7 +11,6 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
