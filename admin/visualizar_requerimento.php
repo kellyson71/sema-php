@@ -2666,41 +2666,25 @@ $isBlocked = $isFinalized || $isIndeferido;
                  document.getElementById('etapa-selecao-template').style.display = 'none';
                  document.getElementById('etapa-editor').style.display = 'block';
 
-                 const ehTemplateA4 = template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto');
-                 if (ehTemplateA4) {
-                     document.getElementById('etapa-editor').innerHTML = `
-                         <div class="alert alert-info mb-3">
-                             <i class="fas fa-lightbulb me-2"></i>
-                             Edite o conteúdo do documento. O fundo será aplicado automaticamente.
-                         </div>
-                         <div id="preview-editor-a4" style="position: relative; width: 210mm; max-width: 100%; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden;">
-                             <img id="fundo-editor" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;" />
-                             <div id="conteudo-editor" contenteditable="true" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; min-height: 200px; padding: 10px; background: rgba(255, 255, 255, 0.9);"></div>
-                         </div>
-                         <div class="mt-3 d-flex gap-2">
-                             <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
-                                 <i class="fas fa-arrow-right me-2"></i>Continuar para Assinatura
-                             </button>
-                             <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
-                                 <i class="fas fa-arrow-left me-2"></i>Voltar
-                             </button>
-                         </div>
-                     `;
-
-                     const parser = new DOMParser();
-                     const doc = parser.parseFromString(data.html, 'text/html');
-                     const imgFundo = doc.querySelector('#fundo-imagem');
-                     const conteudo = doc.querySelector('#conteudo');
-
-                     if (imgFundo && imgFundo.src) {
-                         document.getElementById('fundo-editor').src = imgFundo.src;
+                 // Extrair imagem de fundo do template original para uso posterior
+                 const parser = new DOMParser();
+                 const doc = parser.parseFromString(data.html, 'text/html');
+                 const imgFundo = doc.querySelector('#fundo-imagem');
+                 if (imgFundo && imgFundo.src) {
+                     // Armazenar imagem de fundo globalmente para uso no preview
+                     // Converter caminho relativo para absoluto se necessário
+                     let imgSrc = imgFundo.src;
+                     if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+                         // Se for caminho relativo como 'images/image1.png', converter para caminho completo
+                         if (imgSrc.startsWith('images/')) {
+                             imgSrc = '../assets/doc/' + imgSrc;
+                         }
                      }
-                     if (conteudo) {
-                         document.getElementById('conteudo-editor').innerHTML = conteudo.innerHTML;
-                     }
-                 } else {
-                     inicializarEditorTiny(data.html);
+                     window.templateFundoImg = imgSrc;
                  }
+
+                 // Sempre usar TinyMCE para preservar formatação
+                 inicializarEditorTiny(data.html);
              } else {
                  alert('Erro: ' + data.error);
              }
@@ -2714,6 +2698,22 @@ $isBlocked = $isFinalized || $isIndeferido;
      function inicializarEditorTiny(conteudo) {
          if (tinymce.get('editor-parecer-content')) {
              tinymce.remove('#editor-parecer-content');
+         }
+
+         // Extrair conteúdo do template A4 se necessário
+         let conteudoExtraido = conteudo;
+         const parser = new DOMParser();
+         const doc = parser.parseFromString(conteudo, 'text/html');
+         const conteudoDiv = doc.querySelector('#conteudo');
+         if (conteudoDiv) {
+             // Se tem div#conteudo, extrair apenas o conteúdo interno
+             conteudoExtraido = conteudoDiv.innerHTML;
+         } else {
+             // Se não tem estrutura específica, usar o HTML completo do body
+             const body = doc.querySelector('body');
+             if (body) {
+                 conteudoExtraido = body.innerHTML;
+             }
          }
 
          tinymce.init({
@@ -2730,7 +2730,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              },
              setup: function(editor) {
                  editor.on('init', function() {
-                     editor.setContent(conteudo);
+                     editor.setContent(conteudoExtraido);
                  });
              }
          });
@@ -2929,10 +2929,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          if (editor) {
              html = editor.getContent();
          } else {
-             const conteudoEditor = document.getElementById('conteudo-editor');
-             if (conteudoEditor) {
-                 html = conteudoEditor.innerHTML;
-             }
+             alert('Erro: Editor TinyMCE não encontrado. Por favor, recarregue a página.');
+             return;
          }
 
          const previewDoc = document.getElementById('preview-documento');
@@ -2941,19 +2939,70 @@ $isBlocked = $isFinalized || $isIndeferido;
          const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
          if (!previewDoc || !previewFundo || !previewConteudo || !blocoAssinatura) return;
 
-         const imgFundo = document.querySelector('#preview-editor-a4 #fundo-editor') || document.querySelector('#documento #fundo-imagem');
-         if (imgFundo && imgFundo.src) {
-             previewFundo.src = imgFundo.src;
+         // Carregar imagem de fundo do template original (armazenada quando carregou o template)
+         if (window.templateFundoImg) {
+             previewFundo.src = window.templateFundoImg;
+         } else {
+             // Tentar extrair do HTML se não tiver armazenado
+             const parser = new DOMParser();
+             const doc = parser.parseFromString(html, 'text/html');
+             const imgFundo = doc.querySelector('#fundo-imagem') || doc.querySelector('#documento #fundo-imagem');
+             if (imgFundo && imgFundo.src) {
+                 let imgSrc = imgFundo.src;
+                 // Converter caminho relativo para absoluto se necessário
+                 if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+                     if (imgSrc.startsWith('images/')) {
+                         imgSrc = '../assets/doc/' + imgSrc;
+                     }
+                 }
+                 previewFundo.src = imgSrc;
+             } else {
+                 // Fallback: usar caminho padrão da imagem de fundo
+                 const template = document.getElementById('template-select').value;
+                 if (template && (template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto'))) {
+                     previewFundo.src = '../assets/doc/images/image1.png';
+                 }
+             }
          }
 
-         previewConteudo.innerHTML = html;
+         // Extrair conteúdo se existir div#conteudo, senão usar HTML completo
+         const parser = new DOMParser();
+         const doc = parser.parseFromString(html, 'text/html');
+         const conteudoDiv = doc.querySelector('#conteudo');
+         if (conteudoDiv) {
+             previewConteudo.innerHTML = conteudoDiv.innerHTML;
+         } else {
+             previewConteudo.innerHTML = html;
+         }
 
          document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
          document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
 
+         // Gerar QR code temporário para preview (será substituído pelo real no backend)
          const previewQr = document.getElementById('preview-qr-code');
          if (previewQr) {
-             previewQr.src = 'data:image/svg+xml;base64,' + btoa('<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#f0f0f0"/><text x="40" y="40" text-anchor="middle" font-size="10">QR Code</text></svg>');
+             // Criar URL temporária de verificação para preview
+             const protocolo = window.location.protocol;
+             const host = window.location.host;
+             const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin'));
+             const urlVerificacaoPreview = protocolo + '//' + host + basePath + '/consultar/verificar.php?id=preview';
+
+             // Usar biblioteca QRCode se disponível, senão usar placeholder
+             if (typeof QRCode !== 'undefined') {
+                 QRCode.toDataURL(urlVerificacaoPreview, {
+                     width: 80,
+                     height: 80,
+                     margin: 1
+                 }, function (err, url) {
+                     if (!err && previewQr) {
+                         previewQr.src = url;
+                     } else {
+                         previewQr.src = 'data:image/svg+xml;base64,' + btoa('<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#f0f0f0"/><text x="40" y="40" text-anchor="middle" font-size="10">QR Code</text></svg>');
+                     }
+                 });
+             } else {
+                 previewQr.src = 'data:image/svg+xml;base64,' + btoa('<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#f0f0f0"/><text x="40" y="40" text-anchor="middle" font-size="10">QR Code</text></svg>');
+             }
          }
 
         setTimeout(() => {
@@ -3055,12 +3104,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          if (editor) {
              html = editor.getContent();
          } else {
-             const conteudoEditor = document.getElementById('conteudo-editor');
-             if (conteudoEditor) {
-                 const parser = new DOMParser();
-                 const doc = parser.parseFromString('<div id="documento"><img id="fundo-imagem" src="' + document.getElementById('fundo-editor').src + '" /><div id="conteudo">' + conteudoEditor.innerHTML + '</div></div>', 'text/html');
-                 html = doc.body.innerHTML;
-             }
+             alert('Erro: Editor TinyMCE não encontrado. Por favor, recarregue a página.');
+             return;
          }
 
          try {

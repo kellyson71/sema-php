@@ -543,6 +543,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
+                    <a href="documentos_assinados.php" class="<?php echo $currentPage === 'documentos_assinados.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-file-signature"></i>
+                        <span>Documentos Assinados</span>
+                    </a>
+                </li>
+                <li>
                     <a href="estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>">
                         <i class="fas fa-chart-bar"></i>
                         <span>Estatísticas</span>
@@ -596,6 +602,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     break;
                 case 'requerimentos.php':
                     echo 'Requerimentos';
+                    break;
+                case 'documentos_assinados.php':
+                    echo 'Documentos Assinados';
                     break;
                 case 'estatisticas.php':
                     echo 'Estatísticas';

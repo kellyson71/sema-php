@@ -276,6 +276,38 @@ try {
             $hashFinal = hash_file('sha256', $resultadoPreliminar['caminho']);
             $assinaturaFinal = $assinaturaService->assinarHash($hashFinal);
 
+            // Salvar HTML formatado nos metadados JSON
+            $htmlOriginal = $input['html'] ?? '';
+            $caminhoJson = dirname($resultadoPreliminar['caminho']) . '/' . pathinfo($resultadoPreliminar['nome'], PATHINFO_FILENAME) . '.json';
+            $metadados = [
+                'documento_id' => $resultadoAssinatura['documento_id'],
+                'requerimento_id' => $requerimento_id,
+                'template' => $template,
+                'html_completo' => $htmlOriginal, // HTML formatado do TinyMCE antes de adicionar assinatura
+                'html_com_assinatura' => $html, // HTML final com assinatura
+                'dados_assinatura' => [
+                    'assinante_id' => $_SESSION['admin_id'],
+                    'assinante_nome' => $nomeCompleto,
+                    'assinante_nome_completo' => $nomeCompleto,
+                    'assinante_cpf' => $adminCpf ?? '',
+                    'assinante_cargo' => $adminCargo ?? 'Administrador',
+                    'assinante_email' => $emailAdmin,
+                    'assinante_matricula_portaria' => $matriculaPortaria,
+                    'tipo_assinatura' => $tipoAssinatura,
+                    'assinatura_visual' => is_string($assinatura) ? $assinatura : json_encode($assinatura),
+                    'data_assinatura' => date('c'),
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'N/A'
+                ],
+                'hash_documento' => $hashFinal,
+                'assinatura_criptografada' => $assinaturaFinal,
+                'url_verificacao' => $urlVerificacao,
+                'caminho_html' => 'pareceres/' . $requerimento_id . '/' . $resultadoPreliminar['nome'],
+                'caminho_json' => 'pareceres/' . $requerimento_id . '/' . pathinfo($resultadoPreliminar['nome'], PATHINFO_FILENAME) . '.json',
+                'data_criacao' => date('c'),
+                'admin_id' => $_SESSION['admin_id']
+            ];
+            file_put_contents($caminhoJson, json_encode($metadados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
             $stmt = $pdo->prepare("
                 UPDATE assinaturas_digitais
                 SET hash_documento = ?, assinatura_criptografada = ?
@@ -366,9 +398,53 @@ try {
 
             $ehTemplateA4 = strpos($template, 'template_oficial_a4') !== false || strpos($template, 'licenca_previa_projeto') !== false;
 
+            // Para templates A4, reconstruir estrutura se necessário (HTML do TinyMCE pode não ter estrutura completa)
             if ($ehTemplateA4) {
                 $parser = new DOMDocument();
+                libxml_use_internal_errors(true);
                 @$parser->loadHTML('<?xml encoding="UTF-8">' . $html);
+                libxml_clear_errors();
+
+                // Verificar se já tem estrutura #documento
+                $documentoDiv = $parser->getElementById('documento');
+                if (!$documentoDiv) {
+                    // Reconstruir estrutura A4 com conteúdo do TinyMCE
+                    $templatePath = $parecerService->carregarTemplate($template);
+                    $templateOriginal = file_get_contents($templatePath);
+
+                    // Extrair imagem de fundo do template original
+                    $templateParser = new DOMDocument();
+                    @$templateParser->loadHTML('<?xml encoding="UTF-8">' . $templateOriginal);
+                    $imgFundo = $templateParser->getElementById('fundo-imagem');
+                    $imgSrc = '';
+                    if ($imgFundo && $imgFundo->getAttribute('src')) {
+                        $imgSrc = $imgFundo->getAttribute('src');
+                    }
+
+                    // Criar estrutura completa com conteúdo do TinyMCE
+                    $htmlConteudo = $html; // Salvar conteúdo original do TinyMCE
+                    $htmlReconstruido = '<div id="documento">';
+                    if ($imgSrc) {
+                        $htmlReconstruido .= '<img id="fundo-imagem" src="' . htmlspecialchars($imgSrc) . '" alt="Fundo A4" />';
+                    }
+                    $htmlReconstruido .= '<div id="conteudo" contenteditable="true">' . $htmlConteudo . '</div>';
+                    $htmlReconstruido .= '</div>';
+                    $html = $htmlReconstruido;
+
+                    // Recarregar parser com HTML reconstruído
+                    @$parser->loadHTML('<?xml encoding="UTF-8">' . $html);
+                    libxml_clear_errors();
+                    $documentoDiv = $parser->getElementById('documento');
+                }
+            }
+
+            if ($ehTemplateA4) {
+                if (!isset($parser)) {
+                    $parser = new DOMDocument();
+                    libxml_use_internal_errors(true);
+                    @$parser->loadHTML('<?xml encoding="UTF-8">' . $html);
+                    libxml_clear_errors();
+                }
 
                 $documentoDiv = $parser->getElementById('documento');
                 if (!$documentoDiv) {
@@ -548,11 +624,14 @@ try {
             $assinaturaService = new AssinaturaDigitalService($pdo);
             $assinaturaFinal = $assinaturaService->assinarHash($hashFinal);
 
+            // Salvar HTML formatado do TinyMCE nos metadados (antes de processar assinatura)
+            $htmlOriginalTinyMCE = $input['html'] ?? $html; // HTML original do TinyMCE
             $jsonCompleto = [
                 'documento_id' => $documentoId,
                 'requerimento_id' => $requerimento_id,
                 'template' => $template,
-                'html_completo' => $html,
+                'html_completo' => $htmlOriginalTinyMCE, // HTML formatado do TinyMCE antes de adicionar assinatura
+                'html_com_assinatura' => $html, // HTML final com assinatura
                 'dados_assinatura' => [
                     'assinante_id' => $_SESSION['admin_id'],
                     'assinante_nome' => $nomeCompleto,

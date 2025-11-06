@@ -25,10 +25,41 @@ if (file_exists($caminhoJson)) {
     $jsonData = json_decode(file_get_contents($caminhoJson), true);
 }
 
-$htmlContent = file_get_contents($caminhoHtml);
+// Priorizar HTML formatado dos metadados (com formatação do TinyMCE)
+$htmlContent = '';
+$ehTemplateA4 = false;
 
-if ($jsonData && isset($jsonData['html_completo'])) {
-    $htmlContent = $jsonData['html_completo'];
+// Verificar se é template A4 pelo nome do arquivo ou template no JSON
+if ($jsonData && isset($jsonData['template'])) {
+    $templateNome = $jsonData['template'];
+    $ehTemplateA4 = strpos($templateNome, 'template_oficial_a4') !== false || strpos($templateNome, 'licenca_previa_projeto') !== false;
+}
+
+if ($ehTemplateA4) {
+    // Para templates A4, usar html_com_assinatura que tem a estrutura completa + assinatura
+    if ($jsonData && isset($jsonData['html_com_assinatura'])) {
+        $htmlContent = $jsonData['html_com_assinatura'];
+    } else {
+        // Fallback para arquivo HTML
+        $htmlContent = file_get_contents($caminhoHtml);
+    }
+} else {
+    // Para outros templates, usar html_completo (formatação TinyMCE)
+    if ($jsonData && isset($jsonData['html_completo'])) {
+        $htmlContent = $jsonData['html_completo'];
+    } else {
+        // Fallback para html_com_assinatura ou arquivo
+        if ($jsonData && isset($jsonData['html_com_assinatura'])) {
+            $htmlContent = $jsonData['html_com_assinatura'];
+        } else {
+            $htmlContent = file_get_contents($caminhoHtml);
+        }
+    }
+}
+
+// Se não encontrou HTML completo, usar o HTML do arquivo
+if (empty($htmlContent)) {
+    $htmlContent = file_get_contents($caminhoHtml);
 }
 
 $conteudoTexto = '';
@@ -39,26 +70,101 @@ if ($jsonData && isset($jsonData['posicao_assinatura'])) {
     $posicaoAssinatura = $jsonData['posicao_assinatura'];
 }
 
-$parser = new DOMDocument();
-libxml_use_internal_errors(true);
-@$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
-libxml_clear_errors();
+// Para templates A4, extrair conteúdo e assinatura do html_com_assinatura
+if ($ehTemplateA4) {
+    // O htmlContent já deve ser html_com_assinatura que tem estrutura completa
+    $parser = new DOMDocument();
+    libxml_use_internal_errors(true);
+    @$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
+    libxml_clear_errors();
 
-$conteudoDiv = $parser->getElementById('conteudo');
-if ($conteudoDiv) {
-    $conteudoTexto = '';
-    foreach ($conteudoDiv->childNodes as $node) {
-        $conteudoTexto .= $parser->saveHTML($node);
+    $conteudoDiv = $parser->getElementById('conteudo');
+    if ($conteudoDiv) {
+        $conteudoTexto = '';
+        foreach ($conteudoDiv->childNodes as $node) {
+            $conteudoTexto .= $parser->saveHTML($node);
+        }
     }
-}
 
-$areaAssinatura = $parser->getElementById('area-assinatura');
+    $areaAssinatura = $parser->getElementById('area-assinatura');
+} else {
+    // Para outros templates, usar o parser padrão
+    $parser = new DOMDocument();
+    libxml_use_internal_errors(true);
+    @$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
+    libxml_clear_errors();
+
+    $conteudoDiv = $parser->getElementById('conteudo');
+    if ($conteudoDiv) {
+        $conteudoTexto = '';
+        foreach ($conteudoDiv->childNodes as $node) {
+            $conteudoTexto .= $parser->saveHTML($node);
+        }
+    } else {
+        $body = $parser->getElementsByTagName('body')->item(0);
+        if ($body) {
+            $conteudoTexto = '';
+            foreach ($body->childNodes as $node) {
+                $conteudoTexto .= $parser->saveHTML($node);
+            }
+        } else {
+            $conteudoTexto = $htmlContent;
+        }
+    }
+
+    $areaAssinatura = $parser->getElementById('area-assinatura');
+}
 $urlVerificacao = '';
 if ($jsonData && isset($jsonData['url_verificacao'])) {
     $urlVerificacao = $jsonData['url_verificacao'];
 }
 
-if ($areaAssinatura) {
+// Se não encontrou área de assinatura no HTML, tentar reconstruir usando dados do JSON
+$blocoAssinatura = '';
+if (!$areaAssinatura && $jsonData && isset($jsonData['dados_assinatura'])) {
+    $dadosAssinatura = $jsonData['dados_assinatura'];
+    $protocolo = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptDir = dirname($scriptName);
+    $basePath = '';
+    if ($scriptDir !== '/' && $scriptDir !== '\\' && $scriptDir !== '.') {
+        $basePath = rtrim($scriptDir, '/\\');
+        if (strpos($basePath, '/admin') !== false) {
+            $basePath = str_replace('/admin', '', $basePath);
+        }
+        if (strpos($basePath, '\\admin') !== false) {
+            $basePath = str_replace('\\admin', '', $basePath);
+        }
+        $basePath = rtrim($basePath, '/\\');
+    }
+    $urlVerificacaoFinal = $urlVerificacao ?: ($protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $documentoId);
+
+    // Gerar QR code se necessário
+    require_once '../includes/qrcode_service.php';
+    $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacaoFinal);
+
+    // Criar bloco de assinatura diretamente como HTML
+    $blocoAssinatura = '<div id="area-assinatura" style="position: relative; display: flex; align-items: center; gap: 15px; background: transparent; padding: 10px; z-index: 1000;">';
+    $blocoAssinatura .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 80px; height: 80px; flex-shrink: 0;" />';
+    $blocoAssinatura .= '<div class="dados-assinante" style="font-size: 12px; text-align: left;">';
+    $blocoAssinatura .= '<strong>' . htmlspecialchars($dadosAssinatura['assinante_nome'] ?? '') . '</strong><br>';
+    if (!empty($dadosAssinatura['assinante_cpf'])) {
+        $blocoAssinatura .= 'CPF: ' . htmlspecialchars($dadosAssinatura['assinante_cpf']) . '<br>';
+    }
+    $blocoAssinatura .= htmlspecialchars($dadosAssinatura['assinante_cargo'] ?? '') . '<br>';
+    if (!empty($dadosAssinatura['assinante_matricula_portaria'])) {
+        $blocoAssinatura .= htmlspecialchars($dadosAssinatura['assinante_matricula_portaria']) . '<br>';
+    }
+    if (!empty($dadosAssinatura['data_assinatura'])) {
+        $dataAssinatura = date('d/m/Y H:i', strtotime($dadosAssinatura['data_assinatura']));
+        $blocoAssinatura .= htmlspecialchars($dataAssinatura) . '<br>';
+    }
+    $blocoAssinatura .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 10px; color: #0066cc; text-decoration: underline;">Verificar Autenticidade</a>';
+    $blocoAssinatura .= '</div></div>';
+}
+
+if ($areaAssinatura && empty($blocoAssinatura)) {
     $blocoAssinaturaHtml = $parser->saveHTML($areaAssinatura);
 
     $parserAssinatura = new DOMDocument();
@@ -199,6 +305,52 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         .conteudo-texto li {
             position: relative;
             z-index: 22;
+        }
+        /* Preservar formatação do TinyMCE */
+        .conteudo-texto strong,
+        .conteudo-texto b {
+            font-weight: bold;
+        }
+        .conteudo-texto em,
+        .conteudo-texto i {
+            font-style: italic;
+        }
+        .conteudo-texto u {
+            text-decoration: underline;
+        }
+        .conteudo-texto p[style*="text-align: center"],
+        .conteudo-texto div[style*="text-align: center"],
+        .conteudo-texto *[style*="text-align: center"] {
+            text-align: center !important;
+        }
+        .conteudo-texto p[style*="text-align: right"],
+        .conteudo-texto div[style*="text-align: right"],
+        .conteudo-texto *[style*="text-align: right"] {
+            text-align: right !important;
+        }
+        .conteudo-texto p[style*="text-align: left"],
+        .conteudo-texto div[style*="text-align: left"],
+        .conteudo-texto *[style*="text-align: left"] {
+            text-align: left !important;
+        }
+        .conteudo-texto table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10pt 0;
+        }
+        .conteudo-texto table td,
+        .conteudo-texto table th {
+            border: 1px solid #ddd;
+            padding: 8pt;
+        }
+        .conteudo-texto ul,
+        .conteudo-texto ol {
+            padding-left: 30pt;
+            margin: 10pt 0;
+        }
+        .conteudo-texto img {
+            max-width: 100%;
+            height: auto;
         }
         .fundo-imagem {
             position: absolute;

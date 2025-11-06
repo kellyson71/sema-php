@@ -174,6 +174,17 @@ Consultar tabela `assinaturas_digitais` para:
 - Rastrear IPs de assinaturas
 - Identificar documentos de um período específico
 
+### Visualização de Documentos Assinados
+
+Página administrativa disponível em `/admin/documentos_assinados.php`:
+
+- Lista completa de todos os documentos assinados
+- Informações rápidas: assinante, CPF, cargo, data/hora
+- Busca por ID do documento, protocolo, assinante ou arquivo
+- Filtro por assinante específico
+- Acesso direto ao visualizador do documento
+- Link para requerimento relacionado quando disponível
+
 ### Troubleshooting
 
 **Erro: "Arquivo físico não encontrado"**
