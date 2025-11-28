@@ -1214,12 +1214,125 @@ include 'header.php';
              font-size: 0.7rem;
              padding: 0.5rem 0.75rem;
          }
-
-         .tutorial-message .ms-2 {
+        .tutorial-message .ms-2 {
              margin-left: 0 !important;
              margin-top: 0.5rem;
          }
      }
+
+    /* Fluxo de assinatura / parecer técnico */
+    .signature-flow {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+        background: #fcfcfd;
+    }
+
+    .signature-stepper {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .signature-step {
+        border: 1px dashed var(--gray-300);
+        border-radius: var(--radius-sm);
+        padding: 0.85rem;
+        background: white;
+        color: var(--gray-700);
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        transition: var(--transition);
+    }
+
+    .signature-step small {
+        color: var(--gray-500);
+        font-size: 0.78rem;
+    }
+
+    .signature-step.active {
+        border-style: solid;
+        border-color: var(--primary-600);
+        background: var(--primary-50);
+        color: var(--primary-700);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .signature-step.completed {
+        border-color: var(--green-600);
+        background: #f1fdf7;
+        color: var(--green-700);
+    }
+
+    .signature-step-pane {
+        display: none;
+    }
+
+    .signature-step-pane.active {
+        display: block;
+    }
+
+    .template-description {
+        border-left: 4px solid var(--primary-600);
+        background: var(--primary-50);
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        color: var(--gray-700);
+    }
+
+    .qr-option-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .qr-option {
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        padding: 0.65rem 0.75rem;
+        background: white;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+    }
+
+    .qr-option:hover {
+        border-color: var(--primary-600);
+        color: var(--primary-700);
+        background: var(--primary-50);
+    }
+
+    .qr-option.active {
+        border-color: var(--green-600);
+        background: #ecfdf3;
+        color: var(--green-700);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .signature-preview-box {
+        border: 1px dashed var(--gray-300);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        background: white;
+        min-height: 180px;
+        color: var(--gray-700);
+        white-space: pre-wrap;
+    }
+
+    .signature-hint {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+
+    .final-adjustments {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        padding: 1rem;
+    }
 </style>
 
 <?php
@@ -1679,7 +1792,31 @@ $isBlocked = $isFinalized || $isIndeferido;
                         </div>
                                          <?php else: ?>
                          <!-- Ações normais para processos não finalizados -->
-
+                         
+                         <!-- Mensagem Tutorial Discreta -->
+                         <div id="tutorial-message" class="tutorial-message mb-2" style="display: none;">
+                             <div class="alert alert-light border-start border-primary border-1 py-1 px-2" style="font-size: 0.75rem; opacity: 0.9;">
+                                 <div class="d-flex align-items-center">
+                                     <div class="me-2">
+                                         <i class="fas fa-lightbulb text-warning" style="font-size: 0.7rem;"></i>
+                                     </div>
+                                     <div class="flex-grow-1 d-flex align-items-center justify-content-between">
+                                         <small class="text-muted" style="font-size: 0.7rem;">
+                                             <strong>Dica:</strong> Agora os cards abrem e fecham para melhor organização
+                                         </small>
+                                         <div class="d-flex align-items-center gap-1 ms-2">
+                                             <button type="button" class="btn btn-sm btn-outline-success btn-sm" onclick="rateUI('like')" style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-width: 1px;">
+                                                 <i class="fas fa-thumbs-up me-1"></i>Gostei
+                                             </button>
+                                             <button type="button" class="btn btn-sm btn-outline-secondary btn-sm" onclick="rateUI('dislike')" style="font-size: 0.65rem; padding: 0.2rem 0.4rem; border-width: 1px;">
+                                                 <i class="fas fa-thumbs-down me-1"></i>Prefiro antigo
+                                             </button>
+                                         </div>
+                                     </div>
+                                     <button type="button" class="btn-close btn-close-sm ms-2" onclick="hideTutorialPermanently()" aria-label="Fechar" style="font-size: 0.65rem; opacity: 0.6;"></button>
+                                 </div>
+                                </div>
+                            </div>
                          <div class="admin-actions-container">
                             <!-- Atualizar Status -->
                             <div class="admin-action-card-large collapsible-card" data-card-id="status-card" onclick="openCard('status-card')">
@@ -1717,6 +1854,154 @@ $isBlocked = $isFinalized || $isIndeferido;
                                             </button>
                                         </div>
                                     </form>
+                                </div>
+                            </div>
+
+                            <!-- Gerar Parecer Técnico / Assinatura -->
+                            <div class="admin-action-card-large collapsible-card" data-card-id="parecer-card" onclick="openCard('parecer-card')">
+                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('parecer-card')">
+                                    <i class="fas fa-file-signature text-success"></i>
+                                    <h6>Gerar Parecer Técnico</h6>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-chevron-down collapse-icon" id="icon-parecer-card"></i>
+                                    </div>
+                                </div>
+                                <div class="collapsible-content" id="content-parecer-card">
+                                    <div class="action-description mb-3" style="border-left-color: var(--primary-600);">
+                                        <i class="fas fa-pen-nib text-success me-2"></i>
+                                        <small class="text-muted">
+                                            Fluxo de assinatura em três passos: escolha o texto base, revise e defina a posição do QR Code. Nesta primeira etapa você ajusta apenas o conteúdo; a formatação e o selo digital aparecem na geração final.
+                                        </small>
+                                    </div>
+
+                                    <div class="signature-flow">
+                                        <div class="signature-stepper" id="parecer-stepper">
+                                            <div class="signature-step active" data-step="1">
+                                                <span class="fw-semibold">1. Modelo</span>
+                                                <small>Escolha um texto de referência</small>
+                                            </div>
+                                            <div class="signature-step" data-step="2">
+                                                <span class="fw-semibold">2. Texto base</span>
+                                                <small>Revise e personalize</small>
+                                            </div>
+                                            <div class="signature-step" data-step="3">
+                                                <span class="fw-semibold">3. QR + ajustes</span>
+                                                <small>Últimas edições antes de assinar</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Etapa 1 -->
+                                        <div class="signature-step-pane active" data-step="1">
+                                            <label for="parecer-template" class="form-label">Modelo de parecer técnico</label>
+                                            <p class="signature-hint mb-2">
+                                                Esta etapa lida apenas com o texto bruto. A diagramação, brasão e assinatura digital serão aplicados depois.
+                                            </p>
+                                            <select id="parecer-template" class="form-select modern-select">
+                                                <option value="">Selecione um modelo com o texto mais próximo</option>
+                                                <option value="padrao">Padrão resumido — respostas gerais</option>
+                                                <option value="obras">Obras e construções — inclui condicionantes</option>
+                                                <option value="eventos">Eventos / emissões sonoras — fiscalização</option>
+                                                <option value="supressao">Supressão vegetal / poda — orientação técnica</option>
+                                            </select>
+                                            <div class="mt-2 template-description" id="template-description">
+                                                <strong>Como usar:</strong> os nomes foram simplificados para facilitar a escolha. Selecione um modelo e avance para ajustar o texto.
+                                            </div>
+                                            <div class="text-end mt-3">
+                                                <button type="button" id="btn-step1-next" class="btn-action btn-action-primary" onclick="goToParecerStep(2)" disabled>
+                                                    <i class="fas fa-arrow-right me-2"></i>Ir para texto base
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Etapa 2 -->
+                                        <div class="signature-step-pane" data-step="2">
+                                            <div class="row g-3 align-items-start">
+                                                <div class="col-md-7">
+                                                    <label for="parecer-texto" class="form-label">Texto do parecer (conteúdo)</label>
+                                                    <textarea id="parecer-texto" class="form-control modern-textarea" rows="10" placeholder="O modelo escolhido será carregado aqui para revisão. Ajuste apenas o texto; a parte visual é aplicada depois."></textarea>
+                                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToParecerStep(1)">
+                                                            <i class="fas fa-arrow-left me-1"></i>Voltar
+                                                        </button>
+                                                        <div class="d-flex gap-2">
+                                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyParecerTexto('parecer-texto')">
+                                                                <i class="fas fa-copy me-1"></i>Copiar texto
+                                                            </button>
+                                                            <button type="button" class="btn-action btn-action-primary btn-sm" onclick="goToParecerStep(3)">
+                                                                <i class="fas fa-arrow-right me-1"></i>Ir para QR + ajustes
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <div class="signature-preview-box mb-2" id="parecer-preview-base">
+                                                    </div>
+                                                    <p class="signature-hint mb-0">
+                                                        <i class="fas fa-magic me-1 text-primary"></i>
+                                                        A estilização (brasão, margens e assinatura) será aplicada automaticamente na geração do PDF.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Etapa 3 -->
+                                        <div class="signature-step-pane" data-step="3">
+                                            <div class="row g-3">
+                                                <div class="col-md-5">
+                                                    <label class="form-label">Posicionamento do QR Code</label>
+                                                    <div class="qr-option-grid" id="qr-options">
+                                                        <button type="button" class="qr-option active" data-position="rodape-direito">
+                                                            <strong>Rodapé direito</strong>
+                                                            <div class="text-muted small">Padrão para assinaturas digitais</div>
+                                                        </button>
+                                                        <button type="button" class="qr-option" data-position="rodape-centro">
+                                                            <strong>Rodapé centralizado</strong>
+                                                            <div class="text-muted small">Ideal para documentos mais curtos</div>
+                                                        </button>
+                                                        <button type="button" class="qr-option" data-position="rodape-esquerdo">
+                                                            <strong>Rodapé esquerdo</strong>
+                                                            <div class="text-muted small">Quando há carimbo no lado direito</div>
+                                                        </button>
+                                                        <button type="button" class="qr-option" data-position="superior">
+                                                            <strong>Margem superior</strong>
+                                                            <div class="text-muted small">Para quando o rodapé já está ocupado</div>
+                                                        </button>
+                                                    </div>
+                                                    <p class="signature-hint mt-2 mb-0">
+                                                        <i class="fas fa-qrcode me-1 text-success"></i>
+                                                        Escolha a posição e continue editando: o campo de texto ao lado permanece liberado para ajustes finais.
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <label for="parecer-ajustes" class="form-label">Últimos ajustes antes de assinar</label>
+                                                    <div class="final-adjustments">
+                                                        <textarea id="parecer-ajustes" class="form-control modern-textarea" rows="8" placeholder="Use este espaço para ajustes finais de texto mesmo depois de definir o QR."></textarea>
+                                                        <small class="text-muted">
+                                                            Campo sempre editável para acertos de nomes, datas e observações antes de assinar.
+                                                        </small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToParecerStep(2)">
+                                                            <i class="fas fa-arrow-left me-1"></i>Voltar
+                                                        </button>
+                                                        <div class="d-flex gap-2">
+                                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyParecerTexto('parecer-ajustes')">
+                                                                <i class="fas fa-copy me-1"></i>Copiar ajustes
+                                                            </button>
+                                                            <button type="button" class="btn-action btn-action-success btn-sm" onclick="confirmarParecerDraft()">
+                                                                <i class="fas fa-check me-1"></i>Guardar rascunho
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="signature-preview-box mt-3" id="parecer-preview-final"></div>
+                                            <p class="signature-hint mt-2 mb-0">
+                                                <i class="fas fa-clipboard-check me-1 text-success"></i>
+                                                Revise aqui antes da assinatura digital. O QR será aplicado na posição escolhida.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2546,6 +2831,240 @@ $isBlocked = $isFinalized || $isIndeferido;
         modal.show();
     }
 
+    // =============================
+    // Fluxo de assinatura / parecer
+    // =============================
+
+    const parecerContext = <?php echo json_encode([
+        'protocolo' => $requerimento['protocolo'] ?? '',
+        'tipo_alvara' => $requerimento['tipo_alvara'] ?? '',
+        'requerente_nome' => $requerimento['requerente_nome'] ?? '',
+        'endereco' => $requerimento['endereco_objetivo'] ?? ''
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+    const parecerTemplates = {
+        padrao: {
+            label: 'Padrão resumido — respostas gerais',
+            description: 'Modelo direto para comunicações rápidas, mantendo o contexto do processo.',
+            build: (ctx) => `Parecer técnico referente ao protocolo #${ctx.protocolo} (${ctx.tipo_alvara}).\n\nApós análise da documentação apresentada por ${ctx.requerente_nome}, constatamos que o pedido atende às exigências básicas para tramitação. O endereço de referência informado é ${ctx.endereco}.\n\nConclusão: o processo segue apto para emissão do documento, condicionado à manutenção das informações prestadas e à quitação de eventuais taxas.`
+        },
+        obras: {
+            label: 'Obras e construções — inclui condicionantes',
+            description: 'Traz campos para registrar condicionantes e mitigações em obras.',
+            build: (ctx) => `Parecer técnico - Obras e construções\n\nProtocolo: #${ctx.protocolo}\nTipo: ${ctx.tipo_alvara}\nRequerente: ${ctx.requerente_nome}\nEndereço do objeto: ${ctx.endereco}\n\nResumo da análise: a obra apresentada cumpre os requisitos mínimos para continuidade, observando legislação ambiental e urbana vigentes.\n\nCondicionantes recomendadas:\n- Manter controle de resíduos e destinação adequada.\n- Garantir sinalização e segurança no entorno do canteiro.\n- Não avançar sobre áreas de preservação ou passeio público.\n\nConclusão: autorizado o prosseguimento, desde que respeitadas as condicionantes e prazos informados.`
+        },
+        eventos: {
+            label: 'Eventos / emissões sonoras — fiscalização',
+            description: 'Foca em prazos, horários e limites sonoros para eventos e shows.',
+            build: (ctx) => `Parecer técnico - Eventos e emissões sonoras\n\nProtocolo: #${ctx.protocolo}\nResponsável: ${ctx.requerente_nome}\nLocal: ${ctx.endereco}\n\nAnálise: o evento atende aos requisitos iniciais, porém deverá cumprir as condições abaixo para evitar perturbação sonora e riscos à vizinhança.\n\nCondições obrigatórias:\n- Respeitar limites de emissão sonora conforme legislação local.\n- Encerrar atividades sonoras no horário autorizado pela Prefeitura.\n- Manter documentação de segurança e brigada de incêndio disponível para fiscalização.\n\nConclusão: parecer favorável condicionado ao cumprimento integral das exigências acima.`
+        },
+        supressao: {
+            label: 'Supressão vegetal / poda — orientação técnica',
+            description: 'Modelo voltado para intervenções arbóreas com replantio/compensação.',
+            build: (ctx) => `Parecer técnico - Supressão vegetal / poda\n\nProtocolo: #${ctx.protocolo}\nSolicitante: ${ctx.requerente_nome}\nLocal da intervenção: ${ctx.endereco}\n\nAnálise técnica: após vistoria e avaliação das condições fitossanitárias, a intervenção solicitada pode ser autorizada com as seguintes orientações.\n\nCondicionantes:\n- Realizar o manejo por profissional habilitado e equipamento adequado.\n- Executar replantio/compensação conforme orientação da Secretaria.\n- Garantir a destinação correta dos resíduos vegetais.\n\nConclusão: intervenção autorizada mediante cumprimento das condicionantes e acompanhamento da equipe técnica.`
+        }
+    };
+
+    let parecerSelectedTemplate = '';
+    let parecerSelectedQr = 'rodape-direito';
+
+    function initParecerFlow() {
+        const templateSelect = document.getElementById('parecer-template');
+        const step1Button = document.getElementById('btn-step1-next');
+        const baseTextarea = document.getElementById('parecer-texto');
+        const ajustesTextarea = document.getElementById('parecer-ajustes');
+
+        if (!templateSelect || !step1Button || !baseTextarea || !ajustesTextarea) {
+            return;
+        }
+
+        templateSelect.addEventListener('change', function() {
+            parecerSelectedTemplate = this.value;
+            updateTemplateInfo(this.value);
+            step1Button.disabled = !this.value;
+            marcarStepCompleto(1, !!this.value);
+        });
+
+        baseTextarea.addEventListener('input', function() {
+            atualizarPreviewBase(this.value);
+        });
+
+        ajustesTextarea.addEventListener('input', refreshParecerPreview);
+
+        document.querySelectorAll('#qr-options .qr-option').forEach(option => {
+            option.addEventListener('click', function() {
+                setQrPosition(this.dataset.position);
+            });
+        });
+
+        atualizarPreviewBase(baseTextarea.value);
+        refreshParecerPreview();
+    }
+
+    function updateTemplateInfo(templateKey) {
+        const info = document.getElementById('template-description');
+        const baseTextarea = document.getElementById('parecer-texto');
+        const ajustesTextarea = document.getElementById('parecer-ajustes');
+
+        if (!templateKey || !parecerTemplates[templateKey]) {
+            if (info) {
+                info.innerHTML = '<strong>Como usar:</strong> os nomes foram simplificados para que você escolha o texto mais próximo do processo. Depois, avance para editar.';
+            }
+            baseTextarea.value = '';
+            atualizarPreviewBase('');
+            refreshParecerPreview();
+            return;
+        }
+
+        const template = parecerTemplates[templateKey];
+        const texto = buildParecerTemplateText(templateKey);
+        baseTextarea.value = texto;
+        if (!ajustesTextarea.value.trim()) {
+            ajustesTextarea.value = texto;
+        }
+
+        if (info) {
+            info.innerHTML = `<strong>${template.label}</strong><div>${template.description}</div>`;
+        }
+
+        atualizarPreviewBase(texto);
+        refreshParecerPreview();
+    }
+
+    function buildParecerTemplateText(templateKey) {
+        const template = parecerTemplates[templateKey];
+        if (!template) return '';
+        const ctx = {
+            protocolo: parecerContext.protocolo || '',
+            tipo_alvara: parecerContext.tipo_alvara || '',
+            requerente_nome: parecerContext.requerente_nome || '',
+            endereco: parecerContext.endereco || ''
+        };
+        return template.build(ctx);
+    }
+
+    function goToParecerStep(step) {
+        const templateSelect = document.getElementById('parecer-template');
+        if (step > 1 && (!templateSelect || !templateSelect.value)) {
+            alert('Selecione um modelo de parecer antes de avançar.');
+            return;
+        }
+
+        if (step === 3) {
+            const ajustesTextarea = document.getElementById('parecer-ajustes');
+            if (ajustesTextarea && !ajustesTextarea.value.trim()) {
+                ajustesTextarea.value = document.getElementById('parecer-texto').value.trim();
+            }
+            marcarStepCompleto(2, true);
+        }
+
+        document.querySelectorAll('.signature-step-pane').forEach(pane => {
+            pane.classList.toggle('active', pane.getAttribute('data-step') === String(step));
+        });
+
+        document.querySelectorAll('#parecer-stepper .signature-step').forEach(el => {
+            const elStep = Number(el.getAttribute('data-step'));
+            el.classList.toggle('active', elStep === step);
+            if (elStep < step) {
+                el.classList.add('completed');
+            } else if (elStep >= step) {
+                el.classList.remove('completed');
+            }
+        });
+
+        if (step === 1) {
+            marcarStepCompleto(2, false);
+            marcarStepCompleto(3, false);
+        }
+
+        openCard('parecer-card');
+        refreshParecerPreview();
+    }
+
+    function setQrPosition(position) {
+        parecerSelectedQr = position;
+        document.querySelectorAll('#qr-options .qr-option').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.position === position);
+        });
+        refreshParecerPreview();
+    }
+
+    function atualizarPreviewBase(text) {
+        const preview = document.getElementById('parecer-preview-base');
+        if (!preview) return;
+        if (!text) {
+            preview.innerHTML = '<span class="text-muted">Selecione um modelo para carregar o texto base.</span>';
+            return;
+        }
+        preview.innerHTML = text.replace(/\n/g, '<br>');
+    }
+
+    function refreshParecerPreview() {
+        const finalPreview = document.getElementById('parecer-preview-final');
+        const ajustes = document.getElementById('parecer-ajustes');
+        if (!finalPreview || !ajustes) return;
+
+        const texto = ajustes.value || document.getElementById('parecer-texto').value || 'Nenhum texto informado ainda.';
+        finalPreview.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-light text-dark border">Rascunho final</span>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success">QR: ${formatQrLabel(parecerSelectedQr)}</span>
+            </div>
+            <div>${texto.replace(/\n/g, '<br>')}</div>
+        `;
+    }
+
+    function formatQrLabel(position) {
+        switch (position) {
+            case 'rodape-centro':
+                return 'Rodapé centralizado';
+            case 'rodape-esquerdo':
+                return 'Rodapé esquerdo';
+            case 'superior':
+                return 'Margem superior';
+            default:
+                return 'Rodapé direito';
+        }
+    }
+
+    function copyParecerTexto(fieldId) {
+        const field = document.getElementById(fieldId);
+        if (!field) return;
+        navigator.clipboard.writeText(field.value).then(function() {
+            if (typeof mostrarAlerta === 'function') {
+                mostrarAlerta('Texto copiado para a área de transferência.', 'success');
+            }
+        }).catch(function() {
+            alert('Não foi possível copiar o texto. Copie manualmente.');
+        });
+    }
+
+    function confirmarParecerDraft() {
+        const ajustes = document.getElementById('parecer-ajustes');
+        const texto = ajustes ? ajustes.value.trim() : '';
+        if (!texto) {
+            alert('Inclua o texto do parecer antes de guardar o rascunho.');
+            return;
+        }
+        marcarStepCompleto(3, true);
+        refreshParecerPreview();
+        if (typeof mostrarAlerta === 'function') {
+            mostrarAlerta(`Rascunho atualizado. QR: ${formatQrLabel(parecerSelectedQr)}.`, 'success');
+        } else {
+            alert(`Rascunho atualizado. QR: ${formatQrLabel(parecerSelectedQr)}.`);
+        }
+    }
+
+    function marcarStepCompleto(step, completed) {
+        const target = document.querySelector(`#parecer-stepper .signature-step[data-step="${step}"]`);
+        if (!target) return;
+        if (completed) {
+            target.classList.add('completed');
+        } else {
+            target.classList.remove('completed');
+        }
+    }
+
     // Função para abrir o card (clique em qualquer lugar)
     function openCard(cardId) {
         const card = document.querySelector(`[data-card-id="${cardId}"]`);
@@ -2585,6 +3104,10 @@ $isBlocked = $isFinalized || $isIndeferido;
          cards.forEach(card => {
              card.classList.add('collapsed');
          });
+
+         // Verificar se deve mostrar a mensagem tutorial
+         showTutorialIfNeeded();
+         initParecerFlow();
 
          // Carregar pareceres existentes automaticamente
          carregarPareceresExistentes();
