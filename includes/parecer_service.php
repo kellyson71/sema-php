@@ -34,12 +34,46 @@ class ParecerService
                 if (in_array(strtolower($ext), ['docx', 'html'])) {
                     $templates[] = [
                         'nome' => $file,
-                        'tipo' => $ext === 'html' ? 'html' : 'docx'
+                        'tipo' => $ext === 'html' ? 'html' : 'docx',
+                        'label' => $this->gerarLabelAmigavel($file),
+                        'descricao' => $this->gerarDescricaoTemplate($file)
                     ];
                 }
             }
         }
         return $templates;
+    }
+
+    private function gerarLabelAmigavel($nomeArquivo)
+    {
+        $nomeSemExtensao = pathinfo($nomeArquivo, PATHINFO_FILENAME);
+        $legivel = str_replace(['_', '-'], ' ', $nomeSemExtensao);
+        $legivel = preg_replace('/\s+/', ' ', trim($legivel));
+
+        return ucwords($legivel);
+    }
+
+    private function gerarDescricaoTemplate($nomeArquivo)
+    {
+        $nome = strtolower(pathinfo($nomeArquivo, PATHINFO_FILENAME));
+
+        if (str_contains($nome, 'template_oficial')) {
+            return 'Layout oficial em A4 com fundo e área para assinatura.';
+        }
+
+        if (str_contains($nome, 'licenca_previa')) {
+            return 'Modelo estruturado para licenças prévias com campos obrigatórios.';
+        }
+
+        if (str_contains($nome, 'detalhado')) {
+            return 'Parecer técnico detalhado com checklist de verificação e condicionantes.';
+        }
+
+        if (str_contains($nome, 'padrao')) {
+            return 'Modelo padrão com resumo da análise e bloco de responsáveis.';
+        }
+
+        return 'Modelo disponível para edição no editor online.';
     }
 
     public function carregarTemplate($nomeTemplate)
