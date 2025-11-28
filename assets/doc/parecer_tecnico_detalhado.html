@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.65;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 120px;
+        left: 50px;
+        width: calc(100% - 100px);
+        z-index: 2;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.65;
+        color: #000;
+      }
+      h1 {
+        font-size: 15pt;
+        text-align: center;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+        letter-spacing: 0.4px;
+      }
+      .subtitulo {
+        text-align: center;
+        font-size: 11pt;
+        color: #374151;
+        margin-bottom: 22px;
+      }
+      .bloco {
+        margin-bottom: 18px;
+      }
+      .bloco strong {
+        display: block;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .quadro {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px 14px;
+      }
+      ul.checklist {
+        margin: 0;
+        padding-left: 18px;
+      }
+      ul.checklist li {
+        margin-bottom: 6px;
+      }
+      .rodape {
+        margin-top: 28px;
+        text-align: right;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        cursor: move;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 12px;
+        text-align: left;
+      }
+      .assinatura-bloco strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <h1>Parecer Técnico Detalhado</h1>
+        <div class="subtitulo">Protocolo {{protocolo}} — {{data_atual}}</div>
+
+        <div class="bloco quadro">
+          <strong>Dados do requerente</strong>
+          <p>Nome: {{nome_requerente}}</p>
+          <p>CPF/CNPJ: {{cpf_cnpj_requerente}}</p>
+          <p>Contato: {{telefone_requerente}} | {{email_requerente}}</p>
+        </div>
+
+        <div class="bloco quadro">
+          <strong>Objeto da análise</strong>
+          <p><strong>Endereço:</strong> {{endereco_objetivo}}</p>
+          <p><strong>Tipo de alvará:</strong> {{tipo_alvara}}</p>
+          <p><strong>Status atual:</strong> {{status}}</p>
+        </div>
+
+        <div class="bloco">
+          <strong>Checklist de verificação</strong>
+          <ul class="checklist">
+            <li>Documentação recebida e conferida.</li>
+            <li>Compatibilidade do projeto com normas municipais.</li>
+            <li>Condições ambientais e de segurança verificadas.</li>
+            <li>Manifestação dos órgãos competentes anexada.</li>
+          </ul>
+        </div>
+
+        <div class="bloco">
+          <strong>Conclusão técnica</strong>
+          <p>{{observacoes}}</p>
+        </div>
+
+        <div class="bloco quadro">
+          <strong>Encaminhamentos e condicionantes</strong>
+          <p>
+            Descreva aqui as exigências para regularização, os prazos
+            recomendados e os responsáveis pelas próximas etapas.
+          </p>
+        </div>
+
+        <div class="bloco">
+          <strong>Responsável técnico do processo</strong>
+          <p>Nome: {{responsavel_tecnico_nome}}</p>
+          <p>Registro: {{responsavel_tecnico_registro}}</p>
+          <p>Contato informado: {{responsavel_tecnico_numero}}</p>
+        </div>
+
+        <div class="rodape">
+          {{admin_nome_completo}} — {{admin_cargo}}
+        </div>
+      </div>
+      <div id="area-assinatura" style="display: none">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -2018,7 +2018,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <div class="mb-3">
                         <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden;">
                             <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
-                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000;"></div>
+                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.45; white-space: pre-wrap; word-break: break-word; padding: 6px 2px;" contenteditable="true" aria-label="Pré-visualização editável do parecer"></div>
                             <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.95); padding: 10px; border: 2px dashed #007bff; border-radius: 4px;">
                                 <img id="preview-qr-code" src="" style="width: 80px; height: 80px; flex-shrink: 0;" />
                                 <div style="font-size: 12px; text-align: left;">
@@ -2028,6 +2028,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         </div>
                     </div>
+                    <div id="parecer-preview-status" class="alert alert-secondary" style="display: none;">
+                        <small id="parecer-preview-status-text"></small>
+                    </div>
+                    <p class="text-muted small mb-2">Clique no conteúdo para ajustes rápidos diretamente no preview; suas alterações serão mantidas no PDF.</p>
                     <div class="alert alert-warning">
                         <small><i class="fas fa-info-circle me-1"></i>Posição inicial: Canto inferior direito. Arraste para reposicionar.</small>
                     </div>
@@ -2605,6 +2609,7 @@ $isBlocked = $isFinalized || $isIndeferido;
      let dadosAssinatura = null;
      let coordenadasAssinatura = { x: 0, y: 0 };
      let templateAtual = null;
+     let handlerPreviewEdicao = null;
      const fontesDisponiveis = [
          { nome: 'Brush Script', valor: "'Brush Script MT', cursive" },
          { nome: 'Lucida Handwriting', valor: "'Lucida Handwriting', cursive" },
@@ -2613,11 +2618,83 @@ $isBlocked = $isFinalized || $isIndeferido;
          { nome: 'Arial', valor: "'Arial', sans-serif" }
      ];
 
+     document.addEventListener('DOMContentLoaded', () => {
+         const modalElement = document.getElementById('parecerModal');
+         if (modalElement) {
+             modalElement.addEventListener('hidden.bs.modal', () => resetarFluxoParecer(false));
+         }
+     });
+
      function abrirModalParecer() {
          parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
+         resetarFluxoParecer(true);
          parecerModal.show();
          carregarListaTemplates();
          carregarPareceresExistentes();
+     }
+
+     function resetarFluxoParecer(aoAbrirModal = false) {
+         const etapaSelecao = document.getElementById('etapa-selecao-template');
+         const etapaEditor = document.getElementById('etapa-editor');
+         const etapaAssinatura = document.getElementById('etapa-assinatura');
+         const etapaPosicionamento = document.getElementById('etapa-posicionamento');
+         const statusPreview = document.getElementById('parecer-preview-status');
+         const statusPreviewTexto = document.getElementById('parecer-preview-status-text');
+
+         if (statusPreview) {
+             statusPreview.style.display = 'none';
+         }
+         if (statusPreviewTexto) {
+             statusPreviewTexto.textContent = '';
+         }
+
+         if (etapaSelecao && etapaEditor && etapaAssinatura && etapaPosicionamento) {
+             etapaSelecao.style.display = 'block';
+             etapaEditor.style.display = 'none';
+             etapaAssinatura.style.display = 'none';
+             etapaPosicionamento.style.display = 'none';
+         }
+
+         const templateSelect = document.getElementById('template-select');
+         if (templateSelect && aoAbrirModal) {
+             templateSelect.value = '';
+         }
+
+         if (window.tinymce && tinymce.get('editor-parecer-content')) {
+             tinymce.remove('#editor-parecer-content');
+         }
+
+         if (signaturePad) {
+             signaturePad.clear();
+         }
+
+         const previewConteudo = document.getElementById('preview-conteudo');
+         if (previewConteudo) {
+             previewConteudo.innerHTML = '';
+             if (handlerPreviewEdicao) {
+                 previewConteudo.removeEventListener('input', handlerPreviewEdicao);
+             }
+         }
+
+         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
+         if (blocoAssinatura) {
+             blocoAssinatura.style.left = '';
+             blocoAssinatura.style.top = '';
+         }
+
+         dadosAssinatura = null;
+         templateAtual = null;
+         handlerPreviewEdicao = null;
+     }
+
+     function nomeTemplateAmigavel(template) {
+         const label = template.label || template.nome || '';
+         return label.replace(/\.docx$/i, '').replace(/\.html$/i, '');
+     }
+
+     function textoTipoTemplate(tipo) {
+         if (tipo === 'docx') return 'Modelo Word (importa formatação)';
+         return 'Layout A4 para editar online';
      }
 
      function carregarListaTemplates() {
@@ -2629,13 +2706,15 @@ $isBlocked = $isFinalized || $isIndeferido;
          .then(res => res.json())
          .then(data => {
              const select = document.getElementById('template-select');
-             select.innerHTML = '<option value="">-- Selecione --</option>';
+             select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
              const templates = data.templates_detalhados || data.templates;
              templates.forEach(t => {
                  const nome = typeof t === 'object' ? t.nome : t;
                  const tipo = typeof t === 'object' ? t.tipo : 'docx';
-                 const tipoLabel = tipo === 'html' ? ' (HTML)' : ' (DOCX)';
-                 select.innerHTML += `<option value="${nome}">${nome}${tipoLabel}</option>`;
+                 const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
+                 const tipoLabel = textoTipoTemplate(tipo);
+                 const icone = tipo === 'docx' ? '📝' : '📄';
+                 select.innerHTML += `<option value="${nome}">${icone} ${rotulo} — ${tipoLabel}</option>`;
              });
          })
          .catch(error => {
@@ -2722,7 +2801,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              language: 'pt_BR',
              plugins: 'lists link image table code fullscreen',
              toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | fullscreen code',
-             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.6; }',
+             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.45; } p { margin: 0 0 10px; } ul,ol { margin: 0 0 10px 20px; padding-left: 14px; }',
              valid_elements: '*[*]',
              extended_valid_elements: '*[*]',
              valid_styles: {
@@ -2840,6 +2919,45 @@ $isBlocked = $isFinalized || $isIndeferido;
          document.getElementById('fonte-atual').textContent = fonteAtual.nome;
          document.getElementById('signature-font').value = fonteAtual.valor;
          atualizarPreviewAssinatura();
+     }
+
+     function aplicarEspacamentoPreview(previewConteudo) {
+         if (!previewConteudo) return;
+
+         previewConteudo.style.whiteSpace = 'pre-wrap';
+         previewConteudo.style.lineHeight = '1.45';
+         previewConteudo.style.wordBreak = 'break-word';
+
+         previewConteudo.querySelectorAll('p').forEach(p => {
+             p.style.marginTop = '0';
+             p.style.marginBottom = '10px';
+         });
+     }
+
+     function habilitarEdicaoPreview(previewConteudo) {
+         if (!previewConteudo) return;
+
+         previewConteudo.contentEditable = 'true';
+         previewConteudo.setAttribute('role', 'textbox');
+         previewConteudo.setAttribute('aria-label', 'Pré-visualização editável do parecer');
+
+         if (handlerPreviewEdicao) {
+             previewConteudo.removeEventListener('input', handlerPreviewEdicao);
+         }
+
+         handlerPreviewEdicao = () => {
+             const editor = tinymce.get('editor-parecer-content');
+             if (editor) {
+                 editor.setContent(previewConteudo.innerHTML);
+             }
+
+             const previewDoc = document.getElementById('preview-documento');
+             if (previewDoc) {
+                 atualizarStatusPaginacao(previewConteudo, previewDoc);
+             }
+         };
+
+         previewConteudo.addEventListener('input', handlerPreviewEdicao);
      }
 
      function voltarParaEditor() {
@@ -2975,6 +3093,11 @@ $isBlocked = $isFinalized || $isIndeferido;
              previewConteudo.innerHTML = html;
          }
 
+         aplicarEspacamentoPreview(previewConteudo);
+         habilitarEdicaoPreview(previewConteudo);
+
+         atualizarStatusPaginacao(previewConteudo, previewDoc);
+
          document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
          document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
 
@@ -3005,27 +3128,47 @@ $isBlocked = $isFinalized || $isIndeferido;
              }
          }
 
-        setTimeout(() => {
-            const previewDocRect = previewDoc.getBoundingClientRect();
-            const blocoWidth = 200;
-            const blocoHeight = 100;
-            const centroX = previewDocRect.width - blocoWidth - 40 + (blocoWidth / 2);
-            const centroY = previewDocRect.height - blocoHeight - 40 + (blocoHeight / 2);
+         setTimeout(() => {
+             const previewDocRect = previewDoc.getBoundingClientRect();
+             const blocoWidth = 200;
+             const blocoHeight = 100;
+             const centroX = previewDocRect.width - blocoWidth - 40 + (blocoWidth / 2);
+             const centroY = previewDocRect.height - blocoHeight - 40 + (blocoHeight / 2);
 
             coordenadasAssinatura.x = centroX / previewDocRect.width;
             coordenadasAssinatura.y = centroY / previewDocRect.height;
 
             blocoAssinatura.style.left = (centroX - blocoWidth / 2) + 'px';
             blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
+
+            atualizarStatusPaginacao(previewConteudo, previewDoc);
         }, 100);
 
          document.getElementById('etapa-assinatura').style.display = 'none';
          document.getElementById('etapa-posicionamento').style.display = 'block';
 
-         setTimeout(() => {
-             inicializarDragAndDrop();
-         }, 200);
-     }
+        setTimeout(() => {
+            inicializarDragAndDrop();
+        }, 200);
+    }
+
+    function atualizarStatusPaginacao(previewConteudo, previewDoc) {
+        const statusPreview = document.getElementById('parecer-preview-status');
+        const statusPreviewTexto = document.getElementById('parecer-preview-status-text');
+
+        if (!statusPreview || !statusPreviewTexto || !previewConteudo || !previewDoc) return;
+
+        const conteudoStyle = window.getComputedStyle(previewConteudo);
+        const top = parseFloat(conteudoStyle.top) || 0;
+        const margemInferior = 60;
+        const areaUtil = previewDoc.clientHeight - top - margemInferior;
+        const paginas = Math.max(1, Math.ceil(previewConteudo.scrollHeight / areaUtil));
+
+        statusPreview.style.display = 'block';
+        statusPreviewTexto.textContent = paginas > 1
+            ? `O conteúdo atual ocupa aproximadamente ${paginas} páginas A4. Ajuste o texto ou template caso queira manter em menos páginas.`
+            : 'O conteúdo cabe dentro de uma página A4.';
+    }
 
      function inicializarDragAndDrop() {
          const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
