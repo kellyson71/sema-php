@@ -2622,6 +2622,35 @@ $isBlocked = $isFinalized || $isIndeferido;
          }
      });
 
+     function nomeTemplateAmigavel(template) {
+         if (!template) return 'Template';
+
+         if (typeof template === 'object' && template.label) {
+             return template.label;
+         }
+
+         const nomeArquivo = typeof template === 'object' ? template.nome : template;
+         if (!nomeArquivo) return 'Template';
+
+         const semExtensao = nomeArquivo.replace(/\.[^.]+$/, '');
+         const legivel = semExtensao.replace(/[_-]+/g, ' ').trim().replace(/\s+/g, ' ');
+
+         if (!legivel) return nomeArquivo;
+
+         return legivel
+             .split(' ')
+             .map(parte => parte.charAt(0).toUpperCase() + parte.slice(1))
+             .join(' ');
+     }
+
+     function textoTipoTemplate(tipo) {
+         const mapa = {
+             docx: 'Editor online (DOCX)',
+             html: 'HTML com assinatura'
+         };
+         return mapa[tipo] || 'Documento';
+     }
+
      function abrirModalParecer() {
          parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
          resetarFluxoParecer(true);
