@@ -3370,8 +3370,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                  lista.innerHTML = '';
                  data.pareceres.forEach(p => {
                      const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                     const iconClass = p.tipo === 'html' ? 'fa-file-code' : 'fa-file-pdf';
-                     const iconColor = p.tipo === 'html' ? '#059669' : '#dc2626';
+                    const { iconClass, iconColor } = obterIconeParecer(p.tipo);
+                    const nomeLimpo = formatarNomeParecer(p.nome);
+                    const seloTipo = gerarSeloTipoParecer(p.tipo);
 
                      lista.innerHTML += `
                         <div class="data-row">
@@ -3379,7 +3380,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <i class="fas ${iconClass}" style="color: ${iconColor}; font-size: 20px;"></i>
                             </div>
                             <div class="data-value">
-                                <div class="fw-semibold">${p.nome}</div>
+                                <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                                    <span>${nomeLimpo}</span>
+                                    ${seloTipo}
+                                </div>
                                 <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
                             </div>
                             <div class="data-actions">
@@ -3417,8 +3421,9 @@ $isBlocked = $isFinalized || $isIndeferido;
              let html = '';
              pareceres.forEach(p => {
                  const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                 const iconClass = p.tipo === 'html' ? 'fa-file-code' : 'fa-file-pdf';
-                 const iconColor = p.tipo === 'html' ? '#059669' : '#dc2626';
+                const { iconClass, iconColor } = obterIconeParecer(p.tipo);
+                const nomeLimpo = formatarNomeParecer(p.nome);
+                const seloTipo = gerarSeloTipoParecer(p.tipo);
 
                  html += `
                      <div class="data-row">
@@ -3426,8 +3431,11 @@ $isBlocked = $isFinalized || $isIndeferido;
                              <i class="fas ${iconClass}" style="color: ${iconColor}; font-size: 20px;"></i>
                          </div>
                          <div class="data-value">
-                             <div class="fw-semibold">${p.nome}</div>
-                             <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
+                            <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                                <span>${nomeLimpo}</span>
+                                ${seloTipo}
+                            </div>
+                            <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
                          </div>
                          <div class="data-actions">
                              <a href="${viewerUrl}"
@@ -3458,6 +3466,41 @@ $isBlocked = $isFinalized || $isIndeferido;
          const sizes = ['Bytes', 'KB', 'MB', 'GB'];
          const i = Math.floor(Math.log(bytes) / Math.log(k));
          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+     }
+
+     function formatarNomeParecer(nomeArquivo) {
+         if (!nomeArquivo) return 'Parecer técnico';
+
+         const semExtensao = nomeArquivo.replace(/\.[^.]+$/, '');
+         let legivel = semExtensao
+             .replace(/^parecer[_-]?/i, '')
+             .replace(/^assinatura[_-]?/i, '')
+             .replace(/[_-]?\d{8,}$/i, '')
+             .replace(/[_-]+/g, ' ')
+             .trim();
+
+         if (!legivel) {
+             legivel = semExtensao;
+         }
+
+         return legivel
+             .split(' ')
+             .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+             .join(' ');
+     }
+
+     function obterIconeParecer(tipo) {
+         if (tipo === 'pdf') {
+             return { iconClass: 'fa-file-pdf', iconColor: '#dc2626' };
+         }
+         return { iconClass: 'fa-file-signature', iconColor: '#0ea5e9' };
+     }
+
+     function gerarSeloTipoParecer(tipo) {
+         const label = tipo === 'pdf' ? 'PDF assinado' : 'Digital';
+         const cor = tipo === 'pdf' ? '#fef2f2' : '#e0f2fe';
+         const texto = tipo === 'pdf' ? '#b91c1c' : '#0ea5e9';
+         return `<span class="badge rounded-pill" style="background:${cor}; color:${texto}; font-size: 11px;">${label}</span>`;
      }
 
      function excluirParecer(arquivo) {
