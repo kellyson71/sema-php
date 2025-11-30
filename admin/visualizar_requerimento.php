@@ -1887,7 +1887,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <textarea id="editor-parecer-content"></textarea>
                     <div class="mt-3 d-flex gap-2">
                         <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
-                            <i class="fas fa-arrow-right me-2"></i>Continuar para Assinatura
+                            <i class="fas fa-arrow-right me-2"></i>Continuar para Assinar e Posicionar
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
                             <i class="fas fa-arrow-left me-2"></i>Voltar
@@ -1895,151 +1895,56 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </div>
                 </div>
 
-                <!-- Etapa 3: Assinatura Digital -->
-                <div id="etapa-assinatura" style="display:none;">
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-pen-fancy me-2"></i>
-                        Assine o parecer técnico para finalizar
-                    </div>
-
-                    <!-- Abas de tipo de assinatura -->
-                    <ul class="nav nav-tabs mb-3" id="assinaturaTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="desenhar-tab" data-bs-toggle="tab"
-                                    data-bs-target="#desenhar-assinatura" type="button">
-                                <i class="fas fa-pencil-alt me-2"></i>Desenhar Assinatura
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="digitar-tab" data-bs-toggle="tab"
-                                    data-bs-target="#digitar-assinatura" type="button">
-                                <i class="fas fa-font me-2"></i>Digitar Assinatura
-                            </button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content">
-                        <!-- Aba Desenhar -->
-                        <div class="tab-pane fade show active" id="desenhar-assinatura">
-                            <div class="signature-pad-container mb-3">
-                                <canvas id="signature-canvas" width="600" height="200"
-                                        style="border: 2px solid #dee2e6; border-radius: 8px; cursor: crosshair;">
-                                </canvas>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparAssinatura()">
-                                <i class="fas fa-eraser me-1"></i>Limpar
-                            </button>
-                        </div>
-
-                        <!-- Aba Digitar -->
-                        <div class="tab-pane fade" id="digitar-assinatura">
-                            <div class="mb-3">
-                                <label class="form-label">Digite seu nome completo:</label>
-                                <input type="text" id="signature-text" class="form-control"
-                                       placeholder="Nome completo">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Escolha a fonte:</label>
-                                <div class="d-flex align-items-center">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="anteriorFonte()" title="Fonte anterior">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
-                                    <div class="flex-grow-1 text-center">
-                                        <span id="fonte-atual" class="fw-bold">Brush Script</span>
-                                    </div>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="proximaFonte()" title="Próxima fonte">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                </div>
-                                <input type="hidden" id="signature-font" value="'Brush Script MT', cursive">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Preview:</label>
-                                <div id="signature-preview" style="border: 2px solid #dee2e6; border-radius: 8px;
-                                     padding: 20px; min-height: 100px; display: flex; align-items: center;
-                                     justify-content: center; font-size: 32px;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Validação de Senha -->
-                    <div class="card mt-4">
-                        <div class="card-body">
-                            <h6 class="card-title">
-                                <i class="fas fa-lock me-2"></i>Validação de Identidade
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <label class="form-label">Digite sua senha para confirmar:</label>
-                                    <input type="password" id="senha-validacao" class="form-control"
-                                           placeholder="Senha da sua conta">
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="lembrar-senha">
-                                        <label class="form-check-label" for="lembrar-senha">
-                                            Não pedir novamente nesta sessão
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Informações da Assinatura -->
-                    <div class="alert alert-light mt-3">
-                        <small class="text-muted">
-                            <strong>Informações que serão incluídas:</strong><br>
-                            Nome: <?php echo $_SESSION['admin_nome']; ?><br>
-                            CPF: <?php echo $_SESSION['admin_cpf'] ?? 'N/A'; ?><br>
-                            Cargo: <?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?><br>
-                            Data/Hora: <span id="data-assinatura"></span>
-                        </small>
-                    </div>
-
-                    <!-- Botões -->
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="button" class="btn btn-success" id="btn-validar-assinatura" onclick="validarAssinatura()">
-                            <i class="fas fa-check me-2"></i>Validar Assinatura
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="voltarParaEditor()">
-                            <i class="fas fa-arrow-left me-2"></i>Voltar para Edição
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Etapa 4: Posicionamento da Assinatura -->
+                <!-- Etapa 3 (única): Posicionamento da Assinatura -->
                 <div id="etapa-posicionamento" style="display:none;">
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-hand-paper me-2"></i>
-                        Arraste e solte o bloco de assinatura na posição desejada no documento
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="alert alert-info mb-0 flex-grow-1 py-2 px-3">
+                            <i class="fas fa-hand-paper me-2"></i>
+                            Arraste a assinatura ou use as posições rápidas para finalizar
+                        </div>
+                        <span id="assinatura-status-badge" class="badge bg-secondary">Assinatura: Digitada (Arial)</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="abrirConfigAssinatura()">
+                            <i class="fas fa-edit me-1"></i>Configurar assinatura
+                        </button>
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2">
+                        <span class="text-muted small">Posições rápidas:</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('esquerda')">Esquerda</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('centro')">Centro</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('direita')">Direita</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetarPosicaoAssinatura()">Reposicionar padrão</button>
                     </div>
                     <div class="mb-3">
                         <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden;">
                             <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
-                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.6; white-space: pre-wrap; word-break: break-word;"></div>
-                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.95); padding: 10px; border: 2px dashed #007bff; border-radius: 4px;">
+                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000;" contenteditable="true"></div>
+                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.95); padding: 10px; border: 2px dashed #007bff; border-radius: 4px; min-width: 220px;">
                                 <img id="preview-qr-code" src="" style="width: 80px; height: 80px; flex-shrink: 0;" />
-                                <div style="font-size: 12px; text-align: left;">
-                                    <strong id="preview-nome-assinante"></strong><br />
+                                <div style="font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+                                    <strong id="preview-nome-assinante"></strong>
                                     <span id="preview-cargo-assinante"></span>
+                                    <span id="preview-assinatura-visual" style="font-size: 16px; display: block;"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div id="parecer-preview-status" class="alert alert-secondary" style="display: none;">
-                        <small id="parecer-preview-status-text"></small>
-                    </div>
                     <div class="alert alert-warning">
                         <small><i class="fas fa-info-circle me-1"></i>Posição inicial: Canto inferior direito. Arraste para reposicionar.</small>
                     </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title mb-2"><i class="fas fa-lock me-2"></i>Validação final</h6>
+                            <label class="form-label mb-1">Digite sua senha para assinar:</label>
+                            <input type="password" id="senha-finalizacao" class="form-control" placeholder="Senha da sua conta">
+                            <div id="erro-senha-finalizacao" class="text-danger small mt-2" style="display:none;"></div>
+                        </div>
+                    </div>
                     <div class="mt-3 d-flex gap-2">
                         <button type="button" class="btn btn-success" onclick="confirmarPosicaoEGerarPdf()">
-                            <i class="fas fa-check me-2"></i>Confirmar Posição e Gerar PDF
+                            <i class="fas fa-check me-2"></i>Assinar e Gerar PDF
                         </button>
-                        <button type="button" class="btn btn-secondary" onclick="voltarParaAssinatura()">
-                            <i class="fas fa-arrow-left me-2"></i>Voltar para Assinatura
+                        <button type="button" class="btn btn-secondary" onclick="voltarParaEditor()">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar para Edição
                         </button>
                     </div>
                 </div>
@@ -2105,6 +2010,82 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
         </div>
     </div>
+
+<!-- Modal de Configuração de Assinatura -->
+<div class="modal fade" id="configAssinaturaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pen-fancy me-2"></i>Configurar assinatura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="assinaturaTabsConfig" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="config-digitar-tab" data-bs-toggle="tab"
+                                data-bs-target="#config-digitar-assinatura" type="button">
+                            <i class="fas fa-font me-2"></i>Assinatura digitada
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="config-desenhar-tab" data-bs-toggle="tab"
+                                data-bs-target="#config-desenhar-assinatura" type="button">
+                            <i class="fas fa-pencil-alt me-2"></i>Desenhar assinatura
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="config-digitar-assinatura">
+                        <div class="mb-3">
+                            <label class="form-label">Nome a exibir:</label>
+                            <input type="text" id="signature-text" class="form-control" placeholder="Nome completo">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fonte:</label>
+                            <div class="d-flex align-items-center">
+                                <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="anteriorFonte()" title="Fonte anterior">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="flex-grow-1 text-center">
+                                    <span id="fonte-atual" class="fw-bold">Arial</span>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="proximaFonte()" title="Próxima fonte">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="signature-font" value="'Arial', sans-serif">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Preview:</label>
+                            <div id="signature-preview" style="border: 2px solid #dee2e6; border-radius: 8px;
+                                     padding: 20px; min-height: 100px; display: flex; align-items: center;
+                                     justify-content: center; font-size: 32px; font-family: Arial, sans-serif;">
+                                <?php echo htmlspecialchars($_SESSION['admin_nome']); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="config-desenhar-assinatura">
+                        <div class="signature-pad-container mb-3">
+                            <canvas id="signature-canvas" width="600" height="200"
+                                    style="border: 2px solid #dee2e6; border-radius: 8px; cursor: crosshair;">
+                            </canvas>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparAssinatura()">
+                            <i class="fas fa-eraser me-1"></i>Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <div class="text-muted small">Escolha o tipo de assinatura e salve para atualizar o bloco.</div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarConfigAssinatura()">Salvar e aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Modal para Reabertura de Processo -->
@@ -2603,23 +2584,41 @@ $isBlocked = $isFinalized || $isIndeferido;
      let parecerModal;
      let editorTiny;
      let signaturePad;
+     let configAssinaturaModal;
      let senhaMemorizada = null;
      let indiceFonteAtual = 0;
      let dadosAssinatura = null;
      let coordenadasAssinatura = { x: 0, y: 0 };
      let templateAtual = null;
+     let handlerPreviewEdicao = null;
      const fontesDisponiveis = [
+         { nome: 'Arial', valor: "'Arial', sans-serif" },
          { nome: 'Brush Script', valor: "'Brush Script MT', cursive" },
          { nome: 'Lucida Handwriting', valor: "'Lucida Handwriting', cursive" },
          { nome: 'Dancing Script', valor: "'Dancing Script', cursive" },
-         { nome: 'Great Vibes', valor: "'Great Vibes', cursive" },
-         { nome: 'Arial', valor: "'Arial', sans-serif" }
+         { nome: 'Great Vibes', valor: "'Great Vibes', cursive" }
      ];
 
      document.addEventListener('DOMContentLoaded', () => {
          const modalElement = document.getElementById('parecerModal');
          if (modalElement) {
              modalElement.addEventListener('hidden.bs.modal', () => resetarFluxoParecer(false));
+         }
+
+         const configModalElement = document.getElementById('configAssinaturaModal');
+         if (configModalElement) {
+             configAssinaturaModal = new bootstrap.Modal(configModalElement);
+             configModalElement.addEventListener('shown.bs.modal', () => {
+                 inicializarSignaturePad();
+                 atualizarFonteAtual();
+                 atualizarPreviewAssinatura();
+             });
+         }
+
+         const signatureTextInput = document.getElementById('signature-text');
+         if (signatureTextInput) {
+             signatureTextInput.value = '<?php echo $_SESSION['admin_nome']; ?>';
+             atualizarPreviewAssinatura();
          }
      });
 
@@ -2629,66 +2628,6 @@ $isBlocked = $isFinalized || $isIndeferido;
          parecerModal.show();
          carregarListaTemplates();
          carregarPareceresExistentes();
-     }
-
-     function resetarFluxoParecer(aoAbrirModal = false) {
-         const etapaSelecao = document.getElementById('etapa-selecao-template');
-         const etapaEditor = document.getElementById('etapa-editor');
-         const etapaAssinatura = document.getElementById('etapa-assinatura');
-         const etapaPosicionamento = document.getElementById('etapa-posicionamento');
-         const statusPreview = document.getElementById('parecer-preview-status');
-         const statusPreviewTexto = document.getElementById('parecer-preview-status-text');
-
-         if (statusPreview) {
-             statusPreview.style.display = 'none';
-         }
-         if (statusPreviewTexto) {
-             statusPreviewTexto.textContent = '';
-         }
-
-         if (etapaSelecao && etapaEditor && etapaAssinatura && etapaPosicionamento) {
-             etapaSelecao.style.display = 'block';
-             etapaEditor.style.display = 'none';
-             etapaAssinatura.style.display = 'none';
-             etapaPosicionamento.style.display = 'none';
-         }
-
-         const templateSelect = document.getElementById('template-select');
-         if (templateSelect && aoAbrirModal) {
-             templateSelect.value = '';
-         }
-
-         if (window.tinymce && tinymce.get('editor-parecer-content')) {
-             tinymce.remove('#editor-parecer-content');
-         }
-
-         if (signaturePad) {
-             signaturePad.clear();
-         }
-
-         const previewConteudo = document.getElementById('preview-conteudo');
-         if (previewConteudo) {
-             previewConteudo.innerHTML = '';
-         }
-
-         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-         if (blocoAssinatura) {
-             blocoAssinatura.style.left = '';
-             blocoAssinatura.style.top = '';
-         }
-
-         dadosAssinatura = null;
-         templateAtual = null;
-     }
-
-     function nomeTemplateAmigavel(template) {
-         const label = template.label || template.nome || '';
-         return label.replace(/\.docx$/i, '').replace(/\.html$/i, '');
-     }
-
-     function textoTipoTemplate(tipo) {
-         if (tipo === 'docx') return 'Modelo Word (importa formatação)';
-         return 'Layout A4 para editar online';
      }
 
      function carregarListaTemplates() {
@@ -2795,7 +2734,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              language: 'pt_BR',
              plugins: 'lists link image table code fullscreen',
              toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | fullscreen code',
-             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.6; }',
+             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.45; } p { margin: 0 0 10px; } ul,ol { margin: 0 0 10px 20px; padding-left: 14px; }',
              valid_elements: '*[*]',
              extended_valid_elements: '*[*]',
              valid_styles: {
@@ -2848,31 +2787,20 @@ $isBlocked = $isFinalized || $isIndeferido;
      function irParaAssinatura() {
          templateAtual = document.getElementById('template-select').value;
 
-         // Verificar se já tem senha memorizada
-         if (senhaMemorizada) {
-             document.getElementById('senha-validacao').value = senhaMemorizada;
-             document.getElementById('lembrar-senha').checked = true;
-         }
-
-         // Ocultar editor e mostrar assinatura
+         // Ocultar editor e ir direto para posicionamento com assinatura padrão digitada
          const etapaEditor = document.getElementById('etapa-editor');
          if (etapaEditor) {
              etapaEditor.style.display = 'none';
          }
-         document.getElementById('etapa-assinatura').style.display = 'block';
-
-         // Inicializar canvas de assinatura
-         inicializarSignaturePad();
-
-         // Inicializar sistema de fontes
-         atualizarFonteAtual();
-
-         // Atualizar data/hora
-         document.getElementById('data-assinatura').textContent = new Date().toLocaleString('pt-BR');
+         if (!dadosAssinatura) {
+             definirAssinaturaPadrao();
+         }
+         prepararEtapaPosicionamento();
      }
 
      function inicializarSignaturePad() {
          const canvas = document.getElementById('signature-canvas');
+         if (!canvas) return;
          signaturePad = new SignaturePad(canvas, {
              backgroundColor: 'rgb(255, 255, 255)',
              penColor: 'rgb(0, 0, 0)',
@@ -2898,6 +2826,107 @@ $isBlocked = $isFinalized || $isIndeferido;
          preview.textContent = texto;
      }
 
+     function definirAssinaturaPadrao() {
+         dadosAssinatura = {
+             assinatura: { texto: '<?php echo $_SESSION['admin_nome']; ?>', fonte: "'Arial', sans-serif" },
+             tipo_assinatura: 'texto',
+             admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
+             admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
+             admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+             data_assinatura: new Date().toLocaleString('pt-BR')
+         };
+         atualizarBadgeAssinatura();
+     }
+
+     function abrirConfigAssinatura() {
+         if (!dadosAssinatura) {
+             definirAssinaturaPadrao();
+         }
+
+         const assinaturaAtual = dadosAssinatura.assinatura;
+         if (typeof assinaturaAtual === 'object' && assinaturaAtual.texto) {
+             document.getElementById('signature-text').value = assinaturaAtual.texto;
+             const fonteIndex = fontesDisponiveis.findIndex(f => f.valor === assinaturaAtual.fonte);
+             indiceFonteAtual = fonteIndex >= 0 ? fonteIndex : 0;
+             document.getElementById('signature-font').value = assinaturaAtual.fonte;
+             atualizarPreviewAssinatura();
+             document.getElementById('config-digitar-tab').classList.add('active');
+             document.getElementById('config-digitar-assinatura').classList.add('show', 'active');
+             document.getElementById('config-desenhar-tab').classList.remove('active');
+             document.getElementById('config-desenhar-assinatura').classList.remove('show', 'active');
+         } else {
+             limparAssinatura();
+             document.getElementById('config-desenhar-tab').classList.add('active');
+             document.getElementById('config-desenhar-assinatura').classList.add('show', 'active');
+             document.getElementById('config-digitar-tab').classList.remove('active');
+             document.getElementById('config-digitar-assinatura').classList.remove('show', 'active');
+         }
+
+         if (configAssinaturaModal) {
+             configAssinaturaModal.show();
+         }
+     }
+
+     function salvarConfigAssinatura() {
+         const tabAtiva = document.querySelector('#assinaturaTabsConfig .nav-link.active').id;
+         let assinaturaData = null;
+         let tipoAssinatura = '';
+
+         if (tabAtiva === 'config-desenhar-tab') {
+             if (!signaturePad || signaturePad.isEmpty()) {
+                 alert('Por favor, desenhe sua assinatura.');
+                 return;
+             }
+             assinaturaData = signaturePad.toDataURL('image/png');
+             tipoAssinatura = 'desenho';
+         } else {
+             const texto = document.getElementById('signature-text').value.trim() || '<?php echo $_SESSION['admin_nome']; ?>';
+             const fonte = document.getElementById('signature-font').value;
+             assinaturaData = { texto: texto, fonte: fonte };
+             tipoAssinatura = 'texto';
+         }
+
+         dadosAssinatura = {
+             assinatura: assinaturaData,
+             tipo_assinatura: tipoAssinatura,
+             admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
+             admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
+             admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+             data_assinatura: new Date().toLocaleString('pt-BR')
+         };
+
+         atualizarBadgeAssinatura();
+         atualizarBlocoAssinaturaPreview();
+         if (configAssinaturaModal) configAssinaturaModal.hide();
+     }
+
+     function atualizarBadgeAssinatura() {
+         const badge = document.getElementById('assinatura-status-badge');
+         if (!badge || !dadosAssinatura) return;
+         if (dadosAssinatura.tipo_assinatura === 'desenho') {
+             badge.textContent = 'Assinatura: Desenho';
+             badge.className = 'badge bg-primary';
+         } else {
+             const fonteNome = fontesDisponiveis.find(f => f.valor === (dadosAssinatura.assinatura.fonte || ""))?.nome || 'Arial';
+             badge.textContent = `Assinatura: Digitada (${fonteNome})`;
+             badge.className = 'badge bg-secondary';
+         }
+     }
+
+     function atualizarBlocoAssinaturaPreview() {
+         const visual = document.getElementById('preview-assinatura-visual');
+         if (!visual || !dadosAssinatura) return;
+
+         if (dadosAssinatura.tipo_assinatura === 'desenho' && typeof dadosAssinatura.assinatura === 'string') {
+             visual.innerHTML = `<img src="${dadosAssinatura.assinatura}" style="max-width: 140px; height: auto;">`;
+         } else if (dadosAssinatura.assinatura && dadosAssinatura.assinatura.texto) {
+             visual.textContent = dadosAssinatura.assinatura.texto;
+             visual.style.fontFamily = dadosAssinatura.assinatura.fonte || "'Arial', sans-serif";
+         } else {
+             visual.textContent = '';
+         }
+     }
+
      function anteriorFonte() {
          indiceFonteAtual = (indiceFonteAtual - 1 + fontesDisponiveis.length) % fontesDisponiveis.length;
          atualizarFonteAtual();
@@ -2915,87 +2944,55 @@ $isBlocked = $isFinalized || $isIndeferido;
          atualizarPreviewAssinatura();
      }
 
+     function aplicarEspacamentoPreview(previewConteudo) {
+         if (!previewConteudo) return;
+
+         previewConteudo.style.whiteSpace = 'pre-wrap';
+         previewConteudo.style.lineHeight = '1.45';
+         previewConteudo.style.wordBreak = 'break-word';
+
+         previewConteudo.querySelectorAll('p').forEach(p => {
+             p.style.marginTop = '0';
+             p.style.marginBottom = '10px';
+         });
+     }
+
+     function habilitarEdicaoPreview(previewConteudo) {
+         if (!previewConteudo) return;
+
+         previewConteudo.contentEditable = 'true';
+         previewConteudo.setAttribute('role', 'textbox');
+         previewConteudo.setAttribute('aria-label', 'Pré-visualização editável do parecer');
+
+         if (handlerPreviewEdicao) {
+             previewConteudo.removeEventListener('input', handlerPreviewEdicao);
+         }
+
+         handlerPreviewEdicao = () => {
+             const editor = tinymce.get('editor-parecer-content');
+             if (editor) {
+                 editor.setContent(previewConteudo.innerHTML);
+             }
+
+             const previewDoc = document.getElementById('preview-documento');
+             if (previewDoc) {
+                 atualizarStatusPaginacao(previewConteudo, previewDoc);
+             }
+         };
+
+         previewConteudo.addEventListener('input', handlerPreviewEdicao);
+     }
+
      function voltarParaEditor() {
-         document.getElementById('etapa-assinatura').style.display = 'none';
+         document.getElementById('etapa-posicionamento').style.display = 'none';
          document.getElementById('etapa-editor').style.display = 'block';
      }
 
-     async function validarAssinatura() {
-         const tabAtiva = document.querySelector('#assinaturaTabs .nav-link.active').id;
-         let assinaturaData = null;
-         let tipoAssinatura = '';
-
-         if (tabAtiva === 'desenhar-tab') {
-             if (signaturePad.isEmpty()) {
-                 alert('Por favor, desenhe sua assinatura');
-                 return;
-             }
-             assinaturaData = signaturePad.toDataURL('image/png');
-             tipoAssinatura = 'desenho';
-         } else {
-             const texto = document.getElementById('signature-text').value.trim();
-             if (!texto) {
-                 alert('Por favor, digite seu nome para assinatura');
-                 return;
-             }
-             const fonte = document.getElementById('signature-font').value;
-             assinaturaData = { texto: texto, fonte: fonte };
-             tipoAssinatura = 'texto';
-         }
-
-         const senha = document.getElementById('senha-validacao').value;
-         if (!senha) {
-             alert('Por favor, digite sua senha para confirmar a assinatura');
-             return;
-         }
-
-         const lembrarSenha = document.getElementById('lembrar-senha').checked;
-
-         try {
-             const validacaoResponse = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
-                     action: 'validar_senha',
-                     senha: senha
-                 })
-             });
-
-             const validacaoData = await validacaoResponse.json();
-
-             if (!validacaoData.success) {
-                 alert('Senha incorreta! Por favor, tente novamente.');
-                 return;
-             }
-
-             if (lembrarSenha) {
-                 senhaMemorizada = senha;
-             }
-
-             dadosAssinatura = {
-                 assinatura: assinaturaData,
-                 tipo_assinatura: tipoAssinatura,
-                 admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-                 admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-                 admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
-                 data_assinatura: new Date().toLocaleString('pt-BR')
-             };
-
-             templateAtual = document.getElementById('template-select').value;
-             const ehTemplateA4 = templateAtual.includes('template_oficial_a4') || templateAtual.includes('licenca_previa_projeto');
-
-             if (ehTemplateA4) {
-                 prepararEtapaPosicionamento();
-             } else {
-                 await validarEGerarPdf();
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             alert('Erro ao validar assinatura: ' + (error.message || 'Erro desconhecido'));
-         }
-     }
-
      function prepararEtapaPosicionamento() {
+         if (!dadosAssinatura) {
+             definirAssinaturaPadrao();
+         }
+
          const editor = tinymce.get('editor-parecer-content');
          let html = '';
 
@@ -3048,14 +3045,10 @@ $isBlocked = $isFinalized || $isIndeferido;
              previewConteudo.innerHTML = html;
          }
 
-         previewConteudo.style.whiteSpace = 'pre-wrap';
-         previewConteudo.style.lineHeight = '1.6';
-         previewConteudo.style.wordBreak = 'break-word';
-
-         atualizarStatusPaginacao(previewConteudo, previewDoc);
-
          document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
          document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
+         atualizarBlocoAssinaturaPreview();
+         atualizarBadgeAssinatura();
 
          // Gerar QR code temporário para preview (será substituído pelo real no backend)
          const previewQr = document.getElementById('preview-qr-code');
@@ -3100,11 +3093,11 @@ $isBlocked = $isFinalized || $isIndeferido;
             atualizarStatusPaginacao(previewConteudo, previewDoc);
         }, 100);
 
-         document.getElementById('etapa-assinatura').style.display = 'none';
          document.getElementById('etapa-posicionamento').style.display = 'block';
 
         setTimeout(() => {
             inicializarDragAndDrop();
+            habilitarEdicaoPreview(previewConteudo);
         }, 200);
     }
 
@@ -3170,7 +3163,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              blocoAssinatura.style.top = currentY + 'px';
          });
 
-        document.addEventListener('mouseup', function() {
+         document.addEventListener('mouseup', function() {
             if (isDragging) {
                 isDragging = false;
                 blocoAssinatura.style.cursor = 'move';
@@ -3191,9 +3184,45 @@ $isBlocked = $isFinalized || $isIndeferido;
          });
      }
 
-     function voltarParaAssinatura() {
-         document.getElementById('etapa-posicionamento').style.display = 'none';
-         document.getElementById('etapa-assinatura').style.display = 'block';
+     function posicionarAssinaturaRapido(posicao) {
+         const previewDoc = document.getElementById('preview-documento');
+         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
+         if (!previewDoc || !blocoAssinatura) return;
+
+         const previewRect = previewDoc.getBoundingClientRect();
+         const blocoRect = blocoAssinatura.getBoundingClientRect();
+         let centroX;
+         const margem = 40;
+         const baseY = previewRect.height - blocoRect.height - margem + (blocoRect.height / 2);
+
+         if (posicao === 'esquerda') {
+             centroX = margem + (blocoRect.width / 2);
+         } else if (posicao === 'centro') {
+             centroX = previewRect.width / 2;
+         } else {
+             centroX = previewRect.width - margem - (blocoRect.width / 2);
+         }
+
+         coordenadasAssinatura.x = centroX / previewRect.width;
+         coordenadasAssinatura.y = baseY / previewRect.height;
+
+         blocoAssinatura.style.left = (centroX - blocoRect.width / 2) + 'px';
+         blocoAssinatura.style.top = (baseY - blocoRect.height / 2) + 'px';
+     }
+
+     function resetarPosicaoAssinatura() {
+         const previewDoc = document.getElementById('preview-documento');
+         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
+         if (!previewDoc || !blocoAssinatura) return;
+         const previewRect = previewDoc.getBoundingClientRect();
+         const blocoWidth = 200;
+         const blocoHeight = 100;
+         const centroX = previewRect.width - blocoWidth - 40 + (blocoWidth / 2);
+         const centroY = previewRect.height - blocoHeight - 40 + (blocoHeight / 2);
+         coordenadasAssinatura.x = centroX / previewRect.width;
+         coordenadasAssinatura.y = centroY / previewRect.height;
+         blocoAssinatura.style.left = (centroX - blocoWidth / 2) + 'px';
+         blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
      }
 
      async function confirmarPosicaoEGerarPdf() {
@@ -3207,7 +3236,40 @@ $isBlocked = $isFinalized || $isIndeferido;
              return;
          }
 
+         const senha = document.getElementById('senha-finalizacao').value;
+         const erroSenhaEl = document.getElementById('erro-senha-finalizacao');
+         if (erroSenhaEl) erroSenhaEl.style.display = 'none';
+         if (!dadosAssinatura) {
+             definirAssinaturaPadrao();
+         }
+         if (!senha) {
+             if (erroSenhaEl) {
+                 erroSenhaEl.textContent = 'Informe sua senha para finalizar a assinatura.';
+                 erroSenhaEl.style.display = 'block';
+             }
+             return;
+         }
+
          try {
+             const validacaoResponse = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({
+                     action: 'validar_senha',
+                     senha: senha
+                 })
+             });
+             const validacaoData = await validacaoResponse.json();
+             if (!validacaoData.success) {
+                 if (erroSenhaEl) {
+                     erroSenhaEl.textContent = 'Senha incorreta. Tente novamente.';
+                     erroSenhaEl.style.display = 'block';
+                 }
+                 return;
+             }
+
+             dadosAssinatura.data_assinatura = new Date().toLocaleString('pt-BR');
+
              const response = await fetch('parecer_handler.php', {
                  method: 'POST',
                  headers: {'Content-Type': 'application/json'},
@@ -3241,8 +3303,9 @@ $isBlocked = $isFinalized || $isIndeferido;
 
                 if (signaturePad) signaturePad.clear();
                 document.getElementById('signature-text').value = '';
-                document.getElementById('senha-validacao').value = '';
-                document.getElementById('lembrar-senha').checked = false;
+                const senhaFinalizacao = document.getElementById('senha-finalizacao');
+                if (senhaFinalizacao) senhaFinalizacao.value = '';
+                if (erroSenhaEl) erroSenhaEl.style.display = 'none';
 
                 document.getElementById('etapa-posicionamento').style.display = 'none';
                 document.getElementById('etapa-selecao-template').style.display = 'block';
@@ -3257,119 +3320,6 @@ $isBlocked = $isFinalized || $isIndeferido;
          } catch (error) {
              console.error('Erro:', error);
              alert('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'));
-         }
-     }
-
-     async function validarEGerarPdf() {
-         // Obter tipo de assinatura ativa
-         const tabAtiva = document.querySelector('#assinaturaTabs .nav-link.active').id;
-         let assinaturaData = null;
-         let tipoAssinatura = '';
-
-         if (tabAtiva === 'desenhar-tab') {
-             if (signaturePad.isEmpty()) {
-                 alert('Por favor, desenhe sua assinatura');
-                 return;
-             }
-             assinaturaData = signaturePad.toDataURL('image/png');
-             tipoAssinatura = 'desenho';
-         } else {
-             const texto = document.getElementById('signature-text').value.trim();
-             if (!texto) {
-                 alert('Por favor, digite seu nome para assinatura');
-                 return;
-             }
-             const fonte = document.getElementById('signature-font').value;
-             assinaturaData = { texto: texto, fonte: fonte };
-             tipoAssinatura = 'texto';
-         }
-
-         // Validar senha
-         const senha = document.getElementById('senha-validacao').value;
-         if (!senha) {
-             alert('Por favor, digite sua senha para confirmar a assinatura');
-             return;
-         }
-
-         // Verificar se deve lembrar senha
-         const lembrarSenha = document.getElementById('lembrar-senha').checked;
-
-         try {
-             // Validar senha no backend
-             const validacaoResponse = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
-                     action: 'validar_senha',
-                     senha: senha
-                 })
-             });
-
-             const validacaoData = await validacaoResponse.json();
-
-             if (!validacaoData.success) {
-                 alert('Senha incorreta! Por favor, tente novamente.');
-                 return;
-             }
-
-             // Memorizar senha se solicitado
-             if (lembrarSenha) {
-                 senhaMemorizada = senha;
-             }
-
-             // Gerar PDF com assinatura
-             const editor = tinymce.get('editor-parecer-content');
-             if (!editor) {
-                 alert('Erro: Editor não encontrado. Por favor, recarregue a página e tente novamente.');
-                 return;
-             }
-
-             const html = editor.getContent();
-             const template = document.getElementById('template-select').value;
-
-             const response = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
-                     action: 'gerar_pdf_com_assinatura',
-                     html: html,
-                     template: template,
-                     requerimento_id: <?php echo $id; ?>,
-                     assinatura: assinaturaData,
-                     tipo_assinatura: tipoAssinatura,
-                     admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-                     admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-                     admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
-                     data_assinatura: new Date().toLocaleString('pt-BR')
-                 })
-             });
-
-             const data = await response.json();
-
-             if (data.success) {
-                 alert('Parecer assinado e gerado com sucesso!');
-                 parecerModal.hide();
-                 carregarPareceresExistentes();
-
-                 // Limpar formulário
-                 if (signaturePad) signaturePad.clear();
-                 document.getElementById('signature-text').value = '';
-                 document.getElementById('senha-validacao').value = '';
-                 document.getElementById('lembrar-senha').checked = false;
-                 if (!lembrarSenha) senhaMemorizada = null;
-
-                 // Resetar para primeira etapa
-                 document.getElementById('etapa-assinatura').style.display = 'none';
-                 document.getElementById('etapa-selecao-template').style.display = 'block';
-
-                 // Limpar TinyMCE
-                 tinymce.remove('#editor-parecer-content');
-             } else {
-                 alert('Erro ao gerar PDF: ' + data.error);
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             alert('Erro ao processar assinatura: ' + (error.message || 'Erro desconhecido'));
          }
      }
 
@@ -3505,6 +3455,38 @@ $isBlocked = $isFinalized || $isIndeferido;
              console.error('Erro ao excluir parecer:', error);
              alert('Erro ao excluir parecer');
          });
+     }
+
+     function resetarFluxoParecer(resetTemplate = false) {
+         const etapaSelecao = document.getElementById('etapa-selecao-template');
+         const etapaEditor = document.getElementById('etapa-editor');
+         const etapaPosicionamento = document.getElementById('etapa-posicionamento');
+
+         if (etapaSelecao) etapaSelecao.style.display = 'block';
+         if (etapaEditor) etapaEditor.style.display = 'none';
+         if (etapaPosicionamento) etapaPosicionamento.style.display = 'none';
+
+         if (resetTemplate) {
+             const select = document.getElementById('template-select');
+             if (select) select.value = '';
+         }
+
+         if (tinymce.get('editor-parecer-content')) {
+             tinymce.remove('#editor-parecer-content');
+         }
+
+         dadosAssinatura = null;
+         coordenadasAssinatura = { x: 0, y: 0 };
+         templateAtual = null;
+
+         const senhaFinalizacao = document.getElementById('senha-finalizacao');
+         if (senhaFinalizacao) senhaFinalizacao.value = '';
+         const erroSenhaEl = document.getElementById('erro-senha-finalizacao');
+         if (erroSenhaEl) erroSenhaEl.style.display = 'none';
+
+         if (configAssinaturaModal) {
+             configAssinaturaModal.hide();
+         }
      }
 </script>
 
