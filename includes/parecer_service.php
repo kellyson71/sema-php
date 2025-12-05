@@ -91,7 +91,7 @@ class ParecerService
     {
         $ext = pathinfo($nomeTemplate, PATHINFO_EXTENSION);
         if (strtolower($ext) === 'html') {
-            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false || strpos(strtolower($nomeTemplate), 'licenca_previa_projeto') !== false) {
+            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false || strpos(strtolower($nomeTemplate), 'licenca_previa_projeto') !== false || strpos(strtolower($nomeTemplate), 'parecer_tecnico') !== false) {
                 return 'oficial_a4';
             }
             return 'html';
@@ -187,8 +187,7 @@ class ParecerService
             $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
         }
 
-        $baseDir = dirname($templatePath);
-        $imagePath = $baseDir . '/images/image1.png';
+        $imagePath = dirname(__DIR__) . '/assets/doc/images/image1.png';
 
         if (file_exists($imagePath)) {
             $imageData = file_get_contents($imagePath);
@@ -457,13 +456,6 @@ class ParecerService
             $options->set('isHtml5ParserEnabled', true);
             $options->set('isFontSubsettingEnabled', true);
             $options->set('chroot', dirname(__DIR__));
-            $options->set('debugKeepTemp', true);
-            $options->set('debugPng', true);
-            $options->set('debugLayout', true);
-            $options->set('debugLayoutLines', true);
-            $options->set('debugLayoutBlocks', true);
-            $options->set('debugLayoutInline', true);
-            $options->set('debugLayoutPaddingBox', true);
             $options->set('enableCssFloat', true);
             $options->set('enableFontSubsetting', true);
 
@@ -580,8 +572,7 @@ class ParecerService
             }
 
             if ($precisaConverter) {
-                $baseDir = dirname(__DIR__) . '/assets/doc/';
-                $imagePath = $baseDir . 'images/image1.png';
+                $imagePath = dirname(__DIR__) . '/assets/doc/images/image1.png';
 
                 // Se já está em base64 PNG, salvar temporariamente e converter
                 if ($ehPngBase64 && !empty($imgSrc)) {

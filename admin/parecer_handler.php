@@ -396,7 +396,7 @@ try {
             $posicaoXPercent = ($posicaoX * 100) . '%';
             $posicaoYPercent = ($posicaoY * 100) . '%';
 
-            $ehTemplateA4 = strpos($template, 'template_oficial_a4') !== false || strpos($template, 'licenca_previa_projeto') !== false;
+            $ehTemplateA4 = strpos($template, 'template_oficial_a4') !== false || strpos($template, 'licenca_previa_projeto') !== false || strpos($template, 'parecer_tecnico') !== false;
 
             // Para templates A4, reconstruir estrutura se necessário (HTML do TinyMCE pode não ter estrutura completa)
             if ($ehTemplateA4) {
@@ -448,8 +448,7 @@ try {
 
                 $documentoDiv = $parser->getElementById('documento');
                 if (!$documentoDiv) {
-                    $baseDir = dirname(__DIR__) . '/assets/doc/';
-                    $imagePath = $baseDir . 'images/image1.png';
+                    $imagePath = dirname(__DIR__) . '/assets/doc/images/image1.png';
                     $imgSrc = '';
                     if (file_exists($imagePath)) {
                         $imageData = file_get_contents($imagePath);
@@ -468,8 +467,7 @@ try {
                 if ($documentoDiv) {
                     $imgFundo = $parser->getElementById('fundo-imagem');
                     if (!$imgFundo || empty($imgFundo->getAttribute('src'))) {
-                        $baseDir = dirname(__DIR__) . '/assets/doc/';
-                        $imagePath = $baseDir . 'images/image1.png';
+                        $imagePath = dirname(__DIR__) . '/assets/doc/images/image1.png';
                         if (file_exists($imagePath)) {
                             $imageData = file_get_contents($imagePath);
                             $imageInfo = @getimagesize($imagePath);

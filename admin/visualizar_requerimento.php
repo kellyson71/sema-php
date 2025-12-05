@@ -3058,7 +3058,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              } else {
                  // Fallback: usar caminho padrão da imagem de fundo
                  const template = document.getElementById('template-select').value;
-                 if (template && (template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto'))) {
+                 if (template && (template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto') || template.includes('parecer_tecnico'))) {
                      previewFundo.src = '../assets/doc/images/image1.png';
                  }
              }
