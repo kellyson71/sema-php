@@ -11,8 +11,8 @@
         margin: 0;
         padding: 0;
         font-family: "Times New Roman", Times, serif;
-        font-size: 12pt;
-        line-height: 1.6;
+        font-size: 11pt;
+        line-height: 1.4;
         color: #000;
       }
       #documento {
@@ -32,62 +32,92 @@
       }
       #conteudo {
         position: absolute;
-        top: 150px;
+        top: 130px;
         left: 60px;
         width: calc(100% - 120px);
         z-index: 2;
         font-family: "Times New Roman", Times, serif;
-        font-size: 12pt;
-        line-height: 1.8;
+        font-size: 11pt;
+        line-height: 1.4;
         color: #000;
       }
       .titulo-licenca {
-        font-size: 16pt;
+        font-size: 14pt;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+      }
+      .subtitulo {
+        font-size: 10pt;
+        text-align: center;
+        margin-bottom: 20px;
+        font-style: italic;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        text-transform: uppercase;
+        background-color: #f0f0f0;
+        padding: 5px;
+        margin-top: 15px;
+        margin-bottom: 10px;
+        font-size: 10pt;
+        border: 1px solid #ccc;
       }
       .campo {
-        margin-bottom: 12px;
+        margin-bottom: 5px;
+        display: flex;
       }
       .campo-label {
         font-weight: bold;
-        display: inline-block;
-        min-width: 150px;
+        width: 160px;
+        flex-shrink: 0;
       }
       .campo-valor {
-        display: inline-block;
+        flex-grow: 1;
+        border-bottom: 1px dotted #999;
       }
-      .responsavel-tecnico {
-        margin-top: 20px;
-        margin-bottom: 20px;
+      .tabela-dados {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
       }
-      .responsavel-tecnico .campo {
-        margin-bottom: 8px;
+      .tabela-dados td {
+        padding: 4px;
+        border: 1px solid #ccc;
+        vertical-align: top;
       }
-      .endereco {
-        margin-top: 20px;
-        margin-bottom: 20px;
-      }
-      .status-box {
-        margin-top: 20px;
-        margin-bottom: 20px;
-      }
-      .status-item {
-        margin-bottom: 8px;
+      .tabela-dados .label {
+        font-weight: bold;
+        background-color: #f9f9f9;
+        width: 30%;
       }
       .especificacao {
-        margin-top: 25px;
-        margin-bottom: 25px;
+        margin-top: 15px;
+        margin-bottom: 15px;
         text-align: justify;
+        font-size: 10.5pt;
+        line-height: 1.5;
+      }
+      .condicionantes {
+        font-size: 9pt;
+        margin-top: 10px;
+        border: 1px solid #000;
+        padding: 10px;
+      }
+      .condicionantes ul {
+        margin: 5px 0;
+        padding-left: 20px;
       }
       .data-local {
         margin-top: 30px;
         text-align: right;
+        font-size: 11pt;
       }
       .assinaturas {
-        margin-top: 60px;
+        margin-top: 50px;
         display: flex;
         justify-content: space-between;
       }
@@ -98,19 +128,15 @@
       }
       .linha-assinatura {
         border-top: 1px solid #000;
-        margin-top: 60px;
+        margin-top: 40px;
         padding-top: 5px;
       }
       .nome-assinante {
         font-weight: bold;
-        margin-bottom: 5px;
+        font-size: 10pt;
       }
       .cargo-assinante {
-        font-size: 11pt;
-        margin-bottom: 5px;
-      }
-      .matricula-assinante {
-        font-size: 11pt;
+        font-size: 9pt;
       }
       #area-assinatura {
         position: absolute;
@@ -120,24 +146,24 @@
       .assinatura-bloco {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 10px;
         background: rgba(255, 255, 255, 0.95);
-        padding: 10px;
+        padding: 8px;
         border: 1px dashed #999;
         border-radius: 4px;
       }
       .assinatura-bloco img {
-        width: 80px;
-        height: 80px;
+        width: 70px;
+        height: 70px;
         flex-shrink: 0;
       }
       .assinatura-bloco .dados-assinante {
-        font-size: 12px;
+        font-size: 10px;
         text-align: left;
       }
       .assinatura-bloco strong {
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
       }
     </style>
   </head>
@@ -146,92 +172,105 @@
       <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
       <div id="conteudo" contenteditable="true">
         <div class="titulo-licenca">
-          LICENÇA PRÉVIA DE PROJETO DE OBRA {{protocolo}}
+          LICENÇA PRÉVIA DE PROJETO DE OBRA<br>
+          <span style="font-size: 12pt; font-weight: normal;">Nº PROCESSO: {{protocolo}}</span>
         </div>
 
-        <div class="campo">
-          <span class="campo-label">REQUERENTE:</span>
-          <span class="campo-valor">{{nome_requerente}}</span>
+        <div class="subtitulo">
+          Fundamentação Legal: Lei Municipal nº 1234/2020, Lei Federal nº 6.938/1981 e Resoluções do CONAMA.
         </div>
 
-        <div class="campo">
-          <span class="campo-label">CPF:</span>
-          <span class="campo-valor">{{cpf_cnpj_requerente}}</span>
-        </div>
+        <div class="secao-titulo">1. IDENTIFICAÇÃO DO EMPREENDEDOR</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Nome/Razão Social:</td>
+            <td>{{nome_requerente}}</td>
+          </tr>
+          <tr>
+            <td class="label">CPF/CNPJ:</td>
+            <td>{{cpf_cnpj_requerente}}</td>
+          </tr>
+          <tr>
+            <td class="label">Endereço/Contato:</td>
+            <td>{{email_requerente}} | {{telefone_requerente}}</td>
+          </tr>
+        </table>
 
-        <div class="responsavel-tecnico">
-          <div style="font-weight: bold; margin-bottom: 10px">
-            RESPONSÁVEL TÉCNICO
-          </div>
-          <div class="campo">
-            <span class="campo-valor">{{responsavel_tecnico_nome}} </span>
-          </div>
-          <div class="campo">
-            <span class="campo-label">Registro:</span>
-            <span class="campo-valor">{{responsavel_tecnico_registro}} </span>
-          </div>
-          <div class="campo">
-            <span class="campo-label">Nº</span>
-            <span class="campo-valor">{{responsavel_tecnico_numero}} </span>
-          </div>
-        </div>
+        <div class="secao-titulo">2. DADOS DO EMPREENDIMENTO/OBRA</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Endereço da Obra:</td>
+            <td>{{endereco_objetivo}}</td>
+          </tr>
+          <tr>
+            <td class="label">Tipo de Alvará:</td>
+            <td>{{tipo_alvara}}</td>
+          </tr>
+          <tr>
+            <td class="label">Proprietário do Imóvel:</td>
+            <td>{{nome_proprietario}} (CPF/CNPJ: {{cpf_cnpj_proprietario}})</td>
+          </tr>
+        </table>
 
-        <div class="endereco">
-          <div class="campo">
-            <span class="campo-label">ENDEREÇO DA OBRA:</span>
-          </div>
-          <div class="campo-valor" style="margin-left: 0">
-            {{endereco_objetivo}}
-          </div>
-        </div>
+        <div class="secao-titulo">3. RESPONSABILIDADE TÉCNICA</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Responsável Técnico:</td>
+            <td>{{responsavel_tecnico_nome}}</td>
+          </tr>
+          <tr>
+            <td class="label">Registro Profissional:</td>
+            <td>{{responsavel_tecnico_registro}}</td>
+          </tr>
+          <tr>
+            <td class="label">Contato:</td>
+            <td>{{responsavel_tecnico_numero}}</td>
+          </tr>
+        </table>
 
-        <div class="status-box">
-          <div class="status-item">
-            <span class="campo-label">PROJETO:</span>
-            <span class="campo-valor">APROVADO</span>
-          </div>
-          <div class="status-item">
-            <span class="campo-label">LICENÇA PRÉVIA:</span>
-            <span class="campo-valor">APROVADA</span>
-          </div>
-          <div class="status-item">
-            <span class="campo-label">VALIDADE:</span>
-            <span class="campo-valor">180 DIAS</span>
-          </div>
-        </div>
-
+        <div class="secao-titulo">4. PARECER TÉCNICO</div>
         <div class="especificacao">
-          <strong>ESPECIFICAÇÃO:</strong> {{especificacao}} TRATA-SE DA
-          APROVAÇÃO PRÉVIA DO PROJETO PARA A EDIFICAÇÃO RESIDENCIAL COM 80,00 M²
-          DE ACORDO COM AS DIRETRIZES QUE ORIENTAM E QUE REGULAMENTAM AS
-          EDIFICAÇÕES NO MUNICÍPIO DE PAU DOS FERROS – RN. A OBRA DEVE SEGUIR OS
-          PADRÕES BÁSICOS DA CONSTRUÇÃO CIVIL, RESPEITANDO AS BOAS PRÁTICAS DA
-          ENGENHARIA, BEM COMO ATENDER A SOLICITAÇÃO DE DOCUMENTOS EXIGIDOS PELO
-          MUNICIPIO. ESTÁ LICENÇA NÃO SUBSTITUI A NECESSIDADE DE ALVARÁ DE
-          CONSTRUÇÃO.
+          <p>
+            <strong>DESCRIÇÃO:</strong> {{especificacao}}
+          </p>
+          <p>
+            A Secretaria Municipal de Meio Ambiente, no uso de suas atribuições legais, certifica que o projeto acima identificado foi analisado e encontra-se em conformidade com as diretrizes urbanísticas e ambientais do município de Pau dos Ferros – RN.
+          </p>
+          <p>
+            Esta <strong>LICENÇA PRÉVIA</strong> atesta a viabilidade ambiental e urbanística do empreendimento, não autorizando o início das obras, que dependerá da emissão do Alvará de Construção definitivo.
+          </p>
         </div>
 
-        <div class="data-local">Pau dos Ferros, {{data_atual}}</div>
+        <div class="condicionantes">
+          <strong>CONDICIONANTES E RESTRIÇÕES:</strong>
+          <ul>
+            <li>Esta licença tem validade de <strong>180 (cento e oitenta) dias</strong>.</li>
+            <li>O empreendedor deve manter esta licença no local da obra.</li>
+            <li>Qualquer alteração no projeto deve ser comunicada imediatamente a esta Secretaria.</li>
+            <li>Os resíduos da construção civil devem ter destinação final ambientalmente adequada.</li>
+            <li>{{observacoes}}</li>
+          </ul>
+        </div>
+
+        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
 
         <div class="assinaturas">
           <div class="assinatura-esquerda">
             <div class="linha-assinatura">
               <div class="nome-assinante">{{admin_nome_completo}}</div>
               <div class="cargo-assinante">{{admin_cargo}}</div>
-              <div class="matricula-assinante">
-                {{admin_matricula_portaria}}
-              </div>
+              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
             </div>
           </div>
           <div class="assinatura-direita">
             <div class="linha-assinatura">
-              <div class="nome-assinante"></div>
-              <div class="cargo-assinante"></div>
-              <div class="matricula-assinante"></div>
+              <div class="nome-assinante">Secretário(a) de Meio Ambiente</div>
+              <div class="cargo-assinante">Assinatura da Autoridade</div>
             </div>
           </div>
         </div>
       </div>
+      
       <div id="area-assinatura" style="display: none">
         <div class="assinatura-bloco">
           <img src="" alt="QR Code" id="qr-assinatura" />

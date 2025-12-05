@@ -12,7 +12,7 @@
         padding: 0;
         font-family: "Times New Roman", Times, serif;
         font-size: 12pt;
-        line-height: 1.65;
+        line-height: 1.5;
         color: #000;
       }
       #documento {
@@ -38,47 +38,85 @@
         z-index: 2;
         font-family: "Times New Roman", Times, serif;
         font-size: 12pt;
-        line-height: 1.65;
+        line-height: 1.5;
         color: #000;
       }
       h1 {
-        font-size: 15pt;
+        font-size: 16pt;
         text-align: center;
         text-transform: uppercase;
-        margin-bottom: 16px;
-        letter-spacing: 0.4px;
+        margin-bottom: 10px;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
       }
       .subtitulo {
         text-align: center;
         font-size: 11pt;
-        color: #374151;
-        margin-bottom: 22px;
+        color: #555;
+        margin-bottom: 25px;
+        font-style: italic;
       }
-      .bloco {
-        margin-bottom: 18px;
+      .secao {
+        margin-bottom: 20px;
       }
-      .bloco strong {
-        display: block;
-        margin-bottom: 6px;
+      .secao-titulo {
+        font-weight: bold;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        background-color: #e5e7eb;
+        padding: 6px 10px;
+        margin-bottom: 10px;
+        font-size: 11pt;
+        border-left: 4px solid #4b5563;
       }
-      .quadro {
-        background: #f8fafc;
+      .tabela-info {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+      }
+      .tabela-info td {
+        padding: 6px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+      }
+      .tabela-info .label {
+        font-weight: bold;
+        width: 30%;
+        color: #333;
+      }
+      .checklist-box {
+        background: #f9fafb;
         border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        padding: 12px 14px;
+        padding: 15px;
+        border-radius: 4px;
       }
       ul.checklist {
         margin: 0;
-        padding-left: 18px;
+        padding-left: 20px;
+        list-style-type: none;
       }
       ul.checklist li {
-        margin-bottom: 6px;
+        margin-bottom: 8px;
+        position: relative;
+      }
+      ul.checklist li:before {
+        content: "✓";
+        position: absolute;
+        left: -20px;
+        color: #10b981;
+        font-weight: bold;
+      }
+      .conclusao {
+        text-align: justify;
+        margin-top: 10px;
       }
       .rodape {
-        margin-top: 28px;
-        text-align: right;
+        margin-top: 40px;
+        text-align: center;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        font-size: 10pt;
+        color: #666;
       }
       #area-assinatura {
         position: absolute;
@@ -114,55 +152,76 @@
       <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
       <div id="conteudo" contenteditable="true">
         <h1>Parecer Técnico Detalhado</h1>
-        <div class="subtitulo">Protocolo {{protocolo}} — {{data_atual}}</div>
+        <div class="subtitulo">Processo Administrativo nº {{protocolo}} | Data: {{data_atual}}</div>
 
-        <div class="bloco quadro">
-          <strong>Dados do requerente</strong>
-          <p>Nome: {{nome_requerente}}</p>
-          <p>CPF/CNPJ: {{cpf_cnpj_requerente}}</p>
-          <p>Contato: {{telefone_requerente}} | {{email_requerente}}</p>
+        <div class="secao">
+          <div class="secao-titulo">1. DADOS DO REQUERIMENTO</div>
+          <table class="tabela-info">
+            <tr>
+              <td class="label">Requerente:</td>
+              <td>{{nome_requerente}}</td>
+            </tr>
+            <tr>
+              <td class="label">CPF/CNPJ:</td>
+              <td>{{cpf_cnpj_requerente}}</td>
+            </tr>
+            <tr>
+              <td class="label">Endereço da Obra:</td>
+              <td>{{endereco_objetivo}}</td>
+            </tr>
+            <tr>
+              <td class="label">Tipo de Solicitação:</td>
+              <td>{{tipo_alvara}}</td>
+            </tr>
+          </table>
         </div>
 
-        <div class="bloco quadro">
-          <strong>Objeto da análise</strong>
-          <p><strong>Endereço:</strong> {{endereco_objetivo}}</p>
-          <p><strong>Tipo de alvará:</strong> {{tipo_alvara}}</p>
-          <p><strong>Status atual:</strong> {{status}}</p>
+        <div class="secao">
+          <div class="secao-titulo">2. ANÁLISE DOCUMENTAL E TÉCNICA</div>
+          <div class="checklist-box">
+            <strong>Itens Verificados:</strong>
+            <ul class="checklist">
+              <li>Documentação pessoal/jurídica completa e regular.</li>
+              <li>Projeto arquitetônico em conformidade com o Código de Obras.</li>
+              <li>ART/RRT do Responsável Técnico apresentada.</li>
+              <li>Atendimento às normas de acessibilidade (NBR 9050).</li>
+              <li>Adequação ao zoneamento urbano municipal.</li>
+            </ul>
+          </div>
         </div>
 
-        <div class="bloco">
-          <strong>Checklist de verificação</strong>
-          <ul class="checklist">
-            <li>Documentação recebida e conferida.</li>
-            <li>Compatibilidade do projeto com normas municipais.</li>
-            <li>Condições ambientais e de segurança verificadas.</li>
-            <li>Manifestação dos órgãos competentes anexada.</li>
-          </ul>
+        <div class="secao">
+          <div class="secao-titulo">3. PARECER TÉCNICO</div>
+          <div class="conclusao">
+            <p>
+              <strong>ANÁLISE:</strong> {{observacoes}}
+            </p>
+            <p>
+              Considerando a análise da documentação apresentada e a verificação técnica do projeto, constatou-se que o mesmo atende aos requisitos legais estabelecidos pela legislação municipal vigente.
+            </p>
+            <p>
+              Ressalta-se que a execução da obra é de inteira responsabilidade do proprietário e do responsável técnico ({{responsavel_tecnico_nome}} - Registro: {{responsavel_tecnico_registro}}), devendo seguir rigorosamente o projeto aprovado.
+            </p>
+          </div>
         </div>
 
-        <div class="bloco">
-          <strong>Conclusão técnica</strong>
-          <p>{{observacoes}}</p>
-        </div>
-
-        <div class="bloco quadro">
-          <strong>Encaminhamentos e condicionantes</strong>
-          <p>
-            Descreva aqui as exigências para regularização, os prazos
-            recomendados e os responsáveis pelas próximas etapas.
-          </p>
-        </div>
-
-        <div class="bloco">
-          <strong>Responsável técnico do processo</strong>
-          <p>Nome: {{responsavel_tecnico_nome}}</p>
-          <p>Registro: {{responsavel_tecnico_registro}}</p>
-          <p>Contato informado: {{responsavel_tecnico_numero}}</p>
+        <div class="secao">
+          <div class="secao-titulo">4. CONCLUSÃO E ENCAMINHAMENTO</div>
+          <div class="conclusao">
+            <p>
+              Diante do exposto, somos de parecer <strong>FAVORÁVEL</strong> à emissão do documento solicitado, condicionado ao cumprimento das exigências legais durante a execução.
+            </p>
+            <p>
+              Encaminhe-se para emissão e assinatura da autoridade competente.
+            </p>
+          </div>
         </div>
 
         <div class="rodape">
-          {{admin_nome_completo}} — {{admin_cargo}}
+          Documento gerado eletronicamente pelo Sistema de Gestão Ambiental (SEMA).<br>
+          A autenticidade pode ser verificada através do QR Code anexo.
         </div>
+
       </div>
       <div id="area-assinatura" style="display: none">
         <div class="assinatura-bloco">
