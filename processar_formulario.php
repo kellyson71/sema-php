@@ -34,6 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
 
+    // Tipos ambientais e regras auxiliares
+    $tiposAmbientais = [
+        'licenca_previa_ambiental',
+        'licenca_previa_instalacao',
+        'licenca_instalacao_operacao',
+        'licenca_operacao',
+        'licenca_ambiental_unica',
+        'licenca_ampliacao',
+        'licenca_operacional_corretiva',
+        'autorizacao_supressao'
+    ];
+    $tiposExigemCTF = [
+        'licenca_operacao',
+        'licenca_instalacao_operacao',
+        'licenca_ambiental_unica',
+        'licenca_ampliacao',
+        'licenca_operacional_corretiva'
+    ];
+    $tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
+
     // Dados do requerente
     $requerente = [
         'nome' => $_POST['requerente']['nome'] ?? '',
@@ -83,18 +103,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Dados do requerimento
     $protocolo = gerarProtocolo();
+    $tipoAlvara = $_POST['tipo_alvara'];
+
+    // Campos adicionais
+    $ctf_numero = trim($_POST['ctf_numero'] ?? '');
+    $licenca_anterior_numero = trim($_POST['licenca_anterior_numero'] ?? '');
+    $publicacao_diario_oficial = trim($_POST['publicacao_diario_oficial'] ?? '');
+    $comprovante_pagamento = trim($_POST['comprovante_pagamento'] ?? '');
+    $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
+    $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
+    $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
+    $observacoes = '';
+
     $requerimento = [
         'protocolo' => $protocolo,
-        'tipo_alvara' => $_POST['tipo_alvara'],
+        'tipo_alvara' => $tipoAlvara,
         'requerente_id' => $requerente_id,
         'proprietario_id' => $proprietario_id,
         'endereco_objetivo' => $_POST['endereco_objetivo'] ?? '',
+        'ctf_numero' => $ctf_numero ?: null,
+        'licenca_anterior_numero' => $licenca_anterior_numero ?: null,
+        'publicacao_diario_oficial' => $publicacao_diario_oficial ?: null,
+        'comprovante_pagamento' => $comprovante_pagamento ?: null,
+        'possui_estudo_ambiental' => $possui_estudo,
+        'tipo_estudo_ambiental' => $tipo_estudo_ambiental ?: null,
         'status' => 'Em análise'
     ];
 
     // Validação do endereço do objetivo
     if (empty($requerimento['endereco_objetivo'])) {
         setMensagem('erro', 'O endereço do objetivo é obrigatório.');
+        redirect('index.php');
+    }
+
+    // Validações específicas para tipologias ambientais
+    if (in_array($tipoAlvara, $tiposAmbientais)) {
+        if (empty($publicacao_diario_oficial)) {
+            setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
+            redirect('index.php');
+        }
+
+        if (empty($comprovante_pagamento)) {
+            setMensagem('erro', 'Informe o comprovante de pagamento.');
+            redirect('index.php');
+        }
+
+        if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) {
+            setMensagem('erro', 'Informe o número do Cadastro Técnico Federal (CTF).');
+            redirect('index.php');
+        }
+
+        if (in_array($tipoAlvara, $tiposExigemLicencaAnterior) && empty($licenca_anterior_numero)) {
+            setMensagem('erro', 'Informe o número da licença anterior.');
+            redirect('index.php');
+        }
+
+        if ($possui_estudo === null) {
+            setMensagem('erro', 'Informe se há estudo ambiental.');
+            redirect('index.php');
+        }
+
+        if ($possui_estudo === 1 && empty($tipo_estudo_ambiental)) {
+            setMensagem('erro', 'Informe o tipo de estudo ambiental.');
+            redirect('index.php');
+        }
+
+        if (!empty($data_certidao_municipal)) {
+            $dataCertidao = strtotime($data_certidao_municipal);
+            if ($dataCertidao === false) {
+                setMensagem('erro', 'Data da certidão municipal inválida.');
+                redirect('index.php');
+            }
+            $limiteValidade = strtotime('-2 years');
+            if ($dataCertidao < $limiteValidade) {
+                setMensagem('erro', 'A certidão municipal deve ter validade máxima de 2 anos.');
+                redirect('index.php');
+            }
+            $observacoes = "Certidão municipal emitida em: " . date('d/m/Y', $dataCertidao);
+            $requerimento['observacoes'] = $observacoes;
+        }
+    }
+
+    // Validação de documentos obrigatórios conforme checklist
+    $documentosObrigatorios = $tipos_alvara[$tipoAlvara]['documentos'] ?? [];
+    $errosDocumentos = [];
+
+    if (!empty($documentosObrigatorios)) {
+        foreach ($documentosObrigatorios as $index => $documento) {
+            $campoDoc = "doc_{$tipoAlvara}_{$index}";
+            $checkbox_nao_preciso = $campoDoc . '_nao_preciso';
+            $naoPrecisa = isset($_POST[$checkbox_nao_preciso]) && $_POST[$checkbox_nao_preciso] === 'on';
+            $arquivo = $_FILES[$campoDoc] ?? null;
+
+            if ((!$arquivo || $arquivo['error'] !== UPLOAD_ERR_OK) && !$naoPrecisa) {
+                $errosDocumentos[] = $documento;
+            }
+        }
+    }
+
+    if (!empty($errosDocumentos)) {
+        setMensagem('erro', 'Envie todos os documentos obrigatórios: ' . implode('; ', $errosDocumentos));
         redirect('index.php');
     }
 
@@ -162,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Enviar email de confirmação
     try {
         $emailService = new EmailService();
-        $tipo_alvara_nome = $tipos_alvara[$_POST['tipo_alvara']]['nome'] ?? $_POST['tipo_alvara'];
+        $tipo_alvara_nome = $tipos_alvara[$tipoAlvara]['nome'] ?? $tipoAlvara;
         $dados_requerimento = [
             'id' => $requerimento_id,
             'data_envio' => date('Y-m-d H:i:s'),

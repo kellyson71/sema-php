@@ -1352,6 +1352,41 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </button>
                         </div>
                     </div>
+                    <?php if (!empty($requerimento['ctf_numero'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Cadastro Técnico Federal:</div>
+                            <div class="data-value"><?php echo htmlspecialchars($requerimento['ctf_numero']); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['licenca_anterior_numero'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Licença anterior:</div>
+                            <div class="data-value"><?php echo htmlspecialchars($requerimento['licenca_anterior_numero']); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['publicacao_diario_oficial'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Publicação em D.O.:</div>
+                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['publicacao_diario_oficial'])); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['comprovante_pagamento'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Comprovante de pagamento:</div>
+                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['comprovante_pagamento'])); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
+                        <div class="data-row">
+                            <div class="data-label">Estudo ambiental:</div>
+                            <div class="data-value">
+                                <?php echo $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não'; ?>
+                                <?php if (!empty($requerimento['tipo_estudo_ambiental'])): ?>
+                                    <span class="ms-2 text-muted">(<?php echo htmlspecialchars($requerimento['tipo_estudo_ambiental']); ?>)</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($requerimento['observacoes'])): ?>
                         <div class="data-row">
                             <div class="data-label">Observações:</div>

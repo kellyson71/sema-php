@@ -177,9 +177,14 @@ include_once 'tipos_alvara.php';
                                     <option value="transporte">Licenciamento de Transporte</option>
                                     <option value="uso_solo">Certidão de Uso e Ocupação do Solo</option>
                                     <option value="parques_circos">Alvará para Parques e Circos</option>
-                                    <option value="licenca_previa">Licença Prévia</option>
-                                    <option value="licenca_operacao">Licença de Operação</option>
-                                    <option value="licenca_instalacao">Licença de Instalação</option>
+                                    <option value="licenca_previa_obras">Licença Prévia de Obras</option>
+                                    <option value="licenca_previa_ambiental">LP — Licença Prévia Ambiental</option>
+                                    <option value="licenca_previa_instalacao">LP/LI — Licença Prévia + Instalação</option>
+                                    <option value="licenca_instalacao_operacao">LI/LO — Instalação + Operação</option>
+                                    <option value="licenca_operacao">LO — Licença de Operação</option>
+                                    <option value="licenca_ambiental_unica">LAU — Licença Ambiental Única</option>
+                                    <option value="licenca_ampliacao">LA — Licença de Ampliação</option>
+                                    <option value="licenca_operacional_corretiva">LOC — Licença Operacional Corretiva</option>
                                     <option value="autorizacao_supressao">Autorização de Supressão Vegetal</option>
                                     <option value="outros">Outros</option>
                                 </select>
@@ -342,25 +347,85 @@ include_once 'tipos_alvara.php';
                         return;
                     }
 
-                    // Exemplo de campos específicos para cada tipo
+                    // Campos específicos para cada tipo
+                    const tiposAmbientais = [
+                        'licenca_previa_ambiental',
+                        'licenca_previa_instalacao',
+                        'licenca_instalacao_operacao',
+                        'licenca_operacao',
+                        'licenca_ambiental_unica',
+                        'licenca_ampliacao',
+                        'licenca_operacional_corretiva',
+                        'autorizacao_supressao'
+                    ];
+                    const tiposExigemCTF = [
+                        'licenca_operacao',
+                        'licenca_instalacao_operacao',
+                        'licenca_ambiental_unica',
+                        'licenca_ampliacao',
+                        'licenca_operacional_corretiva'
+                    ];
+                    const tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
+
                     let campos = '';
                     if (tipo === 'construcao') {
                         campos = `
-                        <input required name="area_construcao" placeholder="Área total de construção (m²) *">
-                        <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
-                    `;
-                    } else if (tipo === 'licenca_operacao') {
+                            <input required name="area_construcao" placeholder="Área total de construção (m²) *">
+                            <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
+                        `;
+                    } else if (tiposAmbientais.includes(tipo)) {
                         campos = `
-                        <input required name="atividade" placeholder="Descrição da atividade *">
-                        <input required name="porte_empreendimento" placeholder="Porte do empreendimento *">
-                    `;
+                            <div class="form-grid-2">
+                                <input ${tiposExigemCTF.includes(tipo) ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${tiposExigemCTF.includes(tipo) ? '*' : '(se houver)'}">
+                                <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
+                                <input required name="comprovante_pagamento" placeholder="Comprovante de pagamento (código/recibo) *">
+                            </div>
+                            <div class="form-grid-2">
+                                <label class="form-toggle">
+                                    <span>Possui estudo ambiental? *</span>
+                                    <div class="toggle-options">
+                                        <label><input type="radio" name="possui_estudo_ambiental" value="1" required> Sim</label>
+                                        <label><input type="radio" name="possui_estudo_ambiental" value="0" required> Não</label>
+                                    </div>
+                                </label>
+                                <input name="tipo_estudo_ambiental" placeholder="Tipo de estudo ambiental (EIA/RIMA, PCA, RCA...)">
+                            </div>
+                            <div class="form-grid-2">
+                                <label>
+                                    Data de emissão da certidão municipal (válida por até 2 anos) *
+                                    <input required type="date" name="data_certidao_municipal">
+                                </label>
+                            </div>
+                        `;
+                    } else if (tipo === 'licenca_previa_obras') {
+                        campos = `
+                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
+                        `;
                     } else {
                         campos = `
-                        <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
-                    `;
+                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
+                        `;
                     }
 
                     camposDinamicos.innerHTML = campos;
+
+                    // Controlar obrigatoriedade do tipo de estudo
+                    const estudoRadios = camposDinamicos.querySelectorAll('input[name=\"possui_estudo_ambiental\"]');
+                    const tipoEstudoInput = camposDinamicos.querySelector('input[name=\"tipo_estudo_ambiental\"]');
+                    if (estudoRadios.length && tipoEstudoInput) {
+                        estudoRadios.forEach((radio) => {
+                            radio.addEventListener('change', () => {
+                                if (radio.value === '1' && radio.checked) {
+                                    tipoEstudoInput.setAttribute('required', 'required');
+                                } else if (radio.value === '0' && radio.checked) {
+                                    tipoEstudoInput.removeAttribute('required');
+                                }
+                            });
+                        });
+                    }
                 });
             }
         });
@@ -430,6 +495,28 @@ include_once 'tipos_alvara.php';
             border-color: #009640;
             outline: none;
             box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .form-toggle {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: #024287;
+            font-weight: 500;
+        }
+
+        .form-toggle .toggle-options {
+            display: flex;
+            gap: 14px;
+            align-items: center;
         }
 
         /* Estilo para a lista de documentos */

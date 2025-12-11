@@ -260,8 +260,8 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
-    'licenca_previa' => [
-        'nome' => 'LICENÇA PRÉVIA',
+    'licenca_previa_obras' => [
+        'nome' => 'LICENÇA PRÉVIA DE OBRAS (NÃO AMBIENTAL)',
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -284,20 +284,163 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
-    'licenca_operacao' => [
-        'nome' => 'LICENÇA DE OPERAÇÃO',
+    'licenca_previa_ambiental' => [
+        'nome' => 'LP — LICENÇA PRÉVIA AMBIENTAL',
         'documentos' => [
-            'Entre em contato com a Secretaria de Meio Ambiente para obter informações sobre a documentação necessária para este tipo de licença.'
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por até 2 anos ou alvará equivalente;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo do empreendimento;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Descrição e classificação de resíduos;',
+            '10. ARTs/RRTs de todos os projetos apresentados;',
+            '11. Publicação em Diário Oficial;',
+            '12. Comprovante de pagamento;',
+            '13. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
-    'licenca_instalacao' => [
-        'nome' => 'LICENÇA DE INSTALAÇÃO',
+    'licenca_previa_instalacao' => [
+        'nome' => 'LP/LI — LICENÇA PRÉVIA + INSTALAÇÃO',
         'documentos' => [
-            'Entre em contato com a Secretaria de Meio Ambiente para obter informações sobre a documentação necessária para este tipo de licença.'
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo do empreendimento;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Outorga preventiva (quando exigida);',
+            '10. Descrição e classificação de resíduos;',
+            '11. Cronograma físico das instalações;',
+            '12. ARTs de todos os projetos;',
+            '13. Publicação em Diário Oficial;',
+            '14. Comprovante de pagamento;',
+            '15. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'licenca_instalacao_operacao' => [
+        'nome' => 'LI/LO — LICENÇA DE INSTALAÇÃO + OPERAÇÃO',
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo e projeto executivo;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Outorga preventiva/definitiva (quando exigida);',
+            '10. Descrição e classificação de resíduos e efluentes;',
+            '11. Cronograma físico da obra/implantação;',
+            '12. ARTs/RRTs de todos os projetos e execuções;',
+            '13. Licença anterior (quando houver fase prévia);',
+            '14. Relatório de atendimento às condicionantes anteriores (se houver);',
+            '15. Publicação em Diário Oficial;',
+            '16. Comprovante de pagamento;',
+            '17. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'licenca_operacao' => [
+        'nome' => 'LO — LICENÇA DE OPERAÇÃO',
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Procuração (quando houver representante);',
+            '4. Licença anterior do empreendimento;',
+            '5. Relatório de atendimento às condicionantes;',
+            '6. Cadastro Técnico Federal (CTF);',
+            '7. Publicação em Diário Oficial;',
+            '8. Comprovante de pagamento;',
+            '9. ARTs/RRTs e validações técnicas pertinentes.'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'licenca_ambiental_unica' => [
+        'nome' => 'LAU — LICENÇA AMBIENTAL ÚNICA',
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo e projeto executivo;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Outorga preventiva/definitiva (quando exigida);',
+            '10. Descrição e classificação de resíduos e efluentes;',
+            '11. Cronograma físico de implantação/operacão;',
+            '12. ARTs/RRTs de projetos e execução;',
+            '13. Cadastro Técnico Federal (CTF);',
+            '14. Publicação em Diário Oficial;',
+            '15. Comprovante de pagamento;',
+            '16. Estudo ambiental (EIA/RIMA, PCA ou equivalente);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'licenca_ampliacao' => [
+        'nome' => 'LA — LICENÇA DE AMPLIAÇÃO',
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '5. Licença anterior e relatório das condicionantes atendidas;',
+            '6. Memorial descritivo da ampliação proposta;',
+            '7. Projeto/Planta georreferenciada da ampliação (digital e impressa);',
+            '8. Outorga preventiva/definitiva para novos usos (quando exigida);',
+            '9. Descrição e classificação de resíduos e efluentes da ampliação;',
+            '10. Cronograma físico da ampliação;',
+            '11. ARTs/RRTs de projetos e execução;',
+            '12. Cadastro Técnico Federal (CTF);',
+            '13. Publicação em Diário Oficial;',
+            '14. Comprovante de pagamento;',
+            '15. Estudo ambiental atualizado ou complementar (quando exigido);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'licenca_operacional_corretiva' => [
+        'nome' => 'LOC — LICENÇA OPERACIONAL CORRETIVA',
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '5. Diagnóstico ambiental/corretivo do empreendimento;',
+            '6. Memorial descritivo e plano de correção;',
+            '7. Planta georreferenciada (digital e impressa);',
+            '8. Outorga preventiva/definitiva (quando exigida);',
+            '9. Descrição e classificação de resíduos e efluentes;',
+            '10. Cronograma físico das ações corretivas;',
+            '11. ARTs/RRTs de projetos e execução;',
+            '12. Cadastro Técnico Federal (CTF);',
+            '13. Publicação em Diário Oficial;',
+            '14. Comprovante de pagamento;',
+            '15. Estudo ambiental ou relatório técnico de correção (quando exigido);'
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -307,7 +450,17 @@ $tipos_alvara = [
     'autorizacao_supressao' => [
         'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL',
         'documentos' => [
-            'Entre em contato com a Secretaria de Meio Ambiente para obter informações sobre a documentação necessária para este tipo de autorização.'
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Procuração/autorização do proprietário (quando aplicável);',
+            '5. Inventário/levantamento florestal com ART;',
+            '6. Planta georreferenciada com indicação das áreas de supressão;',
+            '7. Laudo fotográfico e memorial descritivo;',
+            '8. Outorga ou anuência do órgão competente quando exigida;',
+            '9. Cronograma de supressão e plano de reposição/compensação;',
+            '10. Publicação em Diário Oficial;',
+            '11. Comprovante de pagamento.'
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
