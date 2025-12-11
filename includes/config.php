@@ -1,9 +1,15 @@
 <?php
 // Configurações do banco de dados para Docker
+// define('DB_TYPE', 'mysql');
+// define('DB_HOST', 'db');
+// define('DB_USER', 'root');
+// define('DB_PASS', 'root');
+// define('DB_NAME', 'u492577848_SEMA');
+
 define('DB_TYPE', 'mysql');
-define('DB_HOST', 'db');
-define('DB_USER', 'root');
-define('DB_PASS', 'root');
+define('DB_HOST', 'srv1844.hstgr.io');
+define('DB_USER', 'u492577848_SEMA');
+define('DB_PASS', 'Pmpfestagio2021');
 define('DB_NAME', 'u492577848_SEMA');
 
 // Outras configurações
