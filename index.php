@@ -505,18 +505,86 @@ include_once 'tipos_alvara.php';
             margin-bottom: 10px;
         }
 
+        /* Estilo para labels dos campos dinâmicos - BRANCO */
+        .form-grid-2 > label {
+            color: white !important;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Estilo para o toggle de estudo ambiental */
         .form-toggle {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            color: #024287;
+            gap: 8px;
+            color: white !important;
             font-weight: 500;
+        }
+
+        .form-toggle > span {
+            color: white !important;
+            font-size: 14px;
+            margin-bottom: 4px;
         }
 
         .form-toggle .toggle-options {
             display: flex;
-            gap: 14px;
+            gap: 20px;
             align-items: center;
+        }
+
+        /* Estilo para os radio buttons - VISÍVEIS E GRANDES */
+        .form-toggle .toggle-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white !important;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .form-toggle .toggle-options label:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .form-toggle .toggle-options input[type="radio"] {
+            width: 20px !important;
+            height: 20px !important;
+            margin: 0 !important;
+            cursor: pointer;
+            accent-color: #009640;
+            flex-shrink: 0;
+        }
+
+        .form-toggle .toggle-options label:has(input:checked) {
+            background-color: rgba(0, 150, 64, 0.3);
+            border-color: #009640;
+        }
+
+        /* Estilo para input de data */
+        .form-grid-2 input[type="date"] {
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background-color: white;
+            color: #024287;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .form-grid-2 input[type="date"]:focus {
+            border-color: #0dcaf0;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.25);
         }
 
         /* Estilo para a lista de documentos */
