@@ -8,6 +8,9 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
     exit();
 }
 
+// Inclui configurações
+include_once 'includes/config.php';
+
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 ?>
@@ -19,7 +22,9 @@ include_once 'tipos_alvara.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Requerimento de Alvará - Secretaria Municipal de Meio Ambiente</title>
-    <link rel="icon" href="./assets/img/prefeitura-logo.png" type="image/png">
+    <link rel="icon" href="./assets/img/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="./assets/img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="./assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png">
 
     <meta name="description"
         content="Requerimento de Alvará Ambiental junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros.">
@@ -109,15 +114,121 @@ include_once 'tipos_alvara.php';
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
 
+                <?php
+                // DEBUG: Verificar conteúdo da sessão
+                if (MODO_TESTE) {
+                    error_log("DEBUG SESSION: " . print_r($_SESSION, true));
+                }
+                
+                // Exibir mensagens de erro ou sucesso
+                if (isset($_SESSION['mensagem']) && is_array($_SESSION['mensagem'])):
+                    $mensagem = $_SESSION['mensagem'];
+                    $tipo = $mensagem['tipo'] ?? 'erro';
+                    $texto = $mensagem['texto'] ?? ''; // CORRIGIDO: era 'mensagem', agora é 'texto'
+                    unset($_SESSION['mensagem']);
+                    
+                    if (!empty($texto)):
+                ?>
+                <div class="alert alert-<?php echo htmlspecialchars($tipo); ?>" style="
+                    padding: 15px 20px;
+                    margin: 20px auto;
+                    max-width: 800px;
+                    border-radius: 8px;
+                    background-color: <?php echo $tipo === 'erro' ? '#f8d7da' : '#d4edda'; ?>;
+                    border: 1px solid <?php echo $tipo === 'erro' ? '#f5c6cb' : '#c3e6cb'; ?>;
+                    color: <?php echo $tipo === 'erro' ? '#721c24' : '#155724'; ?>;
+                    font-weight: 500;
+                    text-align: center;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                ">
+                    <i class="fas fa-<?php echo $tipo === 'erro' ? 'exclamation-circle' : 'check-circle'; ?>"></i>
+                    <?php echo htmlspecialchars($texto); ?>
+                </div>
+                <?php 
+                    endif;
+                endif;
+                
+                // Preparar dados do formulário para restauração
+                $formData = [];
+                if (isset($_SESSION['form_data'])) {
+                    $formData = $_SESSION['form_data'];
+                    unset($_SESSION['form_data']);
+                }
+                ?>
+
+                <?php if (!empty($formData)): ?>
+                <script>
+                // Restaurar dados do formulário
+                document.addEventListener('DOMContentLoaded', function() {
+                    const formData = <?php echo json_encode($formData); ?>;
+                    
+                    // Restaurar campos do requerente
+                    if (formData.requerente) {
+                        if (formData.requerente.nome) document.querySelector('input[name="requerente[nome]"]').value = formData.requerente.nome;
+                        if (formData.requerente.email) document.querySelector('input[name="requerente[email]"]').value = formData.requerente.email;
+                        if (formData.requerente.cpf_cnpj) document.querySelector('input[name="requerente[cpf_cnpj]"]').value = formData.requerente.cpf_cnpj;
+                        if (formData.requerente.telefone) document.querySelector('input[name="requerente[telefone]"]').value = formData.requerente.telefone;
+                    }
+                    
+                    // Restaurar endereço
+                    if (formData.endereco_objetivo) {
+                        document.querySelector('input[name="endereco_objetivo"]').value = formData.endereco_objetivo;
+                    }
+                    
+                    // Restaurar tipo de alvará
+                    if (formData.tipo_alvara) {
+                        const selectAlvara = document.getElementById('tipo_alvara');
+                        selectAlvara.value = formData.tipo_alvara;
+                        selectAlvara.dispatchEvent(new Event('change'));
+                    }
+                    
+                    // Restaurar mesmo_requerente
+                    if (formData.mesmo_requerente) {
+                        const radio = document.querySelector(`input[name="mesmo_requerente"][value="${formData.mesmo_requerente}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                            radio.dispatchEvent(new Event('change'));
+                        }
+                    }
+                    
+                    // Restaurar campos do proprietário
+                    if (formData.proprietario) {
+                        setTimeout(() => {
+                            if (formData.proprietario.nome) {
+                                const nomeInput = document.querySelector('input[name="proprietario[nome]"]');
+                                if (nomeInput) nomeInput.value = formData.proprietario.nome;
+                            }
+                            if (formData.proprietario.cpf_cnpj) {
+                                const cpfInput = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
+                                if (cpfInput) cpfInput.value = formData.proprietario.cpf_cnpj;
+                            }
+                        }, 300);
+                    }
+                    
+                    // Restaurar campos dinâmicos (CTF, licença anterior, etc)
+                    setTimeout(() => {
+                        Object.keys(formData).forEach(key => {
+                            const input = document.querySelector(`input[name="${key}"], textarea[name="${key}"]`);
+                            if (input && formData[key]) {
+                                input.value = formData[key];
+                            }
+                        });
+                    }, 500);
+                    
+                    console.log('Dados do formulário restaurados');
+                });
+                </script>
+                <?php endif; ?>
+
                 <!-- Seção 1: Dados do Requerente -->
                 <div class="form-section">
                     <div class="form-part-2">
-                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo *">
-                        <input required type="email" name="requerente[email]" placeholder="Digite seu email *">
+                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
+                        <input required type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
                         <input oninput="mascara(this)" type="text" required name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF/CNPJ: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18">
+                            placeholder="CPF/CNPJ: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
                         <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required
-                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *">
+                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
                     </div>
                 </div>
 
@@ -141,10 +252,10 @@ include_once 'tipos_alvara.php';
 
                     <div class="form-part-2" id="proprietario-fields">
                         <input id="proprietario_nome" name="proprietario[nome]"
-                            placeholder="Nome Completo do Proprietário *">
+                            placeholder="Nome Completo do Proprietário *" autocomplete="name">
                         <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
                             id="proprietario_cpf_cnpj"
-                            placeholder="CPF/CNPJ do Proprietário: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18">
+                            placeholder="CPF/CNPJ do Proprietário: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
                     </div>
                 </div>
 
@@ -152,7 +263,7 @@ include_once 'tipos_alvara.php';
                 <div class="form-section">
                     <div class="form-part-2">
                         <input required name="endereco_objetivo"
-                            placeholder="Endereço Completo (Rua, número, bairro, CEP) *">
+                            placeholder="Endereço Completo (Rua, número, bairro, CEP) *" autocomplete="street-address">
                     </div>
                 </div>
 
@@ -195,6 +306,11 @@ include_once 'tipos_alvara.php';
                             </div>
 
                             <div class="tipo-alvara-right">
+                                <?php if (defined('MODO_TESTE') && MODO_TESTE): ?>
+                                <button type="button" id="btn-preencher-teste" class="btn-teste" style="display: none;">
+                                    <i class="fas fa-flask"></i> Preencher com PDF de Teste
+                                </button>
+                                <?php endif; ?>
                                 <div id="documentos_necessarios" class="documentos-container">
                                     <!-- A lista de documentos necessários será exibida aqui -->
                                 </div>
@@ -219,6 +335,112 @@ include_once 'tipos_alvara.php';
                     <i class="fas fa-paper-plane"></i> Enviar Requerimento
                 </button>
             </form>
+            
+            <script>
+            // Validação em tempo real do formulário
+            document.getElementById('form').addEventListener('submit', function(e) {
+                const erros = [];
+                
+                // Validar campos do requerente
+                const nomeRequerente = document.querySelector('input[name="requerente[nome]"]').value.trim();
+                const emailRequerente = document.querySelector('input[name="requerente[email]"]').value.trim();
+                const cpfRequerente = document.querySelector('input[name="requerente[cpf_cnpj]"]').value.trim();
+                const telefoneRequerente = document.querySelector('input[name="requerente[telefone]"]').value.trim();
+                
+                if (!nomeRequerente) erros.push('Nome do requerente é obrigatório');
+                if (!emailRequerente) erros.push('Email do requerente é obrigatório');
+                if (!cpfRequerente) erros.push('CPF/CNPJ do requerente é obrigatório');
+                if (!telefoneRequerente) erros.push('Telefone do requerente é obrigatório');
+                
+                // Validar email
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailRequerente && !emailRegex.test(emailRequerente)) {
+                    erros.push('Email inválido');
+                }
+                
+                // Validar endereço
+                const endereco = document.querySelector('input[name="endereco_objetivo"]').value.trim();
+                if (!endereco) erros.push('Endereço do objetivo é obrigatório');
+                
+                // Validar tipo de alvará
+                const tipoAlvara = document.getElementById('tipo_alvara').value;
+                if (!tipoAlvara) erros.push('Selecione um tipo de alvará');
+                
+                // Validar proprietário (se não for o mesmo)
+                const mesmoRequerente = document.querySelector('input[name="mesmo_requerente"]:checked');
+                if (!mesmoRequerente) {
+                    erros.push('Informe se o proprietário é o mesmo que o requerente');
+                } else if (mesmoRequerente.value === 'false') {
+                    const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]')?.value.trim();
+                    const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]')?.value.trim();
+                    
+                    if (nomeProprietario || cpfProprietario) {
+                        if (!nomeProprietario) erros.push('Nome do proprietário é obrigatório');
+                        if (!cpfProprietario) erros.push('CPF/CNPJ do proprietário é obrigatório');
+                    }
+                }
+                
+                // Validar campos específicos de licenças ambientais
+                const tiposAmbientais = [
+                    'licenca_previa_ambiental',
+                    'licenca_previa_instalacao',
+                    'licenca_instalacao_operacao',
+                    'licenca_operacao',
+                    'licenca_ambiental_unica',
+                    'licenca_ampliacao',
+                    'licenca_operacional_corretiva',
+                    'autorizacao_supressao'
+                ];
+                
+                if (tiposAmbientais.includes(tipoAlvara)) {
+                    const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
+                    const comprovantePag = document.querySelector('input[name="comprovante_pagamento"]')?.value.trim();
+                    
+                    if (!publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
+                    if (!comprovantePag) erros.push('Comprovante de pagamento é obrigatório');
+                    
+                    // Validar estudo ambiental
+                    const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
+                    if (!possuiEstudo) {
+                        erros.push('Informe se há estudo ambiental');
+                    } else if (possuiEstudo.value === '1') {
+                        const tipoEstudo = document.querySelector('input[name="tipo_estudo_ambiental"]')?.value.trim();
+                        if (!tipoEstudo) erros.push('Informe o tipo de estudo ambiental');
+                    }
+                    
+                    // Validar CTF para tipos específicos
+                    const tiposExigemCTF = [
+                        'licenca_operacao',
+                        'licenca_instalacao_operacao',
+                        'licenca_ambiental_unica',
+                        'licenca_ampliacao',
+                        'licenca_operacional_corretiva'
+                    ];
+                    if (tiposExigemCTF.includes(tipoAlvara)) {
+                        const ctf = document.querySelector('input[name="ctf_numero"]')?.value.trim();
+                        if (!ctf) erros.push('Número do CTF é obrigatório para este tipo de licença');
+                    }
+                    
+                    // Validar licença anterior
+                    const tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
+                    if (tiposExigemLicencaAnterior.includes(tipoAlvara)) {
+                        const licencaAnterior = document.querySelector('input[name="licenca_anterior_numero"]')?.value.trim();
+                        if (!licencaAnterior) erros.push('Número da licença anterior é obrigatório');
+                    }
+                }
+                
+                // Se houver erros, mostrar e impedir envio
+                if (erros.length > 0) {
+                    e.preventDefault();
+                    alert('❌ Corrija os seguintes erros antes de enviar:\n\n' + erros.map((erro, i) => `${i + 1}. ${erro}`).join('\n'));
+                    return false;
+                }
+                
+                // Mostrar loading
+                document.getElementById('loading').style.display = 'flex';
+                document.getElementById('botao').disabled = true;
+            });
+            </script>
         </section>
     </main>
 
@@ -454,9 +676,109 @@ include_once 'tipos_alvara.php';
 
             return true;
         }
+
+        <?php if (defined('MODO_TESTE') && MODO_TESTE): ?>
+        // Função para preencher automaticamente os campos de upload com PDF de teste
+        async function preencherComPDFTeste() {
+            try {
+                // Buscar o PDF de teste
+                const response = await fetch('assets/test/teste.pdf');
+                const blob = await response.blob();
+                
+                // Buscar todos os inputs de arquivo no formulário
+                const fileInputs = document.querySelectorAll('input[type="file"]');
+                
+                if (fileInputs.length === 0) {
+                    alert('Nenhum campo de upload encontrado. Selecione um tipo de alvará primeiro.');
+                    return;
+                }
+                
+                // Preencher cada input com o PDF de teste
+                let count = 0;
+                fileInputs.forEach((input, index) => {
+                    // Criar um novo arquivo File a partir do blob
+                    const file = new File([blob], `documento_${index + 1}.pdf`, { type: 'application/pdf' });
+                    
+                    // Criar um DataTransfer para simular o upload
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    
+                    // Atribuir ao input
+                    input.files = dataTransfer.files;
+                    
+                    // Disparar evento change para validação
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    count++;
+                });
+                
+                alert(`✅ ${count} documento(s) preenchido(s) com PDF de teste!`);
+            } catch (error) {
+                console.error('Erro ao preencher com PDF de teste:', error);
+                alert('❌ Erro ao carregar PDF de teste. Verifique se o arquivo existe em assets/test/teste.pdf');
+            }
+        }
+
+        // Adicionar evento ao botão de teste
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnTeste = document.getElementById('btn-preencher-teste');
+            if (btnTeste) {
+                btnTeste.addEventListener('click', preencherComPDFTeste);
+                
+                // Mostrar botão quando houver campos de upload
+                const observer = new MutationObserver(function() {
+                    const fileInputs = document.querySelectorAll('input[type="file"]');
+                    if (fileInputs.length > 0) {
+                        btnTeste.style.display = 'block';
+                    } else {
+                        btnTeste.style.display = 'none';
+                    }
+                });
+                
+                observer.observe(document.getElementById('documentos_necessarios'), {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        });
+        <?php endif; ?>
     </script>
 
     <style>
+        /* Estilo para o botão de teste */
+        .btn-teste {
+            width: 100%;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-teste:hover {
+            background: linear-gradient(135deg, #fb8c00 0%, #f4511e 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn-teste:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-teste i {
+            font-size: 16px;
+        }
+
         /* Estilo para a mensagem de formato de arquivo */
         .formato-arquivo {
             display: block;

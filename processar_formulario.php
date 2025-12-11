@@ -24,6 +24,7 @@ require_once 'includes/email_service.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verificar se o tipo de alvará foi informado
     if (empty($_POST['tipo_alvara'])) {
+        $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'É necessário selecionar um tipo de alvará.');
         redirect('index.php');
     }
@@ -64,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validação dos dados do requerente
     if (empty($requerente['nome']) || empty($requerente['email']) || empty($requerente['cpf_cnpj']) || empty($requerente['telefone'])) {
+        $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'Todos os campos do requerente são obrigatórios.');
         redirect('index.php');
     }
@@ -91,10 +93,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'requerente_id' => $requerente_id
         ];
 
-        // Validação dos dados do proprietário
-        if (empty($proprietario['nome']) || empty($proprietario['cpf_cnpj'])) {
-            setMensagem('erro', 'Todos os campos do proprietário são obrigatórios.');
-            redirect('index.php');
+        // Validação dos dados do proprietário APENAS se foram preenchidos
+        if (!empty($proprietario['nome']) || !empty($proprietario['cpf_cnpj'])) {
+            if (empty($proprietario['nome']) || empty($proprietario['cpf_cnpj'])) {
+                $_SESSION['form_data'] = $_POST;
+                setMensagem('erro', 'Se informar dados do proprietário, preencha nome E CPF/CNPJ.');
+                redirect('index.php');
+            }
+        } else {
+            // Se não informou nada, usa os dados do requerente
+            $proprietario = [
+                'nome' => $requerente['nome'],
+                'cpf_cnpj' => $requerente['cpf_cnpj'],
+                'mesmo_requerente' => 1,
+                'requerente_id' => $requerente_id
+            ];
         }
     }
 
@@ -132,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validação do endereço do objetivo
     if (empty($requerimento['endereco_objetivo'])) {
+        $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'O endereço do objetivo é obrigatório.');
         redirect('index.php');
     }
@@ -139,31 +153,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validações específicas para tipologias ambientais
     if (in_array($tipoAlvara, $tiposAmbientais)) {
         if (empty($publicacao_diario_oficial)) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
             redirect('index.php');
         }
 
         if (empty($comprovante_pagamento)) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o comprovante de pagamento.');
             redirect('index.php');
         }
 
         if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o número do Cadastro Técnico Federal (CTF).');
             redirect('index.php');
         }
 
         if (in_array($tipoAlvara, $tiposExigemLicencaAnterior) && empty($licenca_anterior_numero)) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o número da licença anterior.');
             redirect('index.php');
         }
 
         if ($possui_estudo === null) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe se há estudo ambiental.');
             redirect('index.php');
         }
 
         if ($possui_estudo === 1 && empty($tipo_estudo_ambiental)) {
+            $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o tipo de estudo ambiental.');
             redirect('index.php');
         }
@@ -171,14 +191,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($data_certidao_municipal)) {
             $dataCertidao = strtotime($data_certidao_municipal);
             if ($dataCertidao === false) {
+                $_SESSION['form_data'] = $_POST;
                 setMensagem('erro', 'Data da certidão municipal inválida.');
                 redirect('index.php');
             }
-            $limiteValidade = strtotime('-2 years');
-            if ($dataCertidao < $limiteValidade) {
-                setMensagem('erro', 'A certidão municipal deve ter validade máxima de 2 anos.');
-                redirect('index.php');
-            }
+            // REMOVIDO: Validação de 2 anos - apenas registra a data
             $observacoes = "Certidão municipal emitida em: " . date('d/m/Y', $dataCertidao);
             $requerimento['observacoes'] = $observacoes;
         }
@@ -202,6 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!empty($errosDocumentos)) {
+        $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'Envie todos os documentos obrigatórios: ' . implode('; ', $errosDocumentos));
         redirect('index.php');
     }
@@ -222,6 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
                 $erro_arquivo = true;
+                $_SESSION['form_data'] = $_POST;
                 setMensagem('erro', 'Apenas arquivos PDF são permitidos. Por favor, converta seus documentos para PDF e tente novamente.');
                 redirect('index.php');
             }

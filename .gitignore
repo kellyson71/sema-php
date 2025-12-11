@@ -1,5 +1,5 @@
 # ===== CONFIGURAÇÕES SENSÍVEIS =====
-/includes/config.php
+# /includes/config.php
 /includes/env.php
 .env
 .env.backup
@@ -171,7 +171,7 @@ dist/
 build/
 
 # ===== ARQUIVOS DE DOCUMENTAÇÃO PDF =====
-*.pdf
+# *.pdf
 !database/*.pdf
 !documentacao/*.pdf
 
