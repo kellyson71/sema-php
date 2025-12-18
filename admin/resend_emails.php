@@ -6,6 +6,9 @@
  * Apenas administradores autenticados podem acessar esta página.
  */
 
+// Iniciar buffer de saída para capturar qualquer output indesejado
+ob_start();
+
 require_once(__DIR__ . '/../includes/config.php');
 require_once(__DIR__ . '/../includes/database.php');
 require_once(__DIR__ . '/../includes/email_service.php');
@@ -21,71 +24,82 @@ $emailService = new EmailService();
 
 // Processar requisições AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Limpar qualquer output anterior
+    ob_clean();
     header('Content-Type: application/json');
     
     if ($_POST['action'] === 'get_test_emails') {
-        // Buscar emails marcados como teste
-        $query = "SELECT 
-                    el.id,
-                    el.requerimento_id,
-                    el.email_destino,
-                    el.assunto,
-                    el.data_envio,
-                    el.usuario_envio,
-                    r.protocolo,
-                    r.tipo_alvara,
-                    req.nome as requerente_nome
-                  FROM email_logs el
-                  LEFT JOIN requerimentos r ON el.requerimento_id = r.id
-                  LEFT JOIN requerentes req ON r.requerente_id = req.id
-                  WHERE el.eh_teste = 1 AND el.status = 'SUCESSO'
-                  ORDER BY el.data_envio DESC";
-        
-        $result = $db->query($query);
-        $emails = [];
-        
-        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-            $emails[] = $row;
+        try {
+            // Buscar emails marcados como teste
+            $query = "SELECT 
+                        el.id,
+                        el.requerimento_id,
+                        el.email_destino,
+                        el.assunto,
+                        el.data_envio,
+                        el.usuario_envio,
+                        r.protocolo,
+                        r.tipo_alvara,
+                        req.nome as requerente_nome
+                      FROM email_logs el
+                      LEFT JOIN requerimentos r ON el.requerimento_id = r.id
+                      LEFT JOIN requerentes req ON r.requerente_id = req.id
+                      WHERE el.eh_teste = 1 AND el.status = 'SUCESSO'
+                      ORDER BY el.data_envio DESC";
+            
+            $result = $db->query($query);
+            $emails = [];
+            
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                $emails[] = $row;
+            }
+            
+            echo json_encode(['success' => true, 'emails' => $emails]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Erro ao buscar emails: ' . $e->getMessage()]);
         }
-        
-        echo json_encode(['success' => true, 'emails' => $emails]);
         exit;
     }
     
     if ($_POST['action'] === 'resend_email') {
-        $email_id = intval($_POST['email_id']);
-        
-        // Buscar dados do email original
-        $query = "SELECT 
-                    el.*,
-                    r.protocolo,
-                    r.tipo_alvara,
-                    r.endereco_objetivo,
-                    r.data_envio as requerimento_data,
-                    req.nome as requerente_nome,
-                    req.email as requerente_email
-                  FROM email_logs el
-                  LEFT JOIN requerimentos r ON el.requerimento_id = r.id
-                  LEFT JOIN requerentes req ON r.requerente_id = req.id
-                  WHERE el.id = :id AND el.eh_teste = 1";
-        
-        $stmt = $db->prepare($query);
-        $stmt->execute(['id' => $email_id]);
-        $email_data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$email_data) {
-            echo json_encode(['success' => false, 'message' => 'Email não encontrado']);
-            exit;
-        }
-        
-        // Verificar se o assunto contém informações sobre protocolo oficial ou confirmação
-        $is_protocol_official = strpos($email_data['assunto'], 'Protocolo Oficial') !== false;
-        $is_confirmation = strpos($email_data['assunto'], 'Confirmação de Requerimento') !== false;
-        
-        $success = false;
-        $error_message = '';
-        
         try {
+            $email_id = intval($_POST['email_id']);
+            
+            // Buscar dados do email original
+            $query = "SELECT 
+                        el.*,
+                        r.protocolo,
+                        r.tipo_alvara,
+                        r.endereco_objetivo,
+                        r.data_envio as requerimento_data,
+                        req.nome as requerente_nome,
+                        req.email as requerente_email
+                      FROM email_logs el
+                      LEFT JOIN requerimentos r ON el.requerimento_id = r.id
+                      LEFT JOIN requerentes req ON r.requerente_id = req.id
+                      WHERE el.id = :id AND el.eh_teste = 1";
+            
+            $result = $db->query($query, ['id' => $email_id]);
+            $email_data = $result->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$email_data) {
+                echo json_encode(['success' => false, 'message' => 'Email não encontrado']);
+                exit;
+            }
+            
+            // Verificar se o assunto contém informações sobre protocolo oficial ou confirmação
+            $is_protocol_official = strpos($email_data['assunto'], 'Protocolo Oficial') !== false;
+            $is_confirmation = strpos($email_data['assunto'], 'Confirmação de Requerimento') !== false;
+            
+            $success = false;
+            $error_message = '';
+            
+            // Desabilitar error_log temporariamente para evitar output
+            $old_error_handler = set_error_handler(function($errno, $errstr, $errfile, $errline) {
+                // Silenciar erros durante o envio
+                return true;
+            });
+            
             if ($is_confirmation) {
                 // Reenviar email de confirmação de protocolo
                 $dados_requerimento = [
@@ -115,6 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } else {
                 // Tipo de email não reconhecido
                 $error_message = 'Tipo de email não suportado para reenvio automático';
+            }
+            
+            // Restaurar error handler
+            if ($old_error_handler) {
+                set_error_handler($old_error_handler);
             }
             
             if ($success) {
