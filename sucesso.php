@@ -57,7 +57,7 @@ unset($_SESSION['sucesso']);
             margin-bottom: 15px;
         }
 
-        .protocolo {
+        .registro-entrada {
             background-color: #f5f5f5;
             padding: 15px;
             border-radius: 5px;
@@ -152,14 +152,14 @@ unset($_SESSION['sucesso']);
             <h1 class="sucesso-titulo"><?php echo $sucesso; ?></h1>
             <p>Seu requerimento foi recebido e será analisado pela nossa equipe.</p>
 
-            <div class="protocolo">
-                Número do Protocolo: <?php echo $protocolo; ?>
+            <div class="registro-entrada">
+                Registro de Entrada: <?php echo $protocolo; ?>
             </div>
             <div class="instrucoes">
-                <p><strong>Importante:</strong></p>
-                <p>1. Guarde o número do protocolo para consultas futuras.</p>
-                <p>2. <strong>Este número de protocolo gerado é para controle interno. O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado via email para o endereço cadastrado.</strong></p>
-                <p>3. Acompanhe o status do seu requerimento através do sistema de tributos municipais.</p>
+                <p><strong>⚠️ IMPORTANTE:</strong></p>
+                <p>1. Guarde este número de registro de entrada para referência interna.</p>
+                <p>2. <strong>Este número é apenas um registro de entrada interno do sistema. O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado posteriormente via email para o endereço cadastrado.</strong></p>
+                <p>3. Após o processamento pela nossa equipe, você receberá o protocolo oficial que deverá ser utilizado para acompanhamento no sistema de tributos municipais.</p>
                 <p>4. Em caso de dúvidas, entre em contato com a Secretaria Municipal de Meio Ambiente pelo telefone (84) 99668-6413.</p>
             </div>
             <div class="botoes">

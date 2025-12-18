@@ -42,7 +42,7 @@
             margin: 0;
         }
 
-        .protocolo {
+        .registro-entrada {
             background: linear-gradient(135deg, #009851, #007a3d);
             color: white;
             padding: 20px;
@@ -51,7 +51,7 @@
             margin: 20px 0;
         }
 
-        .protocolo-numero {
+        .registro-numero {
             font-size: 28px;
             font-weight: bold;
             margin: 10px 0;
@@ -151,10 +151,10 @@
 
         <p>Seu requerimento foi recebido com sucesso pela Secretaria Municipal de Meio Ambiente.</p>
 
-        <div class="protocolo">
-            <p style="margin: 0; font-size: 16px;">Protocolo Interno</p>
-            <div class="protocolo-numero">#<?php echo htmlspecialchars($protocolo); ?></div>
-            <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">Guarde este número para suas consultas</p>
+        <div class="registro-entrada">
+            <p style="margin: 0; font-size: 16px;">Registro de Entrada</p>
+            <div class="registro-numero">#<?php echo htmlspecialchars($protocolo); ?></div>
+            <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">Guarde este número para referência interna</p>
         </div>
 
         <div class="dados-requerimento">
@@ -179,15 +179,15 @@
 
         <div class="aviso-importante">
             <p><strong>⚠️ IMPORTANTE:</strong></p>
-            <p>Este número de protocolo é para controle interno do sistema. <strong>O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado via email quando seu requerimento for processado pela nossa equipe.</strong></p>
+            <p>Este número é apenas um <strong>registro de entrada interno</strong> do sistema (também chamado de protocolo interno em alguns setores). <strong>O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado posteriormente via email quando seu requerimento for processado pela nossa equipe.</strong></p>
         </div>
 
         <div class="info-box">
             <div class="info-title">📋 Próximos Passos:</div>
             <ul>
                 <li>Seu requerimento será analisado pela nossa equipe técnica</li>
-                <li>Você receberá um email com o protocolo oficial da prefeitura</li>
-                <li>Acompanhe o status no portal da prefeitura: <a href="https://www.paudosferros.rn.gov.br/" style="color: #009851;">www.paudosferros.rn.gov.br</a></li>
+                <li>Você receberá um email com o <strong>protocolo oficial da prefeitura</strong> após o processamento</li>
+                <li>Com o protocolo oficial, você poderá acompanhar o status no portal da prefeitura: <a href="https://www.paudosferros.rn.gov.br/" style="color: #009851;">www.paudosferros.rn.gov.br</a></li>
                 <li>Em caso de documentação complementar, entraremos em contato</li>
             </ul>
         </div>
