@@ -306,11 +306,6 @@ include_once 'tipos_alvara.php';
                             </div>
 
                             <div class="tipo-alvara-right">
-                                <?php if (defined('MODO_TESTE') && MODO_TESTE): ?>
-                                <button type="button" id="btn-preencher-teste" class="btn-teste" style="display: none;">
-                                    <i class="fas fa-flask"></i> Preencher com PDF de Teste
-                                </button>
-                                <?php endif; ?>
                                 <div id="documentos_necessarios" class="documentos-container">
                                     <!-- A lista de documentos necessários será exibida aqui -->
                                 </div>
@@ -677,107 +672,9 @@ include_once 'tipos_alvara.php';
             return true;
         }
 
-        <?php if (defined('MODO_TESTE') && MODO_TESTE): ?>
-        // Função para preencher automaticamente os campos de upload com PDF de teste
-        async function preencherComPDFTeste() {
-            try {
-                // Buscar o PDF de teste
-                const response = await fetch('assets/test/teste.pdf');
-                const blob = await response.blob();
-                
-                // Buscar todos os inputs de arquivo no formulário
-                const fileInputs = document.querySelectorAll('input[type="file"]');
-                
-                if (fileInputs.length === 0) {
-                    alert('Nenhum campo de upload encontrado. Selecione um tipo de alvará primeiro.');
-                    return;
-                }
-                
-                // Preencher cada input com o PDF de teste
-                let count = 0;
-                fileInputs.forEach((input, index) => {
-                    // Criar um novo arquivo File a partir do blob
-                    const file = new File([blob], `documento_${index + 1}.pdf`, { type: 'application/pdf' });
-                    
-                    // Criar um DataTransfer para simular o upload
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    
-                    // Atribuir ao input
-                    input.files = dataTransfer.files;
-                    
-                    // Disparar evento change para validação
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                    count++;
-                });
-                
-                alert(`✅ ${count} documento(s) preenchido(s) com PDF de teste!`);
-            } catch (error) {
-                console.error('Erro ao preencher com PDF de teste:', error);
-                alert('❌ Erro ao carregar PDF de teste. Verifique se o arquivo existe em assets/test/teste.pdf');
-            }
-        }
-
-        // Adicionar evento ao botão de teste
-        document.addEventListener('DOMContentLoaded', function() {
-            const btnTeste = document.getElementById('btn-preencher-teste');
-            if (btnTeste) {
-                btnTeste.addEventListener('click', preencherComPDFTeste);
-                
-                // Mostrar botão quando houver campos de upload
-                const observer = new MutationObserver(function() {
-                    const fileInputs = document.querySelectorAll('input[type="file"]');
-                    if (fileInputs.length > 0) {
-                        btnTeste.style.display = 'block';
-                    } else {
-                        btnTeste.style.display = 'none';
-                    }
-                });
-                
-                observer.observe(document.getElementById('documentos_necessarios'), {
-                    childList: true,
-                    subtree: true
-                });
-            }
-        });
-        <?php endif; ?>
     </script>
 
     <style>
-        /* Estilo para o botão de teste */
-        .btn-teste {
-            width: 100%;
-            padding: 12px 20px;
-            margin-bottom: 15px;
-            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-teste:hover {
-            background: linear-gradient(135deg, #fb8c00 0%, #f4511e 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
-        }
-
-        .btn-teste:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
-        }
-
-        .btn-teste i {
-            font-size: 16px;
-        }
 
         /* Estilo para a mensagem de formato de arquivo */
         .formato-arquivo {

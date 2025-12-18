@@ -30,7 +30,7 @@ define('EMAIL_FROM_NAME', 'Prefeitura de Pau dos Ferros');
 define('EMAIL_TEST_MODE', true);
 
 // Modo de teste para formulário (true = habilita botão de preenchimento automático)
-define('MODO_TESTE', true);
+define('MODO_TESTE', false);
 
 // URLs importantes
 define('PORTAL_CONSULTA_URL', 'http://localhost:8080/');
