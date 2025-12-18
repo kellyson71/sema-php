@@ -285,6 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } // Redirecionar para a página de sucesso com o protocolo
     $_SESSION['protocolo'] = $protocolo;
+    $_SESSION['proprietario_nome'] = $proprietario['nome'];
 
     // Enviar email de confirmação
     try {

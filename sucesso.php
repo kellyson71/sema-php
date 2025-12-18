@@ -22,8 +22,10 @@ $protocolo = $_SESSION['protocolo'];
 $sucesso = $_SESSION['sucesso'] ?? 'Requerimento enviado com sucesso!';
 
 // Limpar mensagens da sessão após mostrar
+$proprietario_nome = $_SESSION['proprietario_nome'] ?? '';
 unset($_SESSION['protocolo']);
 unset($_SESSION['sucesso']);
+unset($_SESSION['proprietario_nome']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -153,14 +155,16 @@ unset($_SESSION['sucesso']);
             <p>Seu requerimento foi recebido e será analisado pela nossa equipe.</p>
 
             <div class="registro-entrada">
-                Registro de Entrada: <?php echo $protocolo; ?>
+                Registro de Entrada: <?php echo $protocolo; ?><br>
+                <small style="font-size: 14px; font-weight: normal; color: #666;">Proprietário: <?php echo htmlspecialchars($proprietario_nome); ?></small>
             </div>
             <div class="instrucoes">
                 <p><strong>⚠️ IMPORTANTE:</strong></p>
-                <p>1. Guarde este número de registro de entrada para referência interna.</p>
-                <p>2. <strong>Este número é apenas um registro de entrada interno do sistema. O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado posteriormente via email para o endereço cadastrado.</strong></p>
-                <p>3. Após o processamento pela nossa equipe, você receberá o protocolo oficial que deverá ser utilizado para acompanhamento no sistema de tributos municipais.</p>
-                <p>4. Em caso de dúvidas, entre em contato com a Secretaria Municipal de Meio Ambiente pelo telefone (84) 99668-6413.</p>
+                <p>1. <strong>O prazo para receber o protocolo oficial para consultas futuras via e-mail cadastrado é de até 7 dias úteis.</strong></p>
+                <p>2. Guarde este número de registro de entrada para referência interna.</p>
+                <p>3. <strong>Este número é apenas um registro de entrada interno do sistema. O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado posteriormente via email para o endereço cadastrado.</strong></p>
+                <p>4. Após o processamento pela nossa equipe, você receberá o protocolo oficial que deverá ser utilizado para acompanhamento no sistema de tributos municipais.</p>
+                <p>5. Em caso de dúvidas, entre em contato com a Secretaria Municipal de Meio Ambiente pelo telefone (84) 99668-6413.</p>
             </div>
             <div class="botoes">
                 <a href="index.php" class="botao secundario">Voltar ao Início</a>
