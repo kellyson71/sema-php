@@ -27,7 +27,7 @@ define('EMAIL_FROM', 'naoresponder@protocolosead.com');
 define('EMAIL_FROM_NAME', 'Prefeitura de Pau dos Ferros');
 
 // Modo de teste para emails (true = não envia, apenas loga)
-define('EMAIL_TEST_MODE', true);
+define('EMAIL_TEST_MODE', false);
 
 // Modo de teste para formulário (true = habilita botão de preenchimento automático)
 define('MODO_TESTE', false);
