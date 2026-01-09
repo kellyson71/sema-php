@@ -336,17 +336,17 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         .conteudo-texto table {
             border-collapse: collapse;
             width: 100%;
-            margin: 10pt 0;
+            margin: 5pt 0;
         }
         .conteudo-texto table td,
         .conteudo-texto table th {
             border: 1px solid #ddd;
-            padding: 8pt;
+            padding: 4pt 6pt;
         }
         .conteudo-texto ul,
         .conteudo-texto ol {
-            padding-left: 30pt;
-            margin: 10pt 0;
+            padding-left: 20pt;
+            margin: 5pt 0;
         }
         .conteudo-texto img {
             max-width: 100%;
