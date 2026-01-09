@@ -2681,7 +2681,7 @@ $isBlocked = $isFinalized || $isIndeferido;
      function textoTipoTemplate(tipo) {
          const mapa = {
              docx: 'Editor online (DOCX)',
-             html: 'HTML com assinatura'
+             html: ''
          };
          return mapa[tipo] || 'Documento';
      }
@@ -2711,7 +2711,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                  const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
                  const tipoLabel = textoTipoTemplate(tipo);
                  const icone = tipo === 'docx' ? '📝' : '📄';
-                 select.innerHTML += `<option value="${nome}">${icone} ${rotulo} — ${tipoLabel}</option>`;
+                 select.innerHTML += `<option value="${nome}">${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}</option>`;
              });
          })
          .catch(error => {
