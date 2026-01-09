@@ -278,7 +278,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             flex-shrink: 0;
         }
         .logo-container img {
-            max-width: 60mm;
+            max-width: 50mm;
             height: auto;
         }
         .conteudo-container {
