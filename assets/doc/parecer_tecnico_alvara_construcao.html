@@ -11,8 +11,8 @@
         margin: 0;
         padding: 0;
         font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
-        line-height: 1.5;
+        font-size: 12pt;
+        line-height: 1.6;
         color: #000;
       }
       #documento {
@@ -33,73 +33,80 @@
       #conteudo {
         position: absolute;
         top: 150px;
-        left: 75px;
-        width: calc(100% - 150px);
+        left: 80px;
+        width: calc(100% - 160px);
         z-index: 2;
         text-align: justify;
       }
       .titulo {
-        font-size: 14pt;
+        font-size: 15pt;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
         text-transform: uppercase;
-        text-decoration: underline;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        letter-spacing: 1px;
       }
       .texto-parecer {
-        margin-bottom: 20px;
+        margin-bottom: 30px;
       }
       .texto-parecer p {
-        margin-bottom: 15px;
-        text-indent: 2cm;
+        margin-bottom: 18px;
+        text-indent: 2.5cm;
+        line-height: 1.7;
       }
       .data-local {
         margin-top: 40px;
-        margin-bottom: 40px;
-        text-align: center;
+        margin-bottom: 60px;
+        text-align: right;
+        font-weight: normal;
       }
       .assinaturas {
         margin-top: 50px;
         display: flex;
-        justify-content: flex-start;
+        justify-content: center;
       }
-      .assinatura-esquerda {
-        width: 45%;
+      .assinatura-bloco-central {
+        width: 60%;
         text-align: center;
       }
       .linha-assinatura {
         border-top: 1px solid #000;
         margin-top: 40px;
-        padding-top: 5px;
+        padding-top: 8px;
       }
       .nome-assinante {
         font-weight: bold;
-        font-size: 10pt;
+        font-size: 11pt;
+        text-transform: uppercase;
       }
       .cargo-assinante {
-        font-size: 9pt;
+        font-size: 10pt;
+        display: block;
       }
       
-      /* Mantendo o suporte ao QR Code de assinatura se necessário pelo sistema */
+      /* QR Code de Autenticação */
       #area-assinatura {
         position: absolute;
         z-index: 3;
         display: none;
       }
-      .assinatura-bloco {
+      .assinatura-qr {
         display: flex;
         align-items: center;
-        gap: 10px;
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px;
-        border: 1px dashed #999;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        padding: 10px;
+        border: 1px solid #ddd;
         border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
-      .assinatura-bloco img {
-        width: 50px;
-        height: 50px;
+      .assinatura-qr img {
+        width: 55px;
+        height: 55px;
       }
-      .assinatura-bloco .dados-assinante {
+      .assinatura-qr .dados-assinante {
         font-size: 10px;
         text-align: left;
       }
@@ -110,7 +117,7 @@
       <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
       <div id="conteudo" contenteditable="true">
         <div class="titulo">
-          PARECER TÉCNICO DE ALVARÁ DE CONSTRUÇÃO
+          Parecer Técnico de Alvará de Construção
         </div>
 
         <div class="texto-parecer">
@@ -134,21 +141,23 @@
           </p>
         </div>
 
-              <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+        <div class="data-local">
+          Pau dos Ferros/RN, {{data_atual}}
+        </div>
 
         <div class="assinaturas">
-          <div class="assinatura-esquerda">
+          <div class="assinatura-bloco-central">
             <div class="linha-assinatura">
               <div class="nome-assinante">{{admin_nome_completo}}</div>
-              <div class="cargo-assinante">{{admin_cargo}}</div>
-              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+              <span class="cargo-assinante">{{admin_cargo}}</span>
+              <span class="cargo-assinante">{{admin_matricula_portaria}}</span>
             </div>
           </div>
         </div>
       </div>
       
       <div id="area-assinatura" style="display: none">
-        <div class="assinatura-bloco">
+        <div class="assinatura-qr">
           <img src="" alt="QR Code" id="qr-assinatura" />
           <div class="dados-assinante">
             <strong id="nome-assinante"></strong>
