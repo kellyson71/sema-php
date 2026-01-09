@@ -254,7 +254,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         }
         body {
             font-family: "Times New Roman", Times, serif;
-            font-size: 12pt;
+            font-size: 11pt;
             line-height: 1.6;
             color: #000;
             background: #f0f0f0;
@@ -293,7 +293,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             position: relative;
             z-index: 21;
             font-family: "Times New Roman", Times, serif;
-            font-size: 11pt;
+            font-size: 10pt;
             line-height: 1.5;
             color: #000;
             text-align: justify;
