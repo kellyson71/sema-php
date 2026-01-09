@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        line-height: 1.5;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 150px;
+        left: 75px;
+        width: calc(100% - 150px);
+        z-index: 2;
+        text-align: justify;
+      }
+      .titulo {
+        font-size: 14pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        text-decoration: underline;
+      }
+      .texto-parecer {
+        margin-bottom: 20px;
+      }
+      .texto-parecer p {
+        margin-bottom: 15px;
+        text-indent: 2cm;
+      }
+      .data-local {
+        margin-top: 40px;
+        margin-bottom: 40px;
+        text-align: center;
+      }
+      .assinaturas {
+        margin-top: 50px;
+        text-align: center;
+      }
+      .assinatura-bloco-final {
+        display: inline-block;
+        text-align: center;
+      }
+      .linha {
+        margin-bottom: 5px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        font-size: 11pt;
+      }
+      .cargo-assinante {
+        font-size: 10pt;
+      }
+      
+      /* Mantendo o suporte ao QR Code de assinatura se necessário pelo sistema */
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        display: none;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 50px;
+        height: 50px;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 10px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo">
+          PARECER TÉCNICO DE ALVARÁ DE CONSTRUÇÃO
+        </div>
+
+        <div class="texto-parecer">
+          <p>
+            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong> de uma edificação residencial unifamiliar de pavimento térreo e de <strong>58,52 m²</strong> de área que será construída localizado na <strong>RUA FRANCISCO SALES DE AQUINO, S/N, SÃO BENEDITO (QUADRA C, LOTE 10), PAU DOS FERROS – RN, 59900-000</strong>. Pertencente ao(à) <strong>Sr(a). SARA LAYZE ALVES DO NASCIMENTO, CPF: 114.304.044-93</strong>, conforme <strong>ART Nº RN 20250828175</strong>.
+          </p>
+          <p>
+            O projeto para construção da edificação supracitada foi submetido à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.
+          </p>
+          <p>
+            Após a análise de praxe, pude constatar que a referida edificação, encontra-se em conformidade com a legislação vigente no MUNICÍPIO DE PAU DOS FERROS – RN.
+          </p>
+          <p>
+            De acordo com a NBR 12721 – Avaliação de custos de construção para incorporação imobiliária e outras disposições para condomínios edilícios, o projeto em análise se assemelha ao tipo Padrão Residencial – Baixo.
+          </p>
+          <p>
+            De acordo com a INSTRUÇÃO NORMATIVA RFB Nº 2.021, DE 16 DE ABRIL DE 2021, inciso IX do caput do art. 7º, o projeto em análise assemelha-se a destinação Casa Popular.
+          </p>
+          <p>
+            Isto posto, cumpre-me opinar pelo prosseguimento do processo de <strong>EXPEDIÇÃO DE ALVARÁ DE CONSTRUÇÃO</strong>, por revestir-se de sustentação técnica legal.
+          </p>
+        </div>
+
+      
+      <!-- Placeholder para assinatura digital via sistema -->
+      <div id="area-assinatura">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
