@@ -146,7 +146,7 @@ if (!$areaAssinatura && $jsonData && isset($jsonData['dados_assinatura'])) {
 
     // Criar bloco de assinatura diretamente como HTML
     $blocoAssinatura = '<div id="area-assinatura" style="position: relative; display: flex; align-items: center; gap: 15px; background: transparent; padding: 10px; z-index: 1000;">';
-    $blocoAssinatura .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 80px; height: 80px; flex-shrink: 0;" />';
+    $blocoAssinatura .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 60px; height: 60px; flex-shrink: 0;" />';
     $blocoAssinatura .= '<div class="dados-assinante" style="font-size: 12px; text-align: left;">';
     $blocoAssinatura .= '<strong>' . htmlspecialchars($dadosAssinatura['assinante_nome'] ?? '') . '</strong><br>';
     if (!empty($dadosAssinatura['assinante_cpf'])) {

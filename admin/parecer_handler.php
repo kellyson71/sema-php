@@ -261,7 +261,7 @@ try {
             $blocoAssinatura .= '</div>';
 
             $blocoAssinatura .= '<div style="text-align: center; margin-top: 15px;">';
-            $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 120px; height: 120px;" /><br>';
+            $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 80px; height: 80px;" /><br>';
             $blocoAssinatura .= '<small style="font-size: 8px; color: #666;">Documento assinado digitalmente<br>ID: ' . substr($resultadoAssinatura['documento_id'], 0, 16) . '...<br>';
             $blocoAssinatura .= '<a href="' . htmlspecialchars($urlVerificacao) . '" style="color: #0066cc;">Verificar autenticidade</a></small>';
             $blocoAssinatura .= '</div></div>';
@@ -494,7 +494,7 @@ try {
 
                     $imgQr = $parser->createElement('img');
                     $imgQr->setAttribute('src', $qrCodeDataUri);
-                    $imgQr->setAttribute('style', 'width: 80px; height: 80px; flex-shrink: 0;');
+                    $imgQr->setAttribute('style', 'width: 60px; height: 60px; flex-shrink: 0;');
                     $blocoAssinatura->appendChild($imgQr);
 
                     $divDados = $parser->createElement('div');
@@ -531,7 +531,7 @@ try {
                     $html = $parser->saveHTML();
                 } else {
                     $blocoAssinatura = '<div id="area-assinatura" style="position: relative; display: flex; align-items: center; gap: 15px; background: transparent; padding: 10px; z-index: 1000;">';
-                    $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 80px; height: 80px; flex-shrink: 0;" />';
+                    $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 60px; height: 60px; flex-shrink: 0;" />';
                     $blocoAssinatura .= '<div style="font-size: 12px; text-align: left;">';
                     $blocoAssinatura .= '<strong>' . htmlspecialchars($adminNome) . '</strong><br>';
                     $blocoAssinatura .= htmlspecialchars($adminCargo) . '<br>';
@@ -550,7 +550,7 @@ try {
                 }
             } else {
                 $blocoAssinatura = '<div id="area-assinatura" style="position: relative; display: flex; align-items: center; gap: 15px; background: transparent; padding: 10px; z-index: 1000;">';
-                $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 80px; height: 80px; flex-shrink: 0;" />';
+                $blocoAssinatura .= '<img src="' . $qrCodeDataUri . '" style="width: 60px; height: 60px; flex-shrink: 0;" />';
                 $blocoAssinatura .= '<div style="font-size: 12px; text-align: left;">';
                 $blocoAssinatura .= '<strong>' . htmlspecialchars($adminNome) . '</strong><br>';
                 $blocoAssinatura .= htmlspecialchars($adminCargo) . '<br>';

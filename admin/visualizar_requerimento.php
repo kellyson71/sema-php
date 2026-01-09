@@ -1954,7 +1954,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
                             <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000;" contenteditable="true"></div>
                             <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.95); padding: 10px; border: 2px dashed #007bff; border-radius: 4px; min-width: 220px;">
-                                <img id="preview-qr-code" src="" style="width: 80px; height: 80px; flex-shrink: 0;" />
+                                <img id="preview-qr-code" src="" style="width: 60px; height: 60px; flex-shrink: 0;" />
                                 <div style="font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px;">
                                     <strong id="preview-nome-assinante"></strong>
                                     <span id="preview-cargo-assinante"></span>
