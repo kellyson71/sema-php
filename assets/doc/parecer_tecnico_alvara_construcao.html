@@ -60,21 +60,24 @@
       }
       .assinaturas {
         margin-top: 50px;
+        display: flex;
+        justify-content: flex-start;
+      }
+      .assinatura-esquerda {
+        width: 45%;
         text-align: center;
       }
-      .assinatura-bloco-final {
-        display: inline-block;
-        text-align: center;
-      }
-      .linha {
-        margin-bottom: 5px;
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 5px;
       }
       .nome-assinante {
         font-weight: bold;
-        font-size: 11pt;
+        font-size: 10pt;
       }
       .cargo-assinante {
-        font-size: 10pt;
+        font-size: 9pt;
       }
       
       /* Mantendo o suporte ao QR Code de assinatura se necessário pelo sistema */
@@ -112,7 +115,7 @@
 
         <div class="texto-parecer">
           <p>
-            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong> de uma edificação residencial unifamiliar de pavimento térreo e de <strong>58,52 m²</strong> de área que será construída localizado na <strong>RUA FRANCISCO SALES DE AQUINO, S/N, SÃO BENEDITO (QUADRA C, LOTE 10), PAU DOS FERROS – RN, 59900-000</strong>. Pertencente ao(à) <strong>Sr(a). SARA LAYZE ALVES DO NASCIMENTO, CPF: 114.304.044-93</strong>, conforme <strong>ART Nº RN 20250828175</strong>.
+            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong> de uma edificação residencial unifamiliar de pavimento térreo e de <strong>{{area_construida}} m²</strong> de área que será construída, localizada na <strong>{{endereco_objetivo}}</strong>. Pertencente ao(à) <strong>{{nome_requerente}}</strong>, conforme <strong>ART Nº {{responsavel_tecnico_registro}}</strong>.
           </p>
           <p>
             O projeto para construção da edificação supracitada foi submetido à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.
@@ -124,16 +127,27 @@
             De acordo com a NBR 12721 – Avaliação de custos de construção para incorporação imobiliária e outras disposições para condomínios edilícios, o projeto em análise se assemelha ao tipo Padrão Residencial – Baixo.
           </p>
           <p>
-            De acordo com a INSTRUÇÃO NORMATIVA RFB Nº 2.021, DE 16 DE ABRIL DE 2021, inciso IX do caput do art. 7º, o projeto em análise assemelha-se a destinação Casa Popular.
+            De acordo com a INSTRUÇÃO NORMATIVA RFB Nº 2.021, DE 16 DE ABRIL DE 2021, inciso IX do caput do art. 7º, o projeto em análise assemelha-se à destinação Casa Popular.
           </p>
           <p>
             Isto posto, cumpre-me opinar pelo prosseguimento do processo de <strong>EXPEDIÇÃO DE ALVARÁ DE CONSTRUÇÃO</strong>, por revestir-se de sustentação técnica legal.
           </p>
         </div>
 
+              <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+
+        <div class="assinaturas">
+          <div class="assinatura-esquerda">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <div class="cargo-assinante">{{admin_cargo}}</div>
+              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      <!-- Placeholder para assinatura digital via sistema -->
-      <div id="area-assinatura">
+      <div id="area-assinatura" style="display: none">
         <div class="assinatura-bloco">
           <img src="" alt="QR Code" id="qr-assinatura" />
           <div class="dados-assinante">
