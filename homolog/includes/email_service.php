@@ -264,4 +264,37 @@ class EmailService
         include __DIR__ . '/../templates/email_indeferimento.php';
         return ob_get_clean();
     }
+    /**
+     * Enviar email com código de verificação
+     * 
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $codigo Código de verificação
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailCodigoVerificacao($to_email, $to_name, $codigo)
+    {
+        try {
+            $subject = "SEMA - Código de Verificação de Segurança";
+
+            $body = $this->carregarTemplateCodigoVerificacao($to_name, $codigo);
+
+            // Não passamos requerimento_id aqui pois é uma verificação de sessão de usuário
+            return sendMail($to_email, $to_name, $subject, $body);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de verificação: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Carregar template de email para código de verificação
+     */
+    private function carregarTemplateCodigoVerificacao($nome_destinatario, $codigo)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_verification_code.php';
+        return ob_get_clean();
+    }
 }
+

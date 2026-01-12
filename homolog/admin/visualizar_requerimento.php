@@ -3289,9 +3289,128 @@ $isBlocked = $isFinalized || $isIndeferido;
          blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
      }
 
+     // Variável global para o modal de verificação
+     let modalVerificacao = null;
+
+     async function verificarSessaoAssinatura() {
+        try {
+            const response = await fetch('parecer_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'verificar_sessao_assinatura' })
+            });
+            const data = await response.json();
+            return data.success && data.sessao_valida;
+        } catch (error) {
+            console.error('Erro ao verificar sessão:', error);
+            return false;
+        }
+     }
+
+     function iniciarVerificacaoEmail() {
+         if (!modalVerificacao) {
+             modalVerificacao = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
+         }
+         
+         // Resetar estado
+         document.getElementById('etapa-enviar-codigo').style.display = 'block';
+         document.getElementById('etapa-validar-codigo').style.display = 'none';
+         document.getElementById('codigo_verificacao').value = '';
+         document.getElementById('codigo_verificacao').classList.remove('is-invalid');
+         
+         modalVerificacao.show();
+     }
+
+     async function enviarCodigoVerificacao() {
+         const btn = document.querySelector('#etapa-enviar-codigo button');
+         const originalText = btn.innerHTML;
+         btn.disabled = true;
+         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+         try {
+             const response = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ action: 'enviar_codigo_assinatura' })
+             });
+             const data = await response.json();
+             
+             if (data.success) {
+                 document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
+                 document.getElementById('etapa-enviar-codigo').style.display = 'none';
+                 document.getElementById('etapa-validar-codigo').style.display = 'block';
+             } else {
+                 alert('Erro: ' + (data.error || 'Falha ao enviar email.'));
+             }
+         } catch (error) {
+             console.error('Erro:', error);
+             alert('Erro de conexão ao enviar código.');
+         } finally {
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+         }
+     }
+
+     function voltarEnviarCodigo() {
+         document.getElementById('etapa-enviar-codigo').style.display = 'block';
+         document.getElementById('etapa-validar-codigo').style.display = 'none';
+     }
+
+     async function validarCodigoVerificacao() {
+         const input = document.getElementById('codigo_verificacao');
+         const btn = document.querySelector('#etapa-validar-codigo .btn-success');
+         const codigo = input.value.trim();
+         
+         if (codigo.length !== 6) {
+             input.classList.add('is-invalid');
+             document.getElementById('erro-codigo').textContent = 'O código deve ter 6 dígitos.';
+             return;
+         }
+
+         const originalText = btn.innerHTML;
+         btn.disabled = true;
+         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+
+         try {
+             const response = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ 
+                     action: 'validar_codigo_assinatura',
+                     codigo: codigo
+                 })
+             });
+             const data = await response.json();
+             
+             if (data.success) {
+                 // Sucesso! Fechar modal e chamar confirmarPosicaoEGerarPdf novamente
+                 modalVerificacao.hide();
+                 alert('Verificação realizada com sucesso! Você pode assinar documentos pelas próximas 3 horas.');
+                 confirmarPosicaoEGerarPdf(); // Tenta novamente, agora a sessão estará válida
+             } else {
+                 input.classList.add('is-invalid');
+                 document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
+             }
+         } catch (error) {
+             console.error('Erro:', error);
+             alert('Erro de conexão ao validar código.');
+         } finally {
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+         }
+     }
+
      async function confirmarPosicaoEGerarPdf() {
+         // INTERCEPTAÇÃO DE SEGURANÇA
+         const sessaoValida = await verificarSessaoAssinatura();
+         if (!sessaoValida) {
+             iniciarVerificacaoEmail();
+             return;
+         }
+
          const editor = tinymce.get('editor-parecer-content');
          let html = '';
+
 
          if (editor) {
              html = editor.getContent();
@@ -3644,4 +3763,60 @@ function getStatusDotColor($status)
 }
 ?>
 
+<!-- Modal de Verificação de Segurança -->
+<div class="modal fade" id="modalVerificacaoSeguranca" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-shield-alt text-success" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                
+                <h4 class="fw-bold mb-2">Verificação de Segurança</h4>
+                <p class="text-muted mb-4">Para sua segurança, precisamos confirmar sua identidade antes de prosseguir com a assinatura digital.</p>
+                
+                <!-- Etapa 1: Enviar Email -->
+                <div id="etapa-enviar-codigo">
+                    <button onclick="enviarCodigoVerificacao()" class="btn btn-primary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        Enviar código para meu email
+                    </button>
+                    <p class="small text-muted mb-0">
+                        Um código de 6 dígitos será enviado para seu email cadastrado.
+                    </p>
+                </div>
+                
+                <!-- Etapa 2: Digitar Código -->
+                <div id="etapa-validar-codigo" style="display: none;">
+                    <p class="small text-muted mb-3">
+                        Enviamos um código para <strong id="email-mascarado-display">...</strong>
+                    </p>
+                    
+                    <div class="mb-3">
+                        <input type="text" id="codigo_verificacao" class="form-control form-control-lg text-center fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px;">
+                        <div class="invalid-feedback text-start" id="erro-codigo">
+                            Código incorreto.
+                        </div>
+                    </div>
+                    
+                    <button onclick="validarCodigoVerificacao()" class="btn btn-success w-100 py-2 mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Validar Código
+                    </button>
+                    
+                    <button onclick="voltarEnviarCodigo()" class="btn btn-link text-muted btn-sm text-decoration-none">
+                        Reenviar código
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include 'footer.php'; ?>
+

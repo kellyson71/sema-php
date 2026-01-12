@@ -14,6 +14,90 @@ try {
     $parecerService = new ParecerService();
 
     switch ($action) {
+        case 'verificar_sessao_assinatura':
+            $sessaoValida = false;
+            $tempoRestante = 0;
+            
+            if (isset($_SESSION['assinatura_auth_valid_until'])) {
+                $agora = time();
+                if ($agora < $_SESSION['assinatura_auth_valid_until']) {
+                    $sessaoValida = true;
+                    $tempoRestante = $_SESSION['assinatura_auth_valid_until'] - $agora;
+                }
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'sessao_valida' => $sessaoValida,
+                'tempo_restante' => $tempoRestante
+            ]);
+            break;
+
+        case 'enviar_codigo_assinatura':
+            // Gerar código de 6 dígitos
+            $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Salvar na sessão (expira em 15 min)
+            $_SESSION['assinatura_otp_code'] = $codigo;
+            $_SESSION['assinatura_otp_expires'] = time() + (15 * 60);
+            
+            // Obter dados do admin
+            $stmt = $pdo->prepare("SELECT nome, email FROM administradores WHERE id = ?");
+            $stmt->execute([$_SESSION['admin_id']]);
+            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$admin || empty($admin['email'])) {
+                echo json_encode(['success' => false, 'error' => 'Email do administrador não encontrado.']);
+                exit;
+            }
+            
+            // Enviar email
+            $emailService = new EmailService();
+            $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
+            
+            if ($enviado) {
+                // Mascarar email para exibir no frontend
+                $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Erro ao enviar email. Tente novamente.']);
+            }
+            break;
+
+        case 'validar_codigo_assinatura':
+            $codigoRecebido = $input['codigo'] ?? '';
+            
+            if (empty($codigoRecebido)) {
+                echo json_encode(['success' => false, 'error' => 'Código não informado.']);
+                exit;
+            }
+            
+            if (!isset($_SESSION['assinatura_otp_code']) || !isset($_SESSION['assinatura_otp_expires'])) {
+                echo json_encode(['success' => false, 'error' => 'Nenhum código gerado ou código expirado.']);
+                exit;
+            }
+            
+            if (time() > $_SESSION['assinatura_otp_expires']) {
+                unset($_SESSION['assinatura_otp_code']);
+                unset($_SESSION['assinatura_otp_expires']);
+                echo json_encode(['success' => false, 'error' => 'Código expirado. Solicite um novo.']);
+                exit;
+            }
+            
+            if ($codigoRecebido === $_SESSION['assinatura_otp_code']) {
+                // Código correto! Definir sessão de 3 horas
+                $_SESSION['assinatura_auth_valid_until'] = time() + (3 * 60 * 60);
+                
+                // Limpar OTP
+                unset($_SESSION['assinatura_otp_code']);
+                unset($_SESSION['assinatura_otp_expires']);
+                
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Código incorreto.']);
+            }
+            break;
+
         case 'listar_templates':
             $templates = $parecerService->listarTemplates();
             $templatesList = array_map(function($t) {
@@ -348,6 +432,16 @@ try {
             $dataAssinatura = $input['data_assinatura'] ?? '';
             $posicaoX = floatval($input['posicao_x'] ?? 0.7);
             $posicaoY = floatval($input['posicao_y'] ?? 0.85);
+
+            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 3h
+            if (!isset($_SESSION['assinatura_auth_valid_until']) || time() > $_SESSION['assinatura_auth_valid_until']) {
+                echo json_encode([
+                    'success' => false, 
+                    'error' => 'Sessão de assinatura expirada. Por favor, realize a verificação novamente.',
+                    'code' => 'SESSION_EXPIRED'
+                ]);
+                exit;
+            }
 
             $stmt = $pdo->prepare("SELECT nome, nome_completo, email, cpf, cargo, matricula_portaria FROM administradores WHERE id = ?");
             $stmt->execute([$_SESSION['admin_id']]);
