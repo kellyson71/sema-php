@@ -2716,12 +2716,33 @@ $isBlocked = $isFinalized || $isIndeferido;
          fetch('parecer_handler.php', {
              method: 'POST',
              headers: {'Content-Type': 'application/json'},
-             body: JSON.stringify({action: 'listar_templates'})
+             body: JSON.stringify({
+                 action: 'listar_templates',
+                 requerimento_id: <?php echo $id; ?>
+             })
          })
          .then(res => res.json())
          .then(data => {
              const select = document.getElementById('template-select');
              select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
+
+             // Rascunhos Recentes
+             if (data.rascunhos && data.rascunhos.length > 0) {
+                 const groupRascunhos = document.createElement('optgroup');
+                 groupRascunhos.label = "Rascunhos Recentes";
+                 data.rascunhos.forEach(r => {
+                     const option = document.createElement('option');
+                     option.value = r.id;
+                     option.textContent = `📝 ${r.label}`; // Ícone diferente para rascunhos
+                     groupRascunhos.appendChild(option);
+                 });
+                 select.appendChild(groupRascunhos);
+             }
+
+             // Modelos Padrão
+             const groupModelos = document.createElement('optgroup');
+             groupModelos.label = "Modelos Padrão";
+
              const templates = data.templates_detalhados || data.templates;
              templates.forEach(t => {
                  const nome = typeof t === 'object' ? t.nome : t;
@@ -2729,8 +2750,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                  const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
                  const tipoLabel = textoTipoTemplate(tipo);
                  const icone = tipo === 'docx' ? '📝' : '📄';
-                 select.innerHTML += `<option value="${nome}">${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}</option>`;
+                 
+                 const option = document.createElement('option');
+                 option.value = nome;
+                 option.innerHTML = `${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}`;
+                 groupModelos.appendChild(option);
              });
+             select.appendChild(groupModelos);
          })
          .catch(error => {
              console.error('Erro ao carregar templates:', error);

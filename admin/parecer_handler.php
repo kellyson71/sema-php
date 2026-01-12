@@ -101,14 +101,51 @@ try {
             break;
 
         case 'listar_templates':
+            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
             $templates = $parecerService->listarTemplates();
             $templatesList = array_map(function($t) {
                 return is_array($t) ? $t['nome'] : $t;
             }, $templates);
+
+            // Buscar rascunhos (últimos 3 documentos gerados)
+            $rascunhos = [];
+            if ($requerimento_id > 0) {
+                $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
+                if (is_dir($pastaRequerimento)) {
+                    $arquivos = glob($pastaRequerimento . '*.json');
+                    if ($arquivos) {
+                        // Ordenar por data de modificação (mais recente primeiro)
+                        usort($arquivos, function($a, $b) {
+                            return filemtime($b) - filemtime($a);
+                        });
+
+                        // Pegar os 3 mais recentes
+                        $recentes = array_slice($arquivos, 0, 3);
+                        foreach ($recentes as $arquivo) {
+                            $dados = json_decode(file_get_contents($arquivo), true);
+                            if ($dados) {
+                                // Tenta identificar um nome amigável para o rascunho
+                                $nomeTemplate = $dados['template'] ?? 'Documento';
+                                // Formatar nome do rascunho: "Rascunho: Tipo do Template (DD/MM/YYYY HH:mm)"
+                                $dataCriacao = isset($dados['data_criacao']) ? date('d/m/Y H:i', strtotime($dados['data_criacao'])) : date('d/m/Y H:i', filemtime($arquivo));
+                                
+                                $rascunhos[] = [
+                                    'id' => 'draft:' . basename($arquivo),
+                                    'nome' => $nomeTemplate,
+                                    'data' => $dataCriacao,
+                                    'label' => "{$nomeTemplate} ({$dataCriacao})"
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
             echo json_encode([
                 'success' => true,
                 'templates' => $templatesList,
-                'templates_detalhados' => $templates
+                'templates_detalhados' => $templates,
+                'rascunhos' => $rascunhos
             ]);
             break;
 
@@ -119,6 +156,46 @@ try {
             if (empty($template) || $requerimento_id <= 0) {
                 throw new Exception('Parâmetros inválidos');
             }
+
+            // Verificar se é um draft (rascunho/documento anterior)
+            if (strpos($template, 'draft:') === 0) {
+                $nomeArquivoDraft = substr($template, 6); // Remove 'draft:'
+                $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
+                $caminhoDraft = $pastaRequerimento . $nomeArquivoDraft;
+
+                if (!file_exists($caminhoDraft)) {
+                    throw new Exception('Rascunho não encontrado');
+                }
+
+                $dadosDraft = json_decode(file_get_contents($caminhoDraft), true);
+                if (!$dadosDraft) {
+                    throw new Exception('Erro ao ler dados do rascunho');
+                }
+
+                // Prioriza retornar o html_completo (do editor) se existir, senão html_com_assinatura
+                $html = $dadosDraft['html_completo'] ?? $dadosDraft['html_com_assinatura'] ?? '';
+
+                if (empty($html)) {
+                     // Fallback para ler o arquivo html correspondente se não estiver no json
+                     $caminhoHtmlRelativo = $dadosDraft['caminho_html'] ?? '';
+                     if ($caminhoHtmlRelativo) {
+                         $caminhoHtmlAbsoluto = dirname(__DIR__) . '/uploads/' . $caminhoHtmlRelativo;
+                         if (file_exists($caminhoHtmlAbsoluto)) {
+                             $html = file_get_contents($caminhoHtmlAbsoluto);
+                         }
+                     }
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'html' => $html,
+                    'is_draft' => true,
+                    'dados' => [] // Drafts já vêm preenchidos
+                ]);
+                break; // Sai do switch/case
+            }
+
+            // --- Lógica original para templates padrão abaixo ---
 
             $stmt = $pdo->prepare("
                 SELECT r.*,

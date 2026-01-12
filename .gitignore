@@ -9,6 +9,8 @@
 # ===== BANCO DE DADOS =====
 # Ignorar dumps SQL exceto os da pasta database
 *.sql
+
+homolog
 !database/*.sql
 /uploads/*/
 !uploads/.gitkeep
