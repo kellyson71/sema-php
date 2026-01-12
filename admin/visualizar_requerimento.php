@@ -358,6 +358,9 @@ $historico = $stmt->fetchAll();
 include 'header.php';
 ?>
 
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <style>
     /* Design System - Cores Profissionais */
     :root {
@@ -391,6 +394,65 @@ include 'header.php';
         --transition: all 0.2s ease;
         --radius: 8px;
         --radius-sm: 6px;
+    }
+
+    /* Select2 Custom Styles */
+    .select2-container--default .select2-selection--single {
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        height: 45px;
+        padding: 0.5rem;
+        background: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px;
+        color: var(--gray-800);
+        padding-left: 0.5rem;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 43px;
+        right: 8px;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: var(--primary-600);
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1), var(--shadow-sm);
+    }
+
+    .select2-dropdown {
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-md);
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--primary-600);
+    }
+
+    .select2-container--default .select2-results__option[aria-selected=true] {
+        background-color: var(--primary-50);
+        color: var(--primary-700);
+    }
+
+    .select2-results__group {
+        font-weight: 600;
+        color: var(--gray-700);
+        padding: 8px 12px;
+        font-size: 0.875rem;
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .select2-results__option {
+        padding: 10px 12px;
+        font-size: 0.875rem;
+    }
+
+    .select2-container {
+        width: 100% !important;
     }
 
     /* Componentes base atualizados */
@@ -1924,24 +1986,11 @@ $isBlocked = $isFinalized || $isIndeferido;
             <div class="modal-body">
                 <!-- Etapa 1: Seleção de Template -->
                 <div id="etapa-selecao-template">
-                    <p class="text-muted mb-3">Escolha um modelo abaixo para começar. Você pode usar um rascunho anterior ou iniciar um novo documento.</p>
-                    
-                    <div id="lista-templates-container" class="d-flex flex-column gap-3">
-                        <!-- Conteúdo carregado via JS -->
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Carregando...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Carregando modelos...</p>
-                        </div>
-                    </div>
-                    <input type="hidden" id="selected-template-id" value="">
-
-                    <div class="mt-4 pt-3 border-top d-flex justify-content-end">
-                       <button type="button" class="btn btn-primary disabled" id="btn-carregar-template" onclick="carregarTemplateParaEdicao()">
-                           <i class="fas fa-file-import me-2"></i>Carregar Modelo Selecionado
-                       </button>
-                    </div>
+                    <label class="form-label">Selecione o Template:</label>
+                    <select id="template-select" class="form-select mb-3"></select>
+                    <button type="button" class="btn btn-primary" onclick="carregarTemplateParaEdicao()">
+                        <i class="fas fa-file-import me-2"></i>Carregar Template
+                    </button>
                 </div>
 
                 <!-- Etapa 2: Editor -->
@@ -2725,264 +2774,116 @@ $isBlocked = $isFinalized || $isIndeferido;
          carregarPareceresExistentes();
      }
 
-     /* Estilos para o Seletor de Templates Moderno */
-     .template-selection-card {
-         border: 1px solid var(--gray-200);
-         border-radius: var(--radius);
-         padding: 1rem;
-         cursor: pointer;
-         transition: all 0.2s ease;
-         background: white;
-         position: relative;
+     function carregarListaTemplates() {
+         fetch('parecer_handler.php', {
+             method: 'POST',
+             headers: {'Content-Type': 'application/json'},
+             body: JSON.stringify({
+                 action: 'listar_templates',
+                 requerimento_id: <?php echo $id; ?>
+             })
+         })
+         .then(res => res.json())
+         .then(data => {
+             const select = document.getElementById('template-select');
+             select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
+
+             // Rascunhos Recentes
+             if (data.rascunhos && data.rascunhos.length > 0) {
+                 const groupRascunhos = document.createElement('optgroup');
+                 groupRascunhos.label = "📝 Rascunhos Recentes";
+                 data.rascunhos.forEach(r => {
+                     const option = document.createElement('option');
+                     option.value = r.id;
+                     option.textContent = `${r.nome} - ${r.assinante} (${r.data})`;
+                     groupRascunhos.appendChild(option);
+                 });
+                 select.appendChild(groupRascunhos);
+             }
+
+             // Modelos Padrão
+             const groupModelos = document.createElement('optgroup');
+             groupModelos.label = "📄 Modelos Padrão";
+
+             const templates = data.templates_detalhados || data.templates;
+             templates.forEach(t => {
+                 const nome = typeof t === 'object' ? t.nome : t;
+                 const tipo = typeof t === 'object' ? t.tipo : 'docx';
+                 const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
+                 const tipoLabel = textoTipoTemplate(tipo);
+                 const icone = tipo === 'docx' ? '📝' : '📄';
+                 
+                 const option = document.createElement('option');
+                 option.value = nome;
+                 option.innerHTML = `${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}`;
+                 groupModelos.appendChild(option);
+             });
+             select.appendChild(groupModelos);
+
+             // Inicializar Select2
+             $('#template-select').select2({
+                 placeholder: 'Selecione um modelo de parecer',
+                 allowClear: true,
+                 width: '100%',
+                 dropdownParent: $('#parecerModal')
+             });
+         })
+         .catch(error => {
+             console.error('Erro ao carregar templates:', error);
+             alert('Erro ao carregar templates');
+         });
      }
-     
-     .template-selection-card:hover {
-         border-color: var(--primary-600);
-         background-color: var(--primary-50);
-         transform: translateY(-2px);
+
+     function carregarTemplateParaEdicao() {
+         const template = document.getElementById('template-select').value;
+         if (!template) {
+             alert('Selecione um template');
+             return;
+         }
+
+         fetch('parecer_handler.php', {
+             method: 'POST',
+             headers: {'Content-Type': 'application/json'},
+             body: JSON.stringify({
+                 action: 'carregar_template',
+                 template: template,
+                 requerimento_id: <?php echo $id; ?>
+             })
+         })
+         .then(res => res.json())
+         .then(data => {
+             if (data.success) {
+                 document.getElementById('etapa-selecao-template').style.display = 'none';
+                 document.getElementById('etapa-editor').style.display = 'block';
+
+                 // Extrair imagem de fundo do template original para uso posterior
+                 const parser = new DOMParser();
+                 const doc = parser.parseFromString(data.html, 'text/html');
+                 const imgFundo = doc.querySelector('#fundo-imagem');
+                 if (imgFundo && imgFundo.src) {
+                     // Armazenar imagem de fundo globalmente para uso no preview
+                     // Converter caminho relativo para absoluto se necessário
+                     let imgSrc = imgFundo.src;
+                     if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+                         // Se for caminho relativo como 'images/image1.png', converter para caminho completo
+                         if (imgSrc.startsWith('images/')) {
+                             imgSrc = '../assets/doc/' + imgSrc;
+                         }
+                     }
+                     window.templateFundoImg = imgSrc;
+                 }
+
+                 // Sempre usar TinyMCE para preservar formatação
+                 inicializarEditorTiny(data.html);
+             } else {
+                 alert('Erro: ' + data.error);
+             }
+         })
+         .catch(error => {
+             console.error('Erro ao carregar template:', error);
+             alert('Erro ao carregar template');
+         });
      }
-     
-     .template-selection-card.selected {
-         border-color: var(--primary-600);
-         background-color: var(--primary-50);
-         box-shadow: 0 0 0 2px var(--primary-100);
-     }
-     
-     .template-selection-card.selected::after {
-         content: '\f00c';
-         font-family: 'Font Awesome 5 Free';
-         font-weight: 900;
-         position: absolute;
-         top: 1rem;
-         right: 1rem;
-         color: var(--primary-600);
-         font-size: 1.25rem;
-     }
-     
-     .template-icon {
-         width: 48px;
-         height: 48px;
-         display: flex;
-         align-items: center;
-         justify-content: center;
-         border-radius: 8px;
-         font-size: 1.5rem;
-         margin-right: 1rem;
-     }
-     
-     .icon-docx { background-color: #e6f0ff; color: #2b579a; }
-     .icon-draft { background-color: #fff7ed; color: #d97706; }
-     
-     .template-info h6 {
-         margin: 0 0 0.25rem 0;
-         font-weight: 600;
-         color: var(--gray-800);
-     }
-     
-     .template-info p {
-         margin: 0;
-         font-size: 0.85rem;
-         color: var(--gray-500);
-     }
-     
-     .template-meta {
-         font-size: 0.75rem;
-         color: var(--gray-400);
-         margin-top: 0.25rem;
-     }
-     
-     .section-header {
-         font-size: 0.85rem;
-         font-weight: 600;
-         text-transform: uppercase;
-         letter-spacing: 0.05em;
-         color: var(--gray-500);
-         margin: 1.5rem 0 1rem 0;
-         padding-bottom: 0.5rem;
-         border-bottom: 1px solid var(--gray-200);
-     }
-     .section-header:first-child { margin-top: 0; }
-     </style>
-     
-     <script>
-      function nomeTemplateAmigavel(nomeArquivo) {
-          const mapa = {
-              'template_oficial_a4.docx': 'Parecer Técnico Padrão',
-              'licenca_previa_projeto.docx': 'Licença Prévia',
-              'parecer_tecnico.docx': 'Parecer Técnico Simples'
-          };
-          if (!mapa[nomeArquivo]) {
-              return nomeArquivo.replace(/\.docx$/i, '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
-          return mapa[nomeArquivo];
-      }
- 
-      function textoTipoTemplate(tipo) {
-          const mapa = {
-              docx: 'Editor online (DOCX)',
-              html: ''
-          };
-          return mapa[tipo] || 'Documento';
-      }
- 
-      function abrirModalParecer() {
-          parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
-          resetarFluxoParecer(true);
-          parecerModal.show();
-          carregarListaTemplates();
-          carregarPareceresExistentes();
-      }
- 
-      function carregarListaTemplates() {
-          const container = document.getElementById('lista-templates-container');
-          container.innerHTML = `
-             <div class="text-center py-5">
-                 <div class="spinner-border text-primary" role="status">
-                     <span class="visually-hidden">Carregando...</span>
-                 </div>
-                 <p class="mt-2 text-muted">Carregando modelos...</p>
-             </div>
-          `;
-          
-          fetch('parecer_handler.php', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                  action: 'listar_templates',
-                  requerimento_id: <?php echo $id; ?>
-              })
-          })
-          .then(res => res.json())
-          .then(data => {
-              container.innerHTML = ''; 
- 
-              const criarCard = (id, titulo, subtitulo, meta, iconeClass, tipoIcone) => {
-                  const div = document.createElement('div');
-                  div.className = 'template-selection-card d-flex align-items-center';
-                  div.onclick = () => selecionarTemplate(div, id);
-                  div.innerHTML = `
-                      <div class="template-icon ${iconeClass}">
-                          <i class="fas ${tipoIcone}"></i>
-                      </div>
-                      <div class="template-info flex-grow-1">
-                          <h6>${titulo}</h6>
-                          <p>${subtitulo}</p>
-                          ${meta ? `<div class="template-meta">${meta}</div>` : ''}
-                      </div>
-                  `;
-                  return div;
-              };
- 
-              if (data.rascunhos && data.rascunhos.length > 0) {
-                  const headerRascunhos = document.createElement('div');
-                  headerRascunhos.className = 'section-header';
-                  headerRascunhos.textContent = 'Recentes';
-                  container.appendChild(headerRascunhos);
- 
-                  data.rascunhos.forEach(r => {
-                      const meta = r.assinante ? `<i class="fas fa-user-edit me-1"></i>Assinado por: ${r.assinante}` : '';
-                      const card = criarCard(
-                          r.id, 
-                          r.nome, 
-                          `Editado em: ${r.data}`, 
-                          meta, 
-                          'icon-draft', 
-                          'fa-history'
-                      );
-                      container.appendChild(card);
-                  });
-              }
- 
-              const headerModelos = document.createElement('div');
-              headerModelos.className = 'section-header';
-              headerModelos.textContent = 'Modelos Disponíveis';
-              container.appendChild(headerModelos);
- 
-              const templates = data.templates_detalhados || data.templates;
-              templates.forEach(t => {
-                  const nome = typeof t === 'object' ? t.nome : t;
-                  const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
-                  
-                  const card = criarCard(
-                      nome, 
-                      rotulo, 
-                      'Modelo padrão do sistema', 
-                      '', 
-                      'icon-docx', 
-                      'fa-file-word'
-                  );
-                  container.appendChild(card);
-              });
-          })
-          .catch(error => {
-              console.error('Erro ao carregar templates:', error);
-              container.innerHTML = '<div class="alert alert-danger">Erro ao carregar templates. Tente novamente.</div>';
-          });
-      }
- 
-      function selecionarTemplate(elementoCard, idTemplate) {
-          document.querySelectorAll('.template-selection-card').forEach(c => c.classList.remove('selected'));
-          elementoCard.classList.add('selected');
-          document.getElementById('selected-template-id').value = idTemplate;
-          const btn = document.getElementById('btn-carregar-template');
-          btn.classList.remove('disabled');
-      }
- 
-      function carregarTemplateParaEdicao() {
-          const template = document.getElementById('selected-template-id').value;
-          if (!template) {
-              alert('Selecione um template');
-              return;
-          }
- 
-          const btn = document.getElementById('btn-carregar-template');
-          const textoOriginal = btn.innerHTML;
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Carregando...';
- 
-          fetch('parecer_handler.php', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                  action: 'carregar_template',
-                  template: template,
-                  requerimento_id: <?php echo $id; ?>
-              })
-          })
-          .then(res => res.json())
-          .then(data => {
-              btn.disabled = false;
-              btn.innerHTML = textoOriginal;
- 
-              if (data.success) {
-                  document.getElementById('etapa-selecao-template').style.display = 'none';
-                  document.getElementById('etapa-editor').style.display = 'block';
- 
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(data.html, 'text/html');
-                  const imgFundo = doc.querySelector('#fundo-imagem');
-                  if (imgFundo && imgFundo.src) {
-                      let imgSrc = imgFundo.src;
-                      if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
-                           if (imgSrc.startsWith('images/')) {
-                               imgSrc = '../assets/doc/' + imgSrc;
-                           }
-                      }
-                      window.templateFundoImg = imgSrc;
-                  }
- 
-                  inicializarEditorTiny(data.html);
-              } else {
-                  alert('Erro: ' + data.error);
-              }
-          })
-          .catch(error => {
-              btn.disabled = false;
-              btn.innerHTML = textoOriginal;
-              console.error('Erro ao carregar template:', error);
-              alert('Erro ao carregar template');
-          });
-      }
 
      function inicializarEditorTiny(conteudo) {
          if (tinymce.get('editor-parecer-content')) {
@@ -4147,6 +4048,9 @@ function getStatusDotColor($status)
         toast.show();
     }
 </script>
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <?php include 'footer.php'; ?>
 

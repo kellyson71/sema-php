@@ -129,14 +129,17 @@ try {
                                 // Formatar nome do rascunho: "Rascunho: Tipo do Template (DD/MM/YYYY HH:mm)"
                                 $dataCriacao = isset($dados['data_criacao']) ? date('d/m/Y H:i', strtotime($dados['data_criacao'])) : date('d/m/Y H:i', filemtime($arquivo));
                                 
-                                $assinante = $dados['dados_assinatura']['assinante_nome'] ?? 'Desconhecido';
-
+                                // Buscar nome do assinante
+                                $nomeAssinante = $dados['dados_assinatura']['assinante_nome'] ?? 
+                                                 $dados['dados_assinatura']['assinante_nome_completo'] ?? 
+                                                 'Desconhecido';
+                                
                                 $rascunhos[] = [
                                     'id' => 'draft:' . basename($arquivo),
                                     'nome' => $nomeTemplate,
                                     'data' => $dataCriacao,
-                                    'assinante' => $assinante,
-                                    'label' => "{$nomeTemplate} ({$dataCriacao}) - Por: {$assinante}"
+                                    'assinante' => $nomeAssinante,
+                                    'label' => "{$nomeTemplate} - {$nomeAssinante} ({$dataCriacao})"
                                 ];
                             }
                         }
