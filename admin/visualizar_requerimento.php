@@ -757,6 +757,24 @@ include 'header.php';
         pointer-events: none;
     }
 
+    .tox-tinymce {
+        border: 1px solid #ced4da !important;
+        border-radius: 4px !important;
+    }
+    
+    /* Estilo para o backdrop com blur para o modal de segurança */
+    .modal-backdrop.show {
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        opacity: 0.8 !important;
+        background-color: rgba(0, 0, 0, 0.6) !important;
+    }
+    
+    #modalVerificacaoSeguranca .modal-content {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        border: none;
+    }
+
     /* Estilos para processos indeferidos */
     .indeferido-card {
         background: #fef2f2 !important;
@@ -3289,9 +3307,157 @@ $isBlocked = $isFinalized || $isIndeferido;
          blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
      }
 
+     // Variáveis globais para o modal de verificação e persistência da senha
+     let modalVerificacao = null;
+     let senhaTemporaria = '';
+
+     async function verificarSessaoAssinatura() {
+        try {
+            const response = await fetch('parecer_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'verificar_sessao_assinatura' })
+            });
+            const data = await response.json();
+            return data.success && data.sessao_valida;
+        } catch (error) {
+            console.error('Erro ao verificar sessão:', error);
+            return false;
+        }
+     }
+
+     function iniciarVerificacaoEmail() {
+         // Salvar a senha digitada antes de fechar o modal
+         const senhaInput = document.getElementById('senha-finalizacao');
+         if (senhaInput) {
+             senhaTemporaria = senhaInput.value;
+         }
+
+         // Fechar modal de parecer se estiver aberto para limpar a tela
+         if (typeof parecerModal !== 'undefined' && parecerModal) {
+             parecerModal.hide();
+         }
+         
+         if (!modalVerificacao) {
+             modalVerificacao = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
+         }
+         
+         // Resetar estado
+         document.getElementById('etapa-enviar-codigo').style.display = 'block';
+         document.getElementById('etapa-validar-codigo').style.display = 'none';
+         document.getElementById('codigo_verificacao').value = '';
+         document.getElementById('codigo_verificacao').classList.remove('is-invalid');
+         
+         modalVerificacao.show();
+     }
+
+     async function enviarCodigoVerificacao() {
+         const btn = document.querySelector('#etapa-enviar-codigo button');
+         const originalText = btn.innerHTML;
+         btn.disabled = true;
+         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+         try {
+             const response = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ action: 'enviar_codigo_assinatura' })
+             });
+             const data = await response.json();
+             
+             if (data.success) {
+                 document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
+                 document.getElementById('etapa-enviar-codigo').style.display = 'none';
+                 document.getElementById('etapa-validar-codigo').style.display = 'block';
+             } else {
+                 showToast(data.error || 'Falha ao enviar email.', 'error');
+             }
+         } catch (error) {
+             console.error('Erro:', error);
+             showToast('Erro de conexão ao enviar código.', 'error');
+         } finally {
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+         }
+     }
+
+     function voltarEnviarCodigo() {
+         document.getElementById('etapa-enviar-codigo').style.display = 'block';
+         document.getElementById('etapa-validar-codigo').style.display = 'none';
+     }
+
+     async function validarCodigoVerificacao() {
+         const input = document.getElementById('codigo_verificacao');
+         const btn = document.querySelector('#etapa-validar-codigo .btn-success');
+         const codigo = input.value.trim();
+         
+         if (codigo.length !== 6) {
+             input.classList.add('is-invalid');
+             document.getElementById('erro-codigo').textContent = 'O código deve ter 6 dígitos.';
+             return;
+         }
+
+         const originalText = btn.innerHTML;
+         btn.disabled = true;
+         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+
+         try {
+             const response = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ 
+                     action: 'validar_codigo_assinatura',
+                     codigo: codigo
+                 })
+             });
+             const data = await response.json();
+             
+             if (data.success) {
+                 // Sucesso! Fechar modal e mostrar notificação moderna
+                 modalVerificacao.hide();
+                 showToast('Verificação realizada com sucesso! Continuando assinatura...');
+                 
+                 // Reabrir o modal de parecer para continuar o fluxo
+                 if (typeof parecerModal !== 'undefined' && parecerModal) {
+                     parecerModal.show();
+                     
+                     // Restaurar a senha e tentar confirmar novamente
+                     setTimeout(() => {
+                         const senhaInput = document.getElementById('senha-finalizacao');
+                         if (senhaInput && senhaTemporaria) {
+                             senhaInput.value = senhaTemporaria;
+                         }
+                         confirmarPosicaoEGerarPdf(); 
+                     }, 500);
+                 } else {
+                     confirmarPosicaoEGerarPdf();
+                 }
+                 
+             } else {
+                 input.classList.add('is-invalid');
+                 document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
+             }
+         } catch (error) {
+             console.error('Erro:', error);
+             showToast('Erro de conexão ao validar código.', 'error');
+         } finally {
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+         }
+     }
+
+
      async function confirmarPosicaoEGerarPdf() {
+         // INTERCEPTAÇÃO DE SEGURANÇA
+         const sessaoValida = await verificarSessaoAssinatura();
+         if (!sessaoValida) {
+             iniciarVerificacaoEmail();
+             return;
+         }
+
          const editor = tinymce.get('editor-parecer-content');
          let html = '';
+
 
          if (editor) {
              html = editor.getContent();
@@ -3355,35 +3521,51 @@ $isBlocked = $isFinalized || $isIndeferido;
 
              const data = await response.json();
 
-            if (data.success) {
-                alert('Parecer assinado e gerado com sucesso!');
+             if (data.success) {
+                 // Configurar e mostrar modal de sucesso
+                 const btnVisualizar = document.getElementById('btn-visualizar-sucesso');
+                 if (data.url_viewer) {
+                     btnVisualizar.onclick = function() { window.open(data.url_viewer, '_blank'); };
+                     btnVisualizar.style.display = 'inline-block';
+                 } else {
+                     btnVisualizar.style.display = 'none';
+                 }
+                 
+                 // Limpar senha temporária
+                 senhaTemporaria = '';
+                 
+                 const modalSucesso = new bootstrap.Modal(document.getElementById('modalSucessoAssinatura'));
+                 modalSucesso.show();
 
-                if (data.url_viewer) {
-                    window.open(data.url_viewer, '_blank');
-                }
+                 // Limpar interface
+                 parecerModal.hide();
+                 carregarPareceresExistentes();
 
-                parecerModal.hide();
-                carregarPareceresExistentes();
+                 if (signaturePad) signaturePad.clear();
+                 document.getElementById('signature-text').value = '';
+                 const senhaFinalizacao = document.getElementById('senha-finalizacao');
+                 if (senhaFinalizacao) senhaFinalizacao.value = '';
+                 if (erroSenhaEl) erroSenhaEl.style.display = 'none';
 
-                if (signaturePad) signaturePad.clear();
-                document.getElementById('signature-text').value = '';
-                const senhaFinalizacao = document.getElementById('senha-finalizacao');
-                if (senhaFinalizacao) senhaFinalizacao.value = '';
-                if (erroSenhaEl) erroSenhaEl.style.display = 'none';
+                 document.getElementById('etapa-posicionamento').style.display = 'none';
+                 document.getElementById('etapa-selecao-template').style.display = 'block';
+                 tinymce.remove('#editor-parecer-content');
 
-                document.getElementById('etapa-posicionamento').style.display = 'none';
-                document.getElementById('etapa-selecao-template').style.display = 'block';
-                tinymce.remove('#editor-parecer-content');
-
-                dadosAssinatura = null;
-                coordenadasAssinatura = { x: 0, y: 0 };
-                templateAtual = null;
-            } else {
-                alert('Erro ao gerar PDF: ' + data.error);
-            }
+                 dadosAssinatura = null;
+                 coordenadasAssinatura = { x: 0, y: 0 };
+                 templateAtual = null;
+             } else {
+                 // VERIFICA SE É ERRO DE SESSÃO
+                 if (data.code === 'SESSION_EXPIRED') {
+                     showToast('Sua sessão de assinatura expirou. Realize a verificação novamente.', 'warning');
+                     iniciarVerificacaoEmail();
+                 } else {
+                     showToast('Erro ao gerar PDF: ' + data.error, 'error');
+                 }
+             }
          } catch (error) {
              console.error('Erro:', error);
-             alert('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'));
+             showToast('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'), 'error');
          }
      }
 
@@ -3644,4 +3826,134 @@ function getStatusDotColor($status)
 }
 ?>
 
+<!-- Modal de Verificação de Segurança -->
+<div class="modal fade" id="modalVerificacaoSeguranca" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-shield-alt text-success" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                
+                <h4 class="fw-bold mb-2">Verificação de Segurança</h4>
+                <p class="text-muted mb-4">Para sua segurança, precisamos confirmar sua identidade antes de prosseguir com a assinatura digital.</p>
+                
+                <!-- Etapa 1: Enviar Email -->
+                <div id="etapa-enviar-codigo">
+                    <button onclick="enviarCodigoVerificacao()" class="btn btn-primary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        Enviar código para meu email
+                    </button>
+                    <p class="small text-muted mb-0">
+                        Um código de 6 dígitos será enviado para seu email cadastrado.
+                    </p>
+                </div>
+                
+                <!-- Etapa 2: Digitar Código -->
+                <div id="etapa-validar-codigo" style="display: none;">
+                    <p class="small text-muted mb-3">
+                        Enviamos um código para <strong id="email-mascarado-display">...</strong>
+                    </p>
+                    
+                    <div class="mb-3">
+                        <input type="text" id="codigo_verificacao" class="form-control form-control-lg text-center fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px;">
+                        <div class="invalid-feedback text-start" id="erro-codigo">
+                            Código incorreto.
+                        </div>
+                    </div>
+                    
+                    <button onclick="validarCodigoVerificacao()" class="btn btn-success w-100 py-2 mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Validar Código
+                    </button>
+                    
+                    <button onclick="voltarEnviarCodigo()" class="btn btn-link text-muted btn-sm text-decoration-none">
+                        Reenviar código
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="modalSucessoAssinatura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center px-4 py-5">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-success d-inline-flex align-items-center justify-content-center" style="width: 90px; height: 90px; box-shadow: 0 0 0 10px rgba(25, 135, 84, 0.1);">
+                        <i class="fas fa-check text-white" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                
+                <h3 class="fw-bold text-success mb-2">Sucesso!</h3>
+                <h5 class="fw-bold mb-3">Parecer Assinado Digitalmente</h5>
+                
+                <p class="text-muted mb-4">
+                    O documento foi gerado, assinado e registrado com sucesso.
+                    <br>O protocolo de autenticidade já está ativo.
+                </p>
+                
+                <div class="d-grid gap-2 col-8 mx-auto">
+                    <button type="button" class="btn btn-success btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-thumbs-up me-2"></i> Entendido
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btn-visualizar-sucesso">
+                        <i class="fas fa-external-link-alt me-2"></i> Visualizar Documento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i class="fas fa-check-circle fa-lg"></i>
+                <span id="toastMessage">Operação realizada com sucesso!</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar Toast
+    const toastEl = document.getElementById('liveToast');
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+
+    function showToast(message, type = 'success') {
+        const toastBody = document.querySelector('#liveToast .toast-body span');
+        const toastDiv = document.getElementById('liveToast');
+        
+        toastBody.textContent = message;
+        
+        // Reset classes
+        toastDiv.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
+        
+        // Add new class based on type
+        switch(type) {
+            case 'success': toastDiv.classList.add('bg-success'); break;
+            case 'error': toastDiv.classList.add('bg-danger'); break;
+            case 'warning': toastDiv.classList.add('bg-warning'); break;
+            case 'info': toastDiv.classList.add('bg-info'); break;
+            default: toastDiv.classList.add('bg-primary');
+        }
+        
+        toast.show();
+    }
+</script>
+
 <?php include 'footer.php'; ?>
+
+
+
