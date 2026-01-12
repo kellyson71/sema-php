@@ -3307,8 +3307,9 @@ $isBlocked = $isFinalized || $isIndeferido;
          blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
      }
 
-     // Variável global para o modal de verificação
+     // Variáveis globais para o modal de verificação e persistência da senha
      let modalVerificacao = null;
+     let senhaTemporaria = '';
 
      async function verificarSessaoAssinatura() {
         try {
@@ -3326,6 +3327,12 @@ $isBlocked = $isFinalized || $isIndeferido;
      }
 
      function iniciarVerificacaoEmail() {
+         // Salvar a senha digitada antes de fechar o modal
+         const senhaInput = document.getElementById('senha-finalizacao');
+         if (senhaInput) {
+             senhaTemporaria = senhaInput.value;
+         }
+
          // Fechar modal de parecer se estiver aberto para limpar a tela
          if (typeof parecerModal !== 'undefined' && parecerModal) {
              parecerModal.hide();
@@ -3408,14 +3415,18 @@ $isBlocked = $isFinalized || $isIndeferido;
              if (data.success) {
                  // Sucesso! Fechar modal e mostrar notificação moderna
                  modalVerificacao.hide();
-                 showToast('Verificação realizada com sucesso! Você pode assinar documentos pelas próximas 3 horas.');
+                 showToast('Verificação realizada com sucesso! Continuando assinatura...');
                  
                  // Reabrir o modal de parecer para continuar o fluxo
                  if (typeof parecerModal !== 'undefined' && parecerModal) {
                      parecerModal.show();
                      
-                     // Pequeno delay para garantir que o modal abriu antes de tentar confirmar
+                     // Restaurar a senha e tentar confirmar novamente
                      setTimeout(() => {
+                         const senhaInput = document.getElementById('senha-finalizacao');
+                         if (senhaInput && senhaTemporaria) {
+                             senhaInput.value = senhaTemporaria;
+                         }
                          confirmarPosicaoEGerarPdf(); 
                      }, 500);
                  } else {
@@ -3520,6 +3531,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                      btnVisualizar.style.display = 'none';
                  }
                  
+                 // Limpar senha temporária
+                 senhaTemporaria = '';
+                 
                  const modalSucesso = new bootstrap.Modal(document.getElementById('modalSucessoAssinatura'));
                  modalSucesso.show();
 
@@ -3543,15 +3557,15 @@ $isBlocked = $isFinalized || $isIndeferido;
              } else {
                  // VERIFICA SE É ERRO DE SESSÃO
                  if (data.code === 'SESSION_EXPIRED') {
-                     alert('Sua sessão de assinatura expirou. Realize a verificação novamente.');
+                     showToast('Sua sessão de assinatura expirou. Realize a verificação novamente.', 'warning');
                      iniciarVerificacaoEmail();
                  } else {
-                     alert('Erro ao gerar PDF: ' + data.error);
+                     showToast('Erro ao gerar PDF: ' + data.error, 'error');
                  }
              }
          } catch (error) {
              console.error('Erro:', error);
-             alert('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'));
+             showToast('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'), 'error');
          }
      }
 
