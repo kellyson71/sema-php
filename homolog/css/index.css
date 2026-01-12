@@ -1,0 +1,892 @@
+:root {
+  --gray-1: #ced4da;
+  --gray-2: #6c757d;
+
+  --blue-1: #0dcaf0;
+  --blue-2: #024287;
+  --background: #013d86;
+
+  font-size: 16px;
+}
+
+.feedback {
+  color: white;
+  background-color: white;
+
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translate(-50%);
+
+  padding: 10px;
+  border-radius: 8px;
+  display: none;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+  font-family: Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  background-color: var(--background);
+  background-image: url(../assets/img/background.jpg);
+  background-size: contain;
+}
+
+header {
+  background-color: #009640;
+  height: 48px;
+  width: 100%;
+  padding: 0 312px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header ul {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  gap: 10px;
+}
+
+header nav img {
+  width: 25px;
+  height: 25px;
+}
+
+header p {
+  color: White;
+  font-size: 16px;
+}
+
+header a {
+  display: inline-block;
+  font-size: 0;
+}
+
+header button {
+  color: white;
+  font-size: 20px;
+  border: none;
+  background: none;
+  font-family: Roboto, sans-serif;
+  font-weight: 700;
+  padding: 3px 10px 0 10px;
+  cursor: pointer;
+}
+
+header div.user-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+div.form-header {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+div.form-header h1 {
+  color: white;
+  font-family: Viga, sans-serif;
+  line-height: 24px;
+  font-size: 64px;
+}
+
+div.form-header p {
+  color: white;
+  font-family: Roboto, sans-serif;
+  font-size: 24px;
+  margin: 18px 0 48px 0;
+}
+
+form {
+  width: 67.5%;
+  margin: auto;
+
+  padding: 40px 0 96px 0;
+}
+
+form input,
+select,
+div.multi-select {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--gray-1);
+  border-radius: 16px;
+
+  background-color: white;
+
+  font-family: Montserrat, sans-serif;
+  font-size: 1rem;
+
+  outline: none;
+}
+
+select,
+option,
+input {
+  color: var(--blue-2);
+}
+
+select,
+option {
+  font-weight: 700;
+}
+
+form input::placeholder {
+  color: var(--gray-2);
+}
+
+form > input#name {
+  margin-bottom: 24px;
+}
+
+.form-part-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+div.multi-select {
+  height: calc(1.5rem + 32px);
+
+  padding: 0;
+
+  position: relative;
+}
+
+div.multi-select > div {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  overflow-y: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 16px;
+  padding: 0 8px;
+  gap: 8px;
+
+  background-color: white;
+}
+
+div.multi-select.open > div {
+  height: auto;
+  z-index: 10;
+  padding-top: calc(1.5rem + 16px);
+}
+
+div.multi-select span {
+  display: inline-block;
+  width: 1rem;
+  height: 100%;
+  flex: 1 0 100%;
+  order: -5;
+  display: flex;
+  align-items: center;
+  color: var(--gray-2);
+  padding: 0 0 0 8px;
+}
+
+div.multi-select.open span {
+  display: none;
+}
+
+div.multi-select label {
+  flex: 0 0 100%;
+  /* margin: 16px 0; */
+  padding: 0 8px;
+
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--blue-2);
+}
+
+div.multi-select label input {
+  width: auto;
+  height: auto;
+}
+
+label.checked ~ span {
+  flex: 0 0 0px;
+  width: 0;
+  overflow: hidden;
+}
+
+div.multi-select:not(.open) label.checked {
+  border: 1px solid var(--blue-2);
+  flex-basis: auto;
+  height: auto;
+  align-self: center;
+  border-radius: 8px;
+
+  order: -10;
+}
+
+.form-part-3 {
+  display: flex;
+  gap: 15%;
+  color: white;
+  margin: 24px 0;
+}
+
+.form-part-3 label {
+  position: relative;
+  display: inline-block;
+
+  padding: 8px 12px;
+  margin: 16px 6px 0 0;
+  border: 1px solid var(--blue-1);
+  border-radius: 6px;
+  color: var(--blue-1);
+}
+
+.form-part-3 label input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: auto;
+}
+
+div.form-files {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+div.form-files > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex: 1 0 215px;
+}
+
+div.form-files p {
+  margin-top: 8px;
+  color: #dc3545;
+}
+
+div.form-files img {
+  aspect-ratio: auto;
+  height: 10rem;
+}
+
+.form-part-4 {
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-part-4 input {
+  width: auto;
+  border-radius: 5px;
+  display: inline;
+}
+
+div.captcha {
+  margin-top: 88px;
+}
+
+button[type="submit"] {
+  width: auto;
+  min-width: 180px;
+  height: 48px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #009640;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  margin: 24px auto 0 auto;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+button[type="submit"]:hover {
+  background-color: #007a33;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+button[type="submit"]:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+footer {
+  font-size: 16px;
+}
+
+footer > div:nth-child(1) {
+  width: 100%;
+  background-color: #00a759;
+
+  display: flex;
+  justify-content: center;
+}
+
+footer > div:nth-child(1) div {
+  height: 144px;
+  width: 440px;
+
+  background-color: #009851;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: white;
+  font-size: 20px;
+}
+
+footer > div:nth-child(1) img {
+  height: 32px;
+  aspect-ratio: auto;
+}
+
+footer > div:nth-child(1) div:nth-child(even) {
+  background-color: #008748;
+}
+
+footer > div:nth-child(2) {
+  width: 100%;
+  height: 90px;
+  background-color: white;
+  padding: 0 312px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+footer > div:nth-child(2) img {
+  aspect-ratio: auto;
+  height: 70px;
+}
+
+/* Adicionar novo estilo para o botão de consulta */
+.consulta-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.consulta-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.consulta-btn:active {
+  transform: translateY(0);
+}
+
+.consulta-btn img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.9;
+  filter: invert(1); /* Faz o ícone ficar branco */
+}
+
+.consulta-btn span {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+@media (max-width: 1440px) {
+  footer > div:nth-child(2),
+  header {
+    padding: 0 144px;
+  }
+
+  footer > div:nth-child(1) {
+    flex-direction: column;
+  }
+
+  footer > div:nth-child(1) div {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  footer > div:nth-child(2),
+  header {
+    padding: 0 72px;
+  }
+
+  div.form-header h1 {
+    font-size: 48px;
+  }
+
+  div.form-header p {
+    font-size: 16px;
+  }
+
+  div.form-header img {
+    aspect-ratio: auto;
+    height: 300px;
+  }
+
+  div.form-files {
+    gap: 10px;
+  }
+
+  footer > div:nth-child(2) img {
+    height: 52px;
+  }
+
+  form {
+    width: 80%;
+  }
+}
+
+@media (max-width: 768px) {
+  footer > div:nth-child(2),
+  header {
+    padding: 0 24px;
+  }
+
+  #alter-font {
+    display: none;
+  }
+
+  footer > div:nth-child(2) {
+    font-size: 12px;
+  }
+
+  div.form-header h1 {
+    font-size: 24px; /* Reduzido de 32px para 24px */
+    line-height: 1.3;
+  }
+
+  div.form-header p {
+    font-size: 12px;
+    margin: 10px 0 30px 0; /* Reduzido o espaçamento */
+  }
+
+  div.form-header img {
+    height: auto; /* Alterado para height: auto para manter proporções corretas */
+    max-width: 150px; /* Definindo largura máxima em vez de altura fixa */
+  }
+
+  div.form-part-2,
+  div.form-part-3,
+  div.form-part-4,
+  div.form-files {
+    display: flex;
+    flex-direction: column;
+  }
+
+  div.form-files > div {
+    width: 100%;
+    gap: 10px;
+  }
+
+  div.form-part-3 {
+    gap: 24px;
+  }
+
+  footer > div:nth-child(1) div {
+    height: 72px;
+    font-size: 14px;
+  }
+
+  footer > div:nth-child(2) img {
+    height: 44px;
+  }
+
+  button[type="submit"] {
+    width: 100%;
+    max-width: 200px;
+    height: 54px; /* Reduzido de 90px para 54px */
+    font-size: 18px; /* Reduzido de 32px para 18px */
+  }
+
+  /* Ajustes para o container de alvará no mobile */
+  .tipo-alvara-container {
+    padding: 20px 15px; /* Reduzido o padding */
+    margin: 0 10px;
+    width: calc(100% - 20px);
+    overflow-x: hidden;
+  }
+
+  .tipo-alvara-titulo {
+    font-size: 18px; /* Reduzido de 24px para 18px */
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0 0 15px 0;
+  }
+
+  .tipo-alvara-titulo i {
+    margin-right: 8px;
+    font-size: 18px;
+  }
+
+  .consulta-btn {
+    padding: 10px 16px;
+  }
+
+  .consulta-btn span {
+    font-size: 13px;
+  }
+}
+
+/* Adicionando breakpoints adicionais para telas muito pequenas */
+@media (max-width: 480px) {
+  form {
+    width: 95%;
+    padding: 20px 0 60px 0;
+  }
+
+  div.form-header h1 {
+    font-size: 20px; /* Ainda mais reduzido para telas muito pequenas */
+  }
+
+  div.form-header img {
+    max-width: 120px;
+    margin-bottom: 15px;
+  }
+
+  .tipo-alvara-container select {
+    font-size: 14px;
+    padding: 12px 15px;
+  }
+
+  button[type="submit"] {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .tipo-alvara-titulo {
+    font-size: 16px;
+  }
+
+  #campos_dinamicos textarea {
+    min-height: 120px;
+  }
+
+  footer > div:nth-child(1) div {
+    height: auto;
+    padding: 15px 10px;
+    font-size: 13px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .form-part-4 {
+    font-size: 14px;
+  }
+}
+
+/* Estilos específicos para o formulário de requerimento */
+.form-header {
+  margin-bottom: 30px;
+}
+
+.form-header img {
+  max-width: 200px;
+  height: auto;
+  margin-bottom: 25px;
+  transition: all 0.3s ease;
+}
+
+.form-header h1 {
+  line-height: 1.4 !important;
+  margin-bottom: 15px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.form-header p {
+  text-align: center;
+}
+
+/* Estilo para a seção de tipo de alvará */
+.tipo-alvara-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px; /* Aumentado de 800px para 1200px */
+  margin: 0 auto;
+  background: rgba(2, 66, 135, 0.15);
+  border-radius: 16px;
+  padding: 30px 40px; /* Aumentado o padding horizontal */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tipo-alvara-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #009640, #0dcaf0);
+  z-index: 1;
+}
+
+.tipo-alvara-titulo {
+  color: white;
+  font-size: 24px; /* Aumentado de 22px para 24px */
+  font-weight: 700;
+  margin-bottom: 30px; /* Aumentado de 25px para 30px */
+  text-align: center;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.tipo-alvara-titulo::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px; /* Aumentado de 100px para 150px */
+  height: 2px;
+  background: linear-gradient(90deg, #009640, #0dcaf0);
+}
+
+.tipo-alvara-titulo i {
+  margin-right: 15px;
+  color: #0dcaf0;
+  font-size: 24px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+/* Layout horizontal para desktop */
+.tipo-alvara-content {
+  display: flex;
+  width: 100%;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.tipo-alvara-left {
+  flex: 0 0 350px;
+}
+
+.tipo-alvara-right {
+  flex: 1;
+}
+
+.tipo-alvara-container select {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  color: #024287;
+  padding: 16px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 100%; /* Alterado de 500px para 100% */
+  margin: 0 0 20px 0; /* Ajustado de "0 auto 20px" para "0 0 20px 0" */
+  display: block;
+  font-size: 16px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23024287' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  background-size: 16px;
+}
+
+.tipo-alvara-container select:hover {
+  border-color: rgba(13, 202, 240, 0.7);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.tipo-alvara-container select:focus {
+  border-color: #0dcaf0;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(13, 202, 240, 0.25), 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.tipo-alvara-container .form-part-2 {
+  width: 100%;
+  max-width: 100%; /* Alterado para ocupar 100% do espaço disponível */
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Ajuste para campos dinâmicos */
+#campos_dinamicos {
+  margin-top: 0; /* Alterado de 20px para 0 */
+  display: flex;
+  justify-content: flex-start; /* Alterado de center para flex-start */
+  width: 100%;
+  max-width: 100%; /* Alterado de 600px para 100% */
+  flex-direction: column;
+  gap: 15px;
+}
+
+#campos_dinamicos textarea,
+#campos_dinamicos input {
+  border-radius: 10px;
+  padding: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background-color: white;
+  font-family: Montserrat, sans-serif;
+  font-size: 1rem;
+  color: #024287;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+#campos_dinamicos textarea:focus,
+#campos_dinamicos input:focus {
+  border-color: #0dcaf0;
+  box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+
+#campos_dinamicos textarea {
+  min-height: 150px; /* Aumentado de 120px para 150px */
+  resize: vertical;
+}
+
+/* Estilo para a área de documentos */
+#documentos_necessarios {
+  width: 100%;
+  margin-top: 0; /* Ajustado de 25px para 0 */
+}
+
+.documentos-container {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  height: 100%;
+}
+
+.mensagem-inicial,
+.mensagem-erro,
+.mensagem-carregando {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  margin: 0; /* Ajustado de "20px auto" para 0 */
+  width: 100%;
+  max-width: none; /* Alterado de 600px para none */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #024287;
+  font-size: 16px;
+  height: 100%;
+  min-height: 200px;
+}
+
+/* Media queries para responsividade */
+@media (max-width: 992px) {
+  .tipo-alvara-content {
+    flex-direction: column;
+  }
+
+  .tipo-alvara-left {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  #documentos_necessarios {
+    margin-top: 20px;
+  }
+
+  .mensagem-inicial,
+  .mensagem-erro,
+  .mensagem-carregando {
+    min-height: 150px;
+  }
+}
+
+/* Estilo específico para a seção de alvará - mais espaçamento */
+.form-section-alvara {
+  margin-top: 50px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  padding-top: 30px;
+  position: relative;
+}
+
+.form-section-alvara::before {
+  content: "";
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 4px;
+  background: linear-gradient(90deg, #009640, #0dcaf0);
+  border-radius: 2px;
+}

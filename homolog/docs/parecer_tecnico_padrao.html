@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 140px;
+        left: 60px;
+        width: calc(100% - 120px);
+        z-index: 2;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.7;
+        color: #000;
+        text-align: justify;
+      }
+      h1 {
+        font-size: 16pt;
+        text-align: center;
+        letter-spacing: 0.5px;
+        margin-bottom: 24px;
+        text-transform: uppercase;
+      }
+      .campo {
+        margin-bottom: 10px;
+      }
+      .campo strong {
+        display: inline-block;
+        min-width: 170px;
+      }
+      .bloco {
+        margin-top: 18px;
+        margin-bottom: 18px;
+      }
+      .bloco p {
+        margin: 6px 0;
+      }
+      .observacoes {
+        background: #f7f7f7;
+        border-left: 3px solid #4b5563;
+        padding: 10px 14px;
+        border-radius: 6px;
+      }
+      .assinaturas {
+        margin-top: 40px;
+      }
+      .assinatura-linha {
+        margin-top: 40px;
+        text-align: center;
+      }
+      .assinatura-linha .nome {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        cursor: move;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 12px;
+        text-align: left;
+      }
+      .assinatura-bloco strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <h1>Parecer Técnico</h1>
+
+        <div class="campo">
+          <strong>Protocolo:</strong> {{protocolo}}
+        </div>
+        <div class="campo">
+          <strong>Requerente:</strong> {{nome_requerente}} — {{cpf_cnpj_requerente}}
+        </div>
+        <div class="campo">
+          <strong>Endereço do objeto:</strong> {{endereco_objetivo}}
+        </div>
+        <div class="campo">
+          <strong>Tipo de alvará:</strong> {{tipo_alvara}}
+        </div>
+
+        <div class="bloco">
+          <p><strong>Resumo da análise</strong></p>
+          <p>{{observacoes}}</p>
+        </div>
+
+        <div class="bloco">
+          <p><strong>Responsável técnico</strong></p>
+          <p>Nome: {{responsavel_tecnico_nome}}</p>
+          <p>Registro: {{responsavel_tecnico_registro}}</p>
+          <p>Contato informado: {{responsavel_tecnico_numero}}</p>
+        </div>
+
+        <div class="bloco observacoes">
+          <p><strong>Condições e encaminhamentos</strong></p>
+          <p>
+            Informe aqui as recomendações finais, condicionantes ou pendências
+            que precisam ser cumpridas pelo requerente antes da emissão do
+            documento definitivo.
+          </p>
+        </div>
+
+        <div class="bloco">
+          <p><strong>Data da análise:</strong> {{data_atual}}</p>
+        </div>
+
+        <div class="assinaturas">
+          <div class="assinatura-linha">
+            <div class="linha">______________________________________________</div>
+            <span class="nome">{{admin_nome_completo}}</span>
+            <span>{{admin_cargo}}</span>
+          </div>
+        </div>
+      </div>
+      <div id="area-assinatura" style="display: none">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        line-height: 1.4;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 130px;
+        left: 60px;
+        width: calc(100% - 120px);
+        z-index: 2;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        line-height: 1.4;
+        color: #000;
+      }
+      .titulo-licenca {
+        font-size: 14pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+      }
+      .subtitulo {
+        font-size: 10pt;
+        text-align: center;
+        margin-bottom: 20px;
+        font-style: italic;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        text-transform: uppercase;
+        background-color: #f0f0f0;
+        padding: 5px;
+        margin-top: 15px;
+        margin-bottom: 10px;
+        font-size: 10pt;
+        border: 1px solid #ccc;
+      }
+      .campo {
+        margin-bottom: 5px;
+        display: flex;
+      }
+      .campo-label {
+        font-weight: bold;
+        width: 160px;
+        flex-shrink: 0;
+      }
+      .campo-valor {
+        flex-grow: 1;
+        border-bottom: 1px dotted #999;
+      }
+      .tabela-dados {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+      }
+      .tabela-dados td {
+        padding: 4px;
+        border: 1px solid #ccc;
+        vertical-align: top;
+      }
+      .tabela-dados .label {
+        font-weight: bold;
+        background-color: #f9f9f9;
+        width: 30%;
+      }
+      .especificacao {
+        margin-top: 15px;
+        margin-bottom: 15px;
+        text-align: justify;
+        font-size: 10.5pt;
+        line-height: 1.5;
+      }
+      .condicionantes {
+        font-size: 9pt;
+        margin-top: 10px;
+        border: 1px solid #000;
+        padding: 10px;
+      }
+      .condicionantes ul {
+        margin: 5px 0;
+        padding-left: 20px;
+      }
+      .data-local {
+        margin-top: 30px;
+        text-align: right;
+        font-size: 11pt;
+      }
+      .assinaturas {
+        margin-top: 50px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .assinatura-esquerda,
+      .assinatura-direita {
+        width: 45%;
+        text-align: center;
+      }
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 5px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        font-size: 10pt;
+      }
+      .cargo-assinante {
+        font-size: 9pt;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        cursor: move;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 50px;
+        height: 50px;
+        flex-shrink: 0;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 10px;
+        text-align: left;
+      }
+      .assinatura-bloco strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo-licenca">
+          LICENÇA PRÉVIA DE PROJETO DE OBRA<br>
+          <span style="font-size: 12pt; font-weight: normal;">Nº PROCESSO: {{protocolo}}</span>
+        </div>
+
+        <div class="subtitulo">
+          Fundamentação Legal: Lei Municipal nº 017/2022 (Plano Diretor); 2117/2025 (Código Municipal de Obras); 020/2023 (Política Municipal de Resíduos Sólidos); Lei Federal nº 6.938/1981 e Resoluções do CONAMA.
+        </div>
+
+        <div class="secao-titulo">1. IDENTIFICAÇÃO DO PROPRIETÁRIO</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Nome/Razão Social:</td>
+            <td>{{nome_requerente}}</td>
+          </tr>
+          <tr>
+            <td class="label">CPF/CNPJ:</td>
+            <td>{{cpf_cnpj_requerente}}</td>
+          </tr>
+        </table>
+
+        <div class="secao-titulo">2. DADOS DO EMPREENDIMENTO/OBRA</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Endereço da Obra:</td>
+            <td>{{endereco_objetivo}}</td>
+          </tr>
+          <tr>
+            <td class="label">Tipo de Alvará:</td>
+            <td>{{tipo_alvara}}</td>
+          </tr>
+          <tr>
+            <td class="label">Área construída:</td>
+            <td> "Área construída" </td>
+          </tr>
+        </table>
+
+        <div class="secao-titulo">3. RESPONSABILIDADE TÉCNICA</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Responsável Técnico:</td>
+            <td>"Responsável Técnico"</td>
+          </tr>
+          <tr>
+            <td class="label">Registro Profissional:</td>
+            <td>"Registro Profissional"</td>
+          </tr>
+          <tr>
+            <td>ART/RRT/TRT:</td>
+            <td>"ART RRT TRT"</td>
+          </tr>
+        </table>
+
+        <div class="secao-titulo">4. PARECER TÉCNICO</div>
+        <div class="especificacao">
+          <p>
+            <strong>DESCRIÇÃO:</strong> {{especificacao}}
+          </p>
+          <p>
+            Trata-se da aprovação prévia do projeto para a edificação residencial com "área construída" m² de acordo com as diretrizes que orientam e que regulamentam as edificações no município de Pau dos Ferros – RN. A obra deve seguir os padrões básicos da construção civil, respeitando as boas práticas da engenharia, bem como atender à legislação municipal, sobretudo as orientações constantes na Lei nº 017/2022; 2117/2025 e 020/2023. CONCLUSÃO: PROJETO APROVADO.
+          </p>
+          <p>
+            Esta <strong>LICENÇA PRÉVIA</strong> atesta a viabilidade ambiental e urbanística do empreendimento, não autorizando o início das obras, que dependerá da emissão do Alvará de Construção definitivo.
+          </p>
+        </div>
+
+        <div class="condicionantes">
+          <strong>CONDICIONANTES E RESTRIÇÕES:</strong>
+          <ul>
+            <li>Esta licença tem validade de <strong>90 (noventa) dias</strong>.</li>
+            <li>Os resíduos da construção civil devem ter destinação final ambientalmente adequada.</li>
+            <li>Esta licença não substitui a necessidade de alvará de construção.</li>
+          </ul>
+        </div>
+
+        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+
+        <div class="assinaturas">
+          <div class="assinatura-esquerda">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <div class="cargo-assinante">{{admin_cargo}}</div>
+              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="area-assinatura" style="display: none">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

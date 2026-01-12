@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.5;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 140px;
+        left: 60px;
+        width: calc(100% - 120px);
+        z-index: 2;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.5;
+        color: #000;
+      }
+      .cabecalho-doc {
+        text-align: right;
+        margin-bottom: 30px;
+      }
+      .titulo-doc {
+        font-weight: bold;
+        font-size: 14pt;
+        text-align: center;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        text-decoration: underline;
+      }
+      .destinatario {
+        margin-bottom: 25px;
+      }
+      .assunto {
+        font-weight: bold;
+        margin-bottom: 25px;
+        text-align: justify;
+      }
+      .corpo-texto {
+        text-align: justify;
+        margin-bottom: 30px;
+        min-height: 200px;
+      }
+      .corpo-texto p {
+        margin-bottom: 10px;
+        text-indent: 2cm;
+      }
+      .fecho {
+        margin-bottom: 40px;
+        text-align: center;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        cursor: move;
+      }
+      .assinatura-bloco {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border: 1px dashed #999;
+        border-radius: 4px;
+      }
+      .assinatura-bloco img {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+      }
+      .assinatura-bloco .dados-assinante {
+        font-size: 12px;
+        text-align: left;
+      }
+      .assinatura-bloco strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        
+        <div class="cabecalho-doc">
+          Pau dos Ferros/RN, {{data_atual}}
+        </div>
+
+        <div class="titulo-doc">
+          OFÍCIO Nº {{protocolo}}/2025 - SEMA
+        </div>
+
+        <div class="destinatario">
+          <p><strong>A/C:</strong> {{nome_requerente}}</p>
+          <p><strong>Endereço:</strong> {{endereco_objetivo}}</p>
+        </div>
+
+        <div class="assunto">
+          ASSUNTO: {{tipo_alvara}} - Solicitação de Documentos Complementares
+        </div>
+
+        <div class="corpo-texto">
+          <p>
+            Prezado(a) Senhor(a),
+          </p>
+          <p>
+            Em referência ao processo em epígrafe, informamos que após análise técnica preliminar, constatou-se a necessidade de complementação da documentação apresentada.
+          </p>
+          <p>
+            Solicitamos, portanto, que sejam providenciados os seguintes itens no prazo de 15 (quinze) dias:
+          </p>
+          <p>
+            {{observacoes}}
+          </p>
+          <p>
+            Ressaltamos que o não atendimento a esta solicitação no prazo estipulado poderá acarretar o arquivamento do processo.
+          </p>
+          <p>
+            Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.
+          </p>
+        </div>
+
+        <div class="fecho">
+          Atenciosamente,
+        </div>
+
+      </div>
+      <div id="area-assinatura" style="display: none">
+        <div class="assinatura-bloco">
+          <img src="" alt="QR Code" id="qr-assinatura" />
+          <div class="dados-assinante">
+            <strong id="nome-assinante"></strong>
+            <span id="cargo-assinante"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

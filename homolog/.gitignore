@@ -1,0 +1,187 @@
+# ===== CONFIGURAÇÕES SENSÍVEIS =====
+# /includes/config.php
+/includes/env.php
+.env
+.env.backup
+.env.local
+.env.production
+/admin/conexao.php
+# ===== BANCO DE DADOS =====
+# Ignorar dumps SQL exceto os da pasta database
+*.sql
+!database/*.sql
+/uploads/*/
+!uploads/.gitkeep
+!uploads/documentos_admin/.gitkeep
+!uploads/fotos_perfil/.gitkeep
+!uploads/perfil/.gitkeep
+# Manter estrutura mas ignorar conteúdo das pastas de upload
+uploads/20*/
+uploads/fotos_perfil/*
+!uploads/fotos_perfil/.gitkeep
+uploads/perfil/*
+!uploads/perfil/.gitkeep
+
+# ===== DEPENDÊNCIAS =====
+/vendor/
+node_modules/
+composer.phar
+composer.lock
+
+# ===== ARQUIVOS TEMPORÁRIOS =====
+*.tmp
+*.temp
+*.bak
+*.swp
+*.cache
+*~
+.DS_Store
+Thumbs.db
+
+# ===== LOGS E DEPURAÇÃO =====
+*.log
+error_log
+php_errors.log
+debug.log
+/logs/
+php_errors.txt
+
+# ===== IDE E EDITORES =====
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.phpstorm.meta.php
+
+# ===== BANCO DE DADOS =====
+# Ignorar dumps SQL exceto os da pasta database
+*.sql
+!database/*.sql
+*.sqlite
+*.sqlite3
+*.db
+backup_*.sql
+
+# ===== ARQUIVOS DE TESTE E DESENVOLVIMENTO =====
+teste_*.php
+test_*.php
+debug_*.php
+testar_*.php
+*_teste.php
+*_test.php
+corrigir_*.php
+fix_*.php
+verificar_*.php
+atualizar_*.php
+test.php
+debug.php
+
+# ===== SCRIPTS TEMPORÁRIOS ESPECÍFICOS =====
+corrigir_senha.php
+corrigir_tabela.php
+fix_admin.php
+verificar_tabela.sql
+verificar_tabelas.php
+estrutura_tabelas.html
+estrutura_atualizada.html
+teste_caminhos.php
+testar_sistema.bat
+configurar_email.php
+teste_email.php
+atualizar_db.php
+corrigir_caminhos.php
+verificar_sistema.php
+*.bat
+*.cmd
+
+# ===== DOCUMENTAÇÃO TEMPORÁRIA =====
+*.md.backup
+*_backup.*
+STATUS_*.txt
+CHECKLIST_*.md
+DOCUMENTO_*.md
+FLUXOGRAMA_*.md
+GUIA_*.md
+RELATORIO_*.md
+ROTEIRO_*.md
+CASOS_TESTE_*.md
+to-do.md
+TODO.md
+*.todo
+
+# ===== ARQUIVOS DE BACKUP =====
+*_backup.php
+backup_*
+*.backup
+backup/
+
+# ===== MERMAID E DIAGRAMAS =====
+*.mmd
+*.mermaid
+
+# ===== SISTEMA OPERACIONAL =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===== ARQUIVOS DE CACHE E SESSÃO =====
+sessions/
+cache/
+tmp/
+temp/
+*.cache
+opcache/
+
+# ===== SEGURANÇA =====
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+*.csr
+secrets.txt
+passwords.txt
+
+# ===== ARQUIVOS ESPECÍFICOS DO PROJETO =====
+# Diretórios removidos/antigos
+php/
+port/
+setup_db.php
+
+# Arquivos específicos encontrados no projeto
+atualizar_db.php
+corrigir_caminhos.php
+verificar_sistema.php
+
+# ===== ARQUIVOS DE PORTFÓLIO E FRONTEND REMOVIDOS =====
+# Ignorar caso reapareçam
+.nvmrc
+package-lock.json
+postcss.config.js
+tailwind.config.js
+vite.config.js
+.next/
+dist/
+build/
+
+# ===== ARQUIVOS DE DOCUMENTAÇÃO PDF =====
+# *.pdf
+!database/*.pdf
+!documentacao/*.pdf
+
+# ===== FERRAMENTAS DE BUILD E CI/CD =====
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# ===== FINAL =====!docker-compose.yml

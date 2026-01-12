@@ -12,10 +12,33 @@ define('DB_USER', 'u492577848_SEMA');
 define('DB_PASS', 'Pmpfestagio2021');
 define('DB_NAME', 'u492577848_SEMA');
 
+// Detectar se estamos em ambiente de homologação
+$scriptPath = $_SERVER['SCRIPT_NAME'];
+$isHomolog = (strpos($scriptPath, '/homolog/') !== false);
+define('MODO_HOMOLOG', $isHomolog);
+
 // Outras configurações
 define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
 define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB em bytes
-define('BASE_URL', 'http://localhost:8080/sema-php'); // URL base do projeto
+
+// URL base dinâmica
+if (isset($_SERVER['HTTP_HOST'])) {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    
+    if ($isHomolog) {
+        define('BASE_URL', $protocol . '://' . $host . '/homolog');
+    } else {
+        // Se estiver em localhost mas não em homolog, mantém o padrão antigo ou ajusta para a raiz
+        if ($host === 'localhost' || $host === 'localhost:8080') {
+             define('BASE_URL', $protocol . '://' . $host . '/sema-php');
+        } else {
+             define('BASE_URL', $protocol . '://' . $host);
+        }
+    }
+} else {
+    define('BASE_URL', 'http://localhost:8080/sema-php'); // Fallback para CLI
+}
 
 // Configurações de Email (modo teste)
 define('SMTP_HOST', 'smtp.hostinger.com');
