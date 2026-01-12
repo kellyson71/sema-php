@@ -3326,6 +3326,11 @@ $isBlocked = $isFinalized || $isIndeferido;
      }
 
      function iniciarVerificacaoEmail() {
+         // Fechar modal de parecer se estiver aberto para limpar a tela
+         if (typeof parecerModal !== 'undefined' && parecerModal) {
+             parecerModal.hide();
+         }
+         
          if (!modalVerificacao) {
              modalVerificacao = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
          }
@@ -3358,11 +3363,11 @@ $isBlocked = $isFinalized || $isIndeferido;
                  document.getElementById('etapa-enviar-codigo').style.display = 'none';
                  document.getElementById('etapa-validar-codigo').style.display = 'block';
              } else {
-                 alert('Erro: ' + (data.error || 'Falha ao enviar email.'));
+                 showToast(data.error || 'Falha ao enviar email.', 'error');
              }
          } catch (error) {
              console.error('Erro:', error);
-             alert('Erro de conexão ao enviar código.');
+             showToast('Erro de conexão ao enviar código.', 'error');
          } finally {
              btn.disabled = false;
              btn.innerHTML = originalText;
@@ -3401,22 +3406,35 @@ $isBlocked = $isFinalized || $isIndeferido;
              const data = await response.json();
              
              if (data.success) {
-                 // Sucesso! Fechar modal e chamar confirmarPosicaoEGerarPdf novamente
+                 // Sucesso! Fechar modal e mostrar notificação moderna
                  modalVerificacao.hide();
-                 alert('Verificação realizada com sucesso! Você pode assinar documentos pelas próximas 3 horas.');
-                 confirmarPosicaoEGerarPdf(); // Tenta novamente, agora a sessão estará válida
+                 showToast('Verificação realizada com sucesso! Você pode assinar documentos pelas próximas 3 horas.');
+                 
+                 // Reabrir o modal de parecer para continuar o fluxo
+                 if (typeof parecerModal !== 'undefined' && parecerModal) {
+                     parecerModal.show();
+                     
+                     // Pequeno delay para garantir que o modal abriu antes de tentar confirmar
+                     setTimeout(() => {
+                         confirmarPosicaoEGerarPdf(); 
+                     }, 500);
+                 } else {
+                     confirmarPosicaoEGerarPdf();
+                 }
+                 
              } else {
                  input.classList.add('is-invalid');
                  document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
              }
          } catch (error) {
              console.error('Erro:', error);
-             alert('Erro de conexão ao validar código.');
+             showToast('Erro de conexão ao validar código.', 'error');
          } finally {
              btn.disabled = false;
              btn.innerHTML = originalText;
          }
      }
+
 
      async function confirmarPosicaoEGerarPdf() {
          // INTERCEPTAÇÃO DE SEGURANÇA
@@ -3881,6 +3899,47 @@ function getStatusDotColor($status)
     </div>
 </div>
 
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i class="fas fa-check-circle fa-lg"></i>
+                <span id="toastMessage">Operação realizada com sucesso!</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar Toast
+    const toastEl = document.getElementById('liveToast');
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+
+    function showToast(message, type = 'success') {
+        const toastBody = document.querySelector('#liveToast .toast-body span');
+        const toastDiv = document.getElementById('liveToast');
+        
+        toastBody.textContent = message;
+        
+        // Reset classes
+        toastDiv.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
+        
+        // Add new class based on type
+        switch(type) {
+            case 'success': toastDiv.classList.add('bg-success'); break;
+            case 'error': toastDiv.classList.add('bg-danger'); break;
+            case 'warning': toastDiv.classList.add('bg-warning'); break;
+            case 'info': toastDiv.classList.add('bg-info'); break;
+            default: toastDiv.classList.add('bg-primary');
+        }
+        
+        toast.show();
+    }
+</script>
+
 <?php include 'footer.php'; ?>
+
 
 
