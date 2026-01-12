@@ -13,8 +13,17 @@ define('DB_PASS', 'Pmpfestagio2021');
 define('DB_NAME', 'u492577848_SEMA');
 
 // Detectar se estamos em ambiente de homologação
-$scriptPath = $_SERVER['SCRIPT_NAME'];
-$isHomolog = (strpos($scriptPath, '/homolog/') !== false);
+$isHomolog = false;
+if (isset($_SERVER['SCRIPT_NAME'])) {
+    $scriptPath = $_SERVER['SCRIPT_NAME'];
+    // Verifica se '/homolog/' está presente no início do caminho da URL (após o domínio)
+    $isHomolog = (strpos($scriptPath, '/homolog/') === 0 || strpos($scriptPath, '/homolog/') !== false);
+    
+    // Fallback: Verificar também o REQUEST_URI se necessário, mas SCRIPT_NAME é mais confiável para diretórios reais
+    if (!$isHomolog && isset($_SERVER['REQUEST_URI'])) {
+        $isHomolog = (strpos($_SERVER['REQUEST_URI'], '/homolog/') !== false);
+    }
+}
 define('MODO_HOMOLOG', $isHomolog);
 
 // Outras configurações
