@@ -358,9 +358,6 @@ $historico = $stmt->fetchAll();
 include 'header.php';
 ?>
 
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
 <style>
     /* Design System - Cores Profissionais */
     :root {
@@ -396,63 +393,36 @@ include 'header.php';
         --radius-sm: 6px;
     }
 
-    /* Select2 Custom Styles */
-    .select2-container--default .select2-selection--single {
+    /* Custom Select Styles */
+    #template-select {
         border: 1px solid var(--gray-300);
         border-radius: var(--radius-sm);
-        height: 45px;
-        padding: 0.5rem;
+        padding: 0.875rem;
+        font-size: 0.875rem;
+        transition: var(--transition);
         background: white;
         box-shadow: var(--shadow-sm);
+        width: 100%;
+        cursor: pointer;
     }
 
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 28px;
-        color: var(--gray-800);
-        padding-left: 0.5rem;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 43px;
-        right: 8px;
-    }
-
-    .select2-container--default.select2-container--focus .select2-selection--single {
+    #template-select:focus {
         border-color: var(--primary-600);
         box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1), var(--shadow-sm);
+        outline: none;
     }
 
-    .select2-dropdown {
-        border: 1px solid var(--gray-300);
-        border-radius: var(--radius-sm);
-        box-shadow: var(--shadow-md);
-    }
-
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: var(--primary-600);
-    }
-
-    .select2-container--default .select2-results__option[aria-selected=true] {
-        background-color: var(--primary-50);
-        color: var(--primary-700);
-    }
-
-    .select2-results__group {
+    #template-select optgroup {
         font-weight: 600;
         color: var(--gray-700);
-        padding: 8px 12px;
         font-size: 0.875rem;
         background: var(--gray-50);
-        border-bottom: 1px solid var(--gray-200);
+        padding: 8px;
     }
 
-    .select2-results__option {
-        padding: 10px 12px;
+    #template-select option {
+        padding: 10px;
         font-size: 0.875rem;
-    }
-
-    .select2-container {
-        width: 100% !important;
     }
 
     /* Componentes base atualizados */
@@ -2819,14 +2789,6 @@ $isBlocked = $isFinalized || $isIndeferido;
                  groupModelos.appendChild(option);
              });
              select.appendChild(groupModelos);
-
-             // Inicializar Select2
-             $('#template-select').select2({
-                 placeholder: 'Selecione um modelo de parecer',
-                 allowClear: true,
-                 width: '100%',
-                 dropdownParent: $('#parecerModal')
-             });
          })
          .catch(error => {
              console.error('Erro ao carregar templates:', error);
@@ -4048,9 +4010,6 @@ function getStatusDotColor($status)
         toast.show();
     }
 </script>
-
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <?php include 'footer.php'; ?>
 
