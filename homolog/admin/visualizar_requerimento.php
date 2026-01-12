@@ -757,6 +757,24 @@ include 'header.php';
         pointer-events: none;
     }
 
+    .tox-tinymce {
+        border: 1px solid #ced4da !important;
+        border-radius: 4px !important;
+    }
+    
+    /* Estilo para o backdrop com blur para o modal de segurança */
+    .modal-backdrop.show {
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        opacity: 0.8 !important;
+        background-color: rgba(0, 0, 0, 0.6) !important;
+    }
+    
+    #modalVerificacaoSeguranca .modal-content {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        border: none;
+    }
+
     /* Estilos para processos indeferidos */
     .indeferido-card {
         background: #fef2f2 !important;

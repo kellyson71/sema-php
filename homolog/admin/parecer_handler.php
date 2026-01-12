@@ -1,7 +1,9 @@
 <?php
 require_once 'conexao.php';
 require_once '../includes/parecer_service.php';
+require_once '../includes/email_service.php';
 require_once '../includes/functions.php';
+
 
 verificaLogin();
 
