@@ -265,6 +265,16 @@ try {
             $adminCargo = $input['admin_cargo'] ?? '';
             $dataAssinatura = $input['data_assinatura'] ?? '';
 
+            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 3h (Adicionado para evitar bypass)
+            if (!isset($_SESSION['assinatura_auth_valid_until']) || time() > $_SESSION['assinatura_auth_valid_until']) {
+                echo json_encode([
+                    'success' => false, 
+                    'error' => 'Sessão de assinatura expirada. Por favor, realize a verificação novamente.',
+                    'code' => 'SESSION_EXPIRED'
+                ]);
+                exit;
+            }
+
             if (empty($html) || empty($template) || $requerimento_id <= 0) {
                 throw new Exception('Parâmetros inválidos');
             }

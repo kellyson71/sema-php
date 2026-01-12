@@ -3474,32 +3474,45 @@ $isBlocked = $isFinalized || $isIndeferido;
 
              const data = await response.json();
 
-            if (data.success) {
-                alert('Parecer assinado e gerado com sucesso!');
+             if (data.success) {
+                 // Configurar e mostrar modal de sucesso
+                 const btnVisualizar = document.getElementById('btn-visualizar-sucesso');
+                 if (data.url_viewer) {
+                     btnVisualizar.onclick = function() { window.open(data.url_viewer, '_blank'); };
+                     btnVisualizar.style.display = 'inline-block';
+                 } else {
+                     btnVisualizar.style.display = 'none';
+                 }
+                 
+                 const modalSucesso = new bootstrap.Modal(document.getElementById('modalSucessoAssinatura'));
+                 modalSucesso.show();
 
-                if (data.url_viewer) {
-                    window.open(data.url_viewer, '_blank');
-                }
+                 // Limpar interface
+                 parecerModal.hide();
+                 carregarPareceresExistentes();
 
-                parecerModal.hide();
-                carregarPareceresExistentes();
+                 if (signaturePad) signaturePad.clear();
+                 document.getElementById('signature-text').value = '';
+                 const senhaFinalizacao = document.getElementById('senha-finalizacao');
+                 if (senhaFinalizacao) senhaFinalizacao.value = '';
+                 if (erroSenhaEl) erroSenhaEl.style.display = 'none';
 
-                if (signaturePad) signaturePad.clear();
-                document.getElementById('signature-text').value = '';
-                const senhaFinalizacao = document.getElementById('senha-finalizacao');
-                if (senhaFinalizacao) senhaFinalizacao.value = '';
-                if (erroSenhaEl) erroSenhaEl.style.display = 'none';
+                 document.getElementById('etapa-posicionamento').style.display = 'none';
+                 document.getElementById('etapa-selecao-template').style.display = 'block';
+                 tinymce.remove('#editor-parecer-content');
 
-                document.getElementById('etapa-posicionamento').style.display = 'none';
-                document.getElementById('etapa-selecao-template').style.display = 'block';
-                tinymce.remove('#editor-parecer-content');
-
-                dadosAssinatura = null;
-                coordenadasAssinatura = { x: 0, y: 0 };
-                templateAtual = null;
-            } else {
-                alert('Erro ao gerar PDF: ' + data.error);
-            }
+                 dadosAssinatura = null;
+                 coordenadasAssinatura = { x: 0, y: 0 };
+                 templateAtual = null;
+             } else {
+                 // VERIFICA SE É ERRO DE SESSÃO
+                 if (data.code === 'SESSION_EXPIRED') {
+                     alert('Sua sessão de assinatura expirou. Realize a verificação novamente.');
+                     iniciarVerificacaoEmail();
+                 } else {
+                     alert('Erro ao gerar PDF: ' + data.error);
+                 }
+             }
          } catch (error) {
              console.error('Erro:', error);
              alert('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'));
@@ -3818,5 +3831,38 @@ function getStatusDotColor($status)
     </div>
 </div>
 
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="modalSucessoAssinatura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center px-4 py-5">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-success d-inline-flex align-items-center justify-content-center" style="width: 90px; height: 90px; box-shadow: 0 0 0 10px rgba(25, 135, 84, 0.1);">
+                        <i class="fas fa-check text-white" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                
+                <h3 class="fw-bold text-success mb-2">Sucesso!</h3>
+                <h5 class="fw-bold mb-3">Parecer Assinado Digitalmente</h5>
+                
+                <p class="text-muted mb-4">
+                    O documento foi gerado, assinado e registrado com sucesso.
+                    <br>O protocolo de autenticidade já está ativo.
+                </p>
+                
+                <div class="d-grid gap-2 col-8 mx-auto">
+                    <button type="button" class="btn btn-success btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-thumbs-up me-2"></i> Entendido
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btn-visualizar-sucesso">
+                        <i class="fas fa-external-link-alt me-2"></i> Visualizar Documento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include 'footer.php'; ?>
+
 
