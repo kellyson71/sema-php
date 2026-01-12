@@ -297,8 +297,14 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             line-height: 1.5;
             color: #000;
             text-align: justify;
+            text-justify: inter-word;
             max-height: 100%;
             overflow: hidden;
+        }
+        .conteudo-texto p,
+        .conteudo-texto div {
+            text-align: justify;
+            text-justify: inter-word;
         }
         .conteudo-texto p,
         .conteudo-texto div,
@@ -328,10 +334,13 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         .conteudo-texto *[style*="text-align: right"] {
             text-align: right !important;
         }
+        /* Se o usuário escolher explicitamente esquerda no editor, ainda assim mantemos justificado por padrão 
+           a menos que queira mudar esta regra para permitir alinhamento à esquerda real */
         .conteudo-texto p[style*="text-align: left"],
         .conteudo-texto div[style*="text-align: left"],
         .conteudo-texto *[style*="text-align: left"] {
-            text-align: left !important;
+            text-align: justify !important;
+            text-justify: inter-word;
         }
         .conteudo-texto table {
             border-collapse: collapse;
