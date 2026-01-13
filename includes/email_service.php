@@ -264,4 +264,76 @@ class EmailService
         include __DIR__ . '/../templates/email_indeferimento.php';
         return ob_get_clean();
     }
+
+    /**
+     * Enviar email com código de verificação para assinatura
+     * 
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $codigo Código de verificação de 6 dígitos
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailCodigoVerificacao($to_email, $to_name, $codigo)
+    {
+        try {
+            $subject = "Código de Verificação para Assinatura Digital - SEMA";
+
+            $body = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #2D8661, #134E5E); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .code-box { background: white; border: 2px dashed #2D8661; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+                    .code { font-size: 32px; font-weight: bold; color: #2D8661; letter-spacing: 8px; }
+                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+                    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h1>🔐 Código de Verificação</h1>
+                    </div>
+                    <div class='content'>
+                        <p>Olá, <strong>{$to_name}</strong>!</p>
+                        <p>Você solicitou um código de verificação para assinar digitalmente um documento no sistema SEMA.</p>
+                        
+                        <div class='code-box'>
+                            <p style='margin: 0; font-size: 14px; color: #666;'>Seu código de verificação é:</p>
+                            <div class='code'>{$codigo}</div>
+                        </div>
+
+                        <div class='warning'>
+                            <strong>⚠️ Importante:</strong>
+                            <ul style='margin: 10px 0; padding-left: 20px;'>
+                                <li>Este código é válido por <strong>15 minutos</strong></li>
+                                <li>Não compartilhe este código com ninguém</li>
+                                <li>Se você não solicitou este código, ignore este email</li>
+                            </ul>
+                        </div>
+
+                        <p>Após validar o código, você terá <strong>3 horas</strong> para assinar documentos sem precisar validar novamente.</p>
+                        
+                        <div class='footer'>
+                            <p>Este é um email automático, por favor não responda.</p>
+                            <p>© " . date('Y') . " SEMA - Secretaria Municipal de Meio Ambiente</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
+
+            // Não passa requerimento_id pois é um email de verificação do sistema
+            return sendMail($to_email, $to_name, $subject, $body, null);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de código de verificação: " . $e->getMessage());
+            return false;
+        }
+    }
 }
