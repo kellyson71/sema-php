@@ -3985,13 +3985,18 @@ function getStatusDotColor($status)
 </div>
 
 <script>
-    // Inicializar Toast
-    const toastEl = document.getElementById('liveToast');
-    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+    // Variável global para o toast
+    let toastInstance = null;
 
     function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('liveToast');
         const toastBody = document.querySelector('#liveToast .toast-body span');
         const toastDiv = document.getElementById('liveToast');
+        
+        // Inicializar o toast apenas quando necessário (garante que o Bootstrap já carregou)
+        if (!toastInstance && typeof bootstrap !== 'undefined') {
+            toastInstance = new bootstrap.Toast(toastEl, { delay: 5000 });
+        }
         
         toastBody.textContent = message;
         
@@ -4007,7 +4012,12 @@ function getStatusDotColor($status)
             default: toastDiv.classList.add('bg-primary');
         }
         
-        toast.show();
+        if (toastInstance) {
+            toastInstance.show();
+        } else {
+            // Fallback caso o Bootstrap falhe ao carregar
+            alert(message);
+        }
     }
 </script>
 
