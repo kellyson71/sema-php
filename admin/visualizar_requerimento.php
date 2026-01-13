@@ -2736,8 +2736,30 @@ $isBlocked = $isFinalized || $isIndeferido;
          return mapa[tipo] || 'Documento';
      }
 
-     function abrirModalParecer() {
-         parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
+     async function abrirModalParecer() {
+         const btn = document.querySelector('.btn-action-primary'); // Botão Gerar Parecer
+         const originalHtml = btn.innerHTML;
+         
+         // Feedback visual de carregamento
+         btn.disabled = true;
+         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+
+         const sessaoValida = await verificarSessaoAssinatura();
+         
+         btn.disabled = false;
+         btn.innerHTML = originalHtml;
+
+         if (sessaoValida) {
+             exibirModalParecer();
+         } else {
+             iniciarVerificacaoEmail();
+         }
+     }
+
+     function exibirModalParecer() {
+         if (!parecerModal) {
+             parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
+         }
          resetarFluxoParecer(true);
          parecerModal.show();
          carregarListaTemplates();
@@ -3472,24 +3494,13 @@ $isBlocked = $isFinalized || $isIndeferido;
              
              if (data.success) {
                  // Sucesso! Fechar modal e mostrar notificação moderna
-                 modalVerificacao.hide();
-                 showToast('Verificação realizada com sucesso! Continuando assinatura...');
+                 if (modalVerificacao) modalVerificacao.hide();
+                 showToast('Verificação realizada com sucesso! Acesso liberado por 3 horas.');
                  
-                 // Reabrir o modal de parecer para continuar o fluxo
-                 if (typeof parecerModal !== 'undefined' && parecerModal) {
-                     parecerModal.show();
-                     
-                     // Restaurar a senha e tentar confirmar novamente
-                     setTimeout(() => {
-                         const senhaInput = document.getElementById('senha-finalizacao');
-                         if (senhaInput && senhaTemporaria) {
-                             senhaInput.value = senhaTemporaria;
-                         }
-                         confirmarPosicaoEGerarPdf(); 
-                     }, 500);
-                 } else {
-                     confirmarPosicaoEGerarPdf();
-                 }
+                 // CONTINUAR FLUXO: Abrir o modal de parecer
+                 setTimeout(() => {
+                    exibirModalParecer();
+                 }, 500);
                  
              } else {
                  input.classList.add('is-invalid');
@@ -3506,12 +3517,9 @@ $isBlocked = $isFinalized || $isIndeferido;
 
 
      async function confirmarPosicaoEGerarPdf() {
-         // INTERCEPTAÇÃO DE SEGURANÇA
-         const sessaoValida = await verificarSessaoAssinatura();
-         if (!sessaoValida) {
-             iniciarVerificacaoEmail();
-             return;
-         }
+         // O fluxo agora garante sessão válida no INÍCIO.
+         // Mantemos apenas uma verificação silenciosa para logging/segurança redundante
+         // sem interromper a UI bruscamente.
 
          const editor = tinymce.get('editor-parecer-content');
          let html = '';
