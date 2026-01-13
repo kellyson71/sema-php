@@ -111,36 +111,42 @@ try {
             $rascunhos = [];
             if ($requerimento_id > 0) {
                 $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
-                if (is_dir($pastaRequerimento)) {
-                    $arquivos = glob($pastaRequerimento . '*.json');
-                    if ($arquivos) {
+                if (@is_dir($pastaRequerimento)) {
+                    $arquivos = @glob($pastaRequerimento . '*.json');
+                    if ($arquivos && is_array($arquivos)) {
                         // Ordenar por data de modificação (mais recente primeiro)
                         usort($arquivos, function($a, $b) {
-                            return filemtime($b) - filemtime($a);
+                            return @filemtime($b) - @filemtime($a);
                         });
 
                         // Pegar os 3 mais recentes
                         $recentes = array_slice($arquivos, 0, 3);
                         foreach ($recentes as $arquivo) {
-                            $dados = json_decode(file_get_contents($arquivo), true);
-                            if ($dados) {
-                                // Tenta identificar um nome amigável para o rascunho
-                                $nomeTemplate = $dados['template'] ?? 'Documento';
-                                // Formatar nome do rascunho: "Rascunho: Tipo do Template (DD/MM/YYYY HH:mm)"
-                                $dataCriacao = isset($dados['data_criacao']) ? date('d/m/Y H:i', strtotime($dados['data_criacao'])) : date('d/m/Y H:i', filemtime($arquivo));
-                                
-                                // Buscar nome do assinante
-                                $nomeAssinante = $dados['dados_assinatura']['assinante_nome'] ?? 
-                                                 $dados['dados_assinatura']['assinante_nome_completo'] ?? 
-                                                 'Desconhecido';
-                                
-                                $rascunhos[] = [
-                                    'id' => 'draft:' . basename($arquivo),
-                                    'nome' => $nomeTemplate,
-                                    'data' => $dataCriacao,
-                                    'assinante' => $nomeAssinante,
-                                    'label' => "{$nomeTemplate} - {$nomeAssinante} ({$dataCriacao})"
-                                ];
+                            $conteudo = @file_get_contents($arquivo);
+                            if ($conteudo) {
+                                $dados = @json_decode($conteudo, true);
+                                if ($dados && is_array($dados)) {
+                                    // Tenta identificar um nome amigável para o rascunho
+                                    $nomeTemplate = $dados['template'] ?? 'Documento';
+                                    // Formatar nome do rascunho: "Rascunho: Tipo do Template (DD/MM/YYYY HH:mm)"
+                                    $dataCriacao = isset($dados['data_criacao']) ? @date('d/m/Y H:i', strtotime($dados['data_criacao'])) : @date('d/m/Y H:i', filemtime($arquivo));
+                                    
+                                    // Buscar nome do assinante
+                                    $nomeAssinante = 'Desconhecido';
+                                    if (isset($dados['dados_assinatura'])) {
+                                        $nomeAssinante = $dados['dados_assinatura']['assinante_nome'] ?? 
+                                                         $dados['dados_assinatura']['assinante_nome_completo'] ?? 
+                                                         'Desconhecido';
+                                    }
+                                    
+                                    $rascunhos[] = [
+                                        'id' => 'draft:' . basename($arquivo),
+                                        'nome' => $nomeTemplate,
+                                        'data' => $dataCriacao,
+                                        'assinante' => $nomeAssinante,
+                                        'label' => "{$nomeTemplate} - {$nomeAssinante} ({$dataCriacao})"
+                                    ];
+                                }
                             }
                         }
                     }
