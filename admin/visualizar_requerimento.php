@@ -3471,41 +3471,33 @@ $isBlocked = $isFinalized || $isIndeferido;
              const data = await response.json();
              
              if (data.success) {
-                 // Sucesso! Fechar modal de verificação
+                 // Sucesso! Fechar modal e mostrar notificação moderna
                  modalVerificacao.hide();
+                 showToast('Verificação realizada com sucesso! Continuando assinatura...');
                  
-                 // Aguardar o modal fechar completamente antes de continuar
-                 setTimeout(() => {
-                     // Reabrir o modal de parecer
-                     if (typeof parecerModal !== 'undefined' && parecerModal) {
-                         parecerModal.show();
-                     }
+                 // Reabrir o modal de parecer para continuar o fluxo
+                 if (typeof parecerModal !== 'undefined' && parecerModal) {
+                     parecerModal.show();
                      
-                     // Aguardar o modal abrir e então continuar o processo
+                     // Restaurar a senha e tentar confirmar novamente
                      setTimeout(() => {
-                         // Restaurar a senha se foi salva
                          const senhaInput = document.getElementById('senha-finalizacao');
                          if (senhaInput && senhaTemporaria) {
                              senhaInput.value = senhaTemporaria;
                          }
-                         
-                         // Continuar com a geração do PDF
-                         confirmarPosicaoEGerarPdf();
+                         confirmarPosicaoEGerarPdf(); 
                      }, 500);
-                 }, 300);
+                 } else {
+                     confirmarPosicaoEGerarPdf();
+                 }
                  
              } else {
                  input.classList.add('is-invalid');
                  document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
-                 btn.disabled = false;
-                 btn.innerHTML = originalText;
              }
          } catch (error) {
              console.error('Erro:', error);
              showToast('Erro de conexão ao validar código.', 'error');
-             btn.disabled = false;
-             btn.innerHTML = originalText;
-         }
          } finally {
              btn.disabled = false;
              btn.innerHTML = originalText;
