@@ -1,6 +1,7 @@
 <?php
 require_once 'conexao.php';
 require_once '../includes/email_service.php';
+require_once '../tipos_alvara.php';
 verificaLogin();
 
 // Verificar se o ID foi fornecido
@@ -1314,7 +1315,7 @@ $isBlocked = $isFinalized || $isIndeferido;
             <div class="text-end">
                 <div class="mb-2">
                     <span class="fw-bold" style="color: var(--gray-700);">Tipo:</span>
-                    <span style="color: var(--primary-600);"><?php echo $requerimento['tipo_alvara']; ?></span>
+                    <span style="color: var(--primary-600);"><?php echo $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])); ?></span>
                 </div>
                 <div>
                     <span class="fw-bold" style="color: var(--gray-700);">Requerente:</span>
@@ -1382,9 +1383,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </div>
                     <div class="data-row">
                         <div class="data-label">Tipo de Alvará:</div>
-                        <div class="data-value"><?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?></div>
+                        <div class="data-value"><?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))); ?></div>
                         <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?>', this)" title="Copiar tipo de alvará">
+                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))); ?>', this)" title="Copiar tipo de alvará">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
