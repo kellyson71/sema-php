@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/database.php';
 
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
@@ -125,6 +126,23 @@ class ParecerService
             $dados['admin_nome_completo'] = $adminData['nome_completo'] ?? $adminData['nome'] ?? '';
             $dados['admin_cargo'] = $adminData['cargo'] ?? '';
             $dados['admin_matricula_portaria'] = $adminData['matricula_portaria'] ?? '';
+        }
+
+
+        // Calcular número sequencial do documento no ano
+        try {
+            $db = new Database();
+            $anoAtual = date('Y');
+            // Conta documentos assinados neste ano para gerar sequencial
+            $sql = "SELECT COUNT(*) as total FROM assinaturas_digitais WHERE YEAR(timestamp_assinatura) = :ano";
+            $resultado = $db->query($sql, ['ano' => $anoAtual])->fetch();
+            $proximoNumero = ($resultado['total'] ?? 0) + 1;
+            
+            $dados['numero_documento_ano'] = $proximoNumero;
+            $dados['ano_atual'] = $anoAtual;
+        } catch (Exception $e) {
+            $dados['numero_documento_ano'] = '??';
+            $dados['ano_atual'] = date('Y');
         }
 
         return $dados;
