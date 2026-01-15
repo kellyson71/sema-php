@@ -112,7 +112,7 @@ include 'header.php';
                 </div>
                 <div class="card-body p-0 bg-secondary bg-opacity-10 d-flex justify-content-center align-items-center overflow-hidden">
                     <?php if ($documentoIdParaVisualizar): ?>
-                        <iframe src="parecer_viewer.php?id=<?php echo $documentoIdParaVisualizar; ?>" 
+                        <iframe src="parecer_viewer.php?id=<?php echo $documentoIdParaVisualizar; ?>&noprint=1" 
                                 style="width: 100%; height: 100%; border: none;" 
                                 title="Visualizador de Documento"></iframe>
                     <?php else: ?>

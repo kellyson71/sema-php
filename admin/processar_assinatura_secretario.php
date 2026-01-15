@@ -37,7 +37,7 @@ try {
         // 2. Inserir Assinatura do Secretário
         $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
             documento_id, requerimento_id, assinante_nome, assinante_cpf, assinante_cargo, 
-            data_assinatura, hash_assinatura, ip_assinante, user_agent, caminho_arquivo, tipo_assinatura, status
+            timestamp_assinatura, hash_assinatura, ip_assinante, user_agent, caminho_arquivo, tipo_assinatura, status
         ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, 'ativo')");
         
         // Gerar um hash único para esta nova assinatura

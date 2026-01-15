@@ -393,27 +393,37 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
 
     <script>
         window.onload = function() {
-            setTimeout(function() {
-                if (window.print) {
-                    try {
-                        const mediaQueryList = window.matchMedia('print');
-                        mediaQueryList.addListener(function(mql) {
-                            if (mql.matches) {
-                                document.body.style.margin = '0';
-                                document.body.style.padding = '0';
-                            }
-                        });
-                    } catch (e) {
-                        console.log('Configuração de impressão não suportada');
+            // Verifica se o parâmetro 'noprint' está presente na URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const shouldPrint = !urlParams.has('noprint');
+
+            if (shouldPrint) {
+                setTimeout(function() {
+                    if (window.print) {
+                        try {
+                            const mediaQueryList = window.matchMedia('print');
+                            mediaQueryList.addListener(function(mql) {
+                                if (mql.matches) {
+                                    document.body.style.margin = '0';
+                                    document.body.style.padding = '0';
+                                }
+                            });
+                        } catch (e) {
+                            console.log('Configuração de impressão não suportada');
+                        }
+                        window.print();
                     }
-                    window.print();
-                }
-            }, 500);
+                }, 500);
+            }
         }
 
         window.onafterprint = function() {
             setTimeout(function() {
-                window.close();
+                // Só fecha se foi aberto para imprimir (verificação simplificada)
+                const urlParams = new URLSearchParams(window.location.search);
+                if (!urlParams.has('noprint')) {
+                    window.close();
+                }
             }, 100);
         }
 
