@@ -17,9 +17,11 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 $busca = isset($_GET['busca']) ? trim($_GET['busca']) : '';
 
 // Query base
+// Query base
+// Modificado para mostrar também os já emitidos para histórico
 $sqlBase = "FROM requerimentos r
             JOIN requerentes req ON r.requerente_id = req.id
-            WHERE r.status = 'Apto a gerar alvará'";
+            WHERE r.status IN ('Apto a gerar alvará', 'Alvará Emitido')";
 
 $params = [];
 
@@ -36,9 +38,15 @@ $totalRegistros = $stmtCount->fetch()['total'];
 $totalPaginas = ceil($totalRegistros / $itensPorPagina);
 
 // Buscar registros
-$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.data_envio, req.nome as requerente
+$sql = "SELECT r.id, r.protocolo, r.type_alvara, r.status, r.data_envio, req.nome as requerente
         $sqlBase
-        ORDER BY r.data_envio ASC
+        ORDER BY FIELD(r.status, 'Apto a gerar alvará', 'Alvará Emitido'), r.data_envio DESC
+        LIMIT $offset, $itensPorPagina";
+
+// NOTE: corrected typo in SELECT above if 'type_alvara' was used, it is 'tipo_alvara'. Fixing below.
+$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente
+        $sqlBase
+        ORDER BY FIELD(r.status, 'Apto a gerar alvará', 'Alvará Emitido'), r.data_envio DESC
         LIMIT $offset, $itensPorPagina";
 
 $stmt = $pdo->prepare($sql);
@@ -54,11 +62,23 @@ include 'header.php';
             <div class="bg-white rounded-3 shadow-sm p-4 border-start border-5 border-success">
                 <h2 class="h3 mb-2 text-success"><i class="fas fa-signature me-2"></i>Aprovação de Alvarás</h2>
                 <p class="text-muted mb-0">
-                    Bem-vindo(a), Secretário(a). Abaixo estão os processos analisados tecnicamente e aguardando sua assinatura final.
+                    Bem-vindo(a), Secretário(a). Gerencie abaixo os processos pendentes de assinatura e visualize os já emitidos.
                 </p>
             </div>
         </div>
     </div>
+
+    <!-- Mensagens de Feedback -->
+    <?php if (isset($_GET['msg'])): ?>
+        <div class="alert alert-dismissible fade show mb-4 shadow-sm <?php echo $_GET['msg'] == 'devolvido' ? 'alert-warning' : 'alert-success'; ?>" role="alert">
+            <?php if ($_GET['msg'] == 'sucesso_assinatura'): ?>
+                <i class="fas fa-check-circle me-2"></i> <strong>Sucesso!</strong> O alvará foi assinado e emitido corretamente.
+            <?php elseif ($_GET['msg'] == 'devolvido'): ?>
+                <i class="fas fa-undo me-2"></i> <strong>Devolvido!</strong> O processo foi retornado para correção técnica.
+            <?php endif; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
 
     <!-- Filtros de Busca -->
     <div class="card mb-4 shadow-sm border-0">
@@ -88,13 +108,19 @@ include 'header.php';
                             <th class="py-3">Requerente</th>
                             <th class="py-3">Tipo de Alvará</th>
                             <th class="py-3">Data de Entrada</th>
+                            <th class="py-3">Status</th>
                             <th class="text-end pe-4 py-3">Ação</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (count($requerimentos) > 0): ?>
                             <?php foreach ($requerimentos as $req): ?>
-                                <tr>
+                                <?php 
+                                    $isSigned = $req['status'] === 'Alvará Emitido';
+                                    $statusClass = $isSigned ? 'bg-success text-white' : 'bg-warning text-dark';
+                                    $statusIcon = $isSigned ? 'fa-check-double' : 'fa-clock';
+                                ?>
+                                <tr class="<?php echo $isSigned ? 'bg-light bg-opacity-25' : ''; ?>">
                                     <td class="ps-4 fw-bold text-primary">
                                         #<?php echo htmlspecialchars($req['protocolo']); ?>
                                     </td>
@@ -115,19 +141,31 @@ include 'header.php';
                                         <i class="far fa-calendar me-1"></i>
                                         <?php echo date('d/m/Y', strtotime($req['data_envio'])); ?>
                                     </td>
+                                    <td>
+                                        <span class="badge rounded-pill <?php echo $statusClass; ?> px-3">
+                                            <i class="fas <?php echo $statusIcon; ?> me-1"></i>
+                                            <?php echo $req['status']; ?>
+                                        </span>
+                                    </td>
                                     <td class="text-end pe-4">
-                                        <a href="revisao_secretario.php?id=<?php echo $req['id']; ?>" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm">
-                                            <i class="fas fa-pen-nib me-1"></i> Revisar e Assinar
-                                        </a>
+                                        <?php if ($isSigned): ?>
+                                            <a href="revisao_secretario.php?id=<?php echo $req['id']; ?>" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
+                                                <i class="fas fa-eye me-1"></i> Visualizar
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="revisao_secretario.php?id=<?php echo $req['id']; ?>" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm">
+                                                <i class="fas fa-pen-nib me-1"></i> Revisar e Assinar
+                                            </a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">
+                                <td colspan="6" class="text-center py-5 text-muted">
                                     <div class="d-flex flex-column align-items-center">
                                         <i class="fas fa-check-circle fa-3x mb-3 text-light-gray"></i>
-                                        <p class="mb-0">Nenhum processo aguardando assinatura no momento.</p>
+                                        <p class="mb-0">Nenhum processo encontrado.</p>
                                     </div>
                                 </td>
                             </tr>

@@ -19,7 +19,7 @@ if (!$id) {
 $stmt = $pdo->prepare("SELECT r.*, req.nome as requerente_nome, req.cpf_cnpj as requerente_doc 
                        FROM requerimentos r 
                        JOIN requerentes req ON r.requerente_id = req.id 
-                       WHERE r.id = ? AND r.status = 'Apto a gerar alvará'");
+                       WHERE r.id = ? AND r.status IN ('Apto a gerar alvará', 'Alvará Emitido')");
 $stmt->execute([$id]);
 $requerimento = $stmt->fetch();
 
@@ -77,19 +77,31 @@ include 'header.php';
                     <hr>
 
                     <div class="d-grid gap-2">
-                        <small class="text-center text-muted mb-1">Ações de Decisão</small>
-                        
-                        <form action="processar_assinatura_secretario.php" method="POST" onsubmit="return confirm('Confirmar assinatura e emissão do Alvará?');">
-                            <input type="hidden" name="requerimento_id" value="<?php echo $id; ?>">
-                            <input type="hidden" name="acao" value="aprovar">
-                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-uppercase shadow-sm">
-                                <i class="fas fa-file-signature me-2"></i> Assinar e Emitir
-                            </button>
-                        </form>
+                        <?php if ($requerimento['status'] === 'Alvará Emitido'): ?>
+                            <div class="alert alert-success text-center mb-2">
+                                <i class="fas fa-check-double mb-2 d-block fa-2x"></i>
+                                <strong>Alvará Emitido</strong><br>
+                                <small>Este documento já foi assinado.</small>
+                            </div>
+                            <!-- Botão opcional de download -->
+                             <a href="../uploads/pareceres/<?php echo $id; ?>/<?php echo $documentoAnterior['nome_arquivo']; ?>" target="_blank" class="btn btn-primary w-100 shadow-sm" download>
+                                <i class="fas fa-download me-2"></i> Baixar PDF
+                            </a>
+                        <?php else: ?>
+                            <small class="text-center text-muted mb-1">Ações de Decisão</small>
+                            
+                            <form action="processar_assinatura_secretario.php" method="POST" onsubmit="return confirm('Confirmar assinatura e emissão do Alvará?');">
+                                <input type="hidden" name="requerimento_id" value="<?php echo $id; ?>">
+                                <input type="hidden" name="acao" value="aprovar">
+                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-uppercase shadow-sm">
+                                    <i class="fas fa-file-signature me-2"></i> Assinar e Emitir
+                                </button>
+                            </form>
 
-                        <button type="button" class="btn btn-outline-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#modalDevolucao">
-                            <i class="fas fa-undo me-2"></i> Solicitar Correção
-                        </button>
+                            <button type="button" class="btn btn-outline-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#modalDevolucao">
+                                <i class="fas fa-undo me-2"></i> Solicitar Correção
+                            </button>
+                        <?php endif; ?>
                         
                         <a href="secretario_dashboard.php" class="btn btn-link text-muted mt-2">
                             <i class="fas fa-arrow-left me-1"></i> Voltar à lista
