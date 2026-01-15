@@ -35,26 +35,25 @@ try {
         $pdo->beginTransaction();
 
         // 2. Inserir Assinatura do Secretário
+        // Usamos os mesmos dados criptográficos do documento original pois é o mesmo arquivo
         $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
-            documento_id, requerimento_id, assinante_nome, assinante_cpf, assinante_cargo, 
-            timestamp_assinatura, hash_assinatura, ip_assinante, user_agent, caminho_arquivo, tipo_assinatura, status
-        ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, 'ativo')");
+            documento_id, requerimento_id, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
+            timestamp_assinatura, hash_documento, assinatura_criptografada, ip_assinante, user_agent, caminho_arquivo, tipo_assinatura, status
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, 'ativo')");
         
-        // Gerar um hash único para esta nova assinatura
-        $hashData = $docAnterior['documento_id'] . $_SESSION['admin_nome'] . date('Y-m-d H:i:s');
-        $hashAssinatura = hash('sha256', $hashData);
-
         $stmtAss->execute([
-            $docAnterior['documento_id'], // Mantém o MESMO ID de documento para agrupar
+            $docAnterior['documento_id'], // Mantém o MESMO ID de documento
             $id,
-            $_SESSION['admin_nome'], // Nome do Secretário logado
-            '', // CPF pode não estar na sessão, deixar em branco ou puxar do perfil se tiver
-            'Secretário Municipal de Meio Ambiente', // Cargo fixo ou puxar do perfil
-            $hashAssinatura,
+            $_SESSION['admin_id'],
+            $_SESSION['admin_nome'],
+            '', // CPF
+            'Secretário Municipal de Meio Ambiente',
+            $docAnterior['hash_documento'], // Hash do documento original
+            $docAnterior['assinatura_criptografada'], // Assinatura do hash (sistema)
             $_SERVER['REMOTE_ADDR'],
             $_SERVER['HTTP_USER_AGENT'],
-            $docAnterior['caminho_arquivo'], // Mesmo arquivo físico
-            'texto' // Assinatura digital padrão
+            $docAnterior['caminho_arquivo'],
+            'texto'
         ]);
 
         // 3. Atualizar Status do Requerimento
