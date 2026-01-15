@@ -1789,6 +1789,8 @@ $isBlocked = $isFinalized || $isIndeferido;
                                                     <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
                                                     <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
                                                     <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
+                                                    <option value="Apto a gerar alvará" <?php echo $requerimento['status'] == 'Apto a gerar alvará' ? 'selected' : ''; ?>>Apto a gerar alvará</option>
+                                                    <option value="Alvará Emitido" <?php echo $requerimento['status'] == 'Alvará Emitido' ? 'selected' : ''; ?>>Alvará Emitido</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6">

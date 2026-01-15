@@ -201,6 +201,8 @@ include 'header.php';
                                             'Pendente' => '#0dcaf0',
                                             'Cancelado' => '#6c757d',
                                             'Indeferido' => '#212529',
+                                            'Apto a gerar alvará' => '#6610f2',
+                                            'Alvará Emitido' => '#20c997',
                                             default => '#e9ecef'
                                         };
                                         ?>

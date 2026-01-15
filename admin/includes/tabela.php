@@ -12,6 +12,10 @@ function getStatusColor($status)
             return ['color' => '#6b7280', 'textClass' => 'text-gray-500'];
         case 'reprovado':
             return ['color' => '#ef4444', 'textClass' => 'text-red-700'];
+        case 'apto a gerar alvará':
+            return ['color' => '#6610f2', 'textClass' => 'text-purple-700'];
+        case 'alvará emitido':
+            return ['color' => '#20c997', 'textClass' => 'text-teal-700'];
         case 'em análise':
         case 'em_analise':
             return ['color' => '#3b82f6', 'textClass' => 'text-blue-700'];
@@ -58,6 +62,9 @@ function renderTabela($requerimentos)
                         </button>
                         <button onclick="alterarStatusMultiplo('Reprovado')" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center">
                             <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>Reprovado
+                        </button>
+                        <button onclick="alterarStatusMultiplo('Apto a gerar alvará')" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-purple-600 mr-2"></span>Apto a gerar alvará
                         </button>
                         <button onclick="alterarStatusMultiplo('Finalizado')" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center">
                             <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>Finalizado
