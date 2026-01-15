@@ -37,23 +37,25 @@ try {
         // 2. Inserir Assinatura do Secretário
         // Usamos os mesmos dados criptográficos do documento original pois é o mesmo arquivo
         $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
-            documento_id, requerimento_id, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
-            timestamp_assinatura, hash_documento, assinatura_criptografada, ip_assinante, user_agent, caminho_arquivo, tipo_assinatura, status
-        ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, 'ativo')");
+            documento_id, requerimento_id, tipo_documento, nome_arquivo, caminho_arquivo, 
+            hash_documento, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
+            tipo_assinatura, assinatura_criptografada, timestamp_assinatura, ip_assinante
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
         
         $stmtAss->execute([
             $docAnterior['documento_id'], // Mantém o MESMO ID de documento
             $id,
+            $docAnterior['tipo_documento'] ?? 'parecer', // Usa o tipo original ou 'parecer'
+            $docAnterior['nome_arquivo'], // Nome do arquivo (obrigatório)
+            $docAnterior['caminho_arquivo'],
+            $docAnterior['hash_documento'], // Hash do documento original
             $_SESSION['admin_id'],
             $_SESSION['admin_nome'],
-            '', // CPF
+            null, // CPF (permite NULL)
             'Secretário Municipal de Meio Ambiente',
-            $docAnterior['hash_documento'], // Hash do documento original
+            'texto',
             $docAnterior['assinatura_criptografada'], // Assinatura do hash (sistema)
-            $_SERVER['REMOTE_ADDR'],
-            $_SERVER['HTTP_USER_AGENT'],
-            $docAnterior['caminho_arquivo'],
-            'texto'
+            $_SERVER['REMOTE_ADDR']
         ]);
 
         // 3. Atualizar Status do Requerimento
