@@ -35,7 +35,18 @@ try {
         $pdo->beginTransaction();
 
         // 2. Inserir Assinatura do Secretário
-        // Usamos os mesmos dados criptográficos do documento original pois é o mesmo arquivo
+        
+        // Gerar novo ID único para esta assinatura
+        $novoDocumentoId = bin2hex(random_bytes(32));
+        
+        // Gerar nova assinatura criptográfica usando o serviço (para garantir unicidade e validade temporal)
+        // Precisamos incluir o serviço se ainda não estiver
+        require_once '../includes/assinatura_digital_service.php';
+        $assinaturaService = new AssinaturaDigitalService($pdo);
+        
+        // Reassinar o MEHSMO hash do documento
+        $novaAssinaturaCriptografada = $assinaturaService->assinarHash($docAnterior['hash_documento']);
+
         $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
             documento_id, requerimento_id, tipo_documento, nome_arquivo, caminho_arquivo, 
             hash_documento, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
@@ -43,18 +54,18 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
         
         $stmtAss->execute([
-            $docAnterior['documento_id'], // Mantém o MESMO ID de documento
+            $novoDocumentoId, // NOVO ID único
             $id,
-            $docAnterior['tipo_documento'] ?? 'parecer', // Usa o tipo original ou 'parecer'
-            $docAnterior['nome_arquivo'], // Nome do arquivo (obrigatório)
+            $docAnterior['tipo_documento'] ?? 'parecer',
+            $docAnterior['nome_arquivo'],
             $docAnterior['caminho_arquivo'],
-            $docAnterior['hash_documento'], // Hash do documento original
+            $docAnterior['hash_documento'],
             $_SESSION['admin_id'],
             $_SESSION['admin_nome'],
-            null, // CPF (permite NULL)
+            null,
             'Secretário Municipal de Meio Ambiente',
             'texto',
-            $docAnterior['assinatura_criptografada'], // Assinatura do hash (sistema)
+            $novaAssinaturaCriptografada, // Nova assinatura gerada
             $_SERVER['REMOTE_ADDR']
         ]);
 

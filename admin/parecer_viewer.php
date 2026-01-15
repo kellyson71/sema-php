@@ -9,17 +9,25 @@ if (empty($documentoId)) {
     exit;
 }
 
-// Modificação para suportar MÚLTIPLAS assinaturas com o mesmo documento_id
-$stmt = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ? ORDER BY timestamp_assinatura ASC");
+// 1. Buscar assinatura inicial pelo ID fornecido na URL
+$stmt = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ?");
 $stmt->execute([$documentoId]);
-$assinaturas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$assinaturaInicial = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (empty($assinaturas) || !file_exists($assinaturas[0]['caminho_arquivo'])) {
+if (!$assinaturaInicial || !file_exists($assinaturaInicial['caminho_arquivo'])) {
     die('Documento não encontrado');
 }
 
-// Usa o arquivo da primeira assinatura encontrada (devem ser iguais)
-$caminhoHtml = $assinaturas[0]['caminho_arquivo'];
+// 2. Buscar TODAS as assinaturas associadas ao MESMO arquivo físico e requerimento
+// Isso permite agrupar assinatura técnica + assinatura do secretário
+$stmtAll = $pdo->prepare("SELECT * FROM assinaturas_digitais 
+                          WHERE requerimento_id = ? AND nome_arquivo = ? 
+                          ORDER BY timestamp_assinatura ASC");
+$stmtAll->execute([$assinaturaInicial['requerimento_id'], $assinaturaInicial['nome_arquivo']]);
+$assinaturas = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+
+// Usa o arquivo da assinatura inicial (são todos o mesmo)
+$caminhoHtml = $assinaturaInicial['caminho_arquivo'];
 $caminhoJson = dirname($caminhoHtml) . '/' . pathinfo($caminhoHtml, PATHINFO_FILENAME) . '.json';
 
 $jsonData = null;
