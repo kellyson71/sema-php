@@ -572,6 +572,20 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         </a>
                     </li>
                 <?php endif; ?>
+                
+                <?php 
+                // Menu específico para o Secretário
+                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br');
+                if ($isSecretario): 
+                ?>
+                    <li>
+                        <a href="secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-signature"></i>
+                            <span>Aprovação de Alvarás</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <li>
                     <a href="logout.php">
                         <i class="fas fa-sign-out-alt"></i>
@@ -618,6 +632,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 case 'administradores.php':
                     echo 'Gerenciar Usuários';
                     break;
+                case 'secretario_dashboard.php':
+                    echo 'Aprovação de Alvarás';
+                    break;
+                case 'revisao_secretario.php':
+                    echo 'Revisão e Assinatura';
+                    break;
                 default:
                     echo 'Painel Administrativo';
             }
@@ -649,7 +669,13 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         </div>
                         <div class="user-info d-none d-md-flex">
                             <span class="user-name"><?php echo $_SESSION['admin_nome']; ?></span>
-                            <span class="user-role"><?php echo $_SESSION['admin_nivel'] === 'admin' ? 'Administrador' : 'Operador'; ?></span>
+                            <span class="user-role">
+                                <?php 
+                                if ($_SESSION['admin_nivel'] === 'admin') echo 'Administrador';
+                                elseif ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br') echo 'Secretário(a)';
+                                else echo 'Operador'; 
+                                ?>
+                            </span>
                         </div>
                     </div>
                 </a>

@@ -9,15 +9,17 @@ if (empty($documentoId)) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT caminho_arquivo, documento_id FROM assinaturas_digitais WHERE documento_id = ?");
+// Modificação para suportar MÚLTIPLAS assinaturas com o mesmo documento_id
+$stmt = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ? ORDER BY timestamp_assinatura ASC");
 $stmt->execute([$documentoId]);
-$assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
+$assinaturas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if (!$assinatura || !file_exists($assinatura['caminho_arquivo'])) {
+if (empty($assinaturas) || !file_exists($assinaturas[0]['caminho_arquivo'])) {
     die('Documento não encontrado');
 }
 
-$caminhoHtml = $assinatura['caminho_arquivo'];
+// Usa o arquivo da primeira assinatura encontrada (devem ser iguais)
+$caminhoHtml = $assinaturas[0]['caminho_arquivo'];
 $caminhoJson = dirname($caminhoHtml) . '/' . pathinfo($caminhoHtml, PATHINFO_FILENAME) . '.json';
 
 $jsonData = null;
@@ -25,187 +27,100 @@ if (file_exists($caminhoJson)) {
     $jsonData = json_decode(file_get_contents($caminhoJson), true);
 }
 
+// ... Lógica de carregamento de $htmlContent mantém-se igual ... 
 // Priorizar HTML formatado dos metadados (com formatação do TinyMCE)
 $htmlContent = '';
 $ehTemplateA4 = false;
 
-// Verificar se é template A4 pelo nome do arquivo ou template no JSON
+// Verificar se é template A4
 if ($jsonData && isset($jsonData['template'])) {
     $templateNome = $jsonData['template'];
     $ehTemplateA4 = strpos($templateNome, 'template_oficial_a4') !== false || strpos($templateNome, 'licenca_previa_projeto') !== false || strpos($templateNome, 'parecer_tecnico') !== false;
 }
 
-if ($ehTemplateA4) {
-    // Para templates A4, usar html_com_assinatura que tem a estrutura completa + assinatura
-    if ($jsonData && isset($jsonData['html_com_assinatura'])) {
-        $htmlContent = $jsonData['html_com_assinatura'];
-    } else {
-        // Fallback para arquivo HTML
-        $htmlContent = file_get_contents($caminhoHtml);
-    }
+if ($ehTemplateA4 && $jsonData && isset($jsonData['html_com_assinatura'])) {
+    $htmlContent = $jsonData['html_com_assinatura'];
+} elseif ($jsonData && isset($jsonData['html_completo'])) {
+    $htmlContent = $jsonData['html_completo'];
+} elseif ($jsonData && isset($jsonData['html_com_assinatura'])) {
+    $htmlContent = $jsonData['html_com_assinatura'];
 } else {
-    // Para outros templates, usar html_completo (formatação TinyMCE)
-    if ($jsonData && isset($jsonData['html_completo'])) {
-        $htmlContent = $jsonData['html_completo'];
-    } else {
-        // Fallback para html_com_assinatura ou arquivo
-        if ($jsonData && isset($jsonData['html_com_assinatura'])) {
-            $htmlContent = $jsonData['html_com_assinatura'];
-        } else {
-            $htmlContent = file_get_contents($caminhoHtml);
-        }
-    }
+    $htmlContent = file_get_contents($caminhoHtml);
 }
 
-// Se não encontrou HTML completo, usar o HTML do arquivo
 if (empty($htmlContent)) {
     $htmlContent = file_get_contents($caminhoHtml);
 }
 
 $conteudoTexto = '';
-$blocoAssinatura = '';
-$posicaoAssinatura = ['x' => 0.7, 'y' => 0.85];
+// $blocoAssinatura agora será um array ou string concatenada
+$blocosAssinaturaHtml = ''; 
 
+$posicaoAssinatura = ['x' => 0.7, 'y' => 0.85];
 if ($jsonData && isset($jsonData['posicao_assinatura'])) {
     $posicaoAssinatura = $jsonData['posicao_assinatura'];
 }
 
-// Para templates A4, extrair conteúdo e assinatura do html_com_assinatura
-if ($ehTemplateA4) {
-    // O htmlContent já deve ser html_com_assinatura que tem estrutura completa
-    $parser = new DOMDocument();
-    libxml_use_internal_errors(true);
-    @$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
-    libxml_clear_errors();
+// Parse do HTML para extrair conteúdo
+$parser = new DOMDocument();
+libxml_use_internal_errors(true);
+@$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
+libxml_clear_errors();
 
-    $conteudoDiv = $parser->getElementById('conteudo');
-    if ($conteudoDiv) {
-        $conteudoTexto = '';
-        foreach ($conteudoDiv->childNodes as $node) {
-            $conteudoTexto .= $parser->saveHTML($node);
-        }
+// Extrair conteúdo (mantém lógica existente)
+$conteudoDiv = $parser->getElementById('conteudo');
+if ($conteudoDiv) {
+    foreach ($conteudoDiv->childNodes as $node) {
+        $conteudoTexto .= $parser->saveHTML($node);
     }
-
-    $areaAssinatura = $parser->getElementById('area-assinatura');
 } else {
-    // Para outros templates, usar o parser padrão
-    $parser = new DOMDocument();
-    libxml_use_internal_errors(true);
-    @$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
-    libxml_clear_errors();
-
-    $conteudoDiv = $parser->getElementById('conteudo');
-    if ($conteudoDiv) {
-        $conteudoTexto = '';
-        foreach ($conteudoDiv->childNodes as $node) {
+    $body = $parser->getElementsByTagName('body')->item(0);
+    if ($body) {
+        foreach ($body->childNodes as $node) {
             $conteudoTexto .= $parser->saveHTML($node);
         }
     } else {
-        $body = $parser->getElementsByTagName('body')->item(0);
-        if ($body) {
-            $conteudoTexto = '';
-            foreach ($body->childNodes as $node) {
-                $conteudoTexto .= $parser->saveHTML($node);
-            }
-        } else {
-            $conteudoTexto = $htmlContent;
-        }
+        $conteudoTexto = $htmlContent;
     }
-
-    $areaAssinatura = $parser->getElementById('area-assinatura');
-}
-$urlVerificacao = '';
-if ($jsonData && isset($jsonData['url_verificacao'])) {
-    $urlVerificacao = $jsonData['url_verificacao'];
 }
 
-// Se não encontrou área de assinatura no HTML, tentar reconstruir usando dados do JSON
-$blocoAssinatura = '';
-if (!$areaAssinatura && $jsonData && isset($jsonData['dados_assinatura'])) {
-    $dadosAssinatura = $jsonData['dados_assinatura'];
+// GERAÇÃO DOS BLOCOS DE ASSINATURA (Loop para cada assinante)
+// Vamos criar um container flex para as assinaturas
+require_once '../includes/qrcode_service.php';
+
+$blocosAssinaturaHtml = '<div id="container-assinaturas" style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; width: 100%;">';
+
+foreach ($assinaturas as $ass) {
+    // Preparar URL Verificação
     $protocolo = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? '';
     $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    $scriptDir = dirname($scriptName);
-    $basePath = '';
-    if ($scriptDir !== '/' && $scriptDir !== '\\' && $scriptDir !== '.') {
-        $basePath = rtrim($scriptDir, '/\\');
-        if (strpos($basePath, '/admin') !== false) {
-            $basePath = str_replace('/admin', '', $basePath);
-        }
-        if (strpos($basePath, '\\admin') !== false) {
-            $basePath = str_replace('\\admin', '', $basePath);
-        }
-        $basePath = rtrim($basePath, '/\\');
-    }
-    $urlVerificacaoFinal = $urlVerificacao ?: ($protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $documentoId);
+    // Lógica para base path
+    $basePath = dirname(dirname($scriptName)); // Subir um nível de /admin para raiz
+    $basePath = rtrim($basePath, '/\\');
+    
+    // URL específica para este documento (pode ser a mesma para todos, ou por hash se necessário)
+    // Aqui usamos o ID do documento que é o agrupador
+    $urlVerificacaoFinal = $protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $documentoId;
 
-    // Gerar QR code se necessário
-    require_once '../includes/qrcode_service.php';
     $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacaoFinal);
 
-    // Criar bloco de assinatura diretamente como HTML
-    $blocoAssinatura = '<div id="area-assinatura" style="position: relative; display: flex; align-items: center; gap: 15px; background: transparent; padding: 10px; z-index: 1000;">';
-    $blocoAssinatura .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 60px; height: 60px; flex-shrink: 0;" />';
-    $blocoAssinatura .= '<div class="dados-assinante" style="font-size: 12px; text-align: left;">';
-    $blocoAssinatura .= '<strong>' . htmlspecialchars($dadosAssinatura['assinante_nome'] ?? '') . '</strong><br>';
-    if (!empty($dadosAssinatura['assinante_cpf'])) {
-        $blocoAssinatura .= 'CPF: ' . htmlspecialchars($dadosAssinatura['assinante_cpf']) . '<br>';
-    }
-    $blocoAssinatura .= htmlspecialchars($dadosAssinatura['assinante_cargo'] ?? '') . '<br>';
-    if (!empty($dadosAssinatura['assinante_matricula_portaria'])) {
-        $blocoAssinatura .= htmlspecialchars($dadosAssinatura['assinante_matricula_portaria']) . '<br>';
-    }
-    if (!empty($dadosAssinatura['data_assinatura'])) {
-        $dataAssinatura = date('d/m/Y H:i', strtotime($dadosAssinatura['data_assinatura']));
-        $blocoAssinatura .= htmlspecialchars($dataAssinatura) . '<br>';
-    }
-    $blocoAssinatura .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 10px; color: #0066cc; text-decoration: underline;">Verificar Autenticidade</a>';
-    $blocoAssinatura .= '</div></div>';
+    $blocosAssinaturaHtml .= '<div class="assinatura-item" style="position: relative; display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed #ccc; background: rgba(255,255,255,0.8); border-radius: 8px;">';
+    $blocosAssinaturaHtml .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 55px; height: 55px; flex-shrink: 0;" />';
+    $blocosAssinaturaHtml .= '<div class="dados-assinante" style="font-size: 11px; text-align: left; line-height: 1.3;">';
+    $blocosAssinaturaHtml .= '<strong>Assinado digitalmente por:</strong><br>';
+    $blocosAssinaturaHtml .= '<span style="font-size: 12px; font-weight: bold;">' . htmlspecialchars($ass['assinante_nome']) . '</span><br>';
+    $blocosAssinaturaHtml .= htmlspecialchars($ass['assinante_cargo']) . '<br>';
+    $blocosAssinaturaHtml .= 'Em: ' . date('d/m/Y H:i', strtotime($ass['timestamp_assinatura'])) . '<br>';
+    $blocosAssinaturaHtml .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 9px; color: #0066cc;">Verificar Autenticidade</a>';
+    $blocosAssinaturaHtml .= '</div></div>';
 }
 
-if ($areaAssinatura && empty($blocoAssinatura)) {
-    $blocoAssinaturaHtml = $parser->saveHTML($areaAssinatura);
+$blocosAssinaturaHtml .= '</div>';
 
-    $parserAssinatura = new DOMDocument();
-    @$parserAssinatura->loadHTML('<?xml encoding="UTF-8">' . $blocoAssinaturaHtml);
-    $areaAssinaturaNova = $parserAssinatura->getElementById('area-assinatura');
-    if ($areaAssinaturaNova) {
-        $styleAtual = $areaAssinaturaNova->getAttribute('style');
-        $styleAtual = preg_replace('/background:\s*[^;]+;?/i', '', $styleAtual);
-        $styleAtual = preg_replace('/background-color:\s*[^;]+;?/i', '', $styleAtual);
-        $styleAtual = trim($styleAtual, '; ');
-        $styleAtual .= '; background: transparent;';
-        $areaAssinaturaNova->setAttribute('style', $styleAtual);
-
-        if (!empty($urlVerificacao)) {
-            $divDados = $parserAssinatura->getElementsByTagName('div')->item(0);
-            if ($divDados && $divDados instanceof DOMElement) {
-                $linksExistentes = $parserAssinatura->getElementsByTagName('a');
-                $temLinkVerificacao = false;
-                foreach ($linksExistentes as $link) {
-                    if ($link instanceof DOMElement && strpos($link->getAttribute('href'), 'verificar.php') !== false) {
-                        $temLinkVerificacao = true;
-                        break;
-                    }
-                }
-
-                if (!$temLinkVerificacao) {
-                    $linkVerificacao = $parserAssinatura->createElement('a', 'Verificar Autenticidade');
-                    $linkVerificacao->setAttribute('href', $urlVerificacao);
-                    $linkVerificacao->setAttribute('target', '_blank');
-                    $linkVerificacao->setAttribute('style', 'font-size: 10px; color: #0066cc; text-decoration: underline;');
-                    $divDados->appendChild($parserAssinatura->createElement('br'));
-                    $divDados->appendChild($linkVerificacao);
-                }
-            }
-        }
-
-        $blocoAssinatura = $parserAssinatura->saveHTML($areaAssinaturaNova);
-    } else {
-        $blocoAssinatura = $blocoAssinaturaHtml;
-    }
-}
+// Limpar variáveis antigas para não interferir
+$blocoAssinatura = $blocosAssinaturaHtml; 
+$areaAssinatura = null; // Ignorar área antiga do HTML parser
 
 $logoPath = '../assets/SEMA/PNG/Azul/Logo SEMA Horizontal.png';
 $fundoPath = '../assets/SEMA/PNG/Azul/fundo.png';
@@ -452,9 +367,11 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         </div>
 
         <?php if (!empty($blocoAssinatura)): ?>
-        <div class="assinatura-container" style="left: <?php echo ($posicaoAssinatura['x'] * 100); ?>%; top: <?php echo ($posicaoAssinatura['y'] * 100); ?>%; transform: translate(-50%, -50%);">
+        <?php if (!empty($blocoAssinatura)): ?>
+        <div class="assinatura-container" style="position: relative; margin-top: auto; padding-bottom: 20mm; width: 100%;">
             <?php echo $blocoAssinatura; ?>
         </div>
+        <?php endif; ?>
         <?php endif; ?>
 
         <div class="rodape-container">

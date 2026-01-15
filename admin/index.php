@@ -11,6 +11,12 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
 require_once 'conexao.php';
 verificaLogin();
 
+// Se for o secretário, redirecionar para seu dashboard específico
+if ((isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'secretario') || (isset($_SESSION['admin_email']) && $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br')) {
+    header("Location: secretario_dashboard.php");
+    exit;
+}
+
 // Obter estatísticas para o dashboard
 // Total de requerimentos
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM requerimentos");
