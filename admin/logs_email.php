@@ -495,7 +495,12 @@ include 'header.php';
     let logDetailsModal = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        logDetailsModal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
+        // Mover o modal para o body para evitar conflitos de layout (z-index/position)
+        const modalEl = document.getElementById('logDetailsModal');
+        if (modalEl) {
+            document.body.appendChild(modalEl);
+            logDetailsModal = new bootstrap.Modal(modalEl);
+        }
     });
 
     function showLogDetails(logId) {
