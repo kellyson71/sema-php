@@ -115,33 +115,14 @@ try {
                 <div class="card-body p-0">
                     <div class="message-preview bg-white p-4 border-top">
                         <!-- Wrapper seguro para HTML -->
-                        <div class="email-safe-container" style="
-                            font-family: 'Segoe UI', Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333;
-                            overflow-wrap: break-word;
-                            width: 100% !important;
-                            max-width: none !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                        ">
-                            <style>
-                                /* Resetar qualquer estilo injetado que tente travar a largura */
-                                .email-safe-container div, 
-                                .email-safe-container table, 
-                                .email-safe-container body, 
-                                .email-safe-container html {
-                                    max-width: none !important;
-                                    width: 100% !important;
-                                }
-                                /* Forçar a div .container que geralmente vem no template */
-                                .email-safe-container .container {
-                                    max-width: none !important;
-                                    width: 100% !important;
-                                    padding: 0 !important;
-                                }
-                            </style>
-                            <?php echo $log['mensagem']; ?>
+                        <!-- Iframe isolado para garantir que o CSS do email não quebre o painel admin -->
+                        <div class="email-iframe-wrapper" style="height: 500px; border: 1px solid #eee; border-radius: 4px; overflow: hidden;">
+                            <iframe 
+                                src="view_email_body.php?id=<?php echo $id; ?>" 
+                                style="width: 100%; height: 100%; border: none;"
+                                sandbox="allow-same-origin"
+                                title="Conteúdo do Email">
+                            </iframe>
                         </div>
                     </div>
                 </div>
