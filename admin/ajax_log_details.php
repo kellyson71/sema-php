@@ -120,7 +120,27 @@ try {
                             line-height: 1.6;
                             color: #333;
                             overflow-wrap: break-word;
+                            width: 100% !important;
+                            max-width: none !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
                         ">
+                            <style>
+                                /* Resetar qualquer estilo injetado que tente travar a largura */
+                                .email-safe-container div, 
+                                .email-safe-container table, 
+                                .email-safe-container body, 
+                                .email-safe-container html {
+                                    max-width: none !important;
+                                    width: 100% !important;
+                                }
+                                /* Forçar a div .container que geralmente vem no template */
+                                .email-safe-container .container {
+                                    max-width: none !important;
+                                    width: 100% !important;
+                                    padding: 0 !important;
+                                }
+                            </style>
                             <?php echo $log['mensagem']; ?>
                         </div>
                     </div>

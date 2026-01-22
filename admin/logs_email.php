@@ -472,6 +472,11 @@ include 'header.php';
 </div>
 
 <!-- Modal para detalhes do log -->
+<style>
+    #logDetailsContent, #logDetailsContent * {
+        max-width: none !important;
+    }
+</style>
 <div class="modal fade" id="logDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
