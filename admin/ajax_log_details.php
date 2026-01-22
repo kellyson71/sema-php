@@ -120,7 +120,6 @@ try {
                             line-height: 1.6;
                             color: #333;
                             overflow-wrap: break-word;
-                            max-width: 100%;
                         ">
                             <?php echo $log['mensagem']; ?>
                         </div>
