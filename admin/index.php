@@ -193,7 +193,7 @@ include 'header.php';
                                     <td><?php echo $req['tipo_alvara']; ?></td>
                                     <td>
                                         <?php
-                                        $statusColor = match ($req['status']) {
+                                        $coresStatus = [
                                             'Em análise' => '#ffc107',
                                             'Aprovado' => '#198754',
                                             'Finalizado' => '#0d6efd',
@@ -202,9 +202,9 @@ include 'header.php';
                                             'Cancelado' => '#6c757d',
                                             'Indeferido' => '#212529',
                                             'Apto a gerar alvará' => '#6610f2',
-                                            'Alvará Emitido' => '#20c997',
-                                            default => '#e9ecef'
-                                        };
+                                            'Alvará Emitido' => '#20c997'
+                                        ];
+                                        $statusColor = $coresStatus[$req['status']] ?? '#e9ecef';
                                         ?>
                                         <span class="d-flex align-items-center">
                                             <span class="status-dot me-2" style="width: 8px; height: 8px; border-radius: 50%; background-color: <?php echo $statusColor; ?>; display: inline-block;"></span>

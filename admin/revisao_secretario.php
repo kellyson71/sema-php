@@ -32,11 +32,16 @@ if (!$requerimento) {
 // Buscar o documento (parecer/alvará) já gerado e assinado pelo técnico
 // Assumindo que é o último documento gerado do tipo 'parecer' ou similar
 // Ou idealmente buscamos na tabela documentos se houver, ou assinaturas_digitais
-$stmtDoc = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE requerimento_id = ? ORDER BY timestamp_assinatura DESC LIMIT 1");
+// Buscar TODOS os documentos (parecer/alvará) gerados para este requerimento
+// Agrupando por nome do arquivo para evitar duplicatas de assinaturas no mesmo arquivo
+$stmtDoc = $pdo->prepare("SELECT * FROM assinaturas_digitais 
+                          WHERE requerimento_id = ? 
+                          GROUP BY nome_arquivo 
+                          ORDER BY timestamp_assinatura DESC");
 $stmtDoc->execute([$id]);
-$documentoAnterior = $stmtDoc->fetch();
+$documentosAnteriores = $stmtDoc->fetchAll(PDO::FETCH_ASSOC);
 
-$documentoIdParaVisualizar = $documentoAnterior ? $documentoAnterior['documento_id'] : null;
+$documentoIdParaVisualizar = !empty($documentosAnteriores) ? $documentosAnteriores[0]['documento_id'] : null;
 
 // Se não houver documento anterior, algo está errado no fluxo (técnico não gerou?)
 // Mas vamos prosseguir permitindo ver o requerimento pelo menos.
@@ -52,6 +57,11 @@ include 'header.php';
                 <div class="card-header bg-white border-bottom">
                     <h5 class="mb-0 text-primary"><i class="fas fa-info-circle me-2"></i>Resumo do Processo</h5>
                 </div>
+                <!-- ... (Details Section remains same, skipped for brevity in replace, assume context handles it if I don't touch it. Wait I need to match context) ... --> 
+                <!-- Actually, I need to include the card body content if I am replacing the whole block or be precise. 
+                     The user instruction says "Fetch all documents...". I will target the PHP block and the Document Viewer Column. 
+                     I will split this into smaller reliable edits or replace a large chunk. 
+                     Let's replace the PHP block first, then the Viewer column. -->                
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="text-muted small text-uppercase fw-bold">Protocolo</label>
@@ -74,6 +84,24 @@ include 'header.php';
                         <div class="small"><?php echo htmlspecialchars($requerimento['endereco_objetivo']); ?></div>
                     </div>
 
+                    <!-- Lista de Documentos Disponíveis -->
+                    <?php if (count($documentosAnteriores) > 1): ?>
+                        <hr>
+                        <div class="mb-3">
+                            <label class="text-muted small text-uppercase fw-bold mb-2">Documentos no Processo</label>
+                            <div class="list-group list-group-flush small">
+                                <?php foreach ($documentosAnteriores as $index => $doc): ?>
+                                    <button type="button" 
+                                            class="list-group-item list-group-item-action d-flex align-items-center <?php echo $index === 0 ? 'active' : ''; ?>"
+                                            onclick="trocarDocumento(this, '<?php echo $doc['documento_id']; ?>')">
+                                        <i class="fas fa-file-pdf me-2"></i>
+                                        <span class="text-truncate"><?php echo htmlspecialchars($doc['nome_arquivo']); ?></span>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <hr>
 
                     <div class="d-grid gap-2">
@@ -81,20 +109,19 @@ include 'header.php';
                             <div class="alert alert-success text-center mb-2">
                                 <i class="fas fa-check-double mb-2 d-block fa-2x"></i>
                                 <strong>Alvará Emitido</strong><br>
-                                <small>Este documento já foi assinado.</small>
+                                <small>Todos os documentos foram assinados.</small>
                             </div>
-                            <!-- Botão opcional de download -->
-                             <a href="../uploads/pareceres/<?php echo $id; ?>/<?php echo $documentoAnterior['nome_arquivo']; ?>" target="_blank" class="btn btn-primary w-100 shadow-sm" download>
-                                <i class="fas fa-download me-2"></i> Baixar PDF
+                             <a href="../uploads/pareceres/<?php echo $id; ?>/" target="_blank" class="btn btn-primary w-100 shadow-sm">
+                                <i class="fas fa-folder-open me-2"></i> Abrir Pasta de Documentos
                             </a>
                         <?php else: ?>
                             <small class="text-center text-muted mb-1">Ações de Decisão</small>
                             
-                            <form action="processar_assinatura_secretario.php" method="POST" onsubmit="return confirm('Confirmar assinatura e emissão do Alvará?');">
+                            <form action="processar_assinatura_secretario.php" method="POST" onsubmit="return confirm('Confirmar assinatura de TODOS os documentos e emissão do Alvará?');">
                                 <input type="hidden" name="requerimento_id" value="<?php echo $id; ?>">
                                 <input type="hidden" name="acao" value="aprovar">
                                 <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-uppercase shadow-sm">
-                                    <i class="fas fa-file-signature me-2"></i> Assinar e Emitir
+                                    <i class="fas fa-file-signature me-2"></i> Assinar Tudo e Emitir
                                 </button>
                             </form>
 
@@ -117,7 +144,7 @@ include 'header.php';
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 text-secondary"><i class="fas fa-file-alt me-2"></i>Visualização do Documento</h5>
                     <?php if ($documentoIdParaVisualizar): ?>
-                        <span class="badge bg-primary">Documento Gerado: <?php echo $documentoIdParaVisualizar; ?></span>
+                        <span class="badge bg-primary" id="badge-doc-id">Documento: <?php echo $documentoIdParaVisualizar; ?></span>
                     <?php else: ?>
                         <span class="badge bg-warning text-dark">Documento Preliminar não encontrado</span>
                     <?php endif; ?>
@@ -126,6 +153,7 @@ include 'header.php';
                     <?php if ($documentoIdParaVisualizar): ?>
                         <iframe src="parecer_viewer.php?id=<?php echo $documentoIdParaVisualizar; ?>&noprint=1" 
                                 style="width: 100%; height: 100%; border: none;" 
+                                id="iframe-viewer"
                                 title="Visualizador de Documento"></iframe>
                     <?php else: ?>
                         <div class="text-center text-muted">
@@ -138,6 +166,26 @@ include 'header.php';
         </div>
     </div>
 </div>
+
+<script>
+function trocarDocumento(element, docId) {
+    // Atualizar iframe
+    const iframe = document.getElementById('iframe-viewer');
+    if (iframe) {
+        iframe.src = 'parecer_viewer.php?id=' + docId + '&noprint=1';
+    }
+    
+    // Atualizar badge
+    const badge = document.getElementById('badge-doc-id');
+    if (badge) {
+        badge.textContent = 'Documento: ' + docId;
+    }
+
+    // Atualizar classe active
+    document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
+}
+</script>
 
 <!-- Modal de Devolução -->
 <div class="modal fade" id="modalDevolucao" tabindex="-1" aria-hidden="true">

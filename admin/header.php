@@ -554,6 +554,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <span>Estatísticas</span>
                     </a>
                 </li>
+                <li>
+                    <a href="logs_email.php" class="<?php echo $currentPage === 'logs_email.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-envelope-open-text"></i>
+                        <span>Logs de Email</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="menu-header">Administração</div>

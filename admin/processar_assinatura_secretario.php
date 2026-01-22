@@ -23,51 +23,55 @@ if (!$id) {
 
 try {
     if ($acao === 'aprovar') {
-        // 1. Buscar assinatura anterior para pegar o mesmo caminho de arquivo e ID do documento
-        $stmtDoc = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE requerimento_id = ? ORDER BY timestamp_assinatura DESC LIMIT 1");
+        // 1. Buscar TODOS os documentos técnicos associados a este requerimento
+        // Agrupando por nome do arquivo para garantir que assinamos cada arquivo físico uma única vez
+        $stmtDoc = $pdo->prepare("SELECT * FROM assinaturas_digitais 
+                                  WHERE requerimento_id = ? 
+                                  GROUP BY nome_arquivo 
+                                  ORDER BY timestamp_assinatura DESC");
         $stmtDoc->execute([$id]);
-        $docAnterior = $stmtDoc->fetch();
+        $documentosAnteriores = $stmtDoc->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!$docAnterior) {
-            die("Documento original não encontrado para cont assinatura.");
+        if (empty($documentosAnteriores)) {
+            die("Nenhum documento original encontrado para assinatura.");
         }
 
         $pdo->beginTransaction();
 
-        // 2. Inserir Assinatura do Secretário
-        
-        // Gerar novo ID único para esta assinatura
-        $novoDocumentoId = bin2hex(random_bytes(32));
-        
-        // Gerar nova assinatura criptográfica usando o serviço (para garantir unicidade e validade temporal)
-        // Precisamos incluir o serviço se ainda não estiver
         require_once '../includes/assinatura_digital_service.php';
         $assinaturaService = new AssinaturaDigitalService($pdo);
-        
-        // Reassinar o MEHSMO hash do documento
-        $novaAssinaturaCriptografada = $assinaturaService->assinarHash($docAnterior['hash_documento']);
 
-        $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
-            documento_id, requerimento_id, tipo_documento, nome_arquivo, caminho_arquivo, 
-            hash_documento, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
-            tipo_assinatura, assinatura_criptografada, timestamp_assinatura, ip_assinante
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
-        
-        $stmtAss->execute([
-            $novoDocumentoId, // NOVO ID único
-            $id,
-            $docAnterior['tipo_documento'] ?? 'parecer',
-            $docAnterior['nome_arquivo'],
-            $docAnterior['caminho_arquivo'],
-            $docAnterior['hash_documento'],
-            $_SESSION['admin_id'],
-            $_SESSION['admin_nome'],
-            null,
-            'Secretário Municipal de Meio Ambiente',
-            'texto',
-            $novaAssinaturaCriptografada, // Nova assinatura gerada
-            $_SERVER['REMOTE_ADDR']
-        ]);
+        // 2. Inserir Assinatura do Secretário para CADA documento encontrado
+        foreach ($documentosAnteriores as $docAnterior) {
+            
+            // Gerar novo ID único para esta assinatura
+            $novoDocumentoId = bin2hex(random_bytes(32));
+            
+            // Reassinar o hash do documento original
+            $novaAssinaturaCriptografada = $assinaturaService->assinarHash($docAnterior['hash_documento']);
+
+            $stmtAss = $pdo->prepare("INSERT INTO assinaturas_digitais (
+                documento_id, requerimento_id, tipo_documento, nome_arquivo, caminho_arquivo, 
+                hash_documento, assinante_id, assinante_nome, assinante_cpf, assinante_cargo, 
+                tipo_assinatura, assinatura_criptografada, timestamp_assinatura, ip_assinante
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
+            
+            $stmtAss->execute([
+                $novoDocumentoId, // NOVO ID único
+                $id,
+                $docAnterior['tipo_documento'] ?? 'parecer',
+                $docAnterior['nome_arquivo'],
+                $docAnterior['caminho_arquivo'],
+                $docAnterior['hash_documento'],
+                $_SESSION['admin_id'],
+                $_SESSION['admin_nome'],
+                null,
+                'Secretário Municipal de Meio Ambiente',
+                'texto',
+                $novaAssinaturaCriptografada,
+                $_SERVER['REMOTE_ADDR']
+            ]);
+        }
 
         // 3. Atualizar Status do Requerimento
         $stmtUpdate = $pdo->prepare("UPDATE requerimentos SET status = 'Alvará Emitido', data_atualizacao = NOW() WHERE id = ?");
