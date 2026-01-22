@@ -226,8 +226,8 @@ include 'header.php';
     <!-- Header Page -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-1 fw-bold text-dark">Logs de Email</h4>
-            <p class="text-muted mb-0">Histórico de todas as comunicações enviadas pelo sistema</p>
+            <h4 class="mb-1 fw-bold text-dark">Histórico de Envios de Email</h4>
+            <p class="text-muted mb-0">Rastreamento de todas as comunicações oficiais enviadas</p>
         </div>
         <div>
             <button class="btn btn-light border" onclick="window.location.reload()">
@@ -404,8 +404,8 @@ include 'header.php';
                                     </span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <button class="btn btn-action btn-outline-primary" onclick="showLogDetails(<?php echo $log['id']; ?>)" title="Ver Detalhes">
-                                        <i class="fas fa-eye"></i>
+                                    <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2" onclick="showLogDetails(<?php echo $log['id']; ?>)">
+                                        <i class="fas fa-file-invoice"></i> Ver Comprovante
                                     </button>
                                 </td>
                             </tr>
