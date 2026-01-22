@@ -405,7 +405,7 @@ include 'header.php';
                                 </td>
                                 <td class="text-end pe-4">
                                     <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2" onclick="showLogDetails(<?php echo $log['id']; ?>)">
-                                        <i class="fas fa-file-invoice"></i> Ver Comprovante
+                                        <i class="fas fa-info-circle"></i> Ver Detalhes
                                     </button>
                                 </td>
                             </tr>
@@ -492,8 +492,13 @@ include 'header.php';
 </div>
 
 <script>
+    let logDetailsModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        logDetailsModal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
+    });
+
     function showLogDetails(logId) {
-        const modal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
         const content = document.getElementById('logDetailsContent');
         
         content.innerHTML = `
@@ -502,7 +507,8 @@ include 'header.php';
                 <p class="text-muted mb-0">Carregando detalhes...</p>
             </div>
         `;
-        modal.show();
+        
+        logDetailsModal.show();
 
         fetch(`ajax_log_details.php?id=${logId}`)
             .then(response => {

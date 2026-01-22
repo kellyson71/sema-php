@@ -3,7 +3,7 @@ require_once 'conexao.php';
 verificaLogin();
 
 if (!isset($_GET['id'])) {
-    echo '<div class="alert alert-danger">ID não fornecido</div>';
+    echo '<div class="alert alert-danger m-3">ID não fornecido</div>';
     exit;
 }
 
@@ -24,99 +24,107 @@ try {
     $log = $stmt->fetch();
 
     if (!$log) {
-        echo '<div class="alert alert-warning">Log não encontrado</div>';
+        echo '<div class="alert alert-warning m-3">Log não encontrado</div>';
         exit;
     }
 } catch (PDOException $e) {
-    echo '<div class="alert alert-danger">Erro ao buscar dados: ' . $e->getMessage() . '</div>';
+    echo '<div class="alert alert-danger m-3">Erro ao buscar dados: ' . $e->getMessage() . '</div>';
     exit;
 }
-
-// Estilos inline para garantir que o modal não quebre e fique bonito
 ?>
 
-<div class="comprovante-container bg-white">
-    <!-- Cabeçalho do Comprovante -->
-    <div class="text-center mb-4 pb-3 border-bottom">
-        <h5 class="fw-bold text-secondary text-uppercase mb-1">Comprovante de Envio de Email</h5>
-        <p class="text-muted small mb-0">Hash de Registro: <?php echo md5($log['id'] . $log['data_envio']); ?></p>
+<div class="container-fluid p-0">
+    <!-- Status Banner -->
+    <div class="alert <?php echo $log['status'] === 'SUCESSO' ? 'alert-success' : 'alert-danger'; ?> mb-4 rounded-3 border-0 shadow-sm">
+        <div class="d-flex align-items-center">
+            <?php if ($log['status'] === 'SUCESSO'): ?>
+                <div class="display-6 me-3"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Email Enviado com Sucesso</h5>
+                    <p class="mb-0 small opacity-75">Processado em <?php echo date('d/m/Y \à\s H:i:s', strtotime($log['data_envio'])); ?></p>
+                </div>
+            <?php else: ?>
+                <div class="display-6 me-3"><i class="fas fa-times-circle"></i></div>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Falha no Envio</h5>
+                    <p class="mb-0 small opacity-75">Ocorreu um erro durante o processamento.</p>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
-    <!-- Status do Envio -->
-    <div class="alert <?php echo $log['status'] === 'SUCESSO' ? 'alert-success' : 'alert-danger'; ?> d-flex align-items-center mb-4">
-        <?php if ($log['status'] === 'SUCESSO'): ?>
-            <i class="fas fa-check-circle fa-2x me-3"></i>
-            <div>
-                <strong>Email Enviado com Sucesso</strong><br>
-                <small>O servidor de email aceitou a solicitação em <?php echo date('d/m/Y \à\s H:i:s', strtotime($log['data_envio'])); ?></small>
+    <div class="row g-4">
+        <!-- Detalhes do Envio -->
+        <div class="col-12">
+            <h6 class="text-uppercase text-muted fw-bold small mb-3">Informações do Envio</h6>
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold">DESTINATÁRIO</label>
+                            <div class="d-flex align-items-center mt-1">
+                                <div class="avatar bg-white text-secondary rounded p-2 me-2 border">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="text-break">
+                                    <div class="fw-bold text-dark"><?php echo htmlspecialchars($log['email_destino']); ?></div>
+                                    <?php if ($log['requerente_nome']): ?>
+                                        <div class="small text-muted"><?php echo htmlspecialchars($log['requerente_nome']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold">CONTEXTO</label>
+                            <div class="mt-1">
+                                <?php if ($log['protocolo']): ?>
+                                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 py-2 px-3">
+                                        Protocolo #<?php echo htmlspecialchars($log['protocolo']); ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-muted fst-italic">Sem protocolo vinculado</span>
+                                <?php endif; ?>
+                                <div class="small text-muted mt-1">
+                                    Enviado por: <strong><?php echo htmlspecialchars($log['usuario_envio'] ?? 'Sistema'); ?></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        <?php else: ?>
-            <i class="fas fa-times-circle fa-2x me-3"></i>
-            <div>
-                <strong>Falha no Envio</strong><br>
-                <small>Ocorreu um erro ao tentar processar este envio.</small>
+        </div>
+
+        <!-- Erro (se houver) -->
+        <?php if ($log['status'] !== 'SUCESSO' && !empty($log['erro'])): ?>
+            <div class="col-12">
+                <h6 class="text-uppercase text-danger fw-bold small mb-2">Detalhes do Erro</h6>
+                <div class="p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded font-monospace small text-danger">
+                    <?php echo htmlspecialchars($log['erro']); ?>
+                </div>
             </div>
         <?php endif; ?>
-    </div>
 
-    <!-- Detalhes Técnicos (Grid) -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-light h-100">
-                <label class="d-block text-muted small fw-bold text-uppercase mb-1">Destinatário</label>
-                <div class="d-flex align-items-center">
-                    <div class="bg-white rounded-circle p-2 border me-2 text-secondary">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold text-dark"><?php echo htmlspecialchars($log['email_destino']); ?></div>
-                        <?php if ($log['requerente_nome']): ?>
-                            <small class="text-muted"><?php echo htmlspecialchars($log['requerente_nome']); ?></small>
-                        <?php endif; ?>
-                    </div>
+        <!-- Conteúdo do Email -->
+        <div class="col-12">
+            <h6 class="text-uppercase text-muted fw-bold small mb-3">Conteúdo da Mensagem</h6>
+            <div class="card border border-light shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <div class="small text-muted fw-bold mb-1">ASSUNTO</div>
+                    <h5 class="mb-0 text-dark"><?php echo htmlspecialchars($log['assunto']); ?></h5>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-light h-100">
-                <label class="d-block text-muted small fw-bold text-uppercase mb-1">Identificação</label>
-                <div class="d-flex flex-column gap-1">
-                    <?php if ($log['protocolo']): ?>
-                        <span class="badge bg-white text-dark border w-auto align-self-start">
-                            <i class="fas fa-file-alt me-1 text-primary"></i> Protocolo: <?php echo htmlspecialchars($log['protocolo']); ?>
-                        </span>
-                    <?php endif; ?>
-                    <span class="text-muted small">
-                        Enviado por: <strong><?php echo htmlspecialchars($log['usuario_envio'] ?? 'Sistema'); ?></strong>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Se houver erro, mostrar detalhe -->
-    <?php if ($log['status'] !== 'SUCESSO' && !empty($log['erro'])): ?>
-        <div class="card border-danger mb-4">
-            <div class="card-header bg-danger text-white">
-                <i class="fas fa-exclamation-triangle me-2"></i> Detalhes do Erro
-            </div>
-            <div class="card-body bg-light text-danger font-monospace small">
-                <?php echo htmlspecialchars($log['erro']); ?>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- Conteúdo do Email -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white border-bottom py-3">
-            <label class="text-muted small fw-bold text-uppercase mb-1">Assunto</label>
-            <h6 class="mb-0 fw-bold text-dark w-100"><?php echo htmlspecialchars($log['assunto']); ?></h6>
-        </div>
-        <div class="card-body bg-light p-0">
-            <div class="email-preview p-4 bg-white m-3 border rounded">
-                <!-- Wrapper seguro para conteúdo HTML do email -->
-                <div class="email-content-wrapper" style="all: initial; font-family: sans-serif;">
-                    <?php echo $log['mensagem']; ?>
+                <div class="card-body p-0">
+                    <div class="message-preview bg-white p-4 border-top">
+                        <!-- Wrapper seguro para HTML -->
+                        <div class="email-safe-container" style="
+                            font-family: 'Segoe UI', Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                            overflow-wrap: break-word;
+                            max-width: 100%;
+                        ">
+                            <?php echo $log['mensagem']; ?>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
