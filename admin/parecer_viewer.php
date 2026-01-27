@@ -216,7 +216,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             position: relative;
             z-index: 21;
             font-family: "Times New Roman", Times, serif;
-            font-size: 10pt;
+            font-size: 12pt;
             line-height: 1.5;
             color: #000;
             text-align: justify;
@@ -340,17 +340,27 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                 background: white;
                 padding: 0;
                 margin: 0;
+                height: 100vh;
+                overflow: hidden !important;
             }
             .pagina {
                 margin: 0;
                 box-shadow: none;
                 width: 210mm;
                 height: 297mm;
-                page-break-after: always;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                overflow: hidden !important;
             }
             * {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+            }
+            
+            /* Ocultar elementos desnecessários na impressão */
+            .rodape-container {
+                position: absolute;
+                bottom: 0;
             }
         }
     </style>
