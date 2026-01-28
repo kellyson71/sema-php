@@ -435,7 +435,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             }
         }
 
-        window.onafterprint = function() {
+        /* window.onafterprint = function() {
             setTimeout(function() {
                 // Só fecha se foi aberto para imprimir (verificação simplificada)
                 const urlParams = new URLSearchParams(window.location.search);
@@ -443,7 +443,7 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                     window.close();
                 }
             }, 100);
-        }
+        } */
 
         window.onbeforeprint = function() {
             document.body.classList.add('printing');
