@@ -1635,7 +1635,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <!-- Pareceres serão carregados aqui -->
                 </div>
             </div>
-        </div>
+            
 
         <!-- Aba: Histórico -->
         <div class="tab-pane fade" id="historico" role="tabpanel">

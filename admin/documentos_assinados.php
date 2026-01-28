@@ -421,9 +421,9 @@ include 'header.php';
                 <div class="documentos-grid">
                     <?php foreach ($documentos as $doc): ?>
                         <?php
-                        // Verificar se o arquivo HTML existe
-                        $caminhoHtml = __DIR__ . '/../assets/doc/' . $doc['nome_arquivo'];
-                        $documentoApagado = !file_exists($caminhoHtml);
+                        // Verificar se o arquivo existe usando o caminho salvo no banco
+                        $caminhoArquivo = $doc['caminho_arquivo'];
+                        $documentoApagado = empty($caminhoArquivo) || !file_exists($caminhoArquivo);
                         ?>
                         <div class="document-card">
                             <div class="document-header">
