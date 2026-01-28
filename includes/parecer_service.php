@@ -1189,20 +1189,28 @@ class ParecerService
                         'data' => date('d/m/Y H:i', filemtime($caminhoCompleto)),
                         'tamanho' => filesize($caminhoCompleto),
                         'tipo' => $ext,
-                        'documento_id' => null
+                        'documento_id' => null,
+                        'assinante' => 'Desconhecido'
                     ];
 
                     $caminhoJson = $pastaRequerimento . pathinfo($file, PATHINFO_FILENAME) . '.json';
                     if (file_exists($caminhoJson)) {
                         $jsonData = json_decode(file_get_contents($caminhoJson), true);
-                        if ($jsonData && isset($jsonData['documento_id'])) {
-                            $parecerData['documento_id'] = $jsonData['documento_id'];
+                        if ($jsonData) {
+                            if (isset($jsonData['documento_id'])) {
+                                $parecerData['documento_id'] = $jsonData['documento_id'];
+                            }
+                            if (isset($jsonData['dados_assinatura']['assinante_nome'])) {
+                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome'];
+                            } elseif (isset($jsonData['dados_assinatura']['assinante_nome_completo'])) {
+                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome_completo'];
+                            }
                         }
                     } else {
                         // Buscar documento_id na tabela de assinaturas digitais
                         // Tentar buscar pelo nome do arquivo ou pelo caminho
                         $stmt = $pdo->prepare("
-                            SELECT documento_id
+                            SELECT documento_id, assinante_nome
                             FROM assinaturas_digitais
                             WHERE requerimento_id = ?
                             AND (nome_arquivo = ? OR caminho_arquivo LIKE ?)
@@ -1214,6 +1222,7 @@ class ParecerService
                         $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
                         if ($resultado) {
                             $parecerData['documento_id'] = $resultado['documento_id'];
+                            $parecerData['assinante'] = $resultado['assinante_nome'];
                         }
                     }
 

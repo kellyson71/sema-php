@@ -930,6 +930,62 @@ try {
             ]);
             break;
 
+        case 'excluir_documento_assinado':
+            $documento_id = $input['documento_id'] ?? '';
+            $permanente = (bool)($input['permanente'] ?? false);
+
+            if (empty($documento_id)) {
+                throw new Exception('ID do documento não informado');
+            }
+
+            // Buscar dados do documento para saber o caminho do arquivo
+            $stmt = $pdo->prepare("SELECT caminho_arquivo, requerimento_id FROM assinaturas_digitais WHERE documento_id = ?");
+            $stmt->execute([$documento_id]);
+            $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$doc) {
+                // Se não está no banco, talvez já tenha sido excluído
+                echo json_encode(['success' => true]); 
+                exit;
+            }
+
+            $caminhoArquivo = $doc['caminho_arquivo'];
+            $requerimento_id = $doc['requerimento_id'];
+
+            // Se for permanente, apagar o arquivo físico e o JSON de metadados
+            if ($permanente) {
+                if (!empty($caminhoArquivo) && file_exists($caminhoArquivo)) {
+                    @unlink($caminhoArquivo);
+                }
+                
+                // Tenta apagar o arquivo JSON também
+                $caminhoJson = str_replace('.html', '.json', $caminhoArquivo);
+                if (!empty($caminhoJson) && file_exists($caminhoJson)) {
+                    @unlink($caminhoJson);
+                }
+            }
+
+            // Remover do banco de dados
+            $stmt = $pdo->prepare("DELETE FROM assinaturas_digitais WHERE documento_id = ?");
+            $success = $stmt->execute([$documento_id]);
+
+            if ($success) {
+                // Registrar no histórico
+                $acaoDesc = $permanente ? "Excluiu permanentemente o documento assinado (ID: $documento_id)" : "Removeu da listagem o documento assinado (ID: $documento_id)";
+                $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+                $stmt->execute([
+                    $_SESSION['admin_id'],
+                    $requerimento_id,
+                    $acaoDesc
+                ]);
+            }
+
+            echo json_encode([
+                'success' => $success,
+                'mensagem' => $success ? 'Excluído com sucesso!' : 'Erro ao realizar a exclusão'
+            ]);
+            break;
+
         default:
             throw new Exception('Ação não reconhecida');
     }

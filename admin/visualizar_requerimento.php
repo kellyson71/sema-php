@@ -3679,7 +3679,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     <span>${nomeLimpo}</span>
                                     ${seloTipo}
                                 </div>
-                                <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
+                                <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : "" }</div>
                             </div>
                             <div class="data-actions">
                                 <a href="${viewerUrl}"
@@ -3730,7 +3730,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <span>${nomeLimpo}</span>
                                 ${seloTipo}
                             </div>
-                            <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}</div>
+                            <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : "" }</div>
                          </div>
                          <div class="data-actions">
                              <a href="${viewerUrl}"

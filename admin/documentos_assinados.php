@@ -282,6 +282,17 @@ include 'header.php';
         color: white;
     }
 
+    .btn-action.btn-outline-danger {
+        background: transparent;
+        color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-action.btn-outline-danger:hover {
+        background: #dc3545;
+        color: white;
+    }
+
     .btn-action:disabled,
     .btn-action.btn-secondary:disabled {
         background: #e9ecef;
@@ -531,13 +542,7 @@ include 'header.php';
                                         <i class="fas fa-file-alt"></i>
                                     </a>
                                 <?php endif; ?>
-                                <a href="../consultar/verificar.php?id=<?php echo htmlspecialchars($doc['documento_id']); ?>"
-                                   target="_blank"
-                                   class="btn btn-outline-info btn-action"
-                                   title="Verificar Autenticidade">
-                                    <i class="fas fa-shield-alt"></i>
-                                </a>
-                            </div>
+                                <a href="../consultar/verificar.php?id=<?php echo htmlspecialchars($doc["documento_id"]); ?>" target="_blank" class="btn btn-outline-info btn-action" title="Verificar Autenticidade"><i class="fas fa-shield-alt"></i></a><button type="button" class="btn btn-outline-danger btn-action" onclick="excluirDocumento('<?php echo $doc["documento_id"]; ?>')" title="Excluir Documento"><i class="fas fa-trash"></i></button></div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -594,6 +599,83 @@ include 'header.php';
         </div>
     </div>
 </div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExcluirDocumento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i> Excluir Documento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Como você deseja excluir este documento assinado?</p>
+                
+                <div class="card mb-3 border-warning">
+                    <div class="card-body">
+                        <h6 class="fw-bold"><i class="fas fa-list me-2"></i>Remover da Listagem</h6>
+                        <p class="small text-muted mb-2">O registro será removido do banco de dados e não aparecerá mais nesta lista, mas os arquivos físicos permanecerão no servidor.</p>
+                        <button type="button" class="btn btn-warning btn-sm w-100" onclick="confirmarExclusao(false)">
+                            Apenas remover da listagem
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-danger"><i class="fas fa-trash-alt me-2"></i>Exclusão Permanente</h6>
+                        <p class="small text-muted mb-2">O registro será removido e o arquivo PDF será apagado permanentemente do servidor. Esta ação não pode ser desfeita.</p>
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="confirmarExclusao(true)">
+                            Excluir permanentemente
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let documentoIdParaExcluir = null;
+const modalExcluir = new bootstrap.Modal(document.getElementById('modalExcluirDocumento'));
+
+function excluirDocumento(id) {
+    documentoIdParaExcluir = id;
+    modalExcluir.show();
+}
+
+function confirmarExclusao(permanente) {
+    if (permanente && !confirm('TEM CERTEZA? Esta ação apagará o arquivo físico do servidor e não poderá ser desfeita.')) {
+        return;
+    }
+
+    fetch('parecer_handler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'excluir_documento_assinado',
+            documento_id: documentoIdParaExcluir,
+            permanente: permanente
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro ao excluir: ' + (data.error || data.mensagem));
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao processar a requisição.');
+    });
+}
+</script>
 
 <?php include 'footer.php'; ?>
 
