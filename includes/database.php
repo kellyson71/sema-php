@@ -24,6 +24,8 @@ class Database
                     PDO::ATTR_EMULATE_PREPARES => false
                 ]
             );
+            // Definir timezone da conexão para coincidir com o PHP
+            $this->conn->exec("SET time_zone = '" . date('P') . "'");
         } catch (PDOException $e) {
             die("Erro de conexão: " . $e->getMessage());
         }
