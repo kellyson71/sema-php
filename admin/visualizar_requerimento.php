@@ -2006,12 +2006,14 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden;">
                             <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
                             <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000;" contenteditable="true"></div>
-                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.95); padding: 10px; border: 2px dashed #007bff; border-radius: 4px; min-width: 220px;">
-                                <img id="preview-qr-code" src="" style="width: 60px; height: 60px; flex-shrink: 0;" />
-                                <div style="font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px;">
-                                    <strong id="preview-nome-assinante"></strong>
+                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                                <img id="preview-qr-code" src="" style="width: 55px; height: 55px; flex-shrink: 0;" />
+                                <div style="font-size: 11px; text-align: left; line-height: 1.3; display: flex; flex-direction: column; gap: 2px;">
+                                    <strong>Assinado digitalmente por:</strong>
+                                    <span id="preview-nome-assinante" style="font-size: 12px; font-weight: bold;"></span>
                                     <span id="preview-cargo-assinante"></span>
-                                    <span id="preview-assinatura-visual" style="font-size: 16px; display: block;"></span>
+                                    <span id="preview-data-assinatura" style="font-size: 10px; color: #666;"></span>
+                                    <span id="preview-assinatura-visual" style="font-size: 14px; display: block; margin-top: 2px;"></span>
                                 </div>
                             </div>
                         </div>
@@ -3083,8 +3085,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          if (!visual || !dadosAssinatura) return;
 
          if (dadosAssinatura.tipo_assinatura === 'desenho' && typeof dadosAssinatura.assinatura === 'string') {
-             visual.innerHTML = `<img src="${dadosAssinatura.assinatura}" style="max-width: 140px; height: auto;">`;
-         } else if (dadosAssinatura.assinatura && dadosAssinatura.assinatura.texto) {
+            visual.innerHTML = `<img src="${dadosAssinatura.assinatura}" style="max-width: 120px; height: auto;">`;
+        } else if (dadosAssinatura.assinatura && dadosAssinatura.assinatura.texto) {
              visual.textContent = dadosAssinatura.assinatura.texto;
              visual.style.fontFamily = dadosAssinatura.assinatura.fonte || "'Arial', sans-serif";
          } else {
@@ -3244,16 +3246,23 @@ $isBlocked = $isFinalized || $isIndeferido;
 
          setTimeout(() => {
              const previewDocRect = previewDoc.getBoundingClientRect();
-             const blocoWidth = 200;
-             const blocoHeight = 100;
-             const centroX = previewDocRect.width - blocoWidth - 40 + (blocoWidth / 2);
-             const centroY = previewDocRect.height - blocoHeight - 40 + (blocoHeight / 2);
+            const blocoRect = blocoAssinatura.getBoundingClientRect();
+            const blocoWidth = blocoRect.width || 200;
+            const blocoHeight = blocoRect.height || 100;
+            
+            // Posicionar no canto inferior direito por padrão
+            const centroX = previewDocRect.width - blocoWidth - 40 + (blocoWidth / 2);
+            const centroY = previewDocRect.height - blocoHeight - 60 + (blocoHeight / 2);
 
             coordenadasAssinatura.x = centroX / previewDocRect.width;
             coordenadasAssinatura.y = centroY / previewDocRect.height;
 
             blocoAssinatura.style.left = (centroX - blocoWidth / 2) + 'px';
             blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
+            
+            // Atualizar data na visualização
+            const dataEl = document.getElementById('preview-data-assinatura');
+            if (dataEl) dataEl.textContent = 'Em: ' + new Date().toLocaleString('pt-BR').substring(0, 16);
 
             atualizarStatusPaginacao(previewConteudo, previewDoc);
         }, 100);

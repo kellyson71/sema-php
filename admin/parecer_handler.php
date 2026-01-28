@@ -512,6 +512,42 @@ try {
             ]);
             break;
 
+        case 'atualizar_posicao_assinatura':
+            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
+            $nome_arquivo = $input['nome_arquivo'] ?? '';
+            $posicaoX = floatval($input['posicao_x'] ?? 0);
+            $posicaoY = floatval($input['posicao_y'] ?? 0);
+
+            if ($requerimento_id <= 0 || empty($nome_arquivo)) {
+                throw new Exception('Parâmetros inválidos');
+            }
+
+            $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
+            $nomeBase = pathinfo($nome_arquivo, PATHINFO_FILENAME);
+            $caminhoJson = $pastaRequerimento . $nomeBase . '.json';
+
+            if (!file_exists($caminhoJson)) {
+                throw new Exception('Arquivo de metadados não encontrado');
+            }
+
+            $metadados = json_decode(file_get_contents($caminhoJson), true);
+            if (!$metadados) {
+                throw new Exception('Erro ao ler metadados');
+            }
+
+            // Atualizar posição
+            $metadados['posicao_assinatura'] = [
+                'x' => $posicaoX,
+                'y' => $posicaoY
+            ];
+
+            if (file_put_contents($caminhoJson, json_encode($metadados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Erro ao salvar arquivo JSON']);
+            }
+            break;
+
         case 'gerar_pdf_com_assinatura_posicionada':
             require_once '../includes/assinatura_digital_service.php';
             require_once '../includes/qrcode_service.php';

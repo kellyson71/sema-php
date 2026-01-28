@@ -113,14 +113,14 @@ foreach ($assinaturas as $ass) {
 
     $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacaoFinal);
 
-    $blocosAssinaturaHtml .= '<div class="assinatura-item" style="position: relative; display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed #ccc; background: rgba(255,255,255,0.8); border-radius: 8px;">';
+    $blocosAssinaturaHtml .= '<div class="assinatura-item" style="position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed #ccc; background: rgba(255,255,255,0.85); border-radius: 8px; cursor: move; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-width: 200px;">';
     $blocosAssinaturaHtml .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 55px; height: 55px; flex-shrink: 0;" />';
     $blocosAssinaturaHtml .= '<div class="dados-assinante" style="font-size: 11px; text-align: left; line-height: 1.3;">';
     $blocosAssinaturaHtml .= '<strong>Assinado digitalmente por:</strong><br>';
     $blocosAssinaturaHtml .= '<span style="font-size: 12px; font-weight: bold;">' . htmlspecialchars($ass['assinante_nome']) . '</span><br>';
     $blocosAssinaturaHtml .= htmlspecialchars($ass['assinante_cargo']) . '<br>';
     $blocosAssinaturaHtml .= 'Em: ' . date('d/m/Y H:i', strtotime($ass['timestamp_assinatura'])) . '<br>';
-    $blocosAssinaturaHtml .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 9px; color: #0066cc;">Verificar Autenticidade</a>';
+    $blocosAssinaturaHtml .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 9px; color: #0066cc; text-decoration: none;">Verificar Autenticidade</a>';
     $blocosAssinaturaHtml .= '</div></div>';
 }
 
@@ -177,10 +177,44 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         }
         body {
             font-family: "Times New Roman", Times, serif;
-            font-size: 11pt;
-            line-height: 1.6;
+            font-size: 10.5pt;
+            line-height: 1.5;
             color: #000;
-            background: #f0f0f0;
+            background: #f4f4f4;
+        }
+        .no-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 10px;
+        }
+        .btn-print {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-save-pos {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
         }
         .pagina {
             position: relative;
@@ -216,8 +250,8 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             position: relative;
             z-index: 21;
             font-family: "Times New Roman", Times, serif;
-            font-size: 12pt;
-            line-height: 1.5;
+            font-size: 11pt;
+            line-height: 1.4;
             color: #000;
             text-align: justify;
             text-justify: inter-word;
@@ -362,12 +396,30 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                 position: absolute;
                 bottom: 0;
             }
+            .no-print, .assinatura-item {
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+            }
+            .no-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="pagina">
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="white"><path d="M18,3H6V7H18M19,12A1,1 0 0,1 18,11A1,1 0 0,1 19,10A1,1 0 0,1 20,11A1,1 0 0,1 19,12M16,19H8V14H16M19,8H5A3,3 0 0,0 2,11V17H6V21H18V17H22V11A3,3 0 0,0 19,8Z"></path></svg>
+            Imprimir Documento
+        </button>
+        <button id="btn-save-position" class="btn-save-pos" onclick="salvarPosicaoAssinatura()">
+            Salvar Posição
+        </button>
+    </div>
+
+    <div class="pagina" id="document-page">
         <?php if (!empty($logoBase64)): ?>
         <div class="logo-container">
             <img src="<?php echo htmlspecialchars($logoBase64); ?>" alt="Logo SEMA" />
@@ -385,11 +437,9 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
         </div>
 
         <?php if (!empty($blocoAssinatura)): ?>
-        <?php if (!empty($blocoAssinatura)): ?>
-        <div class="assinatura-container" style="position: relative; margin-top: auto; padding-bottom: 20mm; width: 100%;">
+        <div class="assinatura-container" id="draggable-signatures">
             <?php echo $blocoAssinatura; ?>
         </div>
-        <?php endif; ?>
         <?php endif; ?>
 
         <div class="rodape-container">
@@ -410,43 +460,123 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
     </div>
 
     <script>
-        window.onload = function() {
-            // Verifica se o parâmetro 'noprint' está presente na URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const shouldPrint = !urlParams.has('noprint');
+        let coordenadas = {
+            x: <?php echo $posicaoAssinatura['x']; ?>,
+            y: <?php echo $posicaoAssinatura['y']; ?>
+        };
 
-            if (shouldPrint) {
-                setTimeout(function() {
-                    if (window.print) {
-                        try {
-                            const mediaQueryList = window.matchMedia('print');
-                            mediaQueryList.addListener(function(mql) {
-                                if (mql.matches) {
-                                    document.body.style.margin = '0';
-                                    document.body.style.padding = '0';
-                                }
-                            });
-                        } catch (e) {
-                            console.log('Configuração de impressão não suportada');
-                        }
-                        window.print();
-                    }
-                }, 500);
+        window.onload = function() {
+            const container = document.getElementById('draggable-signatures');
+            const items = document.querySelectorAll('.assinatura-item');
+            const page = document.getElementById('document-page');
+            
+            if (container && page) {
+                // Posicionar inicialmente conforme salvo
+                const pageRect = page.getBoundingClientRect();
+                items.forEach((item, index) => {
+                    const itemWidth = item.offsetWidth;
+                    const itemHeight = item.offsetHeight;
+                    
+                    // Se houver mais de uma, dar um offset horizontal para não ficarem em cima uma da outra
+                    const offsetX = (index * 220); 
+                    
+                    const left = (coordenadas.x * pageRect.width) - (itemWidth / 2) + offsetX;
+                    const top = (coordenadas.y * pageRect.height) - (itemHeight / 2);
+                    
+                    item.style.left = left + 'px';
+                    item.style.top = top + 'px';
+                    
+                    inicializarDrag(item, page);
+                });
             }
         }
 
-        /* window.onafterprint = function() {
-            setTimeout(function() {
-                // Só fecha se foi aberto para imprimir (verificação simplificada)
-                const urlParams = new URLSearchParams(window.location.search);
-                if (!urlParams.has('noprint')) {
-                    window.close();
-                }
-            }, 100);
-        } */
+        function inicializarDrag(elem, bounds) {
+            let isDragging = false;
+            let offset = { x: 0, y: 0 };
 
-        window.onbeforeprint = function() {
-            document.body.classList.add('printing');
+            elem.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'A') return;
+                isDragging = true;
+                const rect = elem.getBoundingClientRect();
+                offset.x = e.clientX - rect.left;
+                offset.y = e.clientY - rect.top;
+                elem.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const boundsRect = bounds.getBoundingClientRect();
+                let x = e.clientX - boundsRect.left - offset.x;
+                let y = e.clientY - boundsRect.top - offset.y;
+
+                // Restringir ao documento
+                const maxX = boundsRect.width - elem.offsetWidth;
+                const maxY = boundsRect.height - elem.offsetHeight;
+                
+                x = Math.max(0, Math.min(x, maxX));
+                y = Math.max(0, Math.min(y, maxY));
+
+                elem.style.left = x + 'px';
+                elem.style.top = y + 'px';
+                
+                document.getElementById('btn-save-position').style.display = 'block';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    elem.style.cursor = 'move';
+                    
+                    const boundsRect = bounds.getBoundingClientRect();
+                    const centroX = elem.offsetLeft + (elem.offsetWidth / 2);
+                    const centroY = elem.offsetTop + (elem.offsetHeight / 2);
+                    
+                    coordenadas.x = centroX / boundsRect.width;
+                    coordenadas.y = centroY / boundsRect.height;
+                }
+            });
+        }
+
+        async function salvarPosicaoAssinatura() {
+            const btn = document.getElementById('btn-save-position');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+
+            try {
+                const response = await fetch('parecer_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'atualizar_posicao_assinatura',
+                        requerimento_id: <?php echo $assinaturaInicial['requerimento_id']; ?>,
+                        nome_arquivo: '<?php echo $assinaturaInicial['nome_arquivo']; ?>',
+                        posicao_x: coordenadas.x,
+                        posicao_y: coordenadas.y
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    btn.textContent = 'Salvo!';
+                    setTimeout(() => {
+                        btn.style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }, 2000);
+                } else {
+                    alert('Erro ao salvar: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro na conexão ao salvar.');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         }
     </script>
 </body>
