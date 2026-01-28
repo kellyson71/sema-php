@@ -69,66 +69,62 @@ include 'header.php';
 <style>
     .documentos-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
         margin-top: 20px;
     }
 
     .document-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 18px;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        padding: 14px;
         background: #fff;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         display: flex;
         flex-direction: column;
-        height: 100%;
     }
 
     .document-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-3px);
-        border-color: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-color: #d0d0d0;
     }
 
     .document-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 2px solid #f5f5f5;
-        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f0f0f0;
         gap: 8px;
     }
 
     .document-id {
         font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: #666;
-        background: #f8f9fa;
-        padding: 4px 8px;
-        border-radius: 6px;
+        font-size: 0.7rem;
+        color: #888;
+        background: #f5f5f5;
+        padding: 3px 7px;
+        border-radius: 4px;
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
     }
 
     .document-badge {
-        font-size: 0.7rem;
-        padding: 4px 10px;
-        border-radius: 20px;
+        font-size: 0.65rem;
+        padding: 3px 8px;
+        border-radius: 12px;
         font-weight: 600;
         white-space: nowrap;
     }
 
     .info-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 12px;
-        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
     }
 
     .info-item {
@@ -136,20 +132,27 @@ include 'header.php';
         flex-direction: column;
     }
 
+    .info-item.full-width {
+        grid-column: 1 / -1;
+    }
+
     .info-label {
-        font-size: 0.7rem;
-        color: #666;
+        font-size: 0.65rem;
+        color: #888;
         text-transform: uppercase;
         font-weight: 600;
-        margin-bottom: 3px;
-        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+        letter-spacing: 0.3px;
     }
 
     .info-value {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: #333;
         font-weight: 500;
-        line-height: 1.4;
+        line-height: 1.3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .info-value strong {
@@ -159,30 +162,31 @@ include 'header.php';
     .protocolo-badge {
         background: var(--primary-color);
         color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
+        padding: 4px 10px;
+        border-radius: 5px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         white-space: nowrap;
+        margin-bottom: 8px;
     }
 
     .assinante-info {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        border: 1px solid #e9ecef;
+        gap: 8px;
+        padding: 8px;
+        background: #fafafa;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        border: 1px solid #f0f0f0;
     }
 
     .assinante-avatar {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         background: var(--primary-color);
         display: flex;
@@ -190,7 +194,7 @@ include 'header.php';
         justify-content: center;
         color: white;
         font-weight: bold;
-        font-size: 1rem;
+        font-size: 0.85rem;
         flex-shrink: 0;
     }
 
@@ -202,16 +206,16 @@ include 'header.php';
     .assinante-nome {
         font-weight: 600;
         color: #333;
-        font-size: 0.9rem;
-        margin-bottom: 2px;
+        font-size: 0.8rem;
+        margin-bottom: 1px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
     .assinante-meta {
-        font-size: 0.75rem;
-        color: #666;
+        font-size: 0.7rem;
+        color: #888;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -219,24 +223,76 @@ include 'header.php';
 
     .document-actions {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        gap: 6px;
         margin-top: auto;
-        padding-top: 12px;
-        border-top: 1px solid #eee;
+        padding-top: 10px;
+        border-top: 1px solid #f0f0f0;
     }
 
     .btn-action {
-        padding: 8px 12px;
-        border-radius: 8px;
+        padding: 6px 10px;
+        border-radius: 5px;
         font-weight: 500;
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 4px;
         transition: all 0.2s;
-        width: 100%;
+        flex: 1;
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+
+    .btn-action i {
+        font-size: 0.85rem;
+    }
+
+    .btn-action.btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .btn-action.btn-primary:hover {
+        background: var(--secondary-color);
+        border-color: var(--secondary-color);
+    }
+
+    .btn-action.btn-outline-secondary {
+        background: transparent;
+        color: #6c757d;
+        border-color: #6c757d;
+    }
+
+    .btn-action.btn-outline-secondary:hover {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-action.btn-outline-info {
+        background: transparent;
+        color: #0dcaf0;
+        border-color: #0dcaf0;
+    }
+
+    .btn-action.btn-outline-info:hover {
+        background: #0dcaf0;
+        color: white;
+    }
+
+    .btn-action:disabled,
+    .btn-action.btn-secondary:disabled {
+        background: #e9ecef;
+        color: #adb5bd;
+        border-color: #dee2e6;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
     }
 
     .empty-state {
@@ -255,28 +311,30 @@ include 'header.php';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px;
+        padding: 18px 20px;
         background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         color: white;
-        border-radius: 12px 12px 0 0;
+        border-radius: 8px 8px 0 0;
     }
 
     .stats-header h5 {
         margin: 0;
         font-weight: 600;
+        font-size: 1.1rem;
     }
 
     .badge-white {
         background: rgba(255, 255, 255, 0.2);
         color: white;
-        padding: 8px 15px;
-        border-radius: 20px;
+        padding: 6px 12px;
+        border-radius: 16px;
         font-weight: 600;
+        font-size: 0.85rem;
     }
 
     @media (max-width: 1200px) {
         .documentos-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         }
     }
 
@@ -287,7 +345,8 @@ include 'header.php';
 
         .document-header {
             flex-direction: column;
-            gap: 10px;
+            align-items: flex-start;
+            gap: 6px;
         }
 
         .stats-header {
@@ -296,15 +355,18 @@ include 'header.php';
             text-align: center;
         }
 
-        .protocolo-badge {
-            width: 100%;
-            justify-content: center;
+        .document-actions {
+            flex-direction: column;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
         }
     }
 
     @media (min-width: 1400px) {
         .documentos-grid {
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
         }
     }
 </style>
@@ -358,6 +420,11 @@ include 'header.php';
             <?php if (count($documentos) > 0): ?>
                 <div class="documentos-grid">
                     <?php foreach ($documentos as $doc): ?>
+                        <?php
+                        // Verificar se o arquivo HTML existe
+                        $caminhoHtml = __DIR__ . '/../assets/doc/' . $doc['nome_arquivo'];
+                        $documentoApagado = !file_exists($caminhoHtml);
+                        ?>
                         <div class="document-card">
                             <div class="document-header">
                                 <div class="document-id">
@@ -374,24 +441,29 @@ include 'header.php';
                                             <i class="fas fa-font"></i> Texto
                                         </span>
                                     <?php endif; ?>
+                                    <?php if ($documentoApagado): ?>
+                                        <span class="badge bg-danger document-badge" title="Documento HTML foi apagado">
+                                            <i class="fas fa-trash"></i> Apagado
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
                             <?php if ($doc['requerimento_protocolo']): ?>
-                                <div style="margin-bottom: 12px;">
+                                <div>
                                     <span class="protocolo-badge">
                                         <i class="fas fa-barcode"></i>
-                                        Protocolo: <?php echo htmlspecialchars($doc['requerimento_protocolo']); ?>
+                                        <?php echo htmlspecialchars($doc['requerimento_protocolo']); ?>
                                     </span>
                                 </div>
                             <?php endif; ?>
 
                             <div class="info-grid">
-                                <div class="info-item">
+                                <div class="info-item full-width">
                                     <span class="info-label">
                                         <i class="fas fa-user me-1"></i> Requerente
                                     </span>
-                                    <span class="info-value">
+                                    <span class="info-value" title="<?php echo htmlspecialchars($doc['requerente_nome'] ?? 'N/A'); ?>">
                                         <?php if (!empty($doc['requerente_nome'])): ?>
                                             <strong><?php echo htmlspecialchars($doc['requerente_nome']); ?></strong>
                                         <?php else: ?>
@@ -402,17 +474,16 @@ include 'header.php';
 
                                 <div class="info-item">
                                     <span class="info-label">
-                                        <i class="fas fa-calendar-alt me-1"></i> Data de Assinatura
+                                        <i class="fas fa-calendar-alt me-1"></i> Data
                                     </span>
                                     <span class="info-value">
-                                        <i class="far fa-clock me-1"></i>
                                         <?php echo formataData($doc['timestamp_assinatura']); ?>
                                     </span>
                                 </div>
 
                                 <div class="info-item">
                                     <span class="info-label">
-                                        <i class="fas fa-file-alt me-1"></i> Tipo de Documento
+                                        <i class="fas fa-file-alt me-1"></i> Tipo
                                     </span>
                                     <span class="info-value">
                                         <?php echo htmlspecialchars(ucfirst($doc['tipo_documento'] ?? 'parecer')); ?>
@@ -425,7 +496,7 @@ include 'header.php';
                                     <?php echo strtoupper(substr($doc['assinante_nome'], 0, 1)); ?>
                                 </div>
                                 <div class="assinante-details">
-                                    <div class="assinante-nome">
+                                    <div class="assinante-nome" title="<?php echo htmlspecialchars($doc['assinante_nome']); ?>">
                                         <?php echo htmlspecialchars($doc['assinante_nome']); ?>
                                     </div>
                                     <div class="assinante-meta">
@@ -441,24 +512,30 @@ include 'header.php';
                             </div>
 
                             <div class="document-actions">
-                                <a href="parecer_viewer.php?id=<?php echo htmlspecialchars($doc['documento_id']); ?>"
-                                   target="_blank"
-                                   class="btn btn-primary btn-action">
-                                    <i class="fas fa-eye"></i>
-                                    Visualizar Documento
-                                </a>
+                                <?php if ($documentoApagado): ?>
+                                    <button class="btn btn-secondary btn-action" disabled title="Documento foi apagado">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <a href="parecer_viewer.php?id=<?php echo htmlspecialchars($doc['documento_id']); ?>"
+                                       target="_blank"
+                                       class="btn btn-primary btn-action"
+                                       title="Visualizar Documento">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                <?php endif; ?>
                                 <?php if ($doc['requerimento_id']): ?>
                                     <a href="visualizar_requerimento.php?id=<?php echo $doc['requerimento_id']; ?>"
-                                       class="btn btn-outline-secondary btn-action">
+                                       class="btn btn-outline-secondary btn-action"
+                                       title="Ver Requerimento">
                                         <i class="fas fa-file-alt"></i>
-                                        Ver Requerimento
                                     </a>
                                 <?php endif; ?>
                                 <a href="../consultar/verificar.php?id=<?php echo htmlspecialchars($doc['documento_id']); ?>"
                                    target="_blank"
-                                   class="btn btn-outline-info btn-action">
+                                   class="btn btn-outline-info btn-action"
+                                   title="Verificar Autenticidade">
                                     <i class="fas fa-shield-alt"></i>
-                                    Verificar Autenticidade
                                 </a>
                             </div>
                         </div>
