@@ -639,10 +639,17 @@ include 'header.php';
 
 <script>
 let documentoIdParaExcluir = null;
-const modalExcluir = new bootstrap.Modal(document.getElementById('modalExcluirDocumento'));
+let modalExcluir = null;
 
 function excluirDocumento(id) {
     documentoIdParaExcluir = id;
+    
+    // Inicializar o modal apenas quando necessário (lazy initialization)
+    // Isso garante que o Bootstrap já esteja carregado
+    if (!modalExcluir) {
+        modalExcluir = new bootstrap.Modal(document.getElementById('modalExcluirDocumento'));
+    }
+    
     modalExcluir.show();
 }
 
