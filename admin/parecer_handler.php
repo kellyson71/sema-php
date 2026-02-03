@@ -176,27 +176,38 @@ try {
 
 
             // 4. Templates Padrão (Do sistema)
-            $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+            // Ajustar caminho para garantir que encontre a pasta assets/doc
+            $templatesDiretorio = realpath(dirname(__DIR__) . '/assets/doc') . '/';
             $templates = [];
             
-            // Em branco
-            $templates[] = ['nome' => 'em_branco', 'tipo' => 'html', 'caminho' => ''];
+            // Adicionar template em branco
+            $templates[] = [
+                'nome' => 'em_branco', 
+                'tipo' => 'html',
+                'caminho' => ''
+            ];
 
             if (is_dir($templatesDiretorio)) {
-                // HTMLs
+                // Listar HTMLs
                 $arquivosHtml = glob($templatesDiretorio . '*.html');
-                foreach ($arquivosHtml as $arquivo) {
-                    $nomeBase = basename($arquivo, '.html');
-                    if ($nomeBase == 'modelo_base') continue;
-                    $templates[] = ['nome' => $nomeBase, 'tipo' => 'html'];
+                if ($arquivosHtml) {
+                    foreach ($arquivosHtml as $arquivo) {
+                        $nomeBase = basename($arquivo, '.html');
+                        if ($nomeBase == 'modelo_base') continue;
+                        $templates[] = ['nome' => $nomeBase, 'tipo' => 'html'];
+                    }
                 }
                 
-                // DOCXs
+                // Listar DOCXs (se houver suporte)
                 $arquivosDocx = glob($templatesDiretorio . '*.docx');
-                foreach ($arquivosDocx as $arquivo) {
-                     $nomeBase = basename($arquivo, '.docx');
-                     $templates[] = ['nome' => $nomeBase, 'tipo' => 'docx'];
+                if ($arquivosDocx) {
+                    foreach ($arquivosDocx as $arquivo) {
+                         $nomeBase = basename($arquivo, '.docx');
+                         $templates[] = ['nome' => $nomeBase, 'tipo' => 'docx'];
+                    }
                 }
+            } else {
+                error_log("Diretório de templates não encontrado: " . dirname(__DIR__) . '/assets/doc');
             }
             // Ordenar templates
             usort($templates, function($a, $b) {
@@ -219,8 +230,20 @@ try {
             if (empty($template) || $requerimento_id <= 0) {
                 throw new Exception('Parâmetros inválidos');
             }
+            
+            // A. Template em Branco
+            if ($template === 'em_branco') {
+                 echo json_encode([
+                    'success' => true,
+                    'html' => '', 
+                    'is_draft' => false,
+                    'nome_rascunho' => 'Novo Parecer',
+                    'dados' => [] 
+                ]);
+                break;
+            }
 
-            // A. Verificar se é Rascunho de Banco de Dados
+            // B. Verificar se é Rascunho de Banco de Dados
             if (strpos($template, 'db_draft:') === 0) {
                 $rascunhoId = (int)substr($template, 9);
                 
