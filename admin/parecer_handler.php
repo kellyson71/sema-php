@@ -102,11 +102,7 @@ try {
 
         case 'listar_templates':
             $requerimento_id = (int)($input['requerimento_id'] ?? 0);
-            $templates = $parecerService->listarTemplates();
-            $templatesList = array_map(function($t) {
-                return is_array($t) ? $t['nome'] : $t;
-            }, $templates);
-
+            
             // 1. Meus Rascunhos (Banco de Dados)
             $meusRascunhos = [];
             if ($requerimento_id > 0) {
@@ -124,53 +120,93 @@ try {
                         'id' => 'db_draft:' . $r['id'],
                         'nome' => $r['nome'], 
                         'data' => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
+                        'data_ts' => strtotime($r['data_atualizacao']),
                         'assinante' => 'Você',
-                        'label' => "{$r['nome']} (Em andamento - " . date('d/m/Y H:i', strtotime($r['data_atualizacao'])) . ")"
+                        'label' => $r['nome'], // Agora usamos o nome limpo salvo no banco
+                        'origem' => 'db'
                     ];
                 }
             }
 
-            // 2. Documentos Anteriores (Sistema de Arquivos - Legado/Histórico)
+            // 2. Histórico Legado (Arquivos JSON)
             $historicoDocs = [];
-            if ($requerimento_id > 0) {
-                $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
-                if (is_dir($pastaRequerimento)) {
-                    $arquivos = glob($pastaRequerimento . '*.json');
-                    if ($arquivos) {
-                        usort($arquivos, function($a, $b) {
-                            return filemtime($b) - filemtime($a);
-                        });
+            $pastaPareceres = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
+           
+            if (is_dir($pastaPareceres)) {
+                $arquivos = glob($pastaPareceres . '*.json');
+                foreach ($arquivos as $arquivo) {
+                    $dados = json_decode(file_get_contents($arquivo), true);
+                    if ($dados) {
+                        $nomeArquivo = basename($arquivo, '.json');
+                        $timestamp = filemtime($arquivo);
+                        $dataFmt = date('d/m/Y H:i', $timestamp);
+                        $idDoc = $dados['documento_id'] ?? '';
+                        
+                        // Tentar gerar um nome melhorzinho pro legado
+                        $nomeExibicao = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
+                        $nomeExibicao = ucwords(str_replace('_', ' ', $nomeExibicao));
+                        // Se tiver ID curto, remove timestamp do nome se tiver
+                        $nomeExibicao = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
+                        
+                        $label = "$nomeExibicao (Arquivo Antigo)";
 
-                        $recentes = array_slice($arquivos, 0, 5);
-                        foreach ($recentes as $arquivo) {
-                            $dados = json_decode(file_get_contents($arquivo), true);
-                            if ($dados) {
-                                $nomeTemplate = $dados['template'] ?? 'Documento';
-                                $dataCriacao = isset($dados['data_criacao']) ? date('d/m/Y H:i', strtotime($dados['data_criacao'])) : date('d/m/Y H:i', filemtime($arquivo));
-                                
-                                $nomeAssinante = $dados['dados_assinatura']['assinante_nome'] ?? 
-                                                 $dados['dados_assinatura']['assinante_nome_completo'] ?? 
-                                                 'Desconhecido';
-                                
-                                $historicoDocs[] = [
-                                    'id' => 'draft:' . basename($arquivo),
-                                    'nome' => $nomeTemplate,
-                                    'data' => $dataCriacao,
-                                    'assinante' => $nomeAssinante,
-                                    'label' => "{$nomeTemplate} - {$nomeAssinante} ({$dataCriacao})"
-                                ];
-                            }
-                        }
+                        $historicoDocs[] = [
+                            'id' => 'draft:' . $nomeArquivo . '.json',
+                            'nome' => $nomeExibicao,
+                            'data' => $dataFmt,
+                            'data_ts' => $timestamp,
+                            'assinante' => $dados['dados_assinatura']['assinante_nome'] ?? '...',
+                            'label' => $label,
+                            'origem' => 'file'
+                        ];
                     }
                 }
             }
 
+            // 3. UNIFICAR E ORDENAR
+            $historicoUnificado = array_merge($meusRascunhos, $historicoDocs);
+            
+            // Ordenar por data (DESC) - Mais recente primeiro
+            usort($historicoUnificado, function($a, $b) {
+                return $b['data_ts'] - $a['data_ts'];
+            });
+
+            // Pegar apenas os 5 mais recentes para exibir na sessão "Histórico Recente"
+            $historicoRecente = array_slice($historicoUnificado, 0, 5);
+
+
+            // 4. Templates Padrão (Do sistema)
+            $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+            $templates = [];
+            
+            // Em branco
+            $templates[] = ['nome' => 'em_branco', 'tipo' => 'html', 'caminho' => ''];
+
+            if (is_dir($templatesDiretorio)) {
+                // HTMLs
+                $arquivosHtml = glob($templatesDiretorio . '*.html');
+                foreach ($arquivosHtml as $arquivo) {
+                    $nomeBase = basename($arquivo, '.html');
+                    if ($nomeBase == 'modelo_base') continue;
+                    $templates[] = ['nome' => $nomeBase, 'tipo' => 'html'];
+                }
+                
+                // DOCXs
+                $arquivosDocx = glob($templatesDiretorio . '*.docx');
+                foreach ($arquivosDocx as $arquivo) {
+                     $nomeBase = basename($arquivo, '.docx');
+                     $templates[] = ['nome' => $nomeBase, 'tipo' => 'docx'];
+                }
+            }
+            // Ordenar templates
+            usort($templates, function($a, $b) {
+                return strcmp($a['nome'], $b['nome']); 
+            });
+
             echo json_encode([
                 'success' => true,
-                'templates' => $templatesList,
-                'templates_detalhados' => $templates,
-                'rascunhos' => $meusRascunhos,
-                'historico' => $historicoDocs
+                'historico_recente' => $historicoRecente,
+                'templates' => $templates
             ]);
             break;
 
@@ -892,21 +928,42 @@ try {
 
             // AUTO-SAVE: Salvar cópia na tabela parecer_rascunhos
             try {
-                // Nome automático
+                // Nome padrão inicial
                 $nomeRascunho = 'Parecer Assinado: ' . date('d/m/Y H:i');
+                
+                // Buscar nome do Requerente para compor o título
+                $nomeRequerente = 'Requerente';
+                $stmtCheck = $pdo->prepare("SELECT requerente_nome FROM requerimentos WHERE id = ?");
+                $stmtCheck->execute([$requerimento_id]);
+                $dadosReq = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+                
+                if ($dadosReq && !empty($dadosReq['requerente_nome'])) {
+                    // Pegar primeiro nome + último (ou apenas primeiro se curto) para não ficar enorme
+                    $parts = explode(' ', trim($dadosReq['requerente_nome']));
+                    $nomeRequerente = $parts[0];
+                    if (count($parts) > 1) {
+                         $nomeRequerente .= ' ' . end($parts);
+                    }
+                }
+
                 if (!empty($template)) {
                      $nomeLimpo = str_replace(['db_draft:', 'draft:'], '', $template);
                      $nomeLimpo = pathinfo($nomeLimpo, PATHINFO_FILENAME);
-                     if (strpos($template, 'db_draft:') === 0) {
-                        $nomeRascunho = 'Versão Assinada: ' . date('d/m/Y H:i'); 
-                     } else {
-                        $nomeRascunho = ucfirst(str_replace('_', ' ', $nomeLimpo)) . ' (Assinado)';
-                     }
+                     
+                     // Formatar nome do template de forma mais legível
+                     $nomeTemplate = ucwords(str_replace('_', ' ', $nomeLimpo));
+                     // Remover termos redundantes
+                     $nomeTemplate = str_ireplace(['parecer tecnico', 'template oficial', 'ambiental'], '', $nomeTemplate);
+                     $nomeTemplate = trim($nomeTemplate);
+                     if (empty($nomeTemplate)) $nomeTemplate = 'Parecer';
+
+                     // Novo padrão: [Nome Template] - [Nome Requerente] (Assinado)
+                     $nomeRascunho = "$nomeTemplate - $nomeRequerente (Assinado)";
                 }
                 
                 $dadosJson = json_encode([
                     'template_origem' => $template, 
-                    'assinado' => true,
+                    'assinado' => true, 
                     'documento_id' => $documentoId
                 ]);
 

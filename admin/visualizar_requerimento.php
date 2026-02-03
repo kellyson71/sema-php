@@ -2785,26 +2785,13 @@ $isBlocked = $isFinalized || $isIndeferido;
              const select = document.getElementById('template-select');
              select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
 
-             // 1. Meus Rascunhos (Salvos no Banco)
-             if (data.rascunhos && data.rascunhos.length > 0) {
-                 const groupMeusRascunhos = document.createElement('optgroup');
-                 groupMeusRascunhos.label = "💾 Meus Rascunhos (Em andamento)";
-                 data.rascunhos.forEach(r => {
-                     const option = document.createElement('option');
-                     option.value = r.id;
-                     option.textContent = r.label;
-                     groupMeusRascunhos.appendChild(option);
-                 });
-                 select.appendChild(groupMeusRascunhos);
-             }
-
-             // 2. Histórico de Gerados (Arquivos JSON antigos)
-             if (data.historico && data.historico.length > 0) {
+             // 1. Histórico Recente (Unificado: DB + Arquivos)
+             if (data.historico_recente && data.historico_recente.length > 0) {
                  const groupHistorico = document.createElement('optgroup');
-                 groupHistorico.label = "🕒 Histórico de Documentos Gerados";
-                 data.historico.forEach(r => {
+                 groupHistorico.label = "🕒 Histórico Recente";
+                 data.historico_recente.forEach(r => {
                      const option = document.createElement('option');
-                     option.value = r.id;
+                     option.value = r.id; 
                      option.textContent = r.label;
                      groupHistorico.appendChild(option);
                  });
