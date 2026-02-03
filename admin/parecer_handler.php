@@ -300,8 +300,22 @@ try {
                     'is_draft' => true,
                     'dados' => [] // Drafts já vêm preenchidos
                 ]);
+                echo json_encode([
+                    'success' => true,
+                    'html' => $html,
+                    'is_draft' => true,
+                    'dados' => [] // Drafts já vêm preenchidos
+                ]);
                 break; // Sai do switch/case
             }
+
+            // C. Verificar se é Template Padrão (.html em assets/doc)
+            // Se o arquivo existir, deixamos fluir para o preenchimento de dados
+            $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+            $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
+            
+            // Se não existir e não for DOCX, vai dar erro no ParecerService.
+            // Mas vamos deixar o fluxo seguir para buscar os dados do requerimento.
 
             // --- Lógica original para templates padrão abaixo ---
 
