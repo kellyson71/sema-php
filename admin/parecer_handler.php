@@ -756,7 +756,17 @@ try {
                 $documentoDiv = $parser->getElementById('documento');
                 if (!$documentoDiv) {
                     // Reconstruir estrutura A4 com conteúdo do TinyMCE
-                    $templatePath = $parecerService->carregarTemplate($template);
+                    
+                    // Tentar achar o template estático primeiro (para evitar erro Template não encontrado)
+                    $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+                    $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
+
+                    if (file_exists($caminhoArquivoHtml)) {
+                        $templatePath = $caminhoArquivoHtml; // Achou direto
+                    } else {
+                         // Fallback para o serviço
+                        $templatePath = $parecerService->carregarTemplate($template);
+                    }
                     $templateOriginal = file_get_contents($templatePath);
 
                     // Extrair imagem de fundo do template original
