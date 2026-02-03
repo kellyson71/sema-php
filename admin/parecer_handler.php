@@ -174,59 +174,7 @@ try {
             ]);
             break;
 
-        case 'salvar_rascunho':
-            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
-            $template = $input['template'] ?? '';
-            $html = $input['html'] ?? '';
-            $nome_rascunho = $input['nome_rascunho'] ?? '';
-
-            if ($requerimento_id <= 0 || empty($html)) {
-                throw new Exception('Parâmetros inválidos para salvar rascunho');
-            }
-
-            if (empty($nome_rascunho)) {
-                $nome_rascunho = 'Rascunho sem título';
-                if (!empty($template)) {
-                    // Tenta limpar nome do template
-                    $nomeLimpo = str_replace(['db_draft:', 'draft:'], '', $template);
-                    $nomeLimpo = pathinfo($nomeLimpo, PATHINFO_FILENAME);
-                    $nome_rascunho = 'Rascunho: ' . ucfirst(str_replace('_', ' ', $nomeLimpo));
-                }
-            }
-            
-            $rascunho_id = isset($input['rascunho_id']) ? (int)$input['rascunho_id'] : 0;
-            
-            if (strpos($template, 'db_draft:') === 0) {
-                 $rascunho_id = (int)substr($template, 9);
-            }
-
-            if ($rascunho_id > 0) {
-                // Atualizar existente
-                $stmt = $pdo->prepare("
-                    UPDATE parecer_rascunhos 
-                    SET conteudo_html = ?, nome = ?, dados_json = ?, data_atualizacao = NOW() 
-                    WHERE id = ? AND usuario_id = ?
-                ");
-                $dadosJson = json_encode(['template_origem' => $template]);
-                $stmt->execute([$html, $nome_rascunho, $dadosJson, $rascunho_id, $_SESSION['admin_id']]);
-            } else {
-                // Criar novo
-                $stmt = $pdo->prepare("
-                    INSERT INTO parecer_rascunhos (usuario_id, requerimento_id, nome, conteudo_html, dados_json, data_criacao)
-                    VALUES (?, ?, ?, ?, ?, NOW())
-                ");
-                $dadosJson = json_encode(['template_origem' => $template]);
-                $stmt->execute([$_SESSION['admin_id'], $requerimento_id, $nome_rascunho, $html, $dadosJson]);
-                $rascunho_id = $pdo->lastInsertId();
-            }
-
-            echo json_encode([
-                'success' => true,
-                'mensagem' => 'Rascunho salvo com sucesso!',
-                'rascunho_id' => $rascunho_id,
-                'novo_template_id' => 'db_draft:' . $rascunho_id
-            ]);
-            break;
+        // Ação removed: salvar_rascunho (agora é automático ao assinar)
 
         case 'carregar_template':
             $template = $input['template'] ?? '';
@@ -941,6 +889,39 @@ try {
             $hashFinal = hash_file('sha256', $caminhoHtml);
             $assinaturaService = new AssinaturaDigitalService($pdo);
             $assinaturaFinal = $assinaturaService->assinarHash($hashFinal);
+
+            // AUTO-SAVE: Salvar cópia na tabela parecer_rascunhos
+            try {
+                // Nome automático
+                $nomeRascunho = 'Parecer Assinado: ' . date('d/m/Y H:i');
+                if (!empty($template)) {
+                     $nomeLimpo = str_replace(['db_draft:', 'draft:'], '', $template);
+                     $nomeLimpo = pathinfo($nomeLimpo, PATHINFO_FILENAME);
+                     if (strpos($template, 'db_draft:') === 0) {
+                        $nomeRascunho = 'Versão Assinada: ' . date('d/m/Y H:i'); 
+                     } else {
+                        $nomeRascunho = ucfirst(str_replace('_', ' ', $nomeLimpo)) . ' (Assinado)';
+                     }
+                }
+                
+                $dadosJson = json_encode([
+                    'template_origem' => $template, 
+                    'assinado' => true,
+                    'documento_id' => $documentoId
+                ]);
+
+                // Salvar o HTML FINAL (editado) para reuso
+                $htmlParaSalvar = $input['html'] ?? $html;
+
+                $stmtSave = $pdo->prepare("
+                    INSERT INTO parecer_rascunhos (usuario_id, requerimento_id, nome, conteudo_html, dados_json, data_criacao, data_atualizacao)
+                    VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                $stmtSave->execute([$_SESSION['admin_id'], $requerimento_id, $nomeRascunho, $htmlParaSalvar, $dadosJson]);
+                
+            } catch (Exception $e) {
+                error_log("Erro no Auto-Save de rascunho: " . $e->getMessage());
+            }
 
             // Salvar HTML formatado do TinyMCE nos metadados (antes de processar assinatura)
             $htmlOriginalTinyMCE = $input['html'] ?? $html; // HTML original do TinyMCE
