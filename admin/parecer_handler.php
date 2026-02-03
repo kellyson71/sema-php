@@ -300,12 +300,6 @@ try {
                     'is_draft' => true,
                     'dados' => [] // Drafts já vêm preenchidos
                 ]);
-                echo json_encode([
-                    'success' => true,
-                    'html' => $html,
-                    'is_draft' => true,
-                    'dados' => [] // Drafts já vêm preenchidos
-                ]);
                 break; // Sai do switch/case
             }
 
@@ -339,7 +333,19 @@ try {
                 throw new Exception('Requerimento não encontrado');
             }
 
-            $templatePath = $parecerService->carregarTemplate($template);
+            // Tentar carregar template
+            $templatePath = '';
+            if (file_exists($caminhoArquivoHtml)) {
+                $templatePath = $caminhoArquivoHtml;
+            } else {
+                // Tenta via serviço (pode ser DOCX)
+                try {
+                    $templatePath = $parecerService->carregarTemplate($template);
+                } catch(Exception $e) {
+                     // Se falhou e era para ser um arquivo fixo, lança erro claro
+                     throw new Exception("Template não encontrado: $template");
+                }
+            }
 
             $stmtAdmin = $pdo->prepare("SELECT nome, nome_completo, email, cpf, cargo, matricula_portaria FROM administradores WHERE id = ?");
             $stmtAdmin->execute([$_SESSION['admin_id']]);
