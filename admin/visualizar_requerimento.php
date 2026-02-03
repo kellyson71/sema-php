@@ -1977,6 +1977,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
                             <i class="fas fa-arrow-right me-2"></i>Continuar para Assinar e Posicionar
                         </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="salvarRascunhoJS(this)">
+                            <i class="fas fa-save me-2"></i>Salvar Rascunho
+                        </button>
                         <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
                             <i class="fas fa-arrow-left me-2"></i>Voltar
                         </button>
@@ -2785,20 +2788,33 @@ $isBlocked = $isFinalized || $isIndeferido;
              const select = document.getElementById('template-select');
              select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
 
-             // Rascunhos Recentes
+             // 1. Meus Rascunhos (Salvos no Banco)
              if (data.rascunhos && data.rascunhos.length > 0) {
-                 const groupRascunhos = document.createElement('optgroup');
-                 groupRascunhos.label = "📝 Rascunhos Recentes";
+                 const groupMeusRascunhos = document.createElement('optgroup');
+                 groupMeusRascunhos.label = "💾 Meus Rascunhos (Em andamento)";
                  data.rascunhos.forEach(r => {
                      const option = document.createElement('option');
                      option.value = r.id;
-                     option.textContent = `${r.nome} - ${r.assinante} (${r.data})`;
-                     groupRascunhos.appendChild(option);
+                     option.textContent = r.label;
+                     groupMeusRascunhos.appendChild(option);
                  });
-                 select.appendChild(groupRascunhos);
+                 select.appendChild(groupMeusRascunhos);
              }
 
-             // Modelos Padrão
+             // 2. Histórico de Gerados (Arquivos JSON antigos)
+             if (data.historico && data.historico.length > 0) {
+                 const groupHistorico = document.createElement('optgroup');
+                 groupHistorico.label = "🕒 Histórico de Documentos Gerados";
+                 data.historico.forEach(r => {
+                     const option = document.createElement('option');
+                     option.value = r.id;
+                     option.textContent = r.label;
+                     groupHistorico.appendChild(option);
+                 });
+                 select.appendChild(groupHistorico);
+             }
+
+             // 3. Modelos Padrão
              const groupModelos = document.createElement('optgroup');
              groupModelos.label = "📄 Modelos Padrão";
 
@@ -2822,6 +2838,84 @@ $isBlocked = $isFinalized || $isIndeferido;
              alert('Erro ao carregar templates');
          });
      }
+
+     async function salvarRascunhoJS(btn) {
+        const editor = tinymce.get('editor-parecer-content');
+        if (!editor) { 
+            alert('Editor não carregado'); 
+            return; 
+        }
+        
+        const html = editor.getContent();
+        const templateSelect = document.getElementById('template-select');
+        const template = templateSelect.value;
+        // Prompt para nome opcional, preenchido com nome atual se for edição
+        let nomePadrao = "Meu Rascunho";
+        if (templateSelect.options[templateSelect.selectedIndex]) {
+             const text = templateSelect.options[templateSelect.selectedIndex].text;
+             // Limpar ícones e extras visualmente se possível, ou usar genérico
+             if (template.startsWith('db_draft:')) nomePadrao = text.split('(Em andamento')[0].trim();
+        }
+        
+        const nomeRascunho = prompt("Dê um nome para identificar este rascunho:", nomePadrao);
+
+        if (nomeRascunho === null) return; // Cancelou
+
+        // Feedback visual
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+        try {
+            // Extrair ID se já for um rascunho de banco
+            let rascunhoId = 0;
+            if (template && template.startsWith('db_draft:')) {
+                rascunhoId = template.substring(9);
+            }
+
+            const response = await fetch('parecer_handler.php', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({
+                     action: 'salvar_rascunho',
+                     requerimento_id: <?php echo $id; ?>,
+                     template: template,
+                     html: html,
+                     nome_rascunho: nomeRascunho,
+                     rascunho_id: rascunhoId
+                 })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Se salvou com sucesso, recarregar lista e selecionar o novo
+                if (data.novo_template_id) {
+                     carregarListaTemplates();
+                     // Pequeno delay para garantir que o DOM atualizou a lista
+                     setTimeout(() => {
+                         const novoSelect = document.getElementById('template-select');
+                         if(novoSelect) novoSelect.value = data.novo_template_id;
+                         templateAtual = data.novo_template_id;
+                     }, 500);
+                }
+                
+                if (typeof showToast === 'function') {
+                    showToast('Rascunho salvo com sucesso!');
+                } else {
+                    alert('Rascunho salvo com sucesso!');
+                }
+            } else {
+                 alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+            }
+        } catch (e) {
+             console.error(e);
+             alert('Erro de conexão ao salvar rascunho.');
+        } finally {
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+        }
+    }
 
      function carregarTemplateParaEdicao() {
          const template = document.getElementById('template-select').value;

@@ -107,34 +107,52 @@ try {
                 return is_array($t) ? $t['nome'] : $t;
             }, $templates);
 
-            // Buscar rascunhos (últimos 3 documentos gerados)
-            $rascunhos = [];
+            // 1. Meus Rascunhos (Banco de Dados)
+            $meusRascunhos = [];
+            if ($requerimento_id > 0) {
+                $stmt = $pdo->prepare("
+                    SELECT id, nome, data_atualizacao 
+                    FROM parecer_rascunhos 
+                    WHERE usuario_id = ? AND requerimento_id = ? 
+                    ORDER BY data_atualizacao DESC
+                ");
+                $stmt->execute([$_SESSION['admin_id'], $requerimento_id]);
+                $dbRascunhos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($dbRascunhos as $r) {
+                    $meusRascunhos[] = [
+                        'id' => 'db_draft:' . $r['id'],
+                        'nome' => $r['nome'], 
+                        'data' => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
+                        'assinante' => 'Você',
+                        'label' => "{$r['nome']} (Em andamento - " . date('d/m/Y H:i', strtotime($r['data_atualizacao'])) . ")"
+                    ];
+                }
+            }
+
+            // 2. Documentos Anteriores (Sistema de Arquivos - Legado/Histórico)
+            $historicoDocs = [];
             if ($requerimento_id > 0) {
                 $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
                 if (is_dir($pastaRequerimento)) {
                     $arquivos = glob($pastaRequerimento . '*.json');
                     if ($arquivos) {
-                        // Ordenar por data de modificação (mais recente primeiro)
                         usort($arquivos, function($a, $b) {
                             return filemtime($b) - filemtime($a);
                         });
 
-                        // Pegar os 3 mais recentes
-                        $recentes = array_slice($arquivos, 0, 3);
+                        $recentes = array_slice($arquivos, 0, 5);
                         foreach ($recentes as $arquivo) {
                             $dados = json_decode(file_get_contents($arquivo), true);
                             if ($dados) {
-                                // Tenta identificar um nome amigável para o rascunho
                                 $nomeTemplate = $dados['template'] ?? 'Documento';
-                                // Formatar nome do rascunho: "Rascunho: Tipo do Template (DD/MM/YYYY HH:mm)"
                                 $dataCriacao = isset($dados['data_criacao']) ? date('d/m/Y H:i', strtotime($dados['data_criacao'])) : date('d/m/Y H:i', filemtime($arquivo));
                                 
-                                // Buscar nome do assinante
                                 $nomeAssinante = $dados['dados_assinatura']['assinante_nome'] ?? 
                                                  $dados['dados_assinatura']['assinante_nome_completo'] ?? 
                                                  'Desconhecido';
                                 
-                                $rascunhos[] = [
+                                $historicoDocs[] = [
                                     'id' => 'draft:' . basename($arquivo),
                                     'nome' => $nomeTemplate,
                                     'data' => $dataCriacao,
@@ -151,7 +169,62 @@ try {
                 'success' => true,
                 'templates' => $templatesList,
                 'templates_detalhados' => $templates,
-                'rascunhos' => $rascunhos
+                'rascunhos' => $meusRascunhos,
+                'historico' => $historicoDocs
+            ]);
+            break;
+
+        case 'salvar_rascunho':
+            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
+            $template = $input['template'] ?? '';
+            $html = $input['html'] ?? '';
+            $nome_rascunho = $input['nome_rascunho'] ?? '';
+
+            if ($requerimento_id <= 0 || empty($html)) {
+                throw new Exception('Parâmetros inválidos para salvar rascunho');
+            }
+
+            if (empty($nome_rascunho)) {
+                $nome_rascunho = 'Rascunho sem título';
+                if (!empty($template)) {
+                    // Tenta limpar nome do template
+                    $nomeLimpo = str_replace(['db_draft:', 'draft:'], '', $template);
+                    $nomeLimpo = pathinfo($nomeLimpo, PATHINFO_FILENAME);
+                    $nome_rascunho = 'Rascunho: ' . ucfirst(str_replace('_', ' ', $nomeLimpo));
+                }
+            }
+            
+            $rascunho_id = isset($input['rascunho_id']) ? (int)$input['rascunho_id'] : 0;
+            
+            if (strpos($template, 'db_draft:') === 0) {
+                 $rascunho_id = (int)substr($template, 9);
+            }
+
+            if ($rascunho_id > 0) {
+                // Atualizar existente
+                $stmt = $pdo->prepare("
+                    UPDATE parecer_rascunhos 
+                    SET conteudo_html = ?, nome = ?, dados_json = ?, data_atualizacao = NOW() 
+                    WHERE id = ? AND usuario_id = ?
+                ");
+                $dadosJson = json_encode(['template_origem' => $template]);
+                $stmt->execute([$html, $nome_rascunho, $dadosJson, $rascunho_id, $_SESSION['admin_id']]);
+            } else {
+                // Criar novo
+                $stmt = $pdo->prepare("
+                    INSERT INTO parecer_rascunhos (usuario_id, requerimento_id, nome, conteudo_html, dados_json, data_criacao)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                ");
+                $dadosJson = json_encode(['template_origem' => $template]);
+                $stmt->execute([$_SESSION['admin_id'], $requerimento_id, $nome_rascunho, $html, $dadosJson]);
+                $rascunho_id = $pdo->lastInsertId();
+            }
+
+            echo json_encode([
+                'success' => true,
+                'mensagem' => 'Rascunho salvo com sucesso!',
+                'rascunho_id' => $rascunho_id,
+                'novo_template_id' => 'db_draft:' . $rascunho_id
             ]);
             break;
 
@@ -163,7 +236,29 @@ try {
                 throw new Exception('Parâmetros inválidos');
             }
 
-            // Verificar se é um draft (rascunho/documento anterior)
+            // A. Verificar se é Rascunho de Banco de Dados
+            if (strpos($template, 'db_draft:') === 0) {
+                $rascunhoId = (int)substr($template, 9);
+                
+                $stmt = $pdo->prepare("SELECT conteudo_html, nome FROM parecer_rascunhos WHERE id = ?");
+                $stmt->execute([$rascunhoId]);
+                $rascunho = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$rascunho) {
+                    throw new Exception('Rascunho não encontrado no banco de dados');
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'html' => $rascunho['conteudo_html'],
+                    'is_draft' => true,
+                    'nome_rascunho' => $rascunho['nome'],
+                    'dados' => [] 
+                ]);
+                break; 
+            }
+
+            // B. Verificar se é um draft (rascunho/documento anterior)
             if (strpos($template, 'draft:') === 0) {
                 $nomeArquivoDraft = substr($template, 6); // Remove 'draft:'
                 $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
