@@ -6,7 +6,7 @@
 -- area_lote (Desmembramento)
 -- responsavel_tecnico_nome (Geral)
 -- responsavel_tecnico_registro (Geral)
--- responsavel_tecnico_tipo_documento (Geral - Tipo de documento: ART, RRT, TRT)
+-- responsavel_tecnico_tipo_documento (Geral - Tipo de documento: ART, RRT, TRT, ART/TRT)
 -- responsavel_tecnico_numero (Geral - Número do documento)
 -- especificacao (Geral - Descrição)
 

@@ -624,6 +624,7 @@ include_once 'tipos_alvara.php';
                                     <option value="ART">ART</option>
                                     <option value="RRT">RRT</option>
                                     <option value="TRT">TRT</option>
+                                    <option value="ART/TRT">ART/TRT</option>
                                 </select>
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
@@ -642,6 +643,7 @@ include_once 'tipos_alvara.php';
                                         <option value="ART">ART</option>
                                         <option value="RRT">RRT</option>
                                         <option value="TRT">TRT</option>
+                                        <option value="ART/TRT">ART/TRT</option>
                                     </select>
                                     <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
                                 </div>
@@ -689,6 +691,7 @@ include_once 'tipos_alvara.php';
                                         <option value="ART">ART</option>
                                         <option value="RRT">RRT</option>
                                         <option value="TRT">TRT</option>
+                                        <option value="ART/TRT">ART/TRT</option>
                                     </select>
                                     <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
                                 </div>
