@@ -134,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $area_lote = trim($_POST['area_lote'] ?? '');
     $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
     $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
+    $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
     $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? '');
     $descricao_atividade = trim($_POST['descricao_atividade'] ?? '');
     
@@ -158,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'area_lote' => $area_lote ?: null,
         'responsavel_tecnico_nome' => $responsavel_tecnico_nome ?: null,
         'responsavel_tecnico_registro' => $responsavel_tecnico_registro ?: null,
+        'responsavel_tecnico_tipo_documento' => $responsavel_tecnico_tipo_documento ?: null,
         'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
         'especificacao' => $descricao_atividade ?: null,
         'status' => 'Em análise'

@@ -618,7 +618,15 @@ include_once 'tipos_alvara.php';
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
                             </div>
-                            <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                            <div class="form-grid-2">
+                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                                    <option value="" hidden>Tipo de Documento *</option>
+                                    <option value="ART">ART</option>
+                                    <option value="RRT">RRT</option>
+                                    <option value="TRT">TRT</option>
+                                </select>
+                                <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
+                            </div>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `
@@ -628,7 +636,15 @@ include_once 'tipos_alvara.php';
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                                <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                                <div style="display: flex; gap: 10px; width: 100%;">
+                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
+                                        <option value="" hidden>Tipo *</option>
+                                        <option value="ART">ART</option>
+                                        <option value="RRT">RRT</option>
+                                        <option value="TRT">TRT</option>
+                                    </select>
+                                    <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
+                                </div>
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
                         `;
@@ -667,7 +683,15 @@ include_once 'tipos_alvara.php';
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                                <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                                <div style="display: flex; gap: 10px; width: 100%;">
+                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
+                                        <option value="" hidden>Tipo *</option>
+                                        <option value="ART">ART</option>
+                                        <option value="RRT">RRT</option>
+                                        <option value="TRT">TRT</option>
+                                    </select>
+                                    <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
+                                </div>
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
                         `;
