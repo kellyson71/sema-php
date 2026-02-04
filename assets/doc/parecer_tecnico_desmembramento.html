@@ -1,199 +1,207 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <style>
-      @page {
-        size: A4;
-        margin: 0;
-      }
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
-        line-height: 1.4;
-        color: #000;
-      }
-      #documento {
-        position: relative;
-        width: 210mm;
-        height: 297mm;
-        margin: 0 auto;
-        background: white;
-      }
-      #fundo-imagem {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-      }
-      #conteudo {
-        position: absolute;
-        top: 130px;
-        left: 60px;
-        width: calc(100% - 120px);
-        z-index: 2;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
-        line-height: 1.4;
-        color: #000;
-      }
-      .titulo-licenca {
-        font-size: 14pt;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 20px;
-        text-transform: uppercase;
-        border-bottom: 2px solid #000;
-        padding-bottom: 10px;
-      }
-      .subtitulo {
-        font-size: 10pt;
-        text-align: center;
-        margin-bottom: 20px;
-        font-style: italic;
-      }
-      .secao-titulo {
-        font-weight: bold;
-        text-transform: uppercase;
-        background-color: #f0f0f0;
-        padding: 5px;
-        margin-top: 15px;
-        margin-bottom: 10px;
-        font-size: 10pt;
-        border: 1px solid #ccc;
-      }
-      .tabela-dados {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-      }
-      .tabela-dados td {
-        padding: 4px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-      }
-      .tabela-dados .label {
-        font-weight: bold;
-        background-color: #f9f9f9;
-        width: 30%;
-      }
-      .especificacao {
-        margin-top: 15px;
-        margin-bottom: 15px;
-        text-align: justify;
-        font-size: 10.5pt;
-        line-height: 1.5;
-      }
-      .data-local {
-        margin-top: 30px;
-        text-align: right;
-        font-size: 11pt;
-      }
-      .assinaturas {
-        margin-top: 50px;
-        display: flex;
-        justify-content: space-between;
-      }
-      .assinatura-esquerda {
-        width: 45%;
-        text-align: center;
-      }
-      .linha-assinatura {
-        border-top: 1px solid #000;
-        margin-top: 40px;
-        padding-top: 5px;
-      }
-      .nome-assinante {
-        font-weight: bold;
-        font-size: 10pt;
-      }
-      .cargo-assinante {
-        font-size: 9pt;
-      }
-      #area-assinatura {
-        position: absolute;
-        z-index: 3;
-        cursor: move;
-      }
-      .assinatura-bloco {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px;
-        border: 1px dashed #999;
-        border-radius: 4px;
-      }
-      .assinatura-bloco img {
-        width: 50px;
-        height: 50px;
-        flex-shrink: 0;
-      }
-      .assinatura-bloco .dados-assinante {
-        font-size: 10px;
-        text-align: left;
-      }
-      .assinatura-bloco strong {
-        display: block;
-        margin-bottom: 2px;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="documento">
-      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
-      <div id="conteudo" contenteditable="true">
-        <div class="titulo-licenca">
-          PARECER TÉCNICO DE DESMEMBRAMENTO (Nº {{numero_documento_ano}})<br>
-          <span style="font-size: 12pt; font-weight: normal;">Nº PROCESSO: {{protocolo}}</span>
-        </div>
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: "Times New Roman", Times, serif;
+                font-size: 11pt;
+                line-height: 1.4;
+                color: #000;
+            }
+            #documento {
+                position: relative;
+                width: 210mm;
+                height: 297mm;
+                margin: 0 auto;
+                background: white;
+            }
+            #fundo-imagem {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1;
+            }
+            #conteudo {
+                position: absolute;
+                top: 130px;
+                left: 60px;
+                width: calc(100% - 120px);
+                z-index: 2;
+                font-family: "Times New Roman", Times, serif;
+                font-size: 11pt;
+                line-height: 1.4;
+                color: #000;
+            }
+            .titulo-licenca {
+                font-size: 14pt;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 20px;
+                text-transform: uppercase;
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+            }
+            .subtitulo {
+                font-size: 10pt;
+                text-align: center;
+                margin-bottom: 20px;
+                font-style: italic;
+            }
+            .secao-titulo {
+                font-weight: bold;
+                text-transform: uppercase;
+                background-color: #f0f0f0;
+                padding: 5px;
+                margin-top: 15px;
+                margin-bottom: 10px;
+                font-size: 10pt;
+                border: 1px solid #ccc;
+            }
+            .tabela-dados {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 10px;
+            }
+            .tabela-dados td {
+                padding: 4px;
+                border: 1px solid #ccc;
+                vertical-align: top;
+            }
+            .tabela-dados .label {
+                font-weight: bold;
+                background-color: #f9f9f9;
+                width: 30%;
+            }
+            .especificacao {
+                margin-top: 15px;
+                margin-bottom: 15px;
+                text-align: justify;
+                font-size: 10.5pt;
+                line-height: 1.5;
+            }
+            .data-local {
+                margin-top: 30px;
+                text-align: right;
+                font-size: 11pt;
+            }
+            .assinaturas {
+                margin-top: 50px;
+                display: flex;
+                justify-content: space-between;
+            }
+            .assinatura-esquerda {
+                width: 45%;
+                text-align: center;
+            }
+            .linha-assinatura {
+                border-top: 1px solid #000;
+                margin-top: 40px;
+                padding-top: 5px;
+            }
+            .nome-assinante {
+                font-weight: bold;
+                font-size: 10pt;
+            }
+            .cargo-assinante {
+                font-size: 9pt;
+            }
+            #area-assinatura {
+                position: absolute;
+                z-index: 3;
+                cursor: move;
+            }
+            .assinatura-bloco {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 8px;
+                border: 1px dashed #999;
+                border-radius: 4px;
+            }
+            .assinatura-bloco img {
+                width: 50px;
+                height: 50px;
+                flex-shrink: 0;
+            }
+            .assinatura-bloco .dados-assinante {
+                font-size: 10px;
+                text-align: left;
+            }
+            .assinatura-bloco strong {
+                display: block;
+                margin-bottom: 2px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="documento">
+            <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+            <div id="conteudo" contenteditable="true">
+                <div class="titulo-licenca">
+                    PARECER TÉCNICO DE DESMEMBRAMENTO (Nº {{numero_documento_ano}})<br />
+                    <span style="font-size: 12pt; font-weight: normal">Nº PROCESSO: {{protocolo}}</span>
+                </div>
 
-        <div class="subtitulo">
-          Fundamentação Legal: Lei Municipal nº 017/2022 (Plano Diretor); Lei Federal nº 6.766/1979 e demais normas urbanísticas vigentes.
-        </div>
+                <div class="subtitulo">
+                    Fundamentação Legal: Lei Municipal nº 017/2022 (Plano Diretor); Lei Federal nº 6.766/1979 e demais
+                    normas urbanísticas vigentes.
+                </div>
 
-        <div class="secao-titulo">PARECER TÉCNICO</div>
-        <div class="especificacao">
-          <p>
-            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE DESMEMBRAMENTO</strong>, de um lote de {{area_lote}} m² de uma porção maior, localizado na {{endereco_objetivo}} Pau dos Ferros/RN, pertencente {{nome_proprietario}}, CPF/CNPJ: {{cpf_cnpj_proprietario}}, conforme (ART RRT TRT).
-          </p>
-          <p>
-            O requerimento em questão foi submetida à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.
-          </p>
-          <p>
-            Após a análise de praxe, constatou-se que o referido terreno, encontra-se em conformidade com a legislação vigente no MUNICÍPIO DE PAU DOS FERROS – RN.
-          </p>
-          <p>
-            Isto posto, cumpre-me opinar pelo prosseguimento do processo de <strong>EXPEDIÇÃO DE DESMEMBRAMENTO</strong>, por revestir-se de sustentação técnica legal.
-          </p>
-        </div>
+                <div class="secao-titulo">PARECER TÉCNICO</div>
+                <div class="especificacao">
+                    <p>
+                        Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE DESMEMBRAMENTO</strong>, de um
+                        lote de {{area_lote}} m² de uma porção maior, localizado na {{endereco_objetivo}} Pau dos
+                        Ferros/RN, pertencente {{nome_proprietario}}, CPF/CNPJ: {{cpf_cnpj_proprietario}}, conforme
+                        {{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}.
+                    </p>
+                    <p>
+                        O requerimento em questão foi submetida à apreciação desta Assessoria Técnica para análise e
+                        emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no
+                        Município de Pau dos Ferros – RN.
+                    </p>
+                    <p>
+                        Após a análise de praxe, constatou-se que o referido terreno, encontra-se em conformidade com a
+                        legislação vigente no MUNICÍPIO DE PAU DOS FERROS – RN.
+                    </p>
+                    <p>
+                        Isto posto, cumpre-me opinar pelo prosseguimento do processo de
+                        <strong>EXPEDIÇÃO DE DESMEMBRAMENTO</strong>, por revestir-se de sustentação técnica legal.
+                    </p>
+                </div>
 
-        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+                <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
 
-        <div class="assinaturas">
-          <div class="assinatura-esquerda">
-            <div class="linha-assinatura">
-              <div class="nome-assinante">{{admin_nome_completo}}</div>
-              <div class="cargo-assinante">{{admin_cargo}}</div>
-              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+                <div class="assinaturas">
+                    <div class="assinatura-esquerda">
+                        <div class="linha-assinatura">
+                            <div class="nome-assinante">{{admin_nome_completo}}</div>
+                            <div class="cargo-assinante">{{admin_cargo}}</div>
+                            <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            <div id="area-assinatura" style="display: none">
+                <div class="assinatura-bloco">
+                    <img src="" alt="QR Code" id="qr-assinatura" />
+                    <div class="dados-assinante">
+                        <strong id="nome-assinante"></strong>
+                        <span id="cargo-assinante"></span>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <div id="area-assinatura" style="display: none">
-        <div class="assinatura-bloco">
-          <img src="" alt="QR Code" id="qr-assinatura" />
-          <div class="dados-assinante">
-            <strong id="nome-assinante"></strong>
-            <span id="cargo-assinante"></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </body>
+    </body>
 </html>

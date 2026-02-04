@@ -102,6 +102,16 @@ class ParecerService
 
     public function preencherDados($requerimento, $adminData = null)
     {
+        // Lógica para definir a área construída/do lote
+        $area = '';
+        if (!empty($requerimento['area_construida'])) {
+            $area = $requerimento['area_construida'];
+        } elseif (!empty($requerimento['area_construcao'])) {
+            $area = $requerimento['area_construcao'];
+        } elseif (!empty($requerimento['area_lote'])) {
+            $area = $requerimento['area_lote'];
+        }
+
         $dados = [
             'protocolo' => $requerimento['protocolo'] ?? '',
             'nome_requerente' => $requerimento['requerente_nome'] ?? '',
@@ -119,7 +129,11 @@ class ParecerService
             'responsavel_tecnico_nome' => $requerimento['responsavel_tecnico_nome'] ?? '',
             'responsavel_tecnico_registro' => $requerimento['responsavel_tecnico_registro'] ?? '',
             'responsavel_tecnico_numero' => $requerimento['responsavel_tecnico_numero'] ?? '',
-            'especificacao' => $requerimento['especificacao'] ?? ''
+            'responsavel_tecnico_tipo_documento' => $requerimento['responsavel_tecnico_tipo_documento'] ?? '',
+            'especificacao' => $requerimento['especificacao'] ?? '',
+            // Campos unificados para o template
+            'area_construida' => $area, // Usado genericamente nos templates como área principal
+            'area_lote' => $requerimento['area_lote'] ?? ''
         ];
 
         if ($adminData !== null) {
@@ -127,7 +141,6 @@ class ParecerService
             $dados['admin_cargo'] = $adminData['cargo'] ?? '';
             $dados['admin_matricula_portaria'] = $adminData['matricula_portaria'] ?? '';
         }
-
 
         // Calcular número sequencial do documento no ano
         try {
