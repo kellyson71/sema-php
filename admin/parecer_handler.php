@@ -761,7 +761,19 @@ try {
                     $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
                     $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
 
-                    if (file_exists($caminhoArquivoHtml)) {
+                    if (strpos($template, 'draft:') === 0 || strpos($template, 'db_draft:') === 0) {
+                        // Se for rascunho, usa o template oficial padrão para recuperar o fundo
+                        if (strpos($template, 'licenca_previa') !== false) {
+                            $templatePath = $templatesDiretorio . 'licenca_previa_projeto.html';
+                        } else {
+                            $templatePath = $templatesDiretorio . 'template_oficial_a4.html';
+                        }
+                        
+                        if (!file_exists($templatePath)) {
+                             // Fallback final - tenta achar qualquer um disponivel
+                             $templatePath = $templatesDiretorio . 'template_oficial_a4.html';
+                        }
+                    } elseif (file_exists($caminhoArquivoHtml)) {
                         $templatePath = $caminhoArquivoHtml; // Achou direto
                     } else {
                          // Fallback para o serviço
