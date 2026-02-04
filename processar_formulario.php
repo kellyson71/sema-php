@@ -126,6 +126,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
     $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
     $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
+    
+    // Campos adicionais dos templates
+    $area_construcao = trim($_POST['area_construcao'] ?? '');
+    $numero_pavimentos = trim($_POST['numero_pavimentos'] ?? '');
+    $area_construida = trim($_POST['area_construida'] ?? '');
+    $area_lote = trim($_POST['area_lote'] ?? '');
+    $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
+    $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
+    $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? '');
+    $descricao_atividade = trim($_POST['descricao_atividade'] ?? '');
+    
     $observacoes = '';
 
     $requerimento = [
@@ -140,6 +151,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'comprovante_pagamento' => $comprovante_pagamento ?: null,
         'possui_estudo_ambiental' => $possui_estudo,
         'tipo_estudo_ambiental' => $tipo_estudo_ambiental ?: null,
+        // Novos campos mapeados
+        'area_construcao' => $area_construcao ?: null,
+        'numero_pavimentos' => $numero_pavimentos ?: null,
+        'area_construida' => $area_construida ?: null,
+        'area_lote' => $area_lote ?: null,
+        'responsavel_tecnico_nome' => $responsavel_tecnico_nome ?: null,
+        'responsavel_tecnico_registro' => $responsavel_tecnico_registro ?: null,
+        'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
+        'especificacao' => $descricao_atividade ?: null,
         'status' => 'Em análise'
     ];
 

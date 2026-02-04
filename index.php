@@ -610,8 +610,27 @@ include_once 'tipos_alvara.php';
                     let campos = '';
                     if (tipo === 'construcao') {
                         campos = `
-                            <input required name="area_construcao" placeholder="Área total de construção (m²) *">
-                            <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
+                            <div class="form-grid-2">
+                                <input required name="area_construcao" placeholder="Área total de construção (m²) *">
+                                <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                            </div>
+                            <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                        `;
+                    } else if (tipo === 'desmembramento') {
+                        campos = `
+                            <div class="form-grid-2">
+                                <input required name="area_lote" placeholder="Área do Lote (m²) *">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                            </div>
+                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
                         `;
                     } else if (tiposAmbientais.includes(tipo)) {
                         campos = `
@@ -642,6 +661,14 @@ include_once 'tipos_alvara.php';
                         `;
                     } else if (tipo === 'licenca_previa_obras') {
                         campos = `
+                            <div class="form-grid-2">
+                                <input required name="area_construida" placeholder="Área Construída (m²) *">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <input required name="responsavel_tecnico_art" placeholder="Número da ART/RRT/TRT *">
+                            </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
                         `;
                     } else {
