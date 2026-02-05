@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 150px;
+        left: 80px;
+        width: calc(100% - 160px);
+        z-index: 2;
+        text-align: justify;
+      }
+      .titulo {
+        font-size: 15pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 24px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        letter-spacing: 1px;
+      }
+      .dados-interessado {
+        margin-bottom: 24px;
+        line-height: 1.8;
+      }
+      .dados-interessado .linha {
+        margin-bottom: 4px;
+      }
+      .dados-interessado .label {
+        font-weight: bold;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        margin: 20px 0 12px 0;
+        text-transform: uppercase;
+      }
+      .texto-parecer {
+        margin-bottom: 30px;
+      }
+      .texto-parecer p {
+        margin-bottom: 18px;
+        text-indent: 2.5cm;
+        line-height: 1.7;
+      }
+      .data-local {
+        margin-top: 40px;
+        margin-bottom: 60px;
+        text-align: right;
+        font-weight: normal;
+      }
+      .assinaturas {
+        margin-top: 50px;
+        display: flex;
+        justify-content: center;
+      }
+      .assinatura-bloco-central {
+        width: 60%;
+        text-align: center;
+      }
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 8px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        font-size: 11pt;
+        text-transform: uppercase;
+      }
+      .cargo-assinante {
+        font-size: 10pt;
+        display: block;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo" style="text-align: center; font-weight: bold; text-transform: uppercase; font-size: 15pt; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 24px;">
+          Parecer Técnico<br>Viabilidade Ambiental para Fins de Licença de Atividade Econômica
+        </div>
+
+        <div class="dados-interessado">
+          <div class="linha"><span class="label" style="font-weight: bold;">Interessado:</span> {{nome_interessado}}</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">CPF:</span> {{cpf_interessado}}</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">Atividade:</span> {{atividade}}</div>
+        </div>
+
+        <div class="secao-titulo">I – DOS FATOS</div>
+        <div class="texto-parecer">
+          <p>
+            Trata-se de solicitação de análise quanto à viabilidade ambiental para fins de emissão de licença de atividade econômica, conforme requerido por <strong>{{nome_interessado}}</strong>, CPF {{cpf_interessado}}, para o exercício da atividade com {{cnae_descricao}}, {{endereco_objetivo}}.
+          </p>
+          <p>
+            A atividade proposta foi avaliada à luz da legislação municipal vigente, especialmente a Lei Municipal nº 311, de 30 de dezembro de 1972, que dispõe sobre a obrigatoriedade do alvará de funcionamento de atividades econômicas no município de Pau dos Ferros-RN, bem como a compatibilidade da atividade com o zoneamento estabelecido e os impactos ambientais decorrentes de sua operação.
+          </p>
+          <p>
+            Após análise do local pretendido e da natureza da atividade, verifica-se que:
+          </p>
+          <p>
+            A atividade está classificada como de baixo impacto ambiental;
+          </p>
+          <p>
+            O local encontra-se em zona urbana compatível com a atividade pretendida, conforme previsto na referida Lei;
+          </p>
+          <p>
+            Não há indícios de passivos ambientais ou restrições legais ao funcionamento do empreendimento no local indicado.
+          </p>
+        </div>
+
+        <div class="secao-titulo">II – DA ANÁLISE TÉCNICA</div>
+        <div class="texto-parecer">
+          <p>
+            Considerando a documentação apresentada, conclui-se que a atividade proposta não representa risco significativo ao meio ambiente urbano, estando em conformidade com os critérios definidos na Lei Municipal nº 311/1972.
+          </p>
+          <p>
+            Não foram identificadas incompatibilidades entre a atividade pretendida e a zona de uso onde se insere, tampouco a necessidade de licenciamento ambiental complementar em esfera estadual ou federal.
+          </p>
+        </div>
+
+        <div class="secao-titulo">III – DA CONCLUSÃO</div>
+        <div class="texto-parecer">
+          <p>
+            Diante do exposto, este parecer técnico <strong>OPINA FAVORAVELMENTE</strong> ao <strong>DEFERIMENTO</strong> do pedido de <strong>LICENÇA DE ATIVIDADE ECONÔMICA</strong>, por entender que a atividade pretendida é ambientalmente viável e está em conformidade com a legislação municipal, em especial com a Lei nº 311/1972.
+          </p>
+          <p>
+            Recomenda-se, contudo, a observância contínua das normas ambientais e urbanísticas vigentes, bem como a adoção de boas práticas operacionais para garantir a não geração de impactos ao entorno.
+          </p>
+        </div>
+
+        <div class="data-local">
+          Pau dos Ferros/RN, {{data_atual}}
+        </div>
+
+        <div class="assinaturas">
+          <div class="assinatura-bloco-central">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <span class="cargo-assinante">{{admin_cargo}}</span>
+              <span class="cargo-assinante">{{admin_matricula_portaria}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="area-assinatura" style="display: none"></div>
+    </div>
+  </body>
+</html>

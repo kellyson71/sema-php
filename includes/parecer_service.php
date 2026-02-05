@@ -66,6 +66,10 @@ class ParecerService
             return 'Modelo estruturado para licenças prévias com campos obrigatórios.';
         }
 
+        if (str_contains($nome, 'licenca_atividade')) {
+            return 'Parecer técnico de viabilidade ambiental para licença de atividade econômica.';
+        }
+
         if (str_contains($nome, 'detalhado')) {
             return 'Parecer técnico detalhado com checklist de verificação e condicionantes.';
         }
@@ -92,7 +96,7 @@ class ParecerService
     {
         $ext = pathinfo($nomeTemplate, PATHINFO_EXTENSION);
         if (strtolower($ext) === 'html') {
-            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false || strpos(strtolower($nomeTemplate), 'licenca_previa_projeto') !== false || strpos(strtolower($nomeTemplate), 'parecer_tecnico') !== false) {
+            if (strpos(strtolower($nomeTemplate), 'template_oficial_a4') !== false || strpos(strtolower($nomeTemplate), 'licenca_previa_projeto') !== false || strpos(strtolower($nomeTemplate), 'licenca_') !== false || strpos(strtolower($nomeTemplate), 'parecer_tecnico') !== false) {
                 return 'oficial_a4';
             }
             return 'html';
@@ -118,6 +122,13 @@ class ParecerService
         $especificacao = $requerimento['especificacao'] ?? '';
         $especificacao = trim($especificacao) !== '' ? $especificacao : 'a ser informada';
 
+        $nomeInteressado = $requerimento['proprietario_nome'] ?? $requerimento['requerente_nome'] ?? '';
+        $cpfInteressado = $requerimento['proprietario_cpf_cnpj'] ?? $requerimento['requerente_cpf_cnpj'] ?? '';
+        $atividade = $requerimento['atividade'] ?? $especificacao;
+        $atividade = trim($atividade) !== '' ? $atividade : 'a ser informada';
+        $cnaeDescricao = $requerimento['cnae_descricao'] ?? $especificacao;
+        $cnaeDescricao = trim($cnaeDescricao) !== '' ? $cnaeDescricao : 'a ser informada';
+
         $dados = [
             'protocolo' => $requerimento['protocolo'] ?? '',
             'nome_requerente' => $requerimento['requerente_nome'] ?? '',
@@ -139,7 +150,11 @@ class ParecerService
             'especificacao' => $especificacao,
             'art_numero' => $artNumero,
             'area_construida' => $area !== '' ? $area : 'a ser informada',
-            'area_lote' => $requerimento['area_lote'] ?? ''
+            'area_lote' => $requerimento['area_lote'] ?? '',
+            'nome_interessado' => $nomeInteressado,
+            'cpf_interessado' => $cpfInteressado,
+            'atividade' => $atividade,
+            'cnae_descricao' => $cnaeDescricao
         ];
 
         if ($adminData !== null) {
