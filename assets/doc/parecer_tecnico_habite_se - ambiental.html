@@ -11,8 +11,8 @@
         margin: 0;
         padding: 0;
         font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
-        line-height: 1.4;
+        font-size: 12pt;
+        line-height: 1.6;
         color: #000;
       }
       #documento {
@@ -32,114 +32,78 @@
       }
       #conteudo {
         position: absolute;
-        top: 130px;
-        left: 60px;
-        width: calc(100% - 120px);
+        top: 150px;
+        left: 80px;
+        width: calc(100% - 160px);
         z-index: 2;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
-        line-height: 1.4;
-        color: #000;
+        text-align: justify;
       }
-      .titulo-licenca {
-        font-size: 14pt;
+      .titulo {
+        font-size: 15pt;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
         text-transform: uppercase;
         border-bottom: 2px solid #000;
         padding-bottom: 10px;
+        letter-spacing: 1px;
       }
-      .subtitulo {
-        font-size: 10pt;
-        text-align: center;
-        margin-bottom: 20px;
-        font-style: italic;
+      .dados-interessado {
+        margin-bottom: 24px;
+        line-height: 1.8;
+      }
+      .dados-interessado .linha {
+        margin-bottom: 4px;
+      }
+      .dados-interessado .label {
+        font-weight: bold;
       }
       .secao-titulo {
         font-weight: bold;
+        margin: 20px 0 12px 0;
         text-transform: uppercase;
-        background-color: #f0f0f0;
-        padding: 5px;
-        margin-top: 15px;
-        margin-bottom: 10px;
-        font-size: 10pt;
-        border: 1px solid #ccc;
       }
-      .tabela-dados {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
+      .texto-parecer {
+        margin-bottom: 30px;
       }
-      .tabela-dados td {
-        padding: 4px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-      }
-      .tabela-dados .label {
-        font-weight: bold;
-        background-color: #f9f9f9;
-        width: 30%;
-      }
-      .especificacao {
-        margin-top: 15px;
-        margin-bottom: 15px;
-        text-align: justify;
-        font-size: 10.5pt;
-        line-height: 1.5;
+      .texto-parecer p {
+        margin-bottom: 18px;
+        text-indent: 2.5cm;
+        line-height: 1.7;
       }
       .data-local {
-        margin-top: 30px;
+        margin-top: 40px;
+        margin-bottom: 60px;
         text-align: right;
-        font-size: 11pt;
+        font-weight: normal;
       }
       .assinaturas {
         margin-top: 50px;
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
       }
-      .assinatura-esquerda {
-        width: 45%;
+      .assinatura-bloco-central {
+        width: 60%;
         text-align: center;
       }
       .linha-assinatura {
         border-top: 1px solid #000;
         margin-top: 40px;
-        padding-top: 5px;
+        padding-top: 8px;
       }
       .nome-assinante {
         font-weight: bold;
-        font-size: 10pt;
+        font-size: 11pt;
+        text-transform: uppercase;
       }
       .cargo-assinante {
-        font-size: 9pt;
+        font-size: 10pt;
+        display: block;
       }
       #area-assinatura {
         position: absolute;
         z-index: 3;
-        cursor: move;
-      }
-      .assinatura-bloco {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px;
-        border: 1px dashed #999;
-        border-radius: 4px;
-      }
-      .assinatura-bloco img {
-        width: 50px;
-        height: 50px;
-        flex-shrink: 0;
-      }
-      .assinatura-bloco .dados-assinante {
-        font-size: 10px;
-        text-align: left;
-      }
-      .assinatura-bloco strong {
-        display: block;
-        margin-bottom: 2px;
+        display: none;
       }
     </style>
   </head>
@@ -147,65 +111,63 @@
     <div id="documento">
       <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
       <div id="conteudo" contenteditable="true">
-        <div class="titulo-licenca">
-          PARECER TÉCNICO DE HABITE-SE (Nº {{numero_documento_ano}})<br>
-          <span style="font-size: 12pt; font-weight: normal;">Nº PROCESSO: {{protocolo}}</span>
+        <div class="titulo" style="text-align: center; font-weight: bold; text-transform: uppercase; font-size: 15pt; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 24px;">
+          Parecer Técnico Ambiental para Alvará de Habite-se
         </div>
 
-        <div class="subtitulo">
-          Fundamentação Legal: Lei Municipal nº 017/2022 (Plano Diretor); 2117/2025 (Código Municipal de Obras); NBR 12721 e Instrução Normativa RFB nº 2.021/2021.
+        <div class="dados-interessado">
+          <div class="linha"><span class="label" style="font-weight: bold;">Interessado(a):</span> {{nome_proprietario}}</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">CPF/CNPJ:</span> {{cpf_cnpj_proprietario}}</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">Endereço do Imóvel:</span> {{endereco_objetivo}}</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">Objeto:</span> Requerimento de Habite-se</div>
+          <div class="linha"><span class="label" style="font-weight: bold;">Município:</span> Pau dos Ferros/RN</div>
         </div>
 
-        <div class="especificacao">
+        <div class="secao-titulo">I – RELATÓRIO</div>
+        <div class="texto-parecer">
           <p>
-            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE HABITE-SE</strong>, de uma edificação residencial com um pavimento térreo e de {{area}}m² de área construída localizado na {{endereco_objetivo}} Pau dos Ferros/RN. Pertencente ao (à) {{nome_proprietario}} CPF/CNPJ: {{cpf_cnpj_proprietario}}, conforme (ART RRT TRT).
-          </p>
-          <p>
-            A edificação supracitada foi submetida à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.
-          </p>
-          <p>
-            Após a análise de praxe, pude constatar que a referida edificação, encontra-se em conformidade com a legislação vigente no Município de Pau dos Ferros – RN e PROJETO APROVADO.
-          </p>
-          <p>
-            De acordo com a NBR 12721 – Avaliação de custos de construção para incorporação imobiliária e outras disposições para condomínios edilícios, o projeto em análise se assemelha ao tipo Padrão Residencial - Baixo com {{area}}m².
-          </p>
-          <p>
-            De acordo com a INSTRUÇÃO NORMATIVA RFB Nº 2.021, DE 16 DE ABRIL DE 2021, inciso IX do caput do art. 7º, o projeto em análise assemelha-se a destinação Casa Popular.
-          </p>
-          <p>
-            Isto posto, cumpre-me opinar pelo prosseguimento do processo de <strong>EXPEDIÇÃO DE HABITE-SE</strong>, por revestir-se de sustentação técnica legal.
+            O presente parecer tem por objetivo a análise técnica ambiental da solicitação de emissão de alvará de habite-se para uma edificação residencial de pavimento térreo e de <strong>{{area_construida}}</strong> m² de área construída, situado no endereço supracitado, conforme ART Nº <strong>{{art_numero}}</strong>.
           </p>
         </div>
 
-        <div class="secao-titulo">DESCRIÇÃO DO IMÓVEL</div>
-        <div class="especificacao">
+        <div class="secao-titulo">III – ANÁLISE E CONCLUSÃO TÉCNICA</div>
+        <div class="texto-parecer">
           <p>
-            A edificação possui área construída de {{area}} m² constituído por {{detalhes_imovel}}
+            O empreendimento em análise não se enquadra nas tipologias que exigem licenciamento ambiental estadual, conforme verificado junto ao IDEMA (Instituto de Desenvolvimento Sustentável e Meio Ambiente do Rio Grande do Norte), tratando-se de obra de impacto local, cuja competência para análise e aprovação é municipal.
+          </p>
+          <p>
+            No que concerne à Lei 016/2021, Plano Diretor de Pau dos Ferros, a edificação do tipo residencial situa-se no bairro indicado no endereço, este caracterizado por expansões de empreendimentos dessa natureza. Nesta perspectiva, em relação à localização da residência, atesta-se que esta se insere em perímetro urbano, fora de área de preservação permanente, inexistindo entraves à edificação.
+          </p>
+          <p>
+            No âmbito sanitário, destaca-se que, mediante análise de planta as built, estas encontram-se dentro das recomendações da NBR 7229/1992 que regulamenta projeto, construção e operação de sistemas de tanques sépticos.
+          </p>
+          <p>
+            A edificação possui área construída de <strong>{{area_construida}}</strong> m², constituído por {{especificacao}}.
+          </p>
+          <p>
+            Diante do exposto, verifica-se que o imóvel atende integralmente às exigências da legislação federal, estadual e municipal, estando em conformidade com os parâmetros legais e técnicos exigidos para fins de habitabilidade.
+          </p>
+          <p>
+            Assim, opina-se favoravelmente pelo <strong>DEFERIMENTO</strong> do requerimento de habite-se, conforme requerimento do interessado, autorizando a ocupação e uso regular do imóvel nos termos da legislação vigente.
           </p>
         </div>
 
-        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+        <div class="data-local">
+          Pau dos Ferros/RN, {{data_atual}}
+        </div>
 
         <div class="assinaturas">
-          <div class="assinatura-esquerda">
+          <div class="assinatura-bloco-central">
             <div class="linha-assinatura">
               <div class="nome-assinante">{{admin_nome_completo}}</div>
-              <div class="cargo-assinante">{{admin_cargo}}</div>
-              <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
+              <span class="cargo-assinante">{{admin_cargo}}</span>
+              <span class="cargo-assinante">{{admin_matricula_portaria}}</span>
             </div>
           </div>
         </div>
       </div>
-      
-      <div id="area-assinatura" style="display: none">
-        <div class="assinatura-bloco">
-          <img src="" alt="QR Code" id="qr-assinatura" />
-          <div class="dados-assinante">
-            <strong id="nome-assinante"></strong>
-            <span id="cargo-assinante"></span>
-          </div>
-        </div>
-      </div>
+
+      <div id="area-assinatura" style="display: none"></div>
     </div>
   </body>
 </html>

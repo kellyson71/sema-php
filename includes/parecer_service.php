@@ -115,6 +115,9 @@ class ParecerService
         $artNumero = $requerimento['responsavel_tecnico_numero'] ?? $requerimento['responsavel_tecnico_registro'] ?? '';
         $artNumero = trim($artNumero) !== '' ? $artNumero : 'a ser informado';
 
+        $especificacao = $requerimento['especificacao'] ?? '';
+        $especificacao = trim($especificacao) !== '' ? $especificacao : 'a ser informada';
+
         $dados = [
             'protocolo' => $requerimento['protocolo'] ?? '',
             'nome_requerente' => $requerimento['requerente_nome'] ?? '',
@@ -133,7 +136,7 @@ class ParecerService
             'responsavel_tecnico_registro' => $requerimento['responsavel_tecnico_registro'] ?? '',
             'responsavel_tecnico_numero' => $requerimento['responsavel_tecnico_numero'] ?? '',
             'responsavel_tecnico_tipo_documento' => $requerimento['responsavel_tecnico_tipo_documento'] ?? '',
-            'especificacao' => $requerimento['especificacao'] ?? '',
+            'especificacao' => $especificacao,
             'art_numero' => $artNumero,
             'area_construida' => $area !== '' ? $area : 'a ser informada',
             'area_lote' => $requerimento['area_lote'] ?? ''
