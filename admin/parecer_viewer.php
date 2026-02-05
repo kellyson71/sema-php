@@ -20,9 +20,11 @@ if (!$assinaturaInicial || !file_exists($assinaturaInicial['caminho_arquivo'])) 
 
 // 2. Buscar TODAS as assinaturas associadas ao MESMO arquivo físico e requerimento
 // Isso permite agrupar assinatura técnica + assinatura do secretário
-$stmtAll = $pdo->prepare("SELECT * FROM assinaturas_digitais 
-                          WHERE requerimento_id = ? AND nome_arquivo = ? 
-                          ORDER BY timestamp_assinatura ASC");
+$stmtAll = $pdo->prepare("SELECT ad.*, a.matricula_portaria as assinante_matricula_portaria 
+                          FROM assinaturas_digitais ad 
+                          LEFT JOIN administradores a ON ad.assinante_id = a.id 
+                          WHERE ad.requerimento_id = ? AND ad.nome_arquivo = ? 
+                          ORDER BY ad.timestamp_assinatura ASC");
 $stmtAll->execute([$assinaturaInicial['requerimento_id'], $assinaturaInicial['nome_arquivo']]);
 $assinaturas = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
 
