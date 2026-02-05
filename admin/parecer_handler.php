@@ -53,6 +53,11 @@ try {
                 exit;
             }
             
+            $origem = $input['origem'] ?? 'tecnico';
+            $requerimentoIdLog = isset($input['requerimento_id']) ? (int)$input['requerimento_id'] : null;
+            $codigoHash = hash('sha256', $codigo);
+            $codigoUltimos = substr($codigo, -2);
+
             // Enviar email
             $emailService = new EmailService();
             $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
@@ -60,14 +65,47 @@ try {
             if ($enviado) {
                 // Mascarar email para exibir no frontend
                 $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'envio_codigo',
+                    'origem' => $origem,
+                    'status' => 'sucesso',
+                    'email_destino' => $admin['email'],
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null
+                ]);
                 echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado]);
             } else {
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'envio_codigo',
+                    'origem' => $origem,
+                    'status' => 'erro',
+                    'email_destino' => $admin['email'],
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null,
+                    'erro' => 'Falha ao enviar email'
+                ]);
                 echo json_encode(['success' => false, 'error' => 'Erro ao enviar email. Tente novamente.']);
             }
             break;
 
         case 'validar_codigo_assinatura':
             $codigoRecebido = $input['codigo'] ?? '';
+            $origem = $input['origem'] ?? 'tecnico';
+            $requerimentoIdLog = isset($input['requerimento_id']) ? (int)$input['requerimento_id'] : null;
+            $codigoHash = $codigoRecebido !== '' ? hash('sha256', $codigoRecebido) : null;
+            $codigoUltimos = $codigoRecebido !== '' ? substr($codigoRecebido, -2) : null;
             
             if (empty($codigoRecebido)) {
                 echo json_encode(['success' => false, 'error' => 'Código não informado.']);
@@ -75,6 +113,20 @@ try {
             }
             
             if (!isset($_SESSION['assinatura_otp_code']) || !isset($_SESSION['assinatura_otp_expires'])) {
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'validar_codigo',
+                    'origem' => $origem,
+                    'status' => 'erro',
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null,
+                    'erro' => 'Nenhum código gerado ou código expirado'
+                ]);
                 echo json_encode(['success' => false, 'error' => 'Nenhum código gerado ou código expirado.']);
                 exit;
             }
@@ -82,20 +134,60 @@ try {
             if (time() > $_SESSION['assinatura_otp_expires']) {
                 unset($_SESSION['assinatura_otp_code']);
                 unset($_SESSION['assinatura_otp_expires']);
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'validar_codigo',
+                    'origem' => $origem,
+                    'status' => 'erro',
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null,
+                    'erro' => 'Código expirado'
+                ]);
                 echo json_encode(['success' => false, 'error' => 'Código expirado. Solicite um novo.']);
                 exit;
             }
             
             if ($codigoRecebido === $_SESSION['assinatura_otp_code']) {
-                // Código correto! Definir sessão de 3 horas
-                $_SESSION['assinatura_auth_valid_until'] = time() + (3 * 60 * 60);
+                $_SESSION['assinatura_auth_valid_until'] = time() + (8 * 60 * 60);
                 
                 // Limpar OTP
                 unset($_SESSION['assinatura_otp_code']);
                 unset($_SESSION['assinatura_otp_expires']);
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'validar_codigo',
+                    'origem' => $origem,
+                    'status' => 'sucesso',
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null
+                ]);
                 
                 echo json_encode(['success' => true]);
             } else {
+                registrarHistoricoAssinatura($pdo, [
+                    'requerimento_id' => $requerimentoIdLog,
+                    'admin_id' => $_SESSION['admin_id'] ?? null,
+                    'evento' => 'validar_codigo',
+                    'origem' => $origem,
+                    'status' => 'erro',
+                    'codigo_hash' => $codigoHash,
+                    'codigo_ultimos' => $codigoUltimos,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                    'host' => $_SERVER['HTTP_HOST'] ?? null,
+                    'erro' => 'Código incorreto'
+                ]);
                 echo json_encode(['success' => false, 'error' => 'Código incorreto.']);
             }
             break;
@@ -472,7 +564,7 @@ try {
             $adminCargo = $input['admin_cargo'] ?? '';
             $dataAssinatura = $input['data_assinatura'] ?? '';
 
-            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 3h (Adicionado para evitar bypass)
+            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 8h
             if (!isset($_SESSION['assinatura_auth_valid_until']) || time() > $_SESSION['assinatura_auth_valid_until']) {
                 echo json_encode([
                     'success' => false, 
@@ -623,6 +715,21 @@ try {
                 "Gerou e assinou digitalmente parecer técnico (ID: {$resultadoAssinatura['documento_id']}) usando template: {$template}"
             ]);
 
+            registrarHistoricoAssinatura($pdo, [
+                'documento_id' => $resultadoAssinatura['documento_id'] ?? null,
+                'requerimento_id' => $requerimento_id,
+                'admin_id' => $_SESSION['admin_id'] ?? null,
+                'evento' => 'assinatura',
+                'origem' => $input['origem'] ?? 'tecnico',
+                'status' => 'sucesso',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                'host' => $_SERVER['HTTP_HOST'] ?? null,
+                'nome_arquivo' => $resultadoPreliminar['nome'] ?? null,
+                'hash_documento' => $hashFinal ?? null
+            ]);
+
             echo json_encode([
                 'success' => true,
                 'arquivo' => $resultadoPreliminar['nome'],
@@ -686,7 +793,7 @@ try {
             $posicaoX = floatval($input['posicao_x'] ?? 0.7);
             $posicaoY = floatval($input['posicao_y'] ?? 0.85);
 
-            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 3h
+            // VERIFICAÇÃO DE SEGURANÇA: Sessão de 8h
             if (!isset($_SESSION['assinatura_auth_valid_until']) || time() > $_SESSION['assinatura_auth_valid_until']) {
                 echo json_encode([
                     'success' => false, 
@@ -1112,6 +1219,21 @@ try {
                 $_SESSION['admin_id'],
                 $requerimento_id,
                 "Gerou e assinou digitalmente parecer técnico (ID: {$documentoId}) usando template: {$template}"
+            ]);
+
+            registrarHistoricoAssinatura($pdo, [
+                'documento_id' => $documentoId ?? null,
+                'requerimento_id' => $requerimento_id,
+                'admin_id' => $_SESSION['admin_id'] ?? null,
+                'evento' => 'assinatura',
+                'origem' => $input['origem'] ?? 'tecnico',
+                'status' => 'sucesso',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                'host' => $_SERVER['HTTP_HOST'] ?? null,
+                'nome_arquivo' => $nomeArquivoHtml ?? null,
+                'hash_documento' => $hashFinal ?? null
             ]);
 
             $urlViewer = 'parecer_viewer.php?id=' . $documentoId;

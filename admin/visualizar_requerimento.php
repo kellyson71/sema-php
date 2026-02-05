@@ -3452,11 +3452,15 @@ $isBlocked = $isFinalized || $isIndeferido;
          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
 
          try {
-             const response = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({ action: 'enviar_codigo_assinatura' })
-             });
+            const response = await fetch('parecer_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    action: 'enviar_codigo_assinatura',
+                    origem: 'tecnico',
+                    requerimento_id: <?php echo (int)$id; ?>
+                })
+            });
              const data = await response.json();
              
              if (data.success) {
@@ -3496,20 +3500,22 @@ $isBlocked = $isFinalized || $isIndeferido;
          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
 
          try {
-             const response = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({ 
-                     action: 'validar_codigo_assinatura',
-                     codigo: codigo
-                 })
-             });
+            const response = await fetch('parecer_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    action: 'validar_codigo_assinatura',
+                    codigo: codigo,
+                    origem: 'tecnico',
+                    requerimento_id: <?php echo (int)$id; ?>
+                })
+            });
              const data = await response.json();
              
              if (data.success) {
                  // Sucesso! Fechar modal e mostrar notificação moderna
                  if (modalVerificacao) modalVerificacao.hide();
-                 showToast('Verificação realizada com sucesso! Acesso liberado por 3 horas.');
+                showToast('Verificação realizada com sucesso! Acesso liberado por 8 horas.');
                  
                  // CONTINUAR FLUXO: Abrir o modal de parecer
                  setTimeout(() => {

@@ -50,6 +50,12 @@ include 'header.php';
 ?>
 
 <div class="container-fluid py-4 h-100">
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'verificacao_expirada'): ?>
+        <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Sua verificação expirou. Envie um novo código para assinar.
+        </div>
+    <?php endif; ?>
     <div class="row h-100">
         <!-- Coluna Esquerda: Informações -->
         <div class="col-md-4 col-lg-3 d-flex flex-column gap-3">
@@ -84,23 +90,26 @@ include 'header.php';
                         <div class="small"><?php echo htmlspecialchars($requerimento['endereco_objetivo']); ?></div>
                     </div>
 
-                    <!-- Lista de Documentos Disponíveis -->
-                    <?php if (count($documentosAnteriores) > 1): ?>
-                        <hr>
-                        <div class="mb-3">
-                            <label class="text-muted small text-uppercase fw-bold mb-2">Documentos no Processo</label>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase fw-bold mb-2">Documentos no Processo</label>
+                        <?php if (count($documentosAnteriores) > 0): ?>
                             <div class="list-group list-group-flush small">
                                 <?php foreach ($documentosAnteriores as $index => $doc): ?>
                                     <button type="button" 
                                             class="list-group-item list-group-item-action d-flex align-items-center <?php echo $index === 0 ? 'active' : ''; ?>"
-                                            onclick="trocarDocumento(this, '<?php echo $doc['documento_id']; ?>')">
+                                            onclick="trocarDocumento(this, '<?php echo $doc['documento_id']; ?>', '<?php echo htmlspecialchars($doc['nome_arquivo']); ?>')">
                                         <i class="fas fa-file-pdf me-2"></i>
                                         <span class="text-truncate"><?php echo htmlspecialchars($doc['nome_arquivo']); ?></span>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <div class="alert alert-warning mb-0">
+                                Nenhum documento técnico encontrado para este processo.
+                            </div>
+                        <?php endif; ?>
+                    </div>
 
                     <hr>
 
@@ -111,16 +120,13 @@ include 'header.php';
                                 <strong>Alvará Emitido</strong><br>
                                 <small>Todos os documentos foram assinados.</small>
                             </div>
-                             <a href="../uploads/pareceres/<?php echo $id; ?>/" target="_blank" class="btn btn-primary w-100 shadow-sm">
-                                <i class="fas fa-folder-open me-2"></i> Abrir Pasta de Documentos
-                            </a>
                         <?php else: ?>
                             <small class="text-center text-muted mb-1">Ações de Decisão</small>
-                            
-                            <form action="processar_assinatura_secretario.php" method="POST" onsubmit="return confirm('Confirmar assinatura de TODOS os documentos e emissão do Alvará?');">
+                            <div id="alert-assinatura" class="alert d-none mb-2" role="alert"></div>
+                            <form action="processar_assinatura_secretario.php" method="POST" id="form-assinar-secretario">
                                 <input type="hidden" name="requerimento_id" value="<?php echo $id; ?>">
                                 <input type="hidden" name="acao" value="aprovar">
-                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-uppercase shadow-sm">
+                                <button type="button" class="btn btn-success w-100 py-2 fw-bold text-uppercase shadow-sm" onclick="iniciarVerificacaoAssinaturaSecretario()">
                                     <i class="fas fa-file-signature me-2"></i> Assinar Tudo e Emitir
                                 </button>
                             </form>
@@ -168,24 +174,190 @@ include 'header.php';
 </div>
 
 <script>
-function trocarDocumento(element, docId) {
-    // Atualizar iframe
+function trocarDocumento(element, docId, nomeArquivo) {
     const iframe = document.getElementById('iframe-viewer');
     if (iframe) {
         iframe.src = 'parecer_viewer.php?id=' + docId + '&noprint=1';
     }
-    
-    // Atualizar badge
     const badge = document.getElementById('badge-doc-id');
     if (badge) {
         badge.textContent = 'Documento: ' + docId;
+        if (nomeArquivo) {
+            badge.setAttribute('title', nomeArquivo);
+        }
     }
-
-    // Atualizar classe active
     document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
     element.classList.add('active');
 }
+
+let modalVerificacaoSecretario = null;
+
+function mostrarAvisoSecretario(tipo, texto) {
+    const alerta = document.getElementById('alert-assinatura');
+    if (!alerta) return;
+    alerta.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning', 'alert-info');
+    alerta.classList.add('alert-' + tipo);
+    alerta.textContent = texto;
+}
+
+async function verificarSessaoAssinaturaSecretario() {
+    try {
+        const response = await fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'verificar_sessao_assinatura' })
+        });
+        const data = await response.json();
+        return data.success && data.sessao_valida;
+    } catch (error) {
+        return false;
+    }
+}
+
+async function iniciarVerificacaoAssinaturaSecretario() {
+    const temDocumento = <?php echo $documentoIdParaVisualizar ? 'true' : 'false'; ?>;
+    if (!temDocumento) {
+        mostrarAvisoSecretario('warning', 'Não é possível assinar sem documentos gerados.');
+        return;
+    }
+    const sessaoValida = await verificarSessaoAssinaturaSecretario();
+    if (sessaoValida) {
+        if (confirm('Confirmar assinatura de todos os documentos e emissão do alvará?')) {
+            document.getElementById('form-assinar-secretario').submit();
+        }
+        return;
+    }
+    if (!modalVerificacaoSecretario) {
+        modalVerificacaoSecretario = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
+    }
+    document.getElementById('etapa-enviar-codigo').style.display = 'block';
+    document.getElementById('etapa-validar-codigo').style.display = 'none';
+    document.getElementById('codigo_verificacao').value = '';
+    document.getElementById('codigo_verificacao').classList.remove('is-invalid');
+    modalVerificacaoSecretario.show();
+}
+
+async function enviarCodigoVerificacao() {
+    const btn = document.querySelector('#etapa-enviar-codigo button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+    try {
+        const response = await fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                action: 'enviar_codigo_assinatura',
+                origem: 'secretario',
+                requerimento_id: <?php echo (int)$id; ?>
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
+            document.getElementById('etapa-enviar-codigo').style.display = 'none';
+            document.getElementById('etapa-validar-codigo').style.display = 'block';
+        } else {
+            mostrarAvisoSecretario('danger', data.error || 'Falha ao enviar email.');
+        }
+    } catch (error) {
+        mostrarAvisoSecretario('danger', 'Erro de conexão ao enviar código.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+function voltarEnviarCodigo() {
+    document.getElementById('etapa-enviar-codigo').style.display = 'block';
+    document.getElementById('etapa-validar-codigo').style.display = 'none';
+}
+
+async function validarCodigoVerificacao() {
+    const input = document.getElementById('codigo_verificacao');
+    const btn = document.querySelector('#etapa-validar-codigo .btn-success');
+    const codigo = input.value.trim();
+    if (codigo.length !== 6) {
+        input.classList.add('is-invalid');
+        document.getElementById('erro-codigo').textContent = 'O código deve ter 6 dígitos.';
+        return;
+    }
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+    try {
+        const response = await fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                action: 'validar_codigo_assinatura',
+                codigo: codigo,
+                origem: 'secretario',
+                requerimento_id: <?php echo (int)$id; ?>
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            if (modalVerificacaoSecretario) modalVerificacaoSecretario.hide();
+            document.getElementById('form-assinar-secretario').submit();
+        } else {
+            input.classList.add('is-invalid');
+            document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
+        }
+    } catch (error) {
+        mostrarAvisoSecretario('danger', 'Erro de conexão ao validar código.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 </script>
+
+<div class="modal fade" id="modalVerificacaoSeguranca" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-shield-alt text-success" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Verificação de Segurança</h4>
+                <p class="text-muted mb-4">Para sua segurança, precisamos confirmar sua identidade antes de prosseguir com a assinatura digital.</p>
+                <div id="etapa-enviar-codigo">
+                    <button onclick="enviarCodigoVerificacao()" class="btn btn-primary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        Enviar código para meu email
+                    </button>
+                    <p class="small text-muted mb-0">
+                        Um código de 6 dígitos será enviado para seu email cadastrado.
+                    </p>
+                </div>
+                <div id="etapa-validar-codigo" style="display: none;">
+                    <p class="small text-muted mb-3">
+                        Enviamos um código para <strong id="email-mascarado-display">...</strong>
+                    </p>
+                    <div class="mb-3">
+                        <input type="text" id="codigo_verificacao" class="form-control form-control-lg text-center fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px;">
+                        <div class="invalid-feedback text-start" id="erro-codigo">
+                            Código incorreto.
+                        </div>
+                    </div>
+                    <button onclick="validarCodigoVerificacao()" class="btn btn-success w-100 py-2 mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Validar Código
+                    </button>
+                    <button onclick="voltarEnviarCodigo()" class="btn btn-link text-muted btn-sm text-decoration-none">
+                        Reenviar código
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de Devolução -->
 <div class="modal fade" id="modalDevolucao" tabindex="-1" aria-hidden="true">

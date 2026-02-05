@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once '../includes/functions.php';
 verificaLogin();
 
 // Verificar permissão
@@ -23,6 +24,23 @@ if (!$id) {
 
 try {
     if ($acao === 'aprovar') {
+        if (!isset($_SESSION['assinatura_auth_valid_until']) || time() > $_SESSION['assinatura_auth_valid_until']) {
+            registrarHistoricoAssinatura($pdo, [
+                'requerimento_id' => $id,
+                'admin_id' => $_SESSION['admin_id'] ?? null,
+                'evento' => 'assinatura',
+                'origem' => 'secretario',
+                'status' => 'erro',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                'host' => $_SERVER['HTTP_HOST'] ?? null,
+                'erro' => 'Sessão de assinatura expirada'
+            ]);
+            header("Location: revisao_secretario.php?id={$id}&msg=verificacao_expirada");
+            exit;
+        }
+
         // 1. Buscar TODOS os documentos técnicos associados a este requerimento
         // Agrupando por nome do arquivo para garantir que assinamos cada arquivo físico uma única vez
         $stmtDoc = $pdo->prepare("SELECT * FROM assinaturas_digitais 
@@ -70,6 +88,21 @@ try {
                 'texto',
                 $novaAssinaturaCriptografada,
                 $_SERVER['REMOTE_ADDR']
+            ]);
+
+            registrarHistoricoAssinatura($pdo, [
+                'documento_id' => $novoDocumentoId,
+                'requerimento_id' => $id,
+                'admin_id' => $_SESSION['admin_id'] ?? null,
+                'evento' => 'assinatura',
+                'origem' => 'secretario',
+                'status' => 'sucesso',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
+                'host' => $_SERVER['HTTP_HOST'] ?? null,
+                'nome_arquivo' => $docAnterior['nome_arquivo'] ?? null,
+                'hash_documento' => $docAnterior['hash_documento'] ?? null
             ]);
         }
 

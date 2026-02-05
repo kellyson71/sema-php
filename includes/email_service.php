@@ -317,7 +317,7 @@ class EmailService
                             </ul>
                         </div>
 
-                        <p>Após validar o código, você terá <strong>3 horas</strong> para assinar documentos sem precisar validar novamente.</p>
+                        <p>Após validar o código, você terá <strong>8 horas</strong> para assinar documentos sem precisar validar novamente.</p>
                         
                         <div class='footer'>
                             <p>Este é um email automático, por favor não responda.</p>

@@ -187,6 +187,41 @@ function formatarDataHora($data)
     return date('d/m/Y \à\s H:i:s', $timestamp);
 }
 
+function registrarHistoricoAssinatura($pdo, $dados)
+{
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO historico_assinaturas (
+                documento_id, requerimento_id, admin_id, evento, origem, status,
+                email_destino, codigo_hash, codigo_ultimos, ip, user_agent,
+                accept_language, host, nome_arquivo, hash_documento, erro
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $dados['documento_id'] ?? null,
+            $dados['requerimento_id'] ?? null,
+            $dados['admin_id'] ?? null,
+            $dados['evento'] ?? null,
+            $dados['origem'] ?? null,
+            $dados['status'] ?? null,
+            $dados['email_destino'] ?? null,
+            $dados['codigo_hash'] ?? null,
+            $dados['codigo_ultimos'] ?? null,
+            $dados['ip'] ?? null,
+            $dados['user_agent'] ?? null,
+            $dados['accept_language'] ?? null,
+            $dados['host'] ?? null,
+            $dados['nome_arquivo'] ?? null,
+            $dados['hash_documento'] ?? null,
+            $dados['erro'] ?? null
+        ]);
+        return true;
+    } catch (Exception $e) {
+        error_log('Erro ao registrar historico de assinatura: ' . $e->getMessage());
+        return false;
+    }
+}
+
 /**
  * Valida se o usuário está logado como admin
  * @return bool

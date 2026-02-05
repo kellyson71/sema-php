@@ -15,20 +15,33 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 
 // Filtros
 $busca = isset($_GET['busca']) ? trim($_GET['busca']) : '';
+$statusFiltro = isset($_GET['status']) ? trim($_GET['status']) : 'todos';
 
-// Query base
-// Query base
-// Modificado para mostrar também os já emitidos para histórico
 $sqlBase = "FROM requerimentos r
             JOIN requerentes req ON r.requerente_id = req.id
             WHERE r.status IN ('Apto a gerar alvará', 'Alvará Emitido')";
 
 $params = [];
 
+if ($statusFiltro === 'pendentes') {
+    $sqlBase .= " AND r.status = 'Apto a gerar alvará'";
+} elseif ($statusFiltro === 'emitidos') {
+    $sqlBase .= " AND r.status = 'Alvará Emitido'";
+}
+
 if (!empty($busca)) {
     $sqlBase .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR r.tipo_alvara LIKE ?)";
     $termo = "%$busca%";
     $params = [$termo, $termo, $termo];
+}
+
+$sqlResumo = "FROM requerimentos r
+            JOIN requerentes req ON r.requerente_id = req.id
+            WHERE r.status IN ('Apto a gerar alvará', 'Alvará Emitido')";
+$paramsResumo = [];
+if (!empty($busca)) {
+    $sqlResumo .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR r.tipo_alvara LIKE ?)";
+    $paramsResumo = [$termo, $termo, $termo];
 }
 
 // Contar total
@@ -37,13 +50,6 @@ $stmtCount->execute($params);
 $totalRegistros = $stmtCount->fetch()['total'];
 $totalPaginas = ceil($totalRegistros / $itensPorPagina);
 
-// Buscar registros
-$sql = "SELECT r.id, r.protocolo, r.type_alvara, r.status, r.data_envio, req.nome as requerente
-        $sqlBase
-        ORDER BY FIELD(r.status, 'Apto a gerar alvará', 'Alvará Emitido'), r.data_envio DESC
-        LIMIT $offset, $itensPorPagina";
-
-// NOTE: corrected typo in SELECT above if 'type_alvara' was used, it is 'tipo_alvara'. Fixing below.
 $sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente
         $sqlBase
         ORDER BY FIELD(r.status, 'Apto a gerar alvará', 'Alvará Emitido'), r.data_envio DESC
@@ -53,17 +59,87 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requerimentos = $stmt->fetchAll();
 
+$stmtResumo = $pdo->prepare("SELECT r.status, COUNT(*) as total $sqlResumo GROUP BY r.status");
+$stmtResumo->execute($paramsResumo);
+$resumoStatus = $stmtResumo->fetchAll(PDO::FETCH_ASSOC);
+$contagem = [
+    'Apto a gerar alvará' => 0,
+    'Alvará Emitido' => 0
+];
+foreach ($resumoStatus as $linha) {
+    $contagem[$linha['status']] = (int)$linha['total'];
+}
+
 include 'header.php';
 ?>
 
 <div class="container-fluid py-4">
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-12">
             <div class="bg-white rounded-3 shadow-sm p-4 border-start border-5 border-success">
-                <h2 class="h3 mb-2 text-success"><i class="fas fa-signature me-2"></i>Aprovação de Alvarás</h2>
-                <p class="text-muted mb-0">
-                    Bem-vindo(a), Secretário(a). Gerencie abaixo os processos pendentes de assinatura e visualize os já emitidos.
-                </p>
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div>
+                        <h2 class="h3 mb-2 text-success"><i class="fas fa-signature me-2"></i>Assinatura do Secretário</h2>
+                        <p class="text-muted mb-0">
+                            Revise os documentos técnicos, confirme a assinatura e emita o alvará com segurança.
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="?status=pendentes" class="btn btn-outline-warning <?php echo $statusFiltro === 'pendentes' ? 'active' : ''; ?>">
+                            Pendentes
+                        </a>
+                        <a href="?status=emitidos" class="btn btn-outline-success <?php echo $statusFiltro === 'emitidos' ? 'active' : ''; ?>">
+                            Emitidos
+                        </a>
+                        <a href="secretario_dashboard.php" class="btn btn-outline-secondary <?php echo $statusFiltro === 'todos' ? 'active' : ''; ?>">
+                            Todos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small text-uppercase fw-bold">Pendentes</div>
+                            <div class="h2 mb-0 text-warning"><?php echo $contagem['Apto a gerar alvará']; ?></div>
+                        </div>
+                        <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                            <i class="fas fa-clock text-warning"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">Aguardam assinatura para emissão</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small text-uppercase fw-bold">Emitidos</div>
+                            <div class="h2 mb-0 text-success"><?php echo $contagem['Alvará Emitido']; ?></div>
+                        </div>
+                        <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                            <i class="fas fa-check-double text-success"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">Assinaturas concluídas</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 d-none d-lg-block">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Fluxo rápido</div>
+                    <ol class="mb-0 mt-2 ps-3 text-muted">
+                        <li>Revisar documento</li>
+                        <li>Confirmar assinatura</li>
+                        <li>Emitir alvará</li>
+                    </ol>
+                </div>
             </div>
         </div>
     </div>
@@ -84,6 +160,7 @@ include 'header.php';
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-body">
             <form method="GET" class="row g-3 align-items-center">
+                <input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFiltro); ?>">
                 <div class="col-md-10">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
@@ -182,7 +259,7 @@ include 'header.php';
                 <ul class="pagination justify-content-center mb-0">
                     <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
                         <li class="page-item <?php echo $i === $paginaAtual ? 'active' : ''; ?>">
-                            <a class="page-link" href="?pagina=<?php echo $i; ?>&busca=<?php echo urlencode($busca); ?>"><?php echo $i; ?></a>
+                            <a class="page-link" href="?pagina=<?php echo $i; ?>&busca=<?php echo urlencode($busca); ?>&status=<?php echo urlencode($statusFiltro); ?>"><?php echo $i; ?></a>
                         </li>
                     <?php endfor; ?>
                 </ul>

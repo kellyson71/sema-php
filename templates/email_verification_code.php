@@ -118,7 +118,7 @@
             </div>
 
             <p class="expiry-text">
-                Este código expira em 15 minutos.
+                Este código expira em 15 minutos. Após validar, sua sessão fica ativa por 8 horas.
             </p>
 
             <div class="warning-box">
