@@ -191,20 +191,8 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex;
             gap: 10px;
-        }
-        .btn-print {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: none;
         }
         .btn-save-pos {
             background: #16a34a;
@@ -410,10 +398,6 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
 <body>
 
     <div class="no-print">
-        <button class="btn-print" onclick="window.print()">
-            <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="white"><path d="M18,3H6V7H18M19,12A1,1 0 0,1 18,11A1,1 0 0,1 19,10A1,1 0 0,1 20,11A1,1 0 0,1 19,12M16,19H8V14H16M19,8H5A3,3 0 0,0 2,11V17H6V21H18V17H22V11A3,3 0 0,0 19,8Z"></path></svg>
-            Imprimir Documento
-        </button>
         <button id="btn-save-position" class="btn-save-pos" onclick="salvarPosicaoAssinatura()">
             Salvar Posição
         </button>
@@ -522,6 +506,10 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                 elem.style.top = y + 'px';
                 
                 document.getElementById('btn-save-position').style.display = 'block';
+                const noPrint = document.querySelector('.no-print');
+                if (noPrint) {
+                    noPrint.style.display = 'flex';
+                }
             });
 
             document.addEventListener('mouseup', () => {
@@ -565,6 +553,10 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                         btn.style.display = 'none';
                         btn.disabled = false;
                         btn.textContent = originalText;
+                        const noPrint = document.querySelector('.no-print');
+                        if (noPrint) {
+                            noPrint.style.display = 'none';
+                        }
                     }, 2000);
                 } else {
                     alert('Erro ao salvar: ' + data.error);

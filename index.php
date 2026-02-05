@@ -243,23 +243,11 @@ include_once 'tipos_alvara.php';
                 </script>
                 <?php endif; ?>
 
-                <!-- Seção 1: Dados do Requerente -->
-                <div class="form-section">
-                    <div class="form-part-2">
-                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
-                        <input required type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
-                        <input oninput="mascara(this)" type="text" required name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF/CNPJ: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
-                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required
-                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
-                    </div>
-                </div>
-
-                <!-- Seção 2: Dados do Proprietário -->
+                <!-- Seção 1: Dados do Proprietário -->
                 <div class="form-section">
                     <div class="form-part-3">
                         <div class="y-n-field">
-                            <p>O proprietário é o mesmo que o requerente?</p>
+                            <p>O requerente é o mesmo que o proprietário?</p>
                             <label for="mesmo-sim">
                                 <input required title="Sim" name="mesmo_requerente" id="mesmo-sim" type="radio"
                                     value="true">
@@ -279,6 +267,18 @@ include_once 'tipos_alvara.php';
                         <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
                             id="proprietario_cpf_cnpj"
                             placeholder="CPF/CNPJ do Proprietário: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                    </div>
+                </div>
+
+                <!-- Seção 2: Dados do Requerente -->
+                <div class="form-section">
+                    <div class="form-part-2">
+                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
+                        <input required type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
+                        <input oninput="mascara(this)" type="text" required name="requerente[cpf_cnpj]" id="cpf"
+                            placeholder="CPF/CNPJ: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required
+                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
                     </div>
                 </div>
 
@@ -387,7 +387,7 @@ include_once 'tipos_alvara.php';
                 // Validar proprietário (se não for o mesmo)
                 const mesmoRequerente = document.querySelector('input[name="mesmo_requerente"]:checked');
                 if (!mesmoRequerente) {
-                    erros.push('Informe se o proprietário é o mesmo que o requerente');
+                    erros.push('Informe se o requerente é o mesmo que o proprietário');
                 } else if (mesmoRequerente.value === 'false') {
                     const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]')?.value.trim();
                     const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]')?.value.trim();
