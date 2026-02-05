@@ -42,11 +42,26 @@
         font-size: 15pt;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 24px;
         text-transform: uppercase;
         border-bottom: 2px solid #000;
         padding-bottom: 10px;
         letter-spacing: 1px;
+      }
+      .dados-interessado {
+        margin-bottom: 24px;
+        line-height: 1.8;
+      }
+      .dados-interessado .linha {
+        margin-bottom: 4px;
+      }
+      .dados-interessado .label {
+        font-weight: bold;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        margin: 20px 0 12px 0;
+        text-transform: uppercase;
       }
       .texto-parecer {
         margin-bottom: 30px;
@@ -117,27 +132,45 @@
       <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
       <div id="conteudo" contenteditable="true">
         <div class="titulo">
-          Parecer Técnico de Alvará de Construção (Nº {{numero_documento_ano}})
+          Parecer Técnico Ambiental para Alvará de Construção
         </div>
 
+        <div class="dados-interessado">
+          <div class="linha"><span class="label">Interessado:</span> {{nome_proprietario}}</div>
+          <div class="linha"><span class="label">CPF/CNPJ:</span> {{cpf_cnpj_proprietario}}</div>
+          <div class="linha"><span class="label">Endereço do Imóvel:</span> {{endereco_objetivo}}</div>
+          <div class="linha"><span class="label">Objeto:</span> Requerimento de Alvará de Construção</div>
+        </div>
+
+        <div class="secao-titulo">I – RELATÓRIO</div>
         <div class="texto-parecer">
           <p>
-            Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong> de uma edificação residencial unifamiliar de pavimento térreo e de <strong>{{area_construida}} m²</strong> de área que será construída, localizada na <strong>{{endereco_objetivo}}</strong> (Lote:, quadra:) bairro:, Pau dos Ferros/RN . Pertencente ao(à) <strong>{{nome_proprietario}}</strong> <strong>CPF/CNPJ ({{cpf_cnpj_proprietario}})</strong>, conforme <strong>(ART RRT TRT) Nº {{responsavel_tecnico_registro}}</strong>.
+            O presente parecer tem como objetivo a análise técnica ambiental para emissão de Alvará de Construção, de uma edificação residencial unifamiliar de pavimento térreo com <strong>{{area_construida}}</strong> m² de área a ser construída, de acordo com ART. Nº <strong>{{responsavel_tecnico_registro}}</strong>.
           </p>
           <p>
-            O projeto para construção da edificação supracitada foi submetido à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.
+            Trata-se de projeto de edificação a ser implantado em zona urbana consolidada do Município de Pau dos Ferros/RN, cujas documentações e informações técnicas foram devidamente protocoladas junto à Prefeitura.
           </p>
           <p>
-            Após a análise de praxe, pude constatar que a referida edificação, encontra-se em conformidade com a legislação vigente no MUNICÍPIO DE PAU DOS FERROS – RN.
+            A análise visa aferir a conformidade ambiental da obra pretendida com base na legislação federal, estadual e municipal vigente, em especial no que diz respeito ao uso e ocupação do solo, regularidade ambiental e ausência de impacto significativo ao meio ambiente.
+          </p>
+        </div>
+
+        <div class="secao-titulo">II – CONCLUSÃO</div>
+        <div class="texto-parecer">
+          <p>
+            A obra proposta não se insere entre aquelas de impacto ambiental regional ou estadual, não havendo necessidade de submissão ao IDEMA (órgão ambiental estadual), conforme selecionado.
           </p>
           <p>
-            De acordo com a NBR 12721 – Avaliação de custos de construção para incorporação imobiliária e outras disposições para condomínios edilícios, o projeto em análise se assemelha ao tipo Padrão Residencial – Baixo.
+            No que diz respeito à Lei 016/2021, Plano Diretor de Pau dos Ferros, uma edificação do tipo residencial, situa-se no bairro indicado no endereço, caracterizado por expansões de empreendimentos. Nesta perspectiva, em relação à localização da construção, atesta-se que esta insere-se em perímetro urbano, fora de área de preservação permanente, inexistindo entraves à edificação.
           </p>
           <p>
-            De acordo com a INSTRUÇÃO NORMATIVA RFB Nº 2.021, DE 16 DE ABRIL DE 2021, inciso IX do caput do art. 7º, o projeto em análise assemelha-se à destinação Casa Popular.
+            No âmbito sanitário, destaca-se, mediante análise de planta conforme construído, que estas encontram-se dentro das recomendações da NBR 7229/1992 que regulamenta projeto, construção e operação do sistema de tanques sépticos.
           </p>
           <p>
-            Isto posto, cumpre-me opinar pelo prosseguimento do processo de <strong>EXPEDIÇÃO DE ALVARÁ DE CONSTRUÇÃO</strong>, por revestir-se de sustentação técnica legal.
+            Diante do exposto, verifica-se que a construção atende integralmente aos critérios da legislação federal, estadual e municipal, estando em conformidade com as disposições legais e técnicas expressas para fins de habitabilidade.
+          </p>
+          <p>
+            Assim, opina-se favoravelmente pelo <strong>DEFERIMENTO</strong> do Alvará de <strong>CONSTRUÇÃO</strong>, conforme requerimento do interessado, autorizando a ocupação e uso regular do imóvel nos termos da legislação vigente.
           </p>
         </div>
 
