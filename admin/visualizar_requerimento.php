@@ -2002,10 +2002,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('direita')">Direita</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetarPosicaoAssinatura()">Reposicionar padrão</button>
                     </div>
-                    <div class="mb-3">
-                        <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden;">
+                    <div class="mb-3" id="preview-wrapper" style="overflow: auto; max-height: 70vh; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden; transform-origin: top center;">
                             <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
-                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 60px; width: calc(100% - 120px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000;" contenteditable="true"></div>
+                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 80px; width: calc(100% - 160px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.6; color: #000;" contenteditable="true"></div>
                             <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                                 <img id="preview-qr-code" src="" style="width: 55px; height: 55px; flex-shrink: 0;" />
                                 <div style="font-size: 11px; text-align: left; line-height: 1.3; display: flex; flex-direction: column; gap: 2px;">
@@ -2668,6 +2668,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          if (signatureText) {
              signatureText.addEventListener('input', atualizarPreviewAssinatura);
          }
+
+        window.addEventListener('resize', ajustarEscalaPreview);
      });
 
      // Sistema de Pareceres
@@ -3157,6 +3159,19 @@ $isBlocked = $isFinalized || $isIndeferido;
          document.getElementById('etapa-editor').style.display = 'block';
      }
 
+    function ajustarEscalaPreview() {
+        const previewDoc = document.getElementById('preview-documento');
+        const wrapper = document.getElementById('preview-wrapper');
+        if (!previewDoc || !wrapper) return;
+
+        const padding = 24;
+        const availableWidth = Math.max(0, wrapper.clientWidth - padding);
+        const docWidth = previewDoc.offsetWidth || 1;
+        const scale = Math.min(1, availableWidth / docWidth);
+
+        previewDoc.style.transform = `scale(${scale})`;
+    }
+
      function prepararEtapaPosicionamento() {
          if (!dadosAssinatura) {
              definirAssinaturaPadrao();
@@ -3246,7 +3261,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              }
          }
 
-         setTimeout(() => {
+        setTimeout(() => {
              const previewDocRect = previewDoc.getBoundingClientRect();
             const blocoRect = blocoAssinatura.getBoundingClientRect();
             const blocoWidth = blocoRect.width || 200;
@@ -3272,6 +3287,7 @@ $isBlocked = $isFinalized || $isIndeferido;
          document.getElementById('etapa-posicionamento').style.display = 'block';
 
         setTimeout(() => {
+            ajustarEscalaPreview();
             inicializarDragAndDrop();
             habilitarEdicaoPreview(previewConteudo);
         }, 200);

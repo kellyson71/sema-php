@@ -43,7 +43,7 @@ $ehTemplateA4 = false;
 // Verificar se é template A4
 if ($jsonData && isset($jsonData['template'])) {
     $templateNome = $jsonData['template'];
-    $ehTemplateA4 = strpos($templateNome, 'template_oficial_a4') !== false || strpos($templateNome, 'licenca_previa_projeto') !== false || strpos($templateNome, 'parecer_tecnico') !== false;
+    $ehTemplateA4 = strpos($templateNome, 'template_oficial_a4') !== false || strpos($templateNome, 'licenca_previa_projeto') !== false || strpos($templateNome, 'licenca_') !== false || strpos($templateNome, 'parecer_tecnico') !== false;
 }
 
 if ($ehTemplateA4 && $jsonData && isset($jsonData['html_com_assinatura'])) {
