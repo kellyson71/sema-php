@@ -7,6 +7,7 @@ Pré-visualização de assinatura alinhada ao `parecer_viewer` para espelhar o r
 - Preview do modal passa a renderizar conteúdo via `parecer_viewer_preview.php` com layout idêntico ao viewer.
 - Assinatura posicionada em overlay sobre o iframe de pré-visualização.
 - Detecção de templates `licenca_` no viewer para tratamento A4.
+- Exibição da matrícula/portaria do assinante no bloco de assinatura do preview.
 
 ## Arquivos Modificados
 - `admin/visualizar_requerimento.php`

@@ -2011,6 +2011,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     <strong>Assinado digitalmente por:</strong>
                                     <span id="preview-nome-assinante" style="font-size: 12px; font-weight: bold;"></span>
                                     <span id="preview-cargo-assinante"></span>
+                                    <span id="preview-matricula-assinante"></span>
                                     <span id="preview-data-assinatura" style="font-size: 10px; color: #666;"></span>
                                     <span id="preview-assinatura-visual" style="font-size: 14px; display: block; margin-top: 2px;"></span>
                                 </div>
@@ -3001,8 +3002,9 @@ $isBlocked = $isFinalized || $isIndeferido;
              assinatura: { texto: '<?php echo $_SESSION['admin_nome']; ?>', fonte: "'Arial', sans-serif" },
              tipo_assinatura: 'texto',
              admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-             admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-             admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+            admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
+            admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+            admin_matricula_portaria: '<?php echo $_SESSION['admin_matricula_portaria'] ?? ''; ?>',
              data_assinatura: new Date().toLocaleString('pt-BR')
          };
          atualizarBadgeAssinatura();
@@ -3060,8 +3062,9 @@ $isBlocked = $isFinalized || $isIndeferido;
              assinatura: assinaturaData,
              tipo_assinatura: tipoAssinatura,
              admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-             admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-             admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+            admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
+            admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
+            admin_matricula_portaria: '<?php echo $_SESSION['admin_matricula_portaria'] ?? ''; ?>',
              data_assinatura: new Date().toLocaleString('pt-BR')
          };
 
@@ -3183,7 +3186,13 @@ $isBlocked = $isFinalized || $isIndeferido;
             .catch(() => {});
 
          document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
-         document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
+        document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
+        const matriculaEl = document.getElementById('preview-matricula-assinante');
+        if (matriculaEl) {
+            matriculaEl.textContent = dadosAssinatura.admin_matricula_portaria
+                ? `Matrícula/Portaria: ${dadosAssinatura.admin_matricula_portaria}`
+                : '';
+        }
          atualizarBlocoAssinaturaPreview();
          atualizarBadgeAssinatura();
 
@@ -3575,7 +3584,8 @@ $isBlocked = $isFinalized || $isIndeferido;
                      tipo_assinatura: dadosAssinatura.tipo_assinatura,
                      admin_nome: dadosAssinatura.admin_nome,
                      admin_cpf: dadosAssinatura.admin_cpf,
-                     admin_cargo: dadosAssinatura.admin_cargo,
+                    admin_cargo: dadosAssinatura.admin_cargo,
+                    admin_matricula_portaria: dadosAssinatura.admin_matricula_portaria,
                      data_assinatura: dadosAssinatura.data_assinatura,
                      posicao_x: coordenadasAssinatura.x,
                      posicao_y: coordenadasAssinatura.y
