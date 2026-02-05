@@ -453,6 +453,22 @@ try {
             ]);
             break;
 
+        case 'salvar_preview':
+            $html = $input['html'] ?? '';
+            $template = $input['template'] ?? '';
+
+            if (empty($html) || empty($template)) {
+                throw new Exception('Parâmetros inválidos');
+            }
+
+            $_SESSION['parecer_preview_html'] = $html;
+            $_SESSION['parecer_preview_template'] = $template;
+
+            echo json_encode([
+                'success' => true
+            ]);
+            break;
+
         case 'gerar_pdf':
             $html = $input['html'] ?? '';
             $template = $input['template'] ?? '';

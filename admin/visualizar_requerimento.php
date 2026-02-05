@@ -2004,9 +2004,8 @@ $isBlocked = $isFinalized || $isIndeferido;
                     </div>
                     <div class="mb-3" id="preview-wrapper" style="overflow: auto; max-height: 70vh; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
                         <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden; transform-origin: top center;">
-                            <img id="preview-fundo" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" />
-                            <div id="preview-conteudo" style="position: absolute; top: 150px; left: 80px; width: calc(100% - 160px); z-index: 2; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.6; color: #000;" contenteditable="true"></div>
-                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 3; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <iframe id="preview-iframe" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1;"></iframe>
+                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 2; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                                 <img id="preview-qr-code" src="" style="width: 55px; height: 55px; flex-shrink: 0;" />
                                 <div style="font-size: 11px; text-align: left; line-height: 1.3; display: flex; flex-direction: column; gap: 2px;">
                                     <strong>Assinado digitalmente por:</strong>
@@ -3115,49 +3114,32 @@ $isBlocked = $isFinalized || $isIndeferido;
          atualizarPreviewAssinatura();
      }
 
-     function aplicarEspacamentoPreview(previewConteudo) {
-         if (!previewConteudo) return;
+    function aplicarEspacamentoPreview() {
+        return;
+    }
 
-         previewConteudo.style.whiteSpace = 'pre-wrap';
-         previewConteudo.style.lineHeight = '1.45';
-         previewConteudo.style.wordBreak = 'break-word';
-
-         previewConteudo.querySelectorAll('p').forEach(p => {
-             p.style.marginTop = '0';
-             p.style.marginBottom = '10px';
-         });
-     }
-
-     function habilitarEdicaoPreview(previewConteudo) {
-         if (!previewConteudo) return;
-
-         previewConteudo.contentEditable = 'true';
-         previewConteudo.setAttribute('role', 'textbox');
-         previewConteudo.setAttribute('aria-label', 'Pré-visualização editável do parecer');
-
-         if (handlerPreviewEdicao) {
-             previewConteudo.removeEventListener('input', handlerPreviewEdicao);
-         }
-
-         handlerPreviewEdicao = () => {
-             const editor = tinymce.get('editor-parecer-content');
-             if (editor) {
-                 editor.setContent(previewConteudo.innerHTML);
-             }
-
-             const previewDoc = document.getElementById('preview-documento');
-             if (previewDoc) {
-                 atualizarStatusPaginacao(previewConteudo, previewDoc);
-             }
-         };
-
-         previewConteudo.addEventListener('input', handlerPreviewEdicao);
-     }
+    function habilitarEdicaoPreview() {
+        return;
+    }
 
      function voltarParaEditor() {
          document.getElementById('etapa-posicionamento').style.display = 'none';
          document.getElementById('etapa-editor').style.display = 'block';
      }
+
+    async function salvarPreviewParecer(html) {
+        const template = document.getElementById('template-select').value;
+        const response = await fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'salvar_preview',
+                html: html,
+                template: template
+            })
+        });
+        return response.json();
+    }
 
     function ajustarEscalaPreview() {
         const previewDoc = document.getElementById('preview-documento');
@@ -3187,47 +3169,18 @@ $isBlocked = $isFinalized || $isIndeferido;
              return;
          }
 
-         const previewDoc = document.getElementById('preview-documento');
-         const previewFundo = document.getElementById('preview-fundo');
-         const previewConteudo = document.getElementById('preview-conteudo');
-         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-         if (!previewDoc || !previewFundo || !previewConteudo || !blocoAssinatura) return;
+        const previewDoc = document.getElementById('preview-documento');
+        const previewIframe = document.getElementById('preview-iframe');
+        const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
+        if (!previewDoc || !previewIframe || !blocoAssinatura) return;
 
-         // Carregar imagem de fundo do template original (armazenada quando carregou o template)
-         if (window.templateFundoImg) {
-             previewFundo.src = window.templateFundoImg;
-         } else {
-             // Tentar extrair do HTML se não tiver armazenado
-             const parser = new DOMParser();
-             const doc = parser.parseFromString(html, 'text/html');
-             const imgFundo = doc.querySelector('#fundo-imagem') || doc.querySelector('#documento #fundo-imagem');
-             if (imgFundo && imgFundo.src) {
-                 let imgSrc = imgFundo.src;
-                 // Converter caminho relativo para absoluto se necessário
-                 if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
-                     if (imgSrc.startsWith('images/')) {
-                         imgSrc = '../assets/doc/' + imgSrc;
-                     }
-                 }
-                 previewFundo.src = imgSrc;
-             } else {
-                 // Fallback: usar caminho padrão da imagem de fundo
-                 const template = document.getElementById('template-select').value;
-                 if (template && (template.includes('template_oficial_a4') || template.includes('licenca_previa_projeto') || template.includes('licenca_atividade') || template.includes('parecer_tecnico'))) {
-                     previewFundo.src = '../assets/doc/images/image1.png';
-                 }
-             }
-         }
-
-         // Extrair conteúdo se existir div#conteudo, senão usar HTML completo
-         const parser = new DOMParser();
-         const doc = parser.parseFromString(html, 'text/html');
-         const conteudoDiv = doc.querySelector('#conteudo');
-         if (conteudoDiv) {
-             previewConteudo.innerHTML = conteudoDiv.innerHTML;
-         } else {
-             previewConteudo.innerHTML = html;
-         }
+        salvarPreviewParecer(html)
+            .then((data) => {
+                if (data && data.success) {
+                    previewIframe.src = 'parecer_viewer_preview.php?ts=' + Date.now();
+                }
+            })
+            .catch(() => {});
 
          document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
          document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
@@ -3261,6 +3214,10 @@ $isBlocked = $isFinalized || $isIndeferido;
              }
          }
 
+        previewIframe.onload = () => {
+            atualizarStatusPaginacao(previewDoc, previewIframe);
+        };
+
         setTimeout(() => {
              const previewDocRect = previewDoc.getBoundingClientRect();
             const blocoRect = blocoAssinatura.getBoundingClientRect();
@@ -3281,7 +3238,7 @@ $isBlocked = $isFinalized || $isIndeferido;
             const dataEl = document.getElementById('preview-data-assinatura');
             if (dataEl) dataEl.textContent = 'Em: ' + new Date().toLocaleString('pt-BR').substring(0, 16);
 
-            atualizarStatusPaginacao(previewConteudo, previewDoc);
+            atualizarStatusPaginacao(previewDoc, previewIframe);
         }, 100);
 
          document.getElementById('etapa-posicionamento').style.display = 'block';
@@ -3289,21 +3246,25 @@ $isBlocked = $isFinalized || $isIndeferido;
         setTimeout(() => {
             ajustarEscalaPreview();
             inicializarDragAndDrop();
-            habilitarEdicaoPreview(previewConteudo);
         }, 200);
     }
 
-    function atualizarStatusPaginacao(previewConteudo, previewDoc) {
+    function atualizarStatusPaginacao(previewDoc, previewIframe) {
         const statusPreview = document.getElementById('parecer-preview-status');
         const statusPreviewTexto = document.getElementById('parecer-preview-status-text');
 
-        if (!statusPreview || !statusPreviewTexto || !previewConteudo || !previewDoc) return;
+        if (!statusPreview || !statusPreviewTexto || !previewDoc || !previewIframe) return;
 
-        const conteudoStyle = window.getComputedStyle(previewConteudo);
-        const top = parseFloat(conteudoStyle.top) || 0;
+        const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow?.document;
+        if (!iframeDoc) return;
+
+        const conteudoEl = iframeDoc.querySelector('.conteudo-texto') || iframeDoc.body;
+        if (!conteudoEl) return;
+
+        const conteudoHeight = conteudoEl.scrollHeight;
         const margemInferior = 60;
-        const areaUtil = previewDoc.clientHeight - top - margemInferior;
-        const paginas = Math.max(1, Math.ceil(previewConteudo.scrollHeight / areaUtil));
+        const areaUtil = previewDoc.clientHeight - margemInferior;
+        const paginas = Math.max(1, Math.ceil(conteudoHeight / areaUtil));
 
         statusPreview.style.display = 'block';
         statusPreviewTexto.textContent = paginas > 1
