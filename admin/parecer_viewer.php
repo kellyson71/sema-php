@@ -119,6 +119,9 @@ foreach ($assinaturas as $ass) {
     $blocosAssinaturaHtml .= '<strong>Assinado digitalmente por:</strong><br>';
     $blocosAssinaturaHtml .= '<span style="font-size: 12px; font-weight: bold;">' . htmlspecialchars($ass['assinante_nome']) . '</span><br>';
     $blocosAssinaturaHtml .= htmlspecialchars($ass['assinante_cargo']) . '<br>';
+    if (!empty($ass['assinante_matricula_portaria'])) {
+        $blocosAssinaturaHtml .= 'Matrícula/Portaria: ' . htmlspecialchars($ass['assinante_matricula_portaria']) . '<br>';
+    }
     $blocosAssinaturaHtml .= 'Em: ' . date('d/m/Y H:i', strtotime($ass['timestamp_assinatura'])) . '<br>';
     $blocosAssinaturaHtml .= '<a href="' . htmlspecialchars($urlVerificacaoFinal) . '" target="_blank" style="font-size: 9px; color: #0066cc; text-decoration: none;">Verificar Autenticidade</a>';
     $blocosAssinaturaHtml .= '</div></div>';
