@@ -2903,7 +2903,7 @@ $isBlocked = $isFinalized || $isIndeferido;
              language: 'pt_BR',
              plugins: 'lists link image table code fullscreen',
              toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | fullscreen code',
-             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.45; } p { margin: 0 0 10px; } ul,ol { margin: 0 0 10px 20px; padding-left: 14px; }',
+             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.45; } p { margin: 0 0 10px; } ul,ol { margin: 0 0 10px 20px; padding-left: 14px; } .titulo { text-align: center !important; font-weight: bold !important; text-transform: uppercase; } .label { font-weight: bold !important; } .dados-interessado .linha { margin-bottom: 4px; } .secao-titulo { font-weight: bold; text-transform: uppercase; margin: 20px 0 12px 0; }',
              valid_elements: '*[*]',
              extended_valid_elements: '*[*]',
              valid_styles: {

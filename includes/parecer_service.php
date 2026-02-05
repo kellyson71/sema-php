@@ -112,6 +112,9 @@ class ParecerService
             $area = $requerimento['area_lote'];
         }
 
+        $artNumero = $requerimento['responsavel_tecnico_numero'] ?? $requerimento['responsavel_tecnico_registro'] ?? '';
+        $artNumero = trim($artNumero) !== '' ? $artNumero : 'a ser informado';
+
         $dados = [
             'protocolo' => $requerimento['protocolo'] ?? '',
             'nome_requerente' => $requerimento['requerente_nome'] ?? '',
@@ -131,8 +134,8 @@ class ParecerService
             'responsavel_tecnico_numero' => $requerimento['responsavel_tecnico_numero'] ?? '',
             'responsavel_tecnico_tipo_documento' => $requerimento['responsavel_tecnico_tipo_documento'] ?? '',
             'especificacao' => $requerimento['especificacao'] ?? '',
-            // Campos unificados para o template
-            'area_construida' => $area, // Usado genericamente nos templates como área principal
+            'art_numero' => $artNumero,
+            'area_construida' => $area !== '' ? $area : 'a ser informada',
             'area_lote' => $requerimento['area_lote'] ?? ''
         ];
 
