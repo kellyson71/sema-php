@@ -1637,6 +1637,8 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
             
 
+        </div>
+
         <!-- Aba: Histórico -->
         <div class="tab-pane fade" id="historico" role="tabpanel">
             <div class="modern-card mb-3">
