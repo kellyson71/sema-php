@@ -1645,22 +1645,11 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <h6>Histórico de Ações</h6>
                 </div>
                 <div class="card-body p-0">
-                    <?php if ($isIndeferido): ?>
-                        <div class="p-3" style="background-color: #fef2f2; border-bottom: 1px solid #fee2e2;">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-times-circle text-danger me-2 fs-5"></i>
-                                <h6 class="text-danger fw-bold mb-0">Requerimento Indeferido</h6>
-                            </div>
-                            <div class="text-dark small" style="white-space: pre-wrap; line-height: 1.5;">
-                                <?php echo htmlspecialchars($requerimento['observacoes'] ?? 'Motivo não especificado.'); ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
                     <?php if (count($historico) > 0): ?>
                         <?php foreach ($historico as $h): ?>
                             <div class="data-row">
                                 <div class="data-label" style="min-width: 140px;">
-                                    <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome']); ?></div>
+                                    <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome'] ?? 'Sistema'); ?></div>
                                     <div class="text-muted small"><?php echo formataData($h['data_acao']); ?></div>
                                 </div>
                                 <div class="data-value">
