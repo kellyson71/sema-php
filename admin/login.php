@@ -268,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         <div class="login-logo">
             <img src="../assets/SEMA/PNG/Azul/Logo SEMA Vertical.png" alt="Logo SEMA">
         </div>
-        <h2 class="login-title">Acesso Administrativo</h2>
+        <h2 class="login-title">Acesso Administrativo teste</h2>
 
         <?php if ($erro): ?>
             <div class="alert alert-danger" role="alert">
