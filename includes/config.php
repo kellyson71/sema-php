@@ -67,6 +67,10 @@ define('MODO_TESTE', false);
 // URLs importantes
 define('PORTAL_CONSULTA_URL', 'http://localhost:8080/');
 
+// Configurações do Google reCAPTCHA v3
+define('RECAPTCHA_SITE_KEY', '6LcXuX0SAAAAAPjxqqV0GXJGMChdqCGkBH-04YDe');
+define('RECAPTCHA_SECRET_KEY', '6LcXuX0sAAAAAKUwd1S8pnR8uL-_n5-b2yR2sA6T');
+
 // Timezone
 date_default_timezone_set('America/Sao_Paulo');
 

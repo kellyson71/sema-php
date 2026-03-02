@@ -41,9 +41,17 @@ if ($_SESSION['login_attempts'] >= 5) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     $usuario = trim($_POST['usuario'] ?? '');
     $senha = trim($_POST['senha'] ?? '');
+    $recaptcha_token = $_POST['recaptcha_token'] ?? '';
+
+    // Validar reCAPTCHA
+    $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
+    $recaptcha_response = file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
+    $recaptcha_data = json_decode($recaptcha_response);
 
     if (empty($usuario) || empty($senha)) {
         $erro = "Por favor, preencha todos os campos.";
+    } elseif (!$recaptcha_data->success || $recaptcha_data->score < 0.5) {
+        $erro = "Falha na verificação de segurança (reCAPTCHA). Por favor, tente novamente.";
     } else {
         // Verificar credenciais no banco pelo nome do usuário
         $stmt = $pdo->prepare("SELECT * FROM administradores WHERE nome = ? AND ativo = 1");
@@ -83,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     <title>Login - Painel Administrativo SEMA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <style>
         :root {
             --primary-color: #009851;
@@ -266,7 +275,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 <i class="fas fa-exclamation-circle"></i>
                 <?php echo $erro; ?>
             </div>
-        <?php endif; ?> <form class="login-form" method="post" action="">
+        <?php endif; ?> <form class="login-form" method="post" action="" id="loginForm">
+            <input type="hidden" name="recaptcha_token" id="recaptchaToken">
             <div class="form-group">
                 <label class="form-label" for="usuario">Usuário</label>
                 <div class="form-control-wrapper">
@@ -304,6 +314,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 document.querySelector('.login-container').style.transition = 'opacity 0.5s ease';
                 document.querySelector('.login-container').style.opacity = '1';
             }, 100);
+
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                grecaptcha.ready(function() {
+                    grecaptcha.execute('<?php echo RECAPTCHA_SITE_KEY; ?>', {action: 'login'}).then(function(token) {
+                        document.getElementById('recaptchaToken').value = token;
+                        loginForm.submit();
+                    });
+                });
+            });
         });
     </script>
 </body>
