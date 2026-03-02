@@ -9,6 +9,7 @@
         }
 
         require_once 'conexao.php';
+        require_once '../includes/email_service.php';
 
 // Verificar se já está logado
 if (isset($_SESSION['admin_id'])) {
@@ -37,28 +38,87 @@ if ($_SESSION['login_attempts'] >= 5) {
     }
 }
 
-// Processar formulário de login
+// Processar formulário de login via AJAX (etapas ou login tradicional com redirecionamento ajustado)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
-    $usuario = trim($_POST['usuario'] ?? '');
-    $senha = trim($_POST['senha'] ?? '');
-    $recaptcha_token = $_POST['recaptcha_token'] ?? '';
+    if (isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
+        // Exigência ajax para etapas
+        header('Content-Type: application/json');
+        
+        $usuario = trim($_POST['usuario'] ?? '');
+        $senha = trim($_POST['senha'] ?? '');
+        $recaptcha_token = $_POST['recaptcha_token'] ?? '';
 
-    // Validar reCAPTCHA
-    $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
-    $recaptcha_response = file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
-    $recaptcha_data = json_decode($recaptcha_response);
+        // Validar reCAPTCHA
+        $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
+        $recaptcha_response = file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
+        $recaptcha_data = json_decode($recaptcha_response);
 
-    if (empty($usuario) || empty($senha)) {
-        $erro = "Por favor, preencha todos os campos.";
-    } elseif (!$recaptcha_data->success || $recaptcha_data->score < 0.5) {
-        $erro = "Falha na verificação de segurança (reCAPTCHA). Por favor, tente novamente.";
-    } else {
+        if (empty($usuario) || empty($senha)) {
+            echo json_encode(['success' => false, 'error' => "Por favor, preencha todos os campos."]);
+            exit;
+        } elseif (!$recaptcha_data->success || $recaptcha_data->score < 0.5) {
+            echo json_encode(['success' => false, 'error' => "Falha na verificação de segurança (reCAPTCHA). Por favor, tente novamente."]);
+            exit;
+        }
+
         // Verificar credenciais no banco pelo nome do usuário
         $stmt = $pdo->prepare("SELECT * FROM administradores WHERE nome = ? AND ativo = 1");
         $stmt->execute([$usuario]);
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
+            if (empty($admin['email'])) {
+                echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail cadastrado para verificação em duas etapas."]);
+                exit;
+            }
+
+            // Gerar código de 6 dígitos
+            $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Salvar na sessão temporária
+            $_SESSION['2fa_admin_data'] = $admin;
+            $_SESSION['2fa_otp_code'] = $codigo;
+            $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
+
+            // Enviar email
+            $emailService = new EmailService();
+            $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
+
+            if ($enviado) {
+                // Mascarar email para exibir no frontend
+                $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado]);
+            } else {
+                echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
+            }
+        } else {
+            $_SESSION['login_attempts']++;
+            $_SESSION['last_attempt_time'] = time();
+            echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos."]);
+        }
+        exit;
+    }
+
+    if (isset($_POST['action']) && $_POST['action'] === 'validar_otp') {
+        header('Content-Type: application/json');
+        $codigoRecebido = trim($_POST['codigo'] ?? '');
+
+        if (!isset($_SESSION['2fa_admin_data']) || !isset($_SESSION['2fa_otp_code'])) {
+            echo json_encode(['success' => false, 'error' => 'Sessão de verificação expirada ou inválida.']);
+            exit;
+        }
+
+        if (time() > $_SESSION['2fa_otp_expires']) {
+            unset($_SESSION['2fa_admin_data']);
+            unset($_SESSION['2fa_otp_code']);
+            unset($_SESSION['2fa_otp_expires']);
+            echo json_encode(['success' => false, 'error' => 'Código expirado. Volte e faça login novamente.']);
+            exit;
+        }
+
+        if ($codigoRecebido === $_SESSION['2fa_otp_code']) {
+            $admin = $_SESSION['2fa_admin_data'];
+
             $_SESSION['login_attempts'] = 0;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_nome'] = $admin['nome'];
@@ -68,17 +128,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
             $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
             $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
+            
+            // Sessão para assinaturas liberada indefinidamente via login
+            $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60); // Válida enquanto o login durar (ex: 24h, mas será validada pela sessão de login no resto do sistema)
 
             $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
             $stmt->execute([$admin['id']]);
 
-            header("Location: index.php");
-            exit;
+            // Limpar sessões 2FA
+            unset($_SESSION['2fa_admin_data']);
+            unset($_SESSION['2fa_otp_code']);
+            unset($_SESSION['2fa_otp_expires']);
+
+            echo json_encode(['success' => true]);
         } else {
-            $_SESSION['login_attempts']++;
-            $_SESSION['last_attempt_time'] = time();
-            $erro = "Usuário ou senha incorretos.";
+            echo json_encode(['success' => false, 'error' => 'Código incorreto.']);
         }
+        exit;
     }
 }
 ?>
@@ -275,35 +341,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 <i class="fas fa-exclamation-circle"></i>
                 <?php echo $erro; ?>
             </div>
-        <?php endif; ?> <form class="login-form" method="post" action="" id="loginForm">
-            <input type="hidden" name="recaptcha_token" id="recaptchaToken">
-            <div class="form-group">
-                <label class="form-label" for="usuario">Usuário</label>
-                <div class="form-control-wrapper">
-                    <i class="fas fa-user input-icon"></i> <input type="text"
-                        class="form-control"
-                        id="usuario"
-                        name="usuario"
-                        required
-                        placeholder="Digite seu usuário">
+        <?php endif; ?> 
+        
+        <div id="login-etapa-1">
+            <form class="login-form" id="loginForm">
+                <!-- Erro dinâmico JS -->
+                <div class="alert alert-danger d-none" role="alert" id="js-erro-1">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
                 </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="senha">Senha</label>
-                <div class="form-control-wrapper">
-                    <i class="fas fa-lock input-icon"></i> <input type="password"
-                        class="form-control"
-                        id="senha"
-                        name="senha"
-                        required
-                        placeholder="Digite sua senha">
+                
+                <input type="hidden" name="recaptcha_token" id="recaptchaToken">
+                <input type="hidden" name="action" value="validar_credenciais">
+                
+                <div class="form-group">
+                    <label class="form-label" for="usuario">Usuário</label>
+                    <div class="form-control-wrapper">
+                        <i class="fas fa-user input-icon"></i> <input type="text"
+                            class="form-control"
+                            id="usuario"
+                            name="usuario"
+                            required
+                            placeholder="Digite seu usuário">
+                    </div>
                 </div>
-            </div>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-sign-in-alt me-2"></i>
-                Entrar
-            </button>
-        </form>
+                <div class="form-group">
+                    <label class="form-label" for="senha">Senha</label>
+                    <div class="form-control-wrapper">
+                        <i class="fas fa-lock input-icon"></i> <input type="password"
+                            class="form-control"
+                            id="senha"
+                            name="senha"
+                            required
+                            placeholder="Digite sua senha">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btn-submit-1">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    Avançar
+                </button>
+            </form>
+        </div>
+
+        <div id="login-etapa-2" style="display: none; margin-top: 1.5rem; text-align: center;">
+            <p class="text-muted mb-4">Para sua segurança, informe o código enviado para seu e-mail.</p>
+            <p class="small text-muted mb-3">Enviamos um código para <strong id="email-mascarado-display">...</strong></p>
+            
+            <form class="login-form" id="otpForm">
+                <!-- Erro dinâmico JS -->
+                <div class="alert alert-danger d-none" role="alert" id="js-erro-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
+                </div>
+
+                <input type="hidden" name="action" value="validar_otp">
+                
+                <div class="form-group mb-4">
+                    <input type="text" id="codigo" name="codigo" class="form-control fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px; text-align: center;" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="btn-submit-2">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Entrar
+                </button>
+                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none mt-2" onclick="voltarParaLogin()">
+                    Voltar e tentar outro usuário
+                </button>
+            </form>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -316,17 +421,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             }, 100);
 
             const loginForm = document.getElementById('loginForm');
+            const otpForm = document.getElementById('otpForm');
+
             loginForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
+                const btn = document.getElementById('btn-submit-1');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Aguarde...';
+
                 grecaptcha.ready(function() {
                     grecaptcha.execute('<?php echo RECAPTCHA_SITE_KEY; ?>', {action: 'login'}).then(function(token) {
                         document.getElementById('recaptchaToken').value = token;
-                        loginForm.submit();
+                        
+                        const formData = new FormData(loginForm);
+                        fetch('login.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                            if (data.success) {
+                                document.getElementById('js-erro-1').classList.add('d-none');
+                                document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
+                                document.getElementById('login-etapa-1').style.display = 'none';
+                                document.getElementById('login-etapa-2').style.display = 'block';
+                            } else {
+                                const errBox = document.getElementById('js-erro-1');
+                                errBox.querySelector('span').textContent = data.error;
+                                errBox.classList.remove('d-none');
+                            }
+                        })
+                        .catch(err => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                            const errBox = document.getElementById('js-erro-1');
+                            errBox.querySelector('span').textContent = 'Erro de rede. Tente novamente.';
+                            errBox.classList.remove('d-none');
+                        });
                     });
                 });
             });
+
+            otpForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const btn = document.getElementById('btn-submit-2');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+
+                const formData = new FormData(otpForm);
+                fetch('login.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    if (data.success) {
+                        window.location.href = 'index.php';
+                    } else {
+                        const errBox = document.getElementById('js-erro-2');
+                        errBox.querySelector('span').textContent = data.error;
+                        errBox.classList.remove('d-none');
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    const errBox = document.getElementById('js-erro-2');
+                    errBox.querySelector('span').textContent = 'Erro de rede. Tente novamente.';
+                    errBox.classList.remove('d-none');
+                });
+            });
         });
+
+        function voltarParaLogin() {
+            document.getElementById('login-etapa-2').style.display = 'none';
+            document.getElementById('login-etapa-1').style.display = 'block';
+            document.getElementById('senha').value = '';
+            document.getElementById('codigo').value = '';
+            document.getElementById('js-erro-1').classList.add('d-none');
+            document.getElementById('js-erro-2').classList.add('d-none');
+        }
     </script>
 </body>
 

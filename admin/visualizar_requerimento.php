@@ -3408,120 +3408,56 @@ $isBlocked = $isFinalized || $isIndeferido;
         }
      }
 
-     function iniciarVerificacaoEmail() {
-         // Salvar a senha digitada antes de fechar o modal
-         const senhaInput = document.getElementById('senha-finalizacao');
-         if (senhaInput) {
-             senhaTemporaria = senhaInput.value;
-         }
+    async function iniciarVerificacaoAssinatura() {
+    const temDocumento = await verificarSeTemDocumento();
+    if (!temDocumento && !tinymce.get('editor-parecer-content').getContent().trim()) {
+        mostrarAvisoAssinatura('warning', 'É necessário preencher o parecer ou selecionar um documento.');
+        return;
+    }
+    
+    // Como a verificação de segurança agora ocorre no login, podemos ir direto
+    // para a etapa de confirmar a senha para assinar.
+    const sessaoValida = await verificarSessaoAssinatura();
+    if (sessaoValida) {
+        if (!configAssinaturaModal) {
+            configAssinaturaModal = new bootstrap.Modal(document.getElementById('modalConfigAssinatura'));
+        }
+        
+        // Configura abas do modal
+        const tabList = document.querySelector('#modalConfigAssinatura .nav-tabs');
+        if (tabList) {
+            const hasDocument = await verificarSeTemDocumento();
+            const tabA4 = document.getElementById('nav-a4-tab');
+            const tabDigital = document.getElementById('nav-digital-tab');
+            
+            if (hasDocument) {
+                tabA4.disabled = false;
+                tabDigital.disabled = false;
+                tabA4.click();
+            } else {
+                tabA4.disabled = true;
+                tabDigital.disabled = false;
+                tabDigital.click();
+            }
+        }
+        
+        configAssinaturaModal.show();
+        
+        const templateId = document.getElementById('template-select').value;
+        if (templateId === 'em_branco') {
+            mostrarAvisoAssinatura('warning', 'Lembre-se: O template "Em Branco" requer posicionamento manual da assinatura.');
+        } else if (templateId && templateId.startsWith('db_draft')) {
+             mostrarAvisoAssinatura('info', 'Assinando rascunho. O posicionamento manual pode ser necessário.');
+        } else if (templateId && templateId.startsWith('draft')) {
+             mostrarAvisoAssinatura('info', 'Assinando documento existente. O posicionamento manual pode ser necessário.');
+        }
+        return;
+    } else {
+        mostrarAvisoAssinatura('danger', 'Sua sessão de segurança é inválida. Atualize a página e refaça o login se necessário.');
+    }
+}
 
-         // Fechar modal de parecer se estiver aberto para limpar a tela
-         if (typeof parecerModal !== 'undefined' && parecerModal) {
-             parecerModal.hide();
-         }
-         
-         if (!modalVerificacao) {
-             modalVerificacao = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
-         }
-         
-         // Resetar estado
-         document.getElementById('etapa-enviar-codigo').style.display = 'block';
-         document.getElementById('etapa-validar-codigo').style.display = 'none';
-         document.getElementById('codigo_verificacao').value = '';
-         document.getElementById('codigo_verificacao').classList.remove('is-invalid');
-         
-         modalVerificacao.show();
-     }
-
-     async function enviarCodigoVerificacao() {
-         const btn = document.querySelector('#etapa-enviar-codigo button');
-         const originalText = btn.innerHTML;
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
-
-         try {
-            const response = await fetch('parecer_handler.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    action: 'enviar_codigo_assinatura',
-                    origem: 'tecnico',
-                    requerimento_id: <?php echo (int)$id; ?>
-                })
-            });
-             const data = await response.json();
-             
-             if (data.success) {
-                 document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
-                 document.getElementById('etapa-enviar-codigo').style.display = 'none';
-                 document.getElementById('etapa-validar-codigo').style.display = 'block';
-             } else {
-                 showToast(data.error || 'Falha ao enviar email.', 'error');
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             showToast('Erro de conexão ao enviar código.', 'error');
-         } finally {
-             btn.disabled = false;
-             btn.innerHTML = originalText;
-         }
-     }
-
-     function voltarEnviarCodigo() {
-         document.getElementById('etapa-enviar-codigo').style.display = 'block';
-         document.getElementById('etapa-validar-codigo').style.display = 'none';
-     }
-
-     async function validarCodigoVerificacao() {
-         const input = document.getElementById('codigo_verificacao');
-         const btn = document.querySelector('#etapa-validar-codigo .btn-success');
-         const codigo = input.value.trim();
-         
-         if (codigo.length !== 6) {
-             input.classList.add('is-invalid');
-             document.getElementById('erro-codigo').textContent = 'O código deve ter 6 dígitos.';
-             return;
-         }
-
-         const originalText = btn.innerHTML;
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
-
-         try {
-            const response = await fetch('parecer_handler.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    action: 'validar_codigo_assinatura',
-                    codigo: codigo,
-                    origem: 'tecnico',
-                    requerimento_id: <?php echo (int)$id; ?>
-                })
-            });
-             const data = await response.json();
-             
-             if (data.success) {
-                 // Sucesso! Fechar modal e mostrar notificação moderna
-                 if (modalVerificacao) modalVerificacao.hide();
-                showToast('Verificação realizada com sucesso! Acesso liberado por 8 horas.');
-                 
-                 // CONTINUAR FLUXO: Abrir o modal de parecer
-                 setTimeout(() => {
-                    exibirModalParecer();
-                 }, 500);
-                 
-             } else {
-                 input.classList.add('is-invalid');
-                 document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             showToast('Erro de conexão ao validar código.', 'error');
-         } finally {
-             btn.disabled = false;
-             btn.innerHTML = originalText;
-         }
-     }
+// Funções enviarCodigoVerificacao, voltarEnviarCodigo e validarCodigoVerificacao removidas (Lógica movida para login.php)
 
 
      async function confirmarPosicaoEGerarPdf() {
@@ -3901,60 +3837,7 @@ function getStatusDotColor($status)
 }
 ?>
 
-<!-- Modal de Verificação de Segurança -->
-<div class="modal fade" id="modalVerificacaoSeguranca" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom-0 pb-0">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center px-4 pb-4">
-                <div class="mb-4">
-                    <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-                        <i class="fas fa-shield-alt text-success" style="font-size: 40px;"></i>
-                    </div>
-                </div>
-                
-                <h4 class="fw-bold mb-2">Verificação de Segurança</h4>
-                <p class="text-muted mb-4">Para sua segurança, precisamos confirmar sua identidade antes de prosseguir com a assinatura digital.</p>
-                
-                <!-- Etapa 1: Enviar Email -->
-                <div id="etapa-enviar-codigo">
-                    <button onclick="enviarCodigoVerificacao()" class="btn btn-primary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
-                        <i class="fas fa-paper-plane"></i>
-                        Enviar código para meu email
-                    </button>
-                    <p class="small text-muted mb-0">
-                        Um código de 6 dígitos será enviado para seu email cadastrado.
-                    </p>
-                </div>
-                
-                <!-- Etapa 2: Digitar Código -->
-                <div id="etapa-validar-codigo" style="display: none;">
-                    <p class="small text-muted mb-3">
-                        Enviamos um código para <strong id="email-mascarado-display">...</strong>
-                    </p>
-                    
-                    <div class="mb-3">
-                        <input type="text" id="codigo_verificacao" class="form-control form-control-lg text-center fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px;">
-                        <div class="invalid-feedback text-start" id="erro-codigo">
-                            Código incorreto.
-                        </div>
-                    </div>
-                    
-                    <button onclick="validarCodigoVerificacao()" class="btn btn-success w-100 py-2 mb-3">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Validar Código
-                    </button>
-                    
-                    <button onclick="voltarEnviarCodigo()" class="btn btn-link text-muted btn-sm text-decoration-none">
-                        Reenviar código
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- O Modal de Verificação de Segurança (modalVerificacaoSeguranca) foi removido pois a checagem ocorre agora no Login -->
 
 <!-- Modal de Sucesso -->
 <div class="modal fade" id="modalSucessoAssinatura" tabindex="-1" aria-hidden="true">
