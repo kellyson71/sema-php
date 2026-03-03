@@ -10,13 +10,14 @@
     "endroid/qr-code": "^5.0",
     "gumlet/php-image-resize": "^2.1",
     "mpdf/mpdf": "^8.2",
-    "knplabs/knp-snappy": "^1.5"
+    "knplabs/knp-snappy": "^1.5",
+    "spomky-labs/otphp": "^11.5"
   },
   "autoload": {
     "psr-4": {
       "Sema\\": "src/"
     }
   },
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
   "prefer-stable": true
 }

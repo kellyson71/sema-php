@@ -39,7 +39,8 @@ try {
 function verificaLogin()
 {
     if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
-        header("Location: login.php");
+        $uri = urlencode($_SERVER['REQUEST_URI']);
+        header("Location: login.php?redirect=" . $uri);
         exit;
     }
 }

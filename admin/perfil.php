@@ -38,43 +38,44 @@ function removerFotoAnterior($adminId, $uploadDir)
 $mensagem = '';
 $mensagemTipo = '';
 
-// Processar formulário
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'ativar_2fa') {
-        $codigo2fa = str_replace(' ', '', trim($_POST['codigo_2fa'] ?? ''));
-        $secretTemp = $_SESSION['temp_totp_secret'] ?? '';
+// Processar chamadas AJAX do TOTP
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    require_once 'TwoFactorService.php';
+    $twoFactorService = new \Admin\Services\TwoFactorService();
+    
+    if ($_POST['action'] === 'setup_totp') {
+        $setup = $twoFactorService->generateSetup($admin['email']);
+        $_SESSION['totp_setup_secret'] = $setup['secret'];
+        echo json_encode(['success' => true, 'qrcode' => $twoFactorService->getQrCodeImage($setup['qrCodeUri'])]);
+        exit;
+    }
+    
+    if ($_POST['action'] === 'verify_setup_totp') {
+        $code = trim($_POST['code'] ?? '');
+        $secret = $_SESSION['totp_setup_secret'] ?? '';
         
-        if (!empty($secretTemp) && !empty($codigo2fa)) {
-            require_once 'TwoFactorService.php';
-            $tfaService = new TwoFactorService();
-            if ($tfaService->verify($secretTemp, $codigo2fa)) {
-                try {
-                    $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = ? WHERE id = ?");
-                    $stmt->execute([$secretTemp, $adminId]); 
-                    $mensagem = "Autenticador de 2 Fatores ativado com sucesso!";
-                    $mensagemTipo = "success";
-                    $admin = getDadosAdmin($pdo, $adminId); // Atualiza os dados locais
-                } catch (Exception $e) {
-                    $mensagem = "Erro ao salvar 2FA. Crie a coluna 'totp_secret' no banco.";
-                    $mensagemTipo = "danger";
-                }
-            } else {
-                $mensagem = "Código 2FA do Autenticador inválido.";
-                $mensagemTipo = "danger";
-            }
+        if ($twoFactorService->verify($secret, $code)) {
+            $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = ? WHERE id = ?");
+            $stmt->execute([$secret, $adminId]);
+            unset($_SESSION['totp_setup_secret']);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Código inválido ou expirado. Tente novamente.']);
         }
-    } elseif (isset($_POST['action']) && $_POST['action'] === 'desativar_2fa') {
-        try {
-            $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = NULL WHERE id = ?");
-            $stmt->execute([$adminId]);
-            $mensagem = "Autenticador desativado!";
-            $mensagemTipo = "success";
-            $admin = getDadosAdmin($pdo, $adminId); // Atualiza os dados locais
-        } catch (Exception $e) {
-            $mensagem = "Erro ao desativar 2FA.";
-            $mensagemTipo = "danger";
-        }
-    } else {
+        exit;
+    }
+    
+    if ($_POST['action'] === 'disable_totp') {
+        $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = NULL WHERE id = ?");
+        $stmt->execute([$adminId]);
+        echo json_encode(['success' => true]);
+        exit;
+    }
+}
+
+// Processar formulário normal
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
     $nome = trim($_POST['nome'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $senhaAtual = trim($_POST['senha_atual'] ?? '');
@@ -160,18 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    } // Fechando o else das ações de 2FA
-}
-
-// Generate setup data if needed
-$hasTotp = !empty($admin['totp_secret']);
-$qrCodeBase64 = '';
-if (!$hasTotp) {
-    require_once 'TwoFactorService.php';
-    $tfaService = new TwoFactorService();
-    $setup = $tfaService->generateSetup($admin['email']);
-    $_SESSION['temp_totp_secret'] = $setup['secret'];
-    $qrCodeBase64 = $tfaService->generateQrCodeBase64($setup['uri']);
 }
 
 include 'header.php';
@@ -247,29 +236,20 @@ include 'header.php';
                     <hr class="my-4">
 
                     <h5>Autenticação em Duas Etapas (App)</h5>
-                    <p class="text-muted small mb-3">Proteja sua conta configurando um aplicativo como Google Authenticator ou Authy.</p>
+                    <p class="text-muted small mb-3">Aumente a segurança da sua conta usando um aplicativo como Google Authenticator ou Authy.</p>
                     
-                    <?php if ($hasTotp): ?>
-                        <div class="alert alert-success d-flex align-items-center mb-3">
-                            <i class="fas fa-check-circle fa-2x me-3"></i>
-                            <div>
-                                <strong>Autenticador Ativado</strong><br>
-                                Sua conta está protegida com a autenticação em duas etapas via aplicativo.
+                    <div id="totp-status-container">
+                        <?php if (!empty($admin['totp_secret'])): ?>
+                            <div class="alert alert-success d-flex align-items-center justify-content-between">
+                                <div><i class="fas fa-check-circle me-1"></i> Autenticador Ativado</div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="desativarTotp()">Desativar</button>
                             </div>
-                        </div>
-                        <form method="post" action="perfil.php" onsubmit="return confirm('Tem certeza que deseja desativar o Autenticador? Sua conta ficará menos segura.');">
-                            <input type="hidden" name="action" value="desativar_2fa">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">
-                                <i class="fas fa-times-circle me-1"></i> Desativar Autenticador
+                        <?php else: ?>
+                            <button type="button" class="btn btn-outline-primary mb-3" onclick="iniciarSetupTotp()">
+                                <i class="fas fa-qrcode me-1"></i> Configurar App Autenticador
                             </button>
-                        </form>
-                    <?php else: ?>
-                        <div class="mb-3">
-                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal2FA">
-                                <i class="fas fa-qrcode me-1"></i> Configurar Autenticador
-                            </button>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
 
                     <hr class="my-4">
 
@@ -302,40 +282,106 @@ include 'header.php';
     </div>
 </div>
 
-<?php if (!$hasTotp): ?>
-<!-- Modal 2FA -->
-<div class="modal fade" id="modal2FA" tabindex="-1" aria-labelledby="modal2FALabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" action="perfil.php">
-          <input type="hidden" name="action" value="ativar_2fa">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modal2FALabel">Configurar Autenticador</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body text-center">
-            <p>1. Abra o seu aplicativo Autenticador (Google Authenticator, Authy, etc).</p>
-            <p>2. Escaneie o QR Code abaixo:</p>
-            <div class="mb-3">
-                <img src="<?php echo $qrCodeBase64; ?>" alt="QR Code 2FA" style="border: 1px solid #ccc; padding: 10px; border-radius: 8px; max-width: 100%;">
+<!-- Modal Configurar TOTP -->
+<div class="modal fade" id="modalSetupTotp" tabindex="-1" aria-labelledby="modalSetupTotpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSetupTotpLabel">Configurar App Autenticador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <p>Ou digite a chave manualmente:</p>
-            <div class="alert alert-secondary"><strong><?php echo $_SESSION['temp_totp_secret']; ?></strong></div>
-            
-            <hr>
-            <div class="form-group text-start">
-                <label for="codigo_2fa" class="form-label fw-bold">3. Digite o código gerado pelo aplicativo</label>
-                <input type="text" class="form-control text-center fs-4 letter-spacing-lg" id="codigo_2fa" name="codigo_2fa" placeholder="000 000" maxlength="6" required style="letter-spacing: 5px;">
+            <div class="modal-body text-center">
+                <p>Escaneie o QR Code abaixo usando o seu aplicativo autenticador preferido.</p>
+                <div id="qr-code-container" class="my-3">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div>
+                </div>
+                <div class="form-group mt-3 text-start">
+                    <label for="totp-code-input" class="form-label">Digite o código de 6 dígitos gerado:</label>
+                    <input type="text" class="form-control text-center fs-4 letter-spacing-lg" id="totp-code-input" placeholder="000 000" maxlength="6" style="letter-spacing: 5px;">
+                    <div class="invalid-feedback" id="totp-error-msg">Código inválido.</div>
+                </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Ativar 2FA</button>
-          </div>
-      </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="verificarSetupTotp()" id="btn-verify-totp">Confirmar</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
-<?php endif; ?>
 
 <?php include 'footer.php'; ?>
+
+<script>
+    let setupModal;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        setupModal = new bootstrap.Modal(document.getElementById('modalSetupTotp'));
+    });
+
+    function iniciarSetupTotp() {
+        setupModal.show();
+        document.getElementById('qr-code-container').innerHTML = '<div class="spinner-border text-primary" role="status"></div>';
+        document.getElementById('totp-code-input').value = '';
+        document.getElementById('totp-code-input').classList.remove('is-invalid');
+
+        fetch('perfil.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=setup_totp'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('qr-code-container').innerHTML = `<img src="${data.qrcode}" alt="QR Code" class="img-fluid border rounded" style="max-width:200px;">`;
+            } else {
+                document.getElementById('qr-code-container').innerHTML = '<p class="text-danger">Erro ao gerar QR Code.</p>';
+            }
+        });
+    }
+
+    function verificarSetupTotp() {
+        const codeInput = document.getElementById('totp-code-input');
+        const code = codeInput.value;
+        const btn = document.getElementById('btn-verify-totp');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Validando...';
+        codeInput.classList.remove('is-invalid');
+
+        fetch('perfil.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=verify_setup_totp&code=${encodeURIComponent(code)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = 'Confirmar';
+            if (data.success) {
+                setupModal.hide();
+                location.reload(); // Recarrega para mostrar a UI atualizada
+            } else {
+                codeInput.classList.add('is-invalid');
+                document.getElementById('totp-error-msg').innerText = data.error;
+            }
+        });
+    }
+
+    function desativarTotp() {
+        if (confirm('Tem certeza que deseja desativar o App Autenticador?')) {
+            fetch('perfil.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=disable_totp'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Erro ao desativar Autenticador.');
+                }
+            });
+        }
+    }
+</script>

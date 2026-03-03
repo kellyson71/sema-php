@@ -13,8 +13,13 @@
 
 // Verificar se já está logado
 if (isset($_SESSION['admin_id'])) {
-    header("Location: index.php");
+    $redirect = $_GET['redirect'] ?? 'index.php';
+    header("Location: " . filter_var($redirect, FILTER_SANITIZE_URL));
     exit;
+}
+
+if (isset($_GET['redirect'])) {
+    $_SESSION['login_redirect_url'] = $_GET['redirect'];
 }
 
 $erro = '';
@@ -67,12 +72,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            if (empty($admin['email'])) {
-                echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail cadastrado para verificação em duas etapas."]);
+            // Se tiver secret salva, flag para o frontend
+            $hasTotp = !empty($admin['totp_secret']);
+
+            if (!$hasTotp && empty($admin['email'])) {
+                echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail ou App Autenticador cadastrado para verificação em duas etapas."]);
                 exit;
             }
 
-            // Gerar código de 6 dígitos
+            // Gerar código de 6 dígitos para o e-mail (fallback ou primário)
             $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
             
             // Salvar na sessão temporária
@@ -80,20 +88,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['2fa_otp_code'] = $codigo;
             $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
 
-            // Enviar email
-            $emailService = new EmailService();
-            $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
+            $emailMascarado = '';
+            if (!empty($admin['email'])) {
+                // Enviar email
+                $emailService = new EmailService();
+                $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
 
-            // Verificar se usuário tem TOTP configurado
-            $hasTotp = !empty($admin['totp_secret']);
-
-            if ($enviado || $hasTotp) {
-                // Mascarar email para exibir no frontend
-                $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
-                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado, 'has_totp' => $hasTotp]);
-            } else {
-                echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
+                if ($enviado) {
+                    // Mascarar email para exibir no frontend
+                    $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                } else if (!$hasTotp) {
+                    echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
+                    exit;
+                }
             }
+
+            echo json_encode([
+                'success' => true, 
+                'email_mascarado' => $emailMascarado,
+                'has_totp' => $hasTotp
+            ]);
         } else {
             $_SESSION['login_attempts']++;
             $_SESSION['last_attempt_time'] = time();
@@ -106,37 +120,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         header('Content-Type: application/json');
         $codigoRecebido = trim($_POST['codigo'] ?? '');
 
-        if (!isset($_SESSION['2fa_admin_data']) || !isset($_SESSION['2fa_otp_code'])) {
+        if (!isset($_SESSION['2fa_admin_data'])) {
             echo json_encode(['success' => false, 'error' => 'Sessão de verificação expirada ou inválida.']);
             exit;
         }
 
-        if (time() > $_SESSION['2fa_otp_expires']) {
-            unset($_SESSION['2fa_admin_data']);
-            unset($_SESSION['2fa_otp_code']);
-            unset($_SESSION['2fa_otp_expires']);
-            echo json_encode(['success' => false, 'error' => 'Código expirado. Volte e faça login novamente.']);
-            exit;
-        }
-
         $admin = $_SESSION['2fa_admin_data'];
-        $totpValido = false;
+        $codigoValido = false;
+        $erroMsg = 'Código incorreto.';
 
-        // Verifica se o usuário tem TOTP e valida o código
+        // 1. Tentar validar via App Autenticador (TOTP)
         if (!empty($admin['totp_secret'])) {
             require_once 'TwoFactorService.php';
-            $tfaService = new TwoFactorService();
-            
-            // IMPORTANTE: Aqui você deve descriptografar a secret caso tenha criptografado no banco!
-            // Exemplo: $secretKey = openssl_decrypt($admin['totp_secret'], ...);
-            $secretKey = $admin['totp_secret']; 
-            
-            if ($tfaService->verify($secretKey, $codigoRecebido)) {
-                $totpValido = true;
+            $twoFactorService = new \Admin\Services\TwoFactorService();
+            if ($twoFactorService->verify($admin['totp_secret'], $codigoRecebido)) {
+                $codigoValido = true;
             }
         }
 
-        if ($codigoRecebido === $_SESSION['2fa_otp_code'] || $totpValido) {
+        // 2. Se não validou pelo app, tentar pelo código de e-mail (fallback)
+        if (!$codigoValido && isset($_SESSION['2fa_otp_code'])) {
+            if (time() > $_SESSION['2fa_otp_expires']) {
+                $erroMsg = 'Código expirado. Volte e faça login novamente.';
+                // Não expira a sessão inteira pois ele ainda pode usar o TOTP
+            } else if ($codigoRecebido === $_SESSION['2fa_otp_code']) {
+                $codigoValido = true;
+            }
+        }
+
+        if ($codigoValido) {
             $_SESSION['login_attempts'] = 0;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_nome'] = $admin['nome'];
@@ -148,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
             
             // Sessão para assinaturas liberada indefinidamente via login
-            $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60); // Válida enquanto o login durar (ex: 24h, mas será validada pela sessão de login no resto do sistema)
+            $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
 
             $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
             $stmt->execute([$admin['id']]);
@@ -158,9 +170,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             unset($_SESSION['2fa_otp_code']);
             unset($_SESSION['2fa_otp_expires']);
 
-            echo json_encode(['success' => true]);
+            $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
+            unset($_SESSION['login_redirect_url']);
+
+            echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
         } else {
-            echo json_encode(['success' => false, 'error' => 'Código incorreto ou inválido.']);
+            echo json_encode(['success' => false, 'error' => $erroMsg]);
         }
         exit;
     }
@@ -402,13 +417,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         </div>
 
         <div id="login-etapa-2" style="display: none; margin-top: 1.5rem; text-align: center;">
-            <p class="text-muted mb-4" id="msg-tfa-default">Para sua segurança, informe o código enviado para seu e-mail.</p>
-            <p class="small text-muted mb-3" id="msg-tfa-email">Enviamos um código para <strong id="email-mascarado-display">...</strong></p>
+            <div id="totp-msg-available" style="display: none;">
+                <i class="fas fa-mobile-alt fa-2x text-primary mb-3"></i>
+                <p class="text-muted mb-4">Abra seu <strong>App Autenticador</strong> e digite o código de 6 dígitos.</p>
+                <p class="small text-muted mb-3">Ou use o código enviado para <strong id="email-mascarado-display-1">...</strong></p>
+            </div>
             
-            <div id="btn-totp-container" class="mb-4 d-none">
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="usarAutenticador()">
-                    <i class="fas fa-mobile-alt me-1"></i> Usar App Autenticador
-                </button>
+            <div id="totp-msg-unavailable" style="display: none;">
+                <i class="fas fa-envelope fa-2x text-primary mb-3"></i>
+                <p class="text-muted mb-4">Para sua segurança, informe o código enviado para <strong id="email-mascarado-display-2">...</strong></p>
+                <div class="mt-2">
+                    <a href="perfil.php" class="text-decoration-none small text-primary fw-bold">
+                        <i class="fas fa-shield-alt me-1"></i> Ativar App Autenticador (Mais Seguro)
+                    </a>
+                </div>
             </div>
             
             <form class="login-form" id="otpForm">
@@ -470,15 +492,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                             btn.innerHTML = originalText;
                             if (data.success) {
                                 document.getElementById('js-erro-1').classList.add('d-none');
-                                document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
-                                document.getElementById('login-etapa-1').style.display = 'none';
-                                document.getElementById('login-etapa-2').style.display = 'block';
+                                document.getElementById('email-mascarado-display-1').textContent = data.email_mascarado || '...';
+                                document.getElementById('email-mascarado-display-2').textContent = data.email_mascarado || '...';
                                 
                                 if (data.has_totp) {
-                                    document.getElementById('btn-totp-container').classList.remove('d-none');
+                                    document.getElementById('totp-msg-available').style.display = 'block';
+                                    document.getElementById('totp-msg-unavailable').style.display = 'none';
                                 } else {
-                                    document.getElementById('btn-totp-container').classList.add('d-none');
+                                    document.getElementById('totp-msg-available').style.display = 'none';
+                                    document.getElementById('totp-msg-unavailable').style.display = 'block';
                                 }
+                                document.getElementById('login-etapa-1').style.display = 'none';
+                                document.getElementById('login-etapa-2').style.display = 'block';
                             } else {
                                 const errBox = document.getElementById('js-erro-1');
                                 errBox.querySelector('span').textContent = data.error;
@@ -514,7 +539,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                     if (data.success) {
-                        window.location.href = 'index.php';
+                        window.location.href = data.redirect || 'index.php';
                     } else {
                         const errBox = document.getElementById('js-erro-2');
                         errBox.querySelector('span').textContent = data.error;
@@ -538,17 +563,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             document.getElementById('codigo').value = '';
             document.getElementById('js-erro-1').classList.add('d-none');
             document.getElementById('js-erro-2').classList.add('d-none');
-            
-            // Voltar os textos ao normal
-            document.getElementById('msg-tfa-default').innerHTML = 'Para sua segurança, informe o código enviado para seu e-mail.';
-            document.getElementById('msg-tfa-email').style.display = 'block';
-        }
-
-        function usarAutenticador() {
-            document.getElementById('msg-tfa-default').innerHTML = '<i class="fas fa-shield-alt text-primary mb-2 fa-2x"></i><br>Abra seu aplicativo autenticador (Google Authenticator, Authy, etc) e digite o código de 6 dígitos.';
-            document.getElementById('msg-tfa-email').style.display = 'none';
-            document.getElementById('btn-totp-container').classList.add('d-none');
-            document.getElementById('codigo').focus();
         }
     </script>
 </body>
