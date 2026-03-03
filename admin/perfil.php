@@ -183,7 +183,7 @@ include 'header.php';
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-user-circle me-1"></i>
-                Informações do Perfil
+                Informações do Perfil teste
             </div>
             <div class="card-body text-center">
                 <div class="mb-4">
