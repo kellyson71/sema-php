@@ -208,16 +208,25 @@ include 'header.php';
             </div>
             <div class="card-body">
                 <?php
-                $aprovados = 0;
+                $statusSucesso = ['Aprovado', 'Finalizado', 'Apto a gerar alvará', 'Alvará Emitido'];
+                $statusFalha = ['Reprovado', 'Indeferido', 'Cancelado'];
+                
+                $totalAprovados = 0;
+                $totalRejeitados = 0;
+
                 foreach ($requerimentosPorStatus as $status) {
-                    if ($status['status'] === 'Aprovado') {
-                        $aprovados = $status['total'];
-                        break;
+                    if (in_array($status['status'], $statusSucesso)) {
+                        $totalAprovados += $status['total'];
+                    } elseif (in_array($status['status'], $statusFalha)) {
+                        $totalRejeitados += $status['total'];
                     }
                 }
-                $taxaAprovacao = $totalRequerimentos > 0 ? round(($aprovados / $totalRequerimentos) * 100, 1) : 0;
+                
+                $totalResolvidos = $totalAprovados + $totalRejeitados;
+                $taxaAprovacao = $totalResolvidos > 0 ? round(($totalAprovados / $totalResolvidos) * 100, 1) : 0;
                 ?>
-                <h1 class="text-center mb-0"><?php echo $taxaAprovacao; ?>%</h1>
+                <h1 class="text-center mb-0" title="<?php echo $totalAprovados; ?> de <?php echo $totalResolvidos; ?> resolvidos"><?php echo $taxaAprovacao; ?>%</h1>
+                <div class="text-center text-muted small mt-1">dos resolvidos</div>
             </div>
         </div>
     </div>
@@ -230,16 +239,10 @@ include 'header.php';
             </div>
             <div class="card-body">
                 <?php
-                $reprovados = 0;
-                foreach ($requerimentosPorStatus as $status) {
-                    if ($status['status'] === 'Reprovado') {
-                        $reprovados = $status['total'];
-                        break;
-                    }
-                }
-                $taxaRejeicao = $totalRequerimentos > 0 ? round(($reprovados / $totalRequerimentos) * 100, 1) : 0;
+                $taxaRejeicao = $totalResolvidos > 0 ? round(($totalRejeitados / $totalResolvidos) * 100, 1) : 0;
                 ?>
-                <h1 class="text-center mb-0"><?php echo $taxaRejeicao; ?>%</h1>
+                <h1 class="text-center mb-0" title="<?php echo $totalRejeitados; ?> de <?php echo $totalResolvidos; ?> resolvidos"><?php echo $taxaRejeicao; ?>%</h1>
+                <div class="text-center text-muted small mt-1">dos resolvidos</div>
             </div>
         </div>
     </div>
