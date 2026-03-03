@@ -25,7 +25,7 @@ uploads/perfil/*
 !uploads/perfil/.gitkeep
 
 # ===== DEPENDÊNCIAS =====
-/vendor/
+# /vendor/
 node_modules/
 composer.phar
 composer.lock
