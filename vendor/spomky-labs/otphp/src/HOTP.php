@@ -2,94 +2,60 @@
 
 declare(strict_types=1);
 
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014-2019 Spomky-Labs
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license.  See the LICENSE file for details.
+ */
+
 namespace OTPHP;
 
-use OTPHP\Exception\InvalidParameterException;
-use function is_int;
+use Assert\Assertion;
 
-/**
- * Note: This class is not marked as readonly because the verify() method
- * updates the counter state on successful verification, which is an intentional
- * side-effect to prevent OTP reuse.
- *
- * @see \OTPHP\Test\HOTPTest
- */
 final class HOTP extends OTP implements HOTPInterface
 {
-    private const DEFAULT_WINDOW = 0;
-
-    public static function create(
-        null|string $secret = null,
-        int $counter = self::DEFAULT_COUNTER,
-        string $digest = self::DEFAULT_DIGEST,
-        int $digits = self::DEFAULT_DIGITS,
-        ?int $secretSize = null
-    ): self {
-        $htop = $secret !== null
-            ? self::createFromSecret($secret)
-            : self::generate($secretSize)
-        ;
-        $htop->setCounter($counter);
-        $htop->setDigest($digest);
-        $htop->setDigits($digits);
-
-        return $htop;
-    }
-
-    public static function createFromSecret(string $secret): self
+    protected function __construct(?string $secret, int $counter, string $digest, int $digits)
     {
-        $htop = new self($secret);
-        $htop->setCounter(self::DEFAULT_COUNTER);
-        $htop->setDigest(self::DEFAULT_DIGEST);
-        $htop->setDigits(self::DEFAULT_DIGITS);
-
-        return $htop;
+        parent::__construct($secret, $digest, $digits);
+        $this->setCounter($counter);
     }
 
-    /**
-     * @param positive-int|null $secretSize
-     */
-    public static function generate(?int $secretSize = null): self
+    public static function create(?string $secret = null, int $counter = 0, string $digest = 'sha1', int $digits = 6): HOTPInterface
     {
-        return self::createFromSecret(self::generateSecret($secretSize));
+        return new self($secret, $counter, $digest, $digits);
     }
 
-    /**
-     * @return 0|positive-int
-     */
+    protected function setCounter(int $counter): void
+    {
+        $this->setParameter('counter', $counter);
+    }
+
     public function getCounter(): int
     {
-        $value = $this->getParameter('counter');
-        (is_int($value) && $value >= 0) || throw new InvalidParameterException(
-            'Invalid "counter" parameter.',
-            'counter',
-            $value
-        );
+        return $this->getParameter('counter');
+    }
 
-        return $value;
+    private function updateCounter(int $counter): void
+    {
+        $this->setCounter($counter);
     }
 
     public function getProvisioningUri(): string
     {
-        return $this->generateURI('hotp', [
-            'counter' => $this->getCounter(),
-        ]);
+        return $this->generateURI('hotp', ['counter' => $this->getCounter()]);
     }
 
     /**
      * If the counter is not provided, the OTP is verified at the actual counter.
-     *
-     * @param null|0|positive-int $counter
      */
-    public function verify(string $otp, null|int $counter = null, null|int $window = null): bool
+    public function verify(string $otp, ?int $counter = null, ?int $window = null): bool
     {
-        $counter >= 0 || throw new InvalidParameterException(
-            'The counter must be at least 0.',
-            'counter',
-            $counter
-        );
+        Assertion::greaterOrEqualThan($counter, 0, 'The counter must be at least 0.');
 
-        if ($counter === null) {
+        if (null === $counter) {
             $counter = $this->getCounter();
         } elseif ($counter < $this->getCounter()) {
             return false;
@@ -98,57 +64,12 @@ final class HOTP extends OTP implements HOTPInterface
         return $this->verifyOtpWithWindow($otp, $counter, $window);
     }
 
-    public function setCounter(int $counter): void
+    private function getWindow(?int $window): int
     {
-        $this->setParameter('counter', $counter);
+        return abs($window ?? 0);
     }
 
-    public function withCounter(int $counter): self
-    {
-        $otp = clone $this;
-        $otp->setParameter('counter', $counter);
-
-        return $otp;
-    }
-
-    /**
-     * @return array<non-empty-string, callable>
-     */
-    protected function getParameterMap(): array
-    {
-        return [...parent::getParameterMap(), ...[
-            'counter' => static function (mixed $value): int {
-                $value = (int) $value;
-                $value >= 0 || throw new InvalidParameterException(
-                    'Counter must be at least 0.',
-                    'counter',
-                    $value
-                );
-
-                return $value;
-            },
-        ]];
-    }
-
-    private function updateCounter(int $counter): void
-    {
-        $this->setCounter($counter);
-    }
-
-    /**
-     * @param null|0|positive-int $window
-     */
-    private function getWindow(null|int $window): int
-    {
-        return abs($window ?? self::DEFAULT_WINDOW);
-    }
-
-    /**
-     * @param non-empty-string $otp
-     * @param 0|positive-int $counter
-     * @param null|0|positive-int $window
-     */
-    private function verifyOtpWithWindow(string $otp, int $counter, null|int $window): bool
+    private function verifyOtpWithWindow(string $otp, int $counter, ?int $window): bool
     {
         $window = $this->getWindow($window);
 
@@ -161,5 +82,22 @@ final class HOTP extends OTP implements HOTPInterface
         }
 
         return false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getParameterMap(): array
+    {
+        $v = array_merge(
+            parent::getParameterMap(),
+            ['counter' => function ($value): int {
+                Assertion::greaterOrEqualThan((int) $value, 0, 'Counter must be at least 0.');
+
+                return (int) $value;
+            }]
+        );
+
+        return $v;
     }
 }
