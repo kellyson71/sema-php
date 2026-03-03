@@ -52,6 +52,96 @@ $stmt = $pdo->query("
 $dadosMedia = $stmt->fetch();
 $mediaPorDia = $dadosMedia['dias'] > 0 ? round($dadosMedia['total'] / $dadosMedia['dias'], 1) : 0;
 
+// Novas Métricas de Tempo
+$stmt = $pdo->query("
+    SELECT 
+        r.id,
+        r.protocolo,
+        r.data_envio,
+        r.status as status_atual,
+        MIN(CASE WHEN ha.acao LIKE '%Em análise%' THEN ha.data_acao END) as data_analise,
+        MIN(CASE WHEN ha.acao LIKE '%Aprovado%' THEN ha.data_acao END) as data_aprovado,
+        MIN(CASE WHEN ha.acao LIKE '%Finalizado%' OR ha.acao LIKE '%Indeferido%' THEN ha.data_acao END) as data_conclusao
+    FROM requerimentos r
+    LEFT JOIN historico_acoes ha ON r.id = ha.requerimento_id
+    GROUP BY r.id
+");
+$temposRequerimentos = $stmt->fetchAll();
+
+$somaEsperaAnalise = 0; $qtdEsperaAnalise = 0;
+$somaAnaliseAprovacao = 0; $qtdAnaliseAprovacao = 0;
+$somaAprovacaoConclusao = 0; $qtdAprovacaoConclusao = 0;
+$somaTempoTotal = 0; $qtdTempoTotal = 0;
+
+$processosTempoTotal = [];
+
+foreach ($temposRequerimentos as $req) {
+    if (!$req['data_envio']) continue;
+    $tEnvio = strtotime($req['data_envio']);
+    $tAnalise = $req['data_analise'] ? strtotime($req['data_analise']) : null;
+    $tAprovado = $req['data_aprovado'] ? strtotime($req['data_aprovado']) : null;
+    $tConclusao = $req['data_conclusao'] ? strtotime($req['data_conclusao']) : null;
+
+    if ($tAnalise && $tAnalise >= $tEnvio) {
+        $somaEsperaAnalise += ($tAnalise - $tEnvio);
+        $qtdEsperaAnalise++;
+    }
+    
+    if ($tAprovado) {
+        $inicioAprovacao = $tAnalise ? $tAnalise : $tEnvio;
+        if ($tAprovado >= $inicioAprovacao) {
+            $somaAnaliseAprovacao += ($tAprovado - $inicioAprovacao);
+            $qtdAnaliseAprovacao++;
+        }
+    }
+    
+    if ($tConclusao && $tAprovado && $tConclusao >= $tAprovado) {
+        $somaAprovacaoConclusao += ($tConclusao - $tAprovado);
+        $qtdAprovacaoConclusao++;
+    }
+    
+    if ($tConclusao && $tConclusao >= $tEnvio) {
+        $tempoTotal = $tConclusao - $tEnvio;
+        $somaTempoTotal += $tempoTotal;
+        $qtdTempoTotal++;
+        
+        $processosTempoTotal[] = [
+            'protocolo' => $req['protocolo'],
+            'tempo' => $tempoTotal,
+            'id' => $req['id']
+        ];
+    }
+}
+
+usort($processosTempoTotal, function($a, $b) {
+    return $a['tempo'] <=> $b['tempo'];
+});
+
+$topRapidos = array_slice($processosTempoTotal, 0, 5);
+$topLentos = array_slice(array_reverse($processosTempoTotal), 0, 5);
+
+if (!function_exists('formatarTempoEstatisticas')) {
+    function formatarTempoEstatisticas($segundos) {
+        if ($segundos === 0 || $segundos === null) return 'N/A';
+        $dias = floor($segundos / 86400);
+        $horas = floor(($segundos % 86400) / 3600);
+        $minutos = floor(($segundos % 3600) / 60);
+        
+        $partes = [];
+        if ($dias > 0) $partes[] = "{$dias}d";
+        if ($horas > 0) $partes[] = "{$horas}h";
+        if ($minutos > 0 && $dias == 0) $partes[] = "{$minutos}m";
+        
+        if (empty($partes)) return "< 1m";
+        return implode(' ', $partes);
+    }
+}
+
+$mediaEsperaAnalise = $qtdEsperaAnalise > 0 ? $somaEsperaAnalise / $qtdEsperaAnalise : 0;
+$mediaAnaliseAprovacao = $qtdAnaliseAprovacao > 0 ? $somaAnaliseAprovacao / $qtdAnaliseAprovacao : 0;
+$mediaAprovacaoConclusao = $qtdAprovacaoConclusao > 0 ? $somaAprovacaoConclusao / $qtdAprovacaoConclusao : 0;
+$mediaTempoTotal = $qtdTempoTotal > 0 ? $somaTempoTotal / $qtdTempoTotal : 0;
+
 include 'header.php';
 ?>
 
@@ -127,6 +217,137 @@ include 'header.php';
     </div>
 </div>
 
+<h3 class="section-title mt-5 mb-4">Métricas de Tempo (Média de Fluxo)</h3>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Pendente <i class="fas fa-arrow-right mx-1"></i> Análise</div>
+                <h3 class="mb-0 text-info fw-bold">
+                    <i class="fas fa-search me-2"></i>
+                    <?php echo formatarTempoEstatisticas($mediaEsperaAnalise); ?>
+                </h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Análise <i class="fas fa-arrow-right mx-1"></i> Aprovação</div>
+                <h3 class="mb-0 text-warning fw-bold">
+                    <i class="fas fa-file-signature me-2"></i>
+                    <?php echo formatarTempoEstatisticas($mediaAnaliseAprovacao); ?>
+                </h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Aprovação <i class="fas fa-arrow-right mx-1"></i> Conclusão</div>
+                <h3 class="mb-0 text-success fw-bold">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <?php echo formatarTempoEstatisticas($mediaAprovacaoConclusao); ?>
+                </h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Tempo Total</div>
+                <h3 class="mb-0 text-secondary fw-bold">
+                    <i class="fas fa-clock me-2"></i>
+                    <?php echo formatarTempoEstatisticas($mediaTempoTotal); ?>
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-bolt me-2 text-warning"></i>Processos Mais Rápidos</h6>
+            </div>
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Protocolo</th>
+                            <th>Tempo Total</th>
+                            <th class="text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($topRapidos)): ?>
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">Nenhum processo concluído ainda</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($topRapidos as $proc): ?>
+                                <tr>
+                                    <td class="align-middle fw-bold"><?php echo htmlspecialchars($proc['protocolo']); ?></td>
+                                    <td class="align-middle text-success"><i class="fas fa-clock fa-sm me-1"></i><?php echo formatarTempoEstatisticas($proc['tempo']); ?></td>
+                                    <td class="align-middle text-center">
+                                        <a href="visualizar_requerimento.php?id=<?php echo $proc['id']; ?>" class="btn btn-sm btn-outline-primary" title="Visualizar">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="m-0 font-weight-bold text-danger"><i class="fas fa-stopwatch me-2 text-danger"></i>Processos Mais Demorados</h6>
+            </div>
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Protocolo</th>
+                            <th>Tempo Total</th>
+                            <th class="text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($topLentos)): ?>
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">Nenhum processo concluído ainda</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($topLentos as $proc): ?>
+                                <tr>
+                                    <td class="align-middle fw-bold"><?php echo htmlspecialchars($proc['protocolo']); ?></td>
+                                    <td class="align-middle text-danger"><i class="fas fa-clock fa-sm me-1"></i><?php echo formatarTempoEstatisticas($proc['tempo']); ?></td>
+                                    <td class="align-middle text-center">
+                                        <a href="visualizar_requerimento.php?id=<?php echo $proc['id']; ?>" class="btn btn-sm btn-outline-primary" title="Visualizar">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="section-title mt-2 mb-4">Gráficos Gerais</h3>
 <div class="row">
     <!-- Gráfico de linha - Requerimentos por mês -->
     <div class="col-lg-6 mb-4">
