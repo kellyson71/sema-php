@@ -32,8 +32,8 @@ class TwoFactorService
      */
     public function generateSetup(string $email, string $issuer = 'SEMA Admin'): array
     {
-        // Cria um novo TOTP com uma secret aleatória (otphp v11+)
-        $totp = TOTP::create();
+        // Cria um novo TOTP com uma secret aleatória e uri (otphp v10)
+        $totp = TOTP::create(null, 30, 'sha1', 6);
         $totp->setLabel($email);
         $totp->setIssuer($issuer);
 
@@ -85,7 +85,7 @@ class TwoFactorService
 
         try {
             $secret = $this->decryptSecret($encryptedSecret);
-            $totp = TOTP::createFromSecret($secret);
+            $totp = TOTP::create($secret);
             
             // window (leeway) = 1 (aceitar o código atual, anterior e próximo para tolerar atrasos de relógio até +/- 30s)
             return $totp->verify($code, null, 1);
@@ -104,7 +104,7 @@ class TwoFactorService
     {
         try {
             $secret = $this->decryptSecret($encryptedSecret);
-            $totp = TOTP::createFromSecret($secret);
+            $totp = TOTP::create($secret);
             return $totp->now();
         } catch (\Exception $e) {
             return 'Erro ao gerar código';
