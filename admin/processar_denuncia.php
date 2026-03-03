@@ -2,12 +2,20 @@
 require_once 'conexao.php';
 verificaLogin();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !isset($_GET['acao'])) {
     header("Location: denuncias.php");
     exit;
 }
 
-$acao = $_POST['acao'] ?? '';
+$acao = $_POST['acao'] ?? $_GET['acao'] ?? '';
+
+// Função auxiliar para registrar histórico de denúncia
+function registrarHistoricoDenuncia($pdo, $denunciaId, $acao, $detalhes = null) {
+    $adminId = $_SESSION['admin_id'] ?? null;
+    $stmt = $pdo->prepare("INSERT INTO denuncia_historico (denuncia_id, admin_id, acao, detalhes) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$denunciaId, $adminId, $acao, $detalhes]);
+}
+
 
 if ($acao === 'cadastrar') {
     $infrator_nome = trim($_POST['infrator_nome'] ?? '');
@@ -62,6 +70,10 @@ if ($acao === 'cadastrar') {
         }
 
         $pdo->commit();
+        
+        // Registrar Histórico
+        registrarHistoricoDenuncia($pdo, $denunciaId, 'Criação', 'Denúncia registrada no sistema.');
+
         header("Location: denuncias.php?success=registrada");
         exit;
 
@@ -79,9 +91,35 @@ if ($acao === 'cadastrar') {
     if (in_array($novoStatus, $statusValidos)) {
         $stmt = $pdo->prepare("UPDATE denuncias SET status = ? WHERE id = ?");
         $stmt->execute([$novoStatus, $denunciaId]);
+        
+        // Registrar Histórico
+        registrarHistoricoDenuncia($pdo, $denunciaId, 'Alteração de Status', "Status alterado para: $novoStatus");
+
         header("Location: visualizar_denuncia.php?id=$denunciaId&success=atualizada");
     } else {
         header("Location: visualizar_denuncia.php?id=$denunciaId&error=invalido");
+    }
+    exit;
+} elseif ($acao === 'excluir') {
+    $denunciaId = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+    if ($denunciaId > 0) {
+        // Buscar anexos para deletar arquivos físicos antes de apagar do banco
+        $stmt = $pdo->prepare("SELECT caminho_arquivo FROM denuncia_anexos WHERE denuncia_id = ?");
+        $stmt->execute([$denunciaId]);
+        $anexos = $stmt->fetchAll();
+        
+        foreach ($anexos as $anexo) {
+            $caminhoCompleto = '../' . $anexo['caminho_arquivo'];
+            if (file_exists($caminhoCompleto)) {
+                unlink($caminhoCompleto);
+            }
+        }
+        
+        $stmt = $pdo->prepare("DELETE FROM denuncias WHERE id = ?");
+        $stmt->execute([$denunciaId]);
+        header("Location: denuncias.php?success=excluida");
+    } else {
+        header("Location: denuncias.php?error=permissao");
     }
     exit;
 }

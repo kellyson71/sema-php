@@ -539,7 +539,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <li>
                     <a href="denuncias.php" class="<?php echo ($currentPage === 'denuncias.php' || $currentPage === 'nova_denuncia.php' || $currentPage === 'visualizar_denuncia.php') ? 'active' : ''; ?>">
                         <i class="fas fa-bullhorn"></i>
-                        <span>Denúncias Internas</span>
+                        <span>Denúncias</span>
                     </a>
                 </li>
                 <li>

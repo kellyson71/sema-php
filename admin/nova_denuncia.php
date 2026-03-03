@@ -10,7 +10,7 @@ include 'header.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nova Denúncia - SEMA</title>
+    <title>Denúncia - SEMA</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -22,11 +22,11 @@ include 'header.php';
         
         <div class="mb-6">
             <a href="denuncias.php" class="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors w-max">
-                <i class="fas fa-arrow-left mr-2"></i> Voltar para Denúncias
+                <i class="fas fa-arrow-left mr-2"></i> Voltar
             </a>
             <h1 class="text-3xl font-bold text-gray-900 flex items-center">
                 <i class="fas fa-file-invoice text-red-600 mr-3"></i>
-                Registrar Nova Denúncia
+                Registrar Denúncia
             </h1>
             <p class="text-gray-600 mt-2">Diligencie com os dados e evidências do controle interno.</p>
         </div>

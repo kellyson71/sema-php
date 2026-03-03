@@ -73,6 +73,13 @@ include 'header.php';
             </div>
             
             <div class="flex items-center gap-3">
+                <form action="processar_denuncia.php" method="POST" class="d-inline" onsubmit="return confirm('ATENÇÃO: Esta ação é irreversível e excluirá todos os dados e arquivos anexados desta denúncia. Deseja continuar?')">
+                    <input type="hidden" name="acao" value="excluir">
+                    <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
+                    <button type="submit" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors mr-2">
+                        <i class="fas fa-trash-alt mr-2"></i> Excluir
+                    </button>
+                </form>
                 <form action="processar_denuncia.php" method="POST" class="flex gap-2">
                     <input type="hidden" name="acao" value="alterar_status">
                     <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
@@ -100,7 +107,7 @@ include 'header.php';
                 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
-                        <i class="fas fa-user-tag text-gray-400 mr-2"></i> Informações do Infrator
+                        <i class="fas fa-user-tag text-gray-400 mr-2"></i> Informações da Denúncia
                     </h3>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,11 +128,48 @@ include 'header.php';
                 </div>
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
-                        <i class="fas fa-align-left text-gray-400 mr-2"></i> Relato da Infração
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center text-red-600">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> Relato e Detalhes
                     </h3>
                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <p class="text-gray-800 whitespace-pre-wrap leading-relaxed"><?php echo htmlspecialchars($denuncia['observacoes']); ?></p>
+                    </div>
+                </div>
+
+                <!-- Histórico de Ações -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-100 flex items-center">
+                        <i class="fas fa-history text-gray-400 mr-2"></i> Histórico de Ações
+                    </h3>
+                    
+                    <div class="relative">
+                        <div class="absolute top-0 bottom-0 left-4 w-0.5 bg-gray-100"></div>
+                        
+                        <div class="space-y-8">
+                            <?php 
+                                $stmtHist = $pdo->prepare("SELECT h.*, a.nome as admin_nome FROM denuncia_historico h LEFT JOIN administradores a ON h.admin_id = a.id WHERE h.denuncia_id = ? ORDER BY h.data_acao DESC");
+                                $stmtHist->execute([$id]);
+                                $historico = $stmtHist->fetchAll();
+                                
+                                if (count($historico) > 0):
+                                    foreach ($historico as $item):
+                            ?>
+                                <div class="relative pl-10">
+                                    <div class="absolute left-2.5 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                                    <div class="flex flex-col md:flex-row md:justify-between mb-1">
+                                        <span class="text-sm font-bold text-gray-900"><?php echo htmlspecialchars($item['acao']); ?></span>
+                                        <span class="text-xs text-gray-500"><?php echo date('d/m/Y H:i', strtotime($item['data_acao'])); ?></span>
+                                    </div>
+                                    <div class="text-sm text-gray-600"><?php echo htmlspecialchars($item['detalhes'] ?: 'Nenhum detalhe adicional.'); ?></div>
+                                    <div class="text-xs text-blue-600 font-medium mt-1">Por: <?php echo htmlspecialchars($item['admin_nome'] ?: 'Sistema'); ?></div>
+                                </div>
+                            <?php 
+                                    endforeach;
+                                else:
+                            ?>
+                                <p class="text-sm text-gray-500 pl-10 italic">Nenhum histórico registrado.</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>

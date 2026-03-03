@@ -96,7 +96,7 @@ include 'header.php';
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 flex items-center">
                     <i class="fas fa-bullhorn text-red-600 mr-3"></i>
-                    Controle de Denúncias Internas
+                    Denúncias
                 </h1>
                 <p class="text-gray-600 mt-1">Gerenciamento de autuações e infrações ambientais.</p>
             </div>
