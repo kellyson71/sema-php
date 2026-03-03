@@ -10,15 +10,23 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh;
 use Endroid\QrCode\Writer\PngWriter;
 
-class TwoFactorService
-{
-    /**
-     * Chave de criptografia (em produção, use uma variável de ambiente)
-     */
-    private string $encryptionKey;
+// Bibliotecas WebAuthn v5
+use Webauthn\Server;
+use Webauthn\PublicKeyCredentialRpEntity;
+use Webauthn\PublicKeyCredentialUserEntity;
+use Webauthn\PublicKeyCredentialCreationOptions;
+use Webauthn\PublicKeyCredentialRequestOptions;
+use Webauthn\AuthenticatorSelectionCriteria;
 
-    public function __construct(string $encryptionKey = 'CHAVE_SEC_SISTEMA_SEMA_RN_!@#123')
+class MultiFactorService
+{
+    private string $encryptionKey;
+    private $pdo;
+    private ?Server $webauthnServer = null;
+
+    public function __construct($pdo = null, string $encryptionKey = 'CHAVE_SEC_SISTEMA_SEMA_RN_!@#123')
     {
+        $this->pdo = $pdo;
         // Certifique-se de usar uma chave de 32 bytes para AES-256
         $this->encryptionKey = str_pad(substr($encryptionKey, 0, 32), 32, '0');
     }
@@ -109,6 +117,66 @@ class TwoFactorService
         } catch (\Exception $e) {
             return 'Erro ao gerar código';
         }
+    }
+
+    // ==========================================
+    // MÉTODOS PASSKEYS / WEBAUTHN
+    // ==========================================
+    
+    /**
+     * Instancia o Servidor Central Webauthn V5 combinando a interface com PDO do Repositório.
+     */
+    public function getWebauthnServer(): Server
+    {
+        if ($this->webauthnServer === null && $this->pdo !== null) {
+            $rpEntity = new PublicKeyCredentialRpEntity('SEMA Admin', $_SERVER['SERVER_NAME'] ?? 'localhost');
+            
+            require_once __DIR__ . '/PasskeyRepository.php';
+            $repository = new \Admin\Services\PasskeyRepository($this->pdo);
+
+            $this->webauthnServer = Server::create(
+                $rpEntity,
+                $repository,
+                null
+            );
+        }
+        return $this->webauthnServer;
+    }
+
+    /**
+     * Passo 1 Cadastramento: O Frontend pede quais Opções gerar via `navigator.credentials.create()`
+     */
+    public function generatePasskeyRegistrationOptions(array $admin): PublicKeyCredentialCreationOptions
+    {
+        $userEntity = new PublicKeyCredentialUserEntity(
+            $admin['usuario'],
+            (string) $admin['id'],
+            $admin['nome']
+        );
+
+        $authenticatorSelection = AuthenticatorSelectionCriteria::create()
+            ->setResidentKey(AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED)
+            ->setUserVerification(AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_PREFERRED);
+
+        $options = $this->getWebauthnServer()->generatePublicKeyCredentialCreationOptions(
+            $userEntity,
+            PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
+            [], // Bloqueadas
+            $authenticatorSelection
+        );
+        
+        return $options;
+    }
+
+    /**
+     * Passo 1 Autenticação: O Frontend pede Opções do Desafio para o `navigator.credentials.get()`
+     */
+    public function generatePasskeyLoginOptions(): PublicKeyCredentialRequestOptions
+    {
+        return $this->getWebauthnServer()->generatePublicKeyCredentialRequestOptions(
+            PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
+            []
+        );
     }
 
     /**
