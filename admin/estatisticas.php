@@ -142,6 +142,34 @@ $mediaAnaliseAprovacao = $qtdAnaliseAprovacao > 0 ? $somaAnaliseAprovacao / $qtd
 $mediaAprovacaoConclusao = $qtdAprovacaoConclusao > 0 ? $somaAprovacaoConclusao / $qtdAprovacaoConclusao : 0;
 $mediaTempoTotal = $qtdTempoTotal > 0 ? $somaTempoTotal / $qtdTempoTotal : 0;
 
+// Gráfico de Médias de Tempo por Mês
+$tempoAnalisadoPorMes = [];
+foreach ($temposRequerimentos as $req) {
+    if (!$req['data_envio']) continue;
+    $mesEnvio = date('Y-m', strtotime($req['data_envio']));
+    $tEnvio = strtotime($req['data_envio']);
+    $tConclusao = $req['data_conclusao'] ? strtotime($req['data_conclusao']) : null;
+    
+    if ($tConclusao && $tConclusao >= $tEnvio) {
+        if (!isset($tempoAnalisadoPorMes[$mesEnvio])) {
+            $tempoAnalisadoPorMes[$mesEnvio] = ['soma' => 0, 'qtd' => 0];
+        }
+        $tempoAnalisadoPorMes[$mesEnvio]['soma'] += ($tConclusao - $tEnvio);
+        $tempoAnalisadoPorMes[$mesEnvio]['qtd']++;
+    }
+}
+
+ksort($tempoAnalisadoPorMes);
+$dadosTempoPorMes = [];
+foreach ($tempoAnalisadoPorMes as $mes => $dados) {
+    if ($dados['qtd'] > 0) {
+        $dadosTempoPorMes[] = [
+            'mes' => $mes,
+            'media_dias' => round(($dados['soma'] / $dados['qtd']) / 86400, 1)
+        ];
+    }
+}
+
 include 'header.php';
 ?>
 
@@ -347,43 +375,60 @@ include 'header.php';
     </div>
 </div>
 
-<h3 class="section-title mt-2 mb-4">Gráficos Gerais</h3>
+<h3 class="section-title mt-4 mb-4">Gráficos Gerais</h3>
 <div class="row">
     <!-- Gráfico de linha - Requerimentos por mês -->
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <i class="fas fa-chart-line me-1"></i>
-                Requerimentos por Mês
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-chart-line me-2 text-primary"></i>Requerimentos por Mês</h6>
             </div>
             <div class="card-body">
-                <canvas id="requerimentosPorMes" height="300"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gráfico de pizza - Requerimentos por tipo -->
-    <div class="col-lg-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <i class="fas fa-chart-pie me-1"></i>
-                Requerimentos por Tipo
-            </div>
-            <div class="card-body">
-                <canvas id="requerimentosPorTipo" height="300"></canvas>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="requerimentosPorMes"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Gráfico de barras - Requerimentos por status -->
-    <div class="col-lg-12 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <i class="fas fa-chart-bar me-1"></i>
-                Requerimentos por Status
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-chart-bar me-2 text-success"></i>Requerimentos por Status</h6>
             </div>
             <div class="card-body">
-                <canvas id="requerimentosPorStatus" height="150"></canvas>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="requerimentosPorStatus"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de pizza - Requerimentos por tipo -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-chart-pie me-2 text-info"></i>Requerimentos por Tipo</h6>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="requerimentosPorTipo"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Novo Gráfico - Tempo Médio -->
+    <div class="col-lg-12 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-clock me-2 text-warning"></i>Evolução de Tempo Médio de Tramitação (Em Dias)</h6>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="tempoMedioPorMes"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -433,13 +478,10 @@ include 'header.php';
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         display: false
-                    },
-                    title: {
-                        display: true,
-                        text: 'Evolução dos últimos 6 meses'
                     }
                 },
                 scales: {
@@ -474,13 +516,16 @@ include 'header.php';
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: 10
+                },
                 plugins: {
                     legend: {
-                        position: 'right'
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribuição por tipo de alvará'
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12
+                        }
                     }
                 }
             }
@@ -511,21 +556,66 @@ include 'header.php';
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         display: false
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribuição por status'
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: { size: 10 }
+                        }
+                    },
                     y: {
                         beginAtZero: true,
                         ticks: {
                             precision: 0
                         }
+                    }
+                }
+            }
+        });
+
+        // Preparar dados para o gráfico de linha - Tempo Medio
+        const tempoMesLabels = [];
+        const tempoMesDados = [];
+
+        <?php foreach ($dadosTempoPorMes as $item): ?>
+            tempoMesLabels.push('<?php echo date("M/Y", strtotime($item['mes'] . "-01")); ?>');
+            tempoMesDados.push(<?php echo $item['media_dias']; ?>);
+        <?php endforeach; ?>
+
+        new Chart(document.getElementById('tempoMedioPorMes'), {
+            type: 'line',
+            data: {
+                labels: tempoMesLabels,
+                datasets: [{
+                    label: 'Dias em média',
+                    data: tempoMesDados,
+                    fill: true,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.3,
+                    pointBackgroundColor: '#d97706',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Dias' }
                     }
                 }
             }
