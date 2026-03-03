@@ -84,10 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $emailService = new EmailService();
             $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
 
-            if ($enviado) {
+            // Verificar se usuário tem TOTP configurado
+            $hasTotp = !empty($admin['totp_secret']);
+
+            if ($enviado || $hasTotp) {
                 // Mascarar email para exibir no frontend
                 $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
-                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado]);
+                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado, 'has_totp' => $hasTotp]);
             } else {
                 echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
             }
@@ -116,9 +119,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             exit;
         }
 
-        if ($codigoRecebido === $_SESSION['2fa_otp_code']) {
-            $admin = $_SESSION['2fa_admin_data'];
+        $admin = $_SESSION['2fa_admin_data'];
+        $totpValido = false;
 
+        // Verifica se o usuário tem TOTP e valida o código
+        if (!empty($admin['totp_secret'])) {
+            require_once 'TwoFactorService.php';
+            $tfaService = new TwoFactorService();
+            
+            // IMPORTANTE: Aqui você deve descriptografar a secret caso tenha criptografado no banco!
+            // Exemplo: $secretKey = openssl_decrypt($admin['totp_secret'], ...);
+            $secretKey = $admin['totp_secret']; 
+            
+            if ($tfaService->verify($secretKey, $codigoRecebido)) {
+                $totpValido = true;
+            }
+        }
+
+        if ($codigoRecebido === $_SESSION['2fa_otp_code'] || $totpValido) {
             $_SESSION['login_attempts'] = 0;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_nome'] = $admin['nome'];
@@ -142,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
 
             echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'error' => 'Código incorreto.']);
+            echo json_encode(['success' => false, 'error' => 'Código incorreto ou inválido.']);
         }
         exit;
     }
@@ -384,8 +402,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         </div>
 
         <div id="login-etapa-2" style="display: none; margin-top: 1.5rem; text-align: center;">
-            <p class="text-muted mb-4">Para sua segurança, informe o código enviado para seu e-mail.</p>
-            <p class="small text-muted mb-3">Enviamos um código para <strong id="email-mascarado-display">...</strong></p>
+            <p class="text-muted mb-4" id="msg-tfa-default">Para sua segurança, informe o código enviado para seu e-mail.</p>
+            <p class="small text-muted mb-3" id="msg-tfa-email">Enviamos um código para <strong id="email-mascarado-display">...</strong></p>
+            
+            <div id="btn-totp-container" class="mb-4 d-none">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="usarAutenticador()">
+                    <i class="fas fa-mobile-alt me-1"></i> Usar App Autenticador
+                </button>
+            </div>
             
             <form class="login-form" id="otpForm">
                 <!-- Erro dinâmico JS -->
@@ -449,6 +473,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                                 document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
                                 document.getElementById('login-etapa-1').style.display = 'none';
                                 document.getElementById('login-etapa-2').style.display = 'block';
+                                
+                                if (data.has_totp) {
+                                    document.getElementById('btn-totp-container').classList.remove('d-none');
+                                } else {
+                                    document.getElementById('btn-totp-container').classList.add('d-none');
+                                }
                             } else {
                                 const errBox = document.getElementById('js-erro-1');
                                 errBox.querySelector('span').textContent = data.error;
@@ -508,6 +538,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             document.getElementById('codigo').value = '';
             document.getElementById('js-erro-1').classList.add('d-none');
             document.getElementById('js-erro-2').classList.add('d-none');
+            
+            // Voltar os textos ao normal
+            document.getElementById('msg-tfa-default').innerHTML = 'Para sua segurança, informe o código enviado para seu e-mail.';
+            document.getElementById('msg-tfa-email').style.display = 'block';
+        }
+
+        function usarAutenticador() {
+            document.getElementById('msg-tfa-default').innerHTML = '<i class="fas fa-shield-alt text-primary mb-2 fa-2x"></i><br>Abra seu aplicativo autenticador (Google Authenticator, Authy, etc) e digite o código de 6 dígitos.';
+            document.getElementById('msg-tfa-email').style.display = 'none';
+            document.getElementById('btn-totp-container').classList.add('d-none');
+            document.getElementById('codigo').focus();
         }
     </script>
 </body>

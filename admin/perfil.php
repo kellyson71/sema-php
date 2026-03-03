@@ -40,6 +40,41 @@ $mensagemTipo = '';
 
 // Processar formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'ativar_2fa') {
+        $codigo2fa = str_replace(' ', '', trim($_POST['codigo_2fa'] ?? ''));
+        $secretTemp = $_SESSION['temp_totp_secret'] ?? '';
+        
+        if (!empty($secretTemp) && !empty($codigo2fa)) {
+            require_once 'TwoFactorService.php';
+            $tfaService = new TwoFactorService();
+            if ($tfaService->verify($secretTemp, $codigo2fa)) {
+                try {
+                    $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = ? WHERE id = ?");
+                    $stmt->execute([$secretTemp, $adminId]); 
+                    $mensagem = "Autenticador de 2 Fatores ativado com sucesso!";
+                    $mensagemTipo = "success";
+                    $admin = getDadosAdmin($pdo, $adminId); // Atualiza os dados locais
+                } catch (Exception $e) {
+                    $mensagem = "Erro ao salvar 2FA. Crie a coluna 'totp_secret' no banco.";
+                    $mensagemTipo = "danger";
+                }
+            } else {
+                $mensagem = "Código 2FA do Autenticador inválido.";
+                $mensagemTipo = "danger";
+            }
+        }
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'desativar_2fa') {
+        try {
+            $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = NULL WHERE id = ?");
+            $stmt->execute([$adminId]);
+            $mensagem = "Autenticador desativado!";
+            $mensagemTipo = "success";
+            $admin = getDadosAdmin($pdo, $adminId); // Atualiza os dados locais
+        } catch (Exception $e) {
+            $mensagem = "Erro ao desativar 2FA.";
+            $mensagemTipo = "danger";
+        }
+    } else {
     $nome = trim($_POST['nome'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $senhaAtual = trim($_POST['senha_atual'] ?? '');
@@ -125,6 +160,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+    } // Fechando o else das ações de 2FA
+}
+
+// Generate setup data if needed
+$hasTotp = !empty($admin['totp_secret']);
+$qrCodeBase64 = '';
+if (!$hasTotp) {
+    require_once 'TwoFactorService.php';
+    $tfaService = new TwoFactorService();
+    $setup = $tfaService->generateSetup($admin['email']);
+    $_SESSION['temp_totp_secret'] = $setup['secret'];
+    $qrCodeBase64 = $tfaService->generateQrCodeBase64($setup['uri']);
 }
 
 include 'header.php';
@@ -199,6 +246,33 @@ include 'header.php';
 
                     <hr class="my-4">
 
+                    <h5>Autenticação em Duas Etapas (App)</h5>
+                    <p class="text-muted small mb-3">Proteja sua conta configurando um aplicativo como Google Authenticator ou Authy.</p>
+                    
+                    <?php if ($hasTotp): ?>
+                        <div class="alert alert-success d-flex align-items-center mb-3">
+                            <i class="fas fa-check-circle fa-2x me-3"></i>
+                            <div>
+                                <strong>Autenticador Ativado</strong><br>
+                                Sua conta está protegida com a autenticação em duas etapas via aplicativo.
+                            </div>
+                        </div>
+                        <form method="post" action="perfil.php" onsubmit="return confirm('Tem certeza que deseja desativar o Autenticador? Sua conta ficará menos segura.');">
+                            <input type="hidden" name="action" value="desativar_2fa">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-times-circle me-1"></i> Desativar Autenticador
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal2FA">
+                                <i class="fas fa-qrcode me-1"></i> Configurar Autenticador
+                            </button>
+                        </div>
+                    <?php endif; ?>
+
+                    <hr class="my-4">
+
                     <h5>Alterar Senha</h5>
                     <p class="text-muted small mb-3">Deixe em branco se não deseja alterar sua senha</p>
 
@@ -227,5 +301,41 @@ include 'header.php';
         </div>
     </div>
 </div>
+
+<?php if (!$hasTotp): ?>
+<!-- Modal 2FA -->
+<div class="modal fade" id="modal2FA" tabindex="-1" aria-labelledby="modal2FALabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="perfil.php">
+          <input type="hidden" name="action" value="ativar_2fa">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modal2FALabel">Configurar Autenticador</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <p>1. Abra o seu aplicativo Autenticador (Google Authenticator, Authy, etc).</p>
+            <p>2. Escaneie o QR Code abaixo:</p>
+            <div class="mb-3">
+                <img src="<?php echo $qrCodeBase64; ?>" alt="QR Code 2FA" style="border: 1px solid #ccc; padding: 10px; border-radius: 8px; max-width: 100%;">
+            </div>
+            <p>Ou digite a chave manualmente:</p>
+            <div class="alert alert-secondary"><strong><?php echo $_SESSION['temp_totp_secret']; ?></strong></div>
+            
+            <hr>
+            <div class="form-group text-start">
+                <label for="codigo_2fa" class="form-label fw-bold">3. Digite o código gerado pelo aplicativo</label>
+                <input type="text" class="form-control text-center fs-4 letter-spacing-lg" id="codigo_2fa" name="codigo_2fa" placeholder="000 000" maxlength="6" required style="letter-spacing: 5px;">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Ativar 2FA</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>
