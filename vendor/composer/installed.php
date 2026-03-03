@@ -3,11 +3,11 @@
         'name' => 'sema/requerimentos',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '577a02a3c451c5c900024568ad8a5f34e09facee',
+        'reference' => '714edbdfe584af8c3111c6672e5ae84830727ba2',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
         'bacon/bacon-qr-code' => array(
@@ -211,7 +211,7 @@
         'sema/requerimentos' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '577a02a3c451c5c900024568ad8a5f34e09facee',
+            'reference' => '714edbdfe584af8c3111c6672e5ae84830727ba2',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
