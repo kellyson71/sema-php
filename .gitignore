@@ -1,3 +1,4 @@
+```ignore
 # ===== CONFIGURAÇÕES SENSÍVEIS =====
 # /includes/config.php
 /includes/env.php
@@ -6,17 +7,19 @@
 .env.local
 .env.production
 /admin/conexao.php
+
 # ===== BANCO DE DADOS =====
 # Ignorar dumps SQL exceto os da pasta database
 *.sql
-
 homolog
 !database/*.sql
+
 /uploads/*/
 !uploads/.gitkeep
 !uploads/documentos_admin/.gitkeep
 !uploads/fotos_perfil/.gitkeep
 !uploads/perfil/.gitkeep
+
 # Manter estrutura mas ignorar conteúdo das pastas de upload
 uploads/20*/
 uploads/fotos_perfil/*
@@ -25,10 +28,11 @@ uploads/perfil/*
 !uploads/perfil/.gitkeep
 
 # ===== DEPENDÊNCIAS =====
-# /vendor/
+vendor/
 node_modules/
 composer.phar
-# composer.lock
+composer.lock
+composer.json
 
 # ===== ARQUIVOS TEMPORÁRIOS =====
 *.tmp
@@ -186,5 +190,6 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# ===== FINAL =====!docker-compose.yml
-# vendor/
+# ===== FINAL =====
+!docker-compose.yml
+```
