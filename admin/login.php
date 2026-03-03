@@ -77,19 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             // Se tiver secret salva, flag para o frontend
             $hasTotp = !empty($admin['totp_secret']);
 
-            $hasPasskey = false;
-            try {
-                $stmtPass = $pdo->prepare("SELECT id FROM passkeys WHERE admin_id = ?");
-                $stmtPass->execute([$admin['id']]);
-                $hasPasskey = (bool) $stmtPass->fetchColumn();
-            } catch (PDOException $e) {
-                // Se a tabela não existir, apenas ignora e assume que não tem passkey
-                error_log("Aviso: Tabela passkeys não encontrada ou erro na query: " . $e->getMessage());
-            }
-
-            if (!$hasTotp && empty($admin['email']) && !$hasPasskey) {
+            if (!$hasTotp && empty($admin['email'])) {
                 if (ob_get_length()) ob_clean();
-                echo json_encode(['success' => false, 'error' => "Usuário não possui método de verificação em duas etapas habilitado."]);
+                echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail ou App Autenticador cadastrado para verificação em duas etapas."]);
                 exit;
             }
 
@@ -108,7 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
 
                 if ($enviado) {
+                    // Mascarar email para exibir no frontend
                     $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                } else if (!$hasTotp) {
+                    if (ob_get_length()) ob_clean();
+                    echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
+                    exit;
                 }
             }
 
@@ -116,8 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             echo json_encode([
                 'success' => true, 
                 'email_mascarado' => $emailMascarado,
-                'has_totp' => $hasTotp,
-                'has_passkey' => $hasPasskey
+                'has_totp' => $hasTotp
             ]);
         } else {
             $_SESSION['login_attempts']++;
@@ -458,17 +452,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 </button>
             </form>
             
-            <!-- Opções Dinâmicas Geradas via JS (Passkey/TOTP/E-mail) -->
-            <div id="dynamic-options-container" class="mt-4">
-                <div class="d-flex align-items-center mb-3">
+            <!-- Opção de usar o Autenticador -->
+            <div id="totp-option-container" style="display: none;">
+                <div class="d-flex align-items-center my-4">
                     <hr class="flex-grow-1 opacity-25">
-                    <span class="mx-3 text-muted small fw-bold">OU USE OUTROS MÉTODOS</span>
+                    <span class="mx-3 text-muted small fw-bold">OU</span>
                     <hr class="flex-grow-1 opacity-25">
                 </div>
-                
-                <div class="d-flex flex-column gap-2" id="btn-options-group">
-                    <!-- Botões injetados via JS -->
-                </div>
+                <button type="button" class="btn btn-outline-primary rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-medium shadow-sm transition" onclick="toggleTotpMethod()" id="btn-switch-totp">
+                    <i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador
+                </button>
             </div>
 
             <!-- Divulgação do Autenticador para quem não tem -->
@@ -519,25 +512,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                             btn.disabled = false;
                             btn.innerHTML = originalText;
                             if (data.success) {
-                                window.loginData = data;
                                 window.maskedEmail = data.email_mascarado || '...';
-                                
-                                // Definir método principal preferido:
-                                if (data.has_passkey) window.currentAuthMethod = 'passkey';
-                                else if (data.has_totp) window.currentAuthMethod = 'totp';
-                                else window.currentAuthMethod = 'email';
-
+                                window.currentAuthMethod = data.has_totp ? 'totp' : 'email';
                                 document.getElementById('js-erro-1').classList.add('d-none');
-                                updateLoginUIParams();
+                                
+                                // Atualiza a UI baseada no estado do usuário
+                                if (window.currentAuthMethod === 'totp') {
+                                    renderTotpUI();
+                                    document.getElementById('totp-option-container').style.display = 'block';
+                                    document.getElementById('totp-setup-prompt').style.display = 'none';
+                                } else {
+                                    renderEmailUI();
+                                    document.getElementById('totp-option-container').style.display = 'none';
+                                    document.getElementById('totp-setup-prompt').style.display = 'block';
+                                }
                                 
                                 document.getElementById('login-etapa-1').style.display = 'none';
                                 document.getElementById('login-etapa-2').style.display = 'block';
-
-                                // Autotrigger do navegador de sensor biométrico se for o default!
-                                if (window.currentAuthMethod === 'passkey') {
-                                    loginComPasskey();
-                                }
-
                             } else {
                                 const errBox = document.getElementById('js-erro-1');
                                 errBox.querySelector('span').textContent = data.error;
@@ -599,137 +590,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             document.getElementById('js-erro-2').classList.add('d-none');
         }
 
-        function switchAuthMethod(method) {
-            window.currentAuthMethod = method;
-            updateLoginUIParams();
-            if (method === 'passkey') loginComPasskey();
-        }
-
-        function updateLoginUIParams() {
-            const data = window.loginData;
-            const container = document.getElementById('btn-options-group');
-            const otpForm = document.getElementById('otpForm');
-            container.innerHTML = '';
-            
-            // Textos superiores
-            if (window.currentAuthMethod === 'passkey') {
-                document.getElementById('totp-icon').className = 'fas fa-fingerprint fa-3x text-dark mb-3 mt-2';
-                document.getElementById('totp-text').innerHTML = `Confirme sua <strong>Biometria (Passkey)</strong> para acessar o sistema.`;
-                otpForm.style.display = 'none';
-            } else if (window.currentAuthMethod === 'totp') {
-                document.getElementById('totp-icon').className = 'fas fa-mobile-alt fa-3x text-primary mb-3 mt-2';
-                document.getElementById('totp-text').innerHTML = `Abra seu <strong>App Autenticador</strong> e informe o código gerado.`;
-                otpForm.style.display = 'block';
+        function toggleTotpMethod() {
+            if (window.currentAuthMethod === 'totp') {
+                window.currentAuthMethod = 'email';
+                renderEmailUI();
             } else {
-                document.getElementById('totp-icon').className = 'fas fa-envelope-open-text fa-3x text-primary mb-3 mt-2';
-                document.getElementById('totp-text').innerHTML = `Para sua segurança, informe o código enviado para <strong class="text-dark">${window.maskedEmail}</strong>`;
-                otpForm.style.display = 'block';
+                window.currentAuthMethod = 'totp';
+                renderTotpUI();
             }
-
-            // Opções
-            let hasAlternativeMethods = false;
-
-            if (data.has_passkey && window.currentAuthMethod !== 'passkey') {
-                container.innerHTML += `<button type="button" class="btn btn-dark rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('passkey')"><i class="fas fa-fingerprint me-2"></i> Usar Passkey (Biometria)</button>`;
-                hasAlternativeMethods = true;
-            }
-            if (data.has_totp && window.currentAuthMethod !== 'totp') {
-                container.innerHTML += `<button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('totp')"><i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador</button>`;
-                hasAlternativeMethods = true;
-            }
-            if (data.email_mascarado && window.currentAuthMethod !== 'email') {
-                container.innerHTML += `<button type="button" class="btn btn-outline-secondary rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('email')"><i class="fas fa-envelope me-2"></i> Enviar novo Email</button>`;
-                hasAlternativeMethods = true;
-            }
-            
-            // Ocultar quadro de "Outros métodos" caso não haja
-            document.getElementById('dynamic-options-container').style.display = hasAlternativeMethods ? 'block' : 'none';
-
-            // Sugestão setup TOTP apenas se ele tiver no e-mail e não tiver app cadastrado
-            document.getElementById('totp-setup-prompt').style.display = (!data.has_totp && window.currentAuthMethod === 'email') ? 'block' : 'none';
         }
 
-        // --- WEBAUTHN SCRIPT ---
-        function base64url2arraybuffer(base64url) {
-            let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-            let padLen = (4 - (base64.length % 4)) % 4;
-            base64 += '='.repeat(padLen);
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
-            }
-            return bytes.buffer;
+        function renderTotpUI() {
+            document.getElementById('totp-icon').className = 'fas fa-mobile-alt fa-3x text-primary mb-3 mt-2';
+            document.getElementById('totp-text').innerHTML = `Abra seu <strong>App Autenticador</strong> e informe o código gerado.`;
+            const btn = document.getElementById('btn-switch-totp');
+            if (btn) btn.innerHTML = `<i class="fas fa-envelope me-2"></i> Usar código por E-mail`;
         }
 
-        function arraybuffer2base64url(buffer) {
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-        }
-
-        async function loginComPasskey() {
-            if (!window.PublicKeyCredential) {
-                alert("Navegador não suporta Passkeys/WebAuthn.");
-                return;
-            }
-
-            try {
-                // 1. Pega os Options de Login
-                const resp = await fetch('ajax_passkey.php?action=login_options');
-                const options = await resp.json();
-
-                if (options.error) {
-                    alert('Erro servidor: ' + options.error);
-                    return;
-                }
-
-                options.challenge = base64url2arraybuffer(options.challenge);
-                
-                if (options.allowCredentials) {
-                    options.allowCredentials.forEach(cred => {
-                        cred.id = base64url2arraybuffer(cred.id);
-                    });
-                }
-
-                // 2. Invoca Biometria / Touch ID / Hello
-                const credential = await navigator.credentials.get({ publicKey: options });
-
-                // 3. Serializa reposta e manda validar
-                const assertionResponse = {
-                    id: credential.id,
-                    rawId: arraybuffer2base64url(credential.rawId),
-                    type: credential.type,
-                    response: {
-                        authenticatorData: arraybuffer2base64url(credential.response.authenticatorData),
-                        clientDataJSON: arraybuffer2base64url(credential.response.clientDataJSON),
-                        signature: arraybuffer2base64url(credential.response.signature),
-                        userHandle: credential.response.userHandle ? arraybuffer2base64url(credential.response.userHandle) : null
-                    }
-                };
-
-                const verifyRes = await fetch('ajax_passkey.php?action=login_verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(assertionResponse)
-                });
-
-                const data = await verifyRes.json();
-                
-                if (data.success) {
-                    window.location.href = data.redirect || 'index.php';
-                } else {
-                    const errBox = document.getElementById('js-erro-2');
-                    errBox.querySelector('span').textContent = 'Falha na Autenticação Biométrica: ' + data.error;
-                    errBox.classList.remove('d-none');
-                }
-
-            } catch(e) {
-                console.warn(e);
-            }
+        function renderEmailUI() {
+            document.getElementById('totp-icon').className = 'fas fa-envelope-open-text fa-3x text-primary mb-3 mt-2';
+            document.getElementById('totp-text').innerHTML = `Para sua segurança, informe o código enviado para <strong class="text-dark">${window.maskedEmail}</strong>`;
+            const btn = document.getElementById('btn-switch-totp');
+            if (btn) btn.innerHTML = `<i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador`;
         }
     </script>
 </body>
