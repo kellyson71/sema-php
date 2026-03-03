@@ -238,44 +238,89 @@ include 'header.php';
 
                     <hr class="my-4">
 
-                    <div class="d-flex align-items-center mb-2">
+                    <div class="d-flex align-items-center mb-2 mt-5 pt-3 border-top border-4 border-light">
                         <i class="fas fa-shield-alt text-primary fs-4 me-2"></i>
-                        <h5 class="mb-0">Autenticação em Duas Etapas (App)</h5>
+                        <h4 class="mb-0 fw-bold">Segurança e Autenticação</h4>
                     </div>
-                    <p class="text-muted small mb-4">Aumente a segurança da sua conta usando um aplicativo como Google Authenticator ou Authy.</p>
+                    <p class="text-muted mb-4">Gerencie as suas opções de login e Verificação em Duas Etapas (2FA) para proteger sua conta do SEMA.</p>
                     
-                    <div id="totp-status-container" class="bg-light p-4 rounded-4 border shadow-sm">
-                        <?php if (!empty($admin['totp_secret'])): ?>
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center text-success">
-                                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                                        <i class="fas fa-check fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <strong class="d-block fs-5">Autenticador Ativado</strong>
-                                        <small class="text-muted">Sua conta está protegida com segurança extra.</small>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-outline-danger rounded-pill px-4" onclick="desativarTotp()">
-                                    <i class="fas fa-power-off me-1"></i> Desativar
-                                </button>
-                            </div>
-                        <?php else: ?>
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center text-secondary">
+                    <div class="row g-4">
+                        
+                        <!-- 1. EMAIL -->
+                        <div class="col-md-4">
+                            <div class="p-4 bg-light bg-opacity-50 border rounded-4 h-100 position-relative transition-shadow">
+                                <div class="d-flex align-items-center mb-3">
                                     <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                                        <i class="fas fa-shield-alt fs-4"></i>
+                                        <i class="fas fa-envelope fs-5"></i>
                                     </div>
-                                    <div>
-                                        <strong class="d-block fs-5 text-dark">Autenticador Desativado</strong>
-                                        <small class="text-muted">Recomendamos ativar para evitar invasões.</small>
-                                    </div>
+                                    <h5 class="mb-0 fw-bold text-dark">Código por E-mail</h5>
                                 </div>
-                                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="iniciarSetupTotp()">
-                                    <i class="fas fa-qrcode me-1"></i> Configurar Agora
+                                <p class="text-muted small mb-4">Receba um código numérico de 6 dígitos no seu e-mail cadastrado a cada tentativa de login.</p>
+                                
+                                <span class="position-absolute top-0 end-0 m-3 px-2 py-1 bg-success bg-opacity-10 text-success fw-bold rounded" style="font-size: 0.75rem;">
+                                    <i class="fas fa-check-circle me-1"></i> Padrão Ativo
+                                </span>
+                                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill mt-auto" disabled>
+                                    Ativo e Requerido
                                 </button>
                             </div>
-                        <?php endif; ?>
+                        </div>
+
+                        <!-- 2. APP AUTENTICADOR (TOTP) -->
+                        <div class="col-md-4">
+                            <div class="p-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 h-100 position-relative transition-shadow">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                                        <i class="fas fa-mobile-alt fs-5"></i>
+                                    </div>
+                                    <h5 class="mb-0 fw-bold text-primary">App Autenticador</h5>
+                                </div>
+                                <p class="text-primary text-opacity-75 small mb-4">Utilize apps como Google Authenticator ou Authy para gerar códigos offline de 6 dígitos.</p>
+                                
+                                <?php if (!empty($admin['totp_secret'])): ?>
+                                    <span class="position-absolute top-0 end-0 m-3 px-2 py-1 bg-success text-white fw-bold rounded shadow-sm" style="font-size: 0.75rem;">
+                                        <i class="fas fa-check-circle me-1"></i> Configurado
+                                    </span>
+                                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill mt-auto shadow-sm bg-white" onclick="desativarTotp()">
+                                        <i class="fas fa-power-off me-1"></i> Desvincular e Remover
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-primary w-100 rounded-pill mt-auto shadow-sm" onclick="iniciarSetupTotp()">
+                                        Configurar Dispositivo
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- 3. PASSKEYS (WEBAUTHN) -->
+                        <div class="col-md-4">
+                            <div class="p-4 bg-dark bg-opacity-10 border border-dark border-opacity-25 rounded-4 h-100 position-relative transition-shadow">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                                        <i class="fas fa-fingerprint fs-5"></i>
+                                    </div>
+                                    <h5 class="mb-0 fw-bold text-dark">Chaves Passkey</h5>
+                                </div>
+                                <p class="text-dark text-opacity-75 small mb-4">Vincule a biometria/TouchID do seu celular ou notebook para logar sem precisar digitar nada da 2ª Etapa.</p>
+                                
+                                <?php
+                                $stmtPass = $pdo->prepare("SELECT COUNT(id) FROM passkeys WHERE admin_id = ?");
+                                $stmtPass->execute([$adminId]);
+                                $qtdPasskeys = $stmtPass->fetchColumn();
+                                ?>
+
+                                <?php if ($qtdPasskeys > 0): ?>
+                                    <span class="position-absolute top-0 end-0 m-3 px-2 py-1 bg-dark text-white fw-bold rounded shadow-sm" style="font-size: 0.75rem;">
+                                        <?php echo $qtdPasskeys; ?> Passkey(s)
+                                    </span>
+                                <?php endif; ?>
+
+                                <button type="button" class="btn btn-dark w-100 rounded-pill mt-auto shadow-sm" onclick="iniciarRegistroPasskey()">
+                                    <i class="fas fa-plus me-1"></i> Adicionar Passkey
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
 
                     <hr class="my-4">
