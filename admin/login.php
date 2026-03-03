@@ -59,9 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $recaptcha_data = json_decode($recaptcha_response);
 
         if (empty($usuario) || empty($senha)) {
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => "Por favor, preencha todos os campos."]);
             exit;
         } elseif (!$recaptcha_data->success || $recaptcha_data->score < 0.5) {
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => "Falha na verificação de segurança (reCAPTCHA). Por favor, tente novamente."]);
             exit;
         }
@@ -76,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $hasTotp = !empty($admin['totp_secret']);
 
             if (!$hasTotp && empty($admin['email'])) {
+                if (ob_get_length()) ob_clean();
                 echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail ou App Autenticador cadastrado para verificação em duas etapas."]);
                 exit;
             }
@@ -98,11 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                     // Mascarar email para exibir no frontend
                     $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
                 } else if (!$hasTotp) {
+                    if (ob_get_length()) ob_clean();
                     echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
                     exit;
                 }
             }
 
+            if (ob_get_length()) ob_clean();
             echo json_encode([
                 'success' => true, 
                 'email_mascarado' => $emailMascarado,
@@ -111,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         } else {
             $_SESSION['login_attempts']++;
             $_SESSION['last_attempt_time'] = time();
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos."]);
         }
         exit;
@@ -121,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $codigoRecebido = trim($_POST['codigo'] ?? '');
 
         if (!isset($_SESSION['2fa_admin_data'])) {
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => 'Sessão de verificação expirada ou inválida.']);
             exit;
         }
@@ -173,8 +180,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
             unset($_SESSION['login_redirect_url']);
 
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
         } else {
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => $erroMsg]);
         }
         exit;

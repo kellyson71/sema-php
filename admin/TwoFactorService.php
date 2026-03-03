@@ -5,7 +5,9 @@ namespace Admin\Services;
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use OTPHP\TOTP;
-use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh;
 use Endroid\QrCode\Writer\PngWriter;
 
 class TwoFactorService
@@ -47,18 +49,23 @@ class TwoFactorService
 
     /**
      * Gera a imagem PNG do QR Code em Base64 a partir do URI
+     * Suporta endroid/qr-code v4.x
      * 
      * @param string $uri
      * @return string Base64 da imagem PNG
      */
     public function getQrCodeImage(string $uri): string
     {
-        $qrCode = QrCode::create($uri)
-            ->setSize(300)
-            ->setMargin(10);
-
-        $writer = new PngWriter();
-        $result = $writer->write($qrCode);
+        // Suprimir notices de deprecation da biblioteca no PHP 8.1+ para não quebrar o JSON
+        $result = @Builder::create()
+            ->writer(new PngWriter())
+            ->writerOptions([])
+            ->data($uri)
+            ->encoding(new Encoding('UTF-8'))
+            ->errorCorrectionLevel(new ErrorCorrectionLevelHigh())
+            ->size(300)
+            ->margin(10)
+            ->build();
 
         return $result->getDataUri();
     }

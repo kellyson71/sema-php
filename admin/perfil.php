@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'setup_totp') {
         $setup = $twoFactorService->generateSetup($admin['email']);
         $_SESSION['totp_setup_secret'] = $setup['secret'];
+        if (ob_get_length()) ob_clean();
         echo json_encode(['success' => true, 'qrcode' => $twoFactorService->getQrCodeImage($setup['qrCodeUri'])]);
         exit;
     }
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $code = trim($_POST['code'] ?? '');
         $secret = $_SESSION['totp_setup_secret'] ?? '';
         
+        if (ob_get_length()) ob_clean();
         if ($twoFactorService->verify($secret, $code)) {
             $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = ? WHERE id = ?");
             $stmt->execute([$secret, $adminId]);
@@ -69,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'disable_totp') {
         $stmt = $pdo->prepare("UPDATE administradores SET totp_secret = NULL WHERE id = ?");
         $stmt->execute([$adminId]);
+        if (ob_get_length()) ob_clean();
         echo json_encode(['success' => true]);
         exit;
     }
