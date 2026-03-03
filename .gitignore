@@ -28,7 +28,7 @@ uploads/perfil/*
 # /vendor/
 node_modules/
 composer.phar
-composer.lock
+# composer.lock
 
 # ===== ARQUIVOS TEMPORÁRIOS =====
 *.tmp
@@ -187,4 +187,4 @@ docker-compose.yml
 .dockerignore
 
 # ===== FINAL =====!docker-compose.yml
-vendor/
+# vendor/
