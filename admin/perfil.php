@@ -304,9 +304,15 @@ include 'header.php';
                                 <p class="text-dark text-opacity-75 small mb-4">Vincule a biometria/TouchID do seu celular ou notebook para logar sem precisar digitar nada da 2ª Etapa.</p>
                                 
                                 <?php
-                                $stmtPass = $pdo->prepare("SELECT COUNT(id) FROM passkeys WHERE admin_id = ?");
-                                $stmtPass->execute([$adminId]);
-                                $qtdPasskeys = $stmtPass->fetchColumn();
+                                $qtdPasskeys = 0;
+                                try {
+                                    $stmtPass = $pdo->prepare("SELECT COUNT(id) FROM passkeys WHERE admin_id = ?");
+                                    $stmtPass->execute([$adminId]);
+                                    $qtdPasskeys = $stmtPass->fetchColumn();
+                                } catch (PDOException $e) {
+                                    // Tabela passkeys possivelmente não existe, silenciosamente assume 0
+                                    error_log("Aviso: Tabela passkeys não encontrada em perfil.php: " . $e->getMessage());
+                                }
                                 ?>
 
                                 <?php if ($qtdPasskeys > 0): ?>

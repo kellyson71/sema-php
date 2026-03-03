@@ -77,9 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             // Se tiver secret salva, flag para o frontend
             $hasTotp = !empty($admin['totp_secret']);
 
-            $stmtPass = $pdo->prepare("SELECT id FROM passkeys WHERE admin_id = ?");
-            $stmtPass->execute([$admin['id']]);
-            $hasPasskey = (bool) $stmtPass->fetchColumn();
+            $hasPasskey = false;
+            try {
+                $stmtPass = $pdo->prepare("SELECT id FROM passkeys WHERE admin_id = ?");
+                $stmtPass->execute([$admin['id']]);
+                $hasPasskey = (bool) $stmtPass->fetchColumn();
+            } catch (PDOException $e) {
+                // Se a tabela não existir, apenas ignora e assume que não tem passkey
+                error_log("Aviso: Tabela passkeys não encontrada ou erro na query: " . $e->getMessage());
+            }
 
             if (!$hasTotp && empty($admin['email']) && !$hasPasskey) {
                 if (ob_get_length()) ob_clean();
@@ -621,16 +627,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             }
 
             // Opções
+            let hasAlternativeMethods = false;
+
             if (data.has_passkey && window.currentAuthMethod !== 'passkey') {
                 container.innerHTML += `<button type="button" class="btn btn-dark rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('passkey')"><i class="fas fa-fingerprint me-2"></i> Usar Passkey (Biometria)</button>`;
+                hasAlternativeMethods = true;
             }
             if (data.has_totp && window.currentAuthMethod !== 'totp') {
                 container.innerHTML += `<button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('totp')"><i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador</button>`;
+                hasAlternativeMethods = true;
             }
             if (data.email_mascarado && window.currentAuthMethod !== 'email') {
                 container.innerHTML += `<button type="button" class="btn btn-outline-secondary rounded-pill w-100 py-2 fw-medium shadow-sm transition" onclick="switchAuthMethod('email')"><i class="fas fa-envelope me-2"></i> Enviar novo Email</button>`;
+                hasAlternativeMethods = true;
             }
             
+            // Ocultar quadro de "Outros métodos" caso não haja
+            document.getElementById('dynamic-options-container').style.display = hasAlternativeMethods ? 'block' : 'none';
+
             // Sugestão setup TOTP apenas se ele tiver no e-mail e não tiver app cadastrado
             document.getElementById('totp-setup-prompt').style.display = (!data.has_totp && window.currentAuthMethod === 'email') ? 'block' : 'none';
         }
