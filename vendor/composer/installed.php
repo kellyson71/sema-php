@@ -3,7 +3,7 @@
         'name' => 'sema/requerimentos',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '714edbdfe584af8c3111c6672e5ae84830727ba2',
+        'reference' => 'e2ec18b478a3ef2083ea8440ac3d78ad88f62faf',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -211,7 +211,7 @@
         'sema/requerimentos' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '714edbdfe584af8c3111c6672e5ae84830727ba2',
+            'reference' => 'e2ec18b478a3ef2083ea8440ac3d78ad88f62faf',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
