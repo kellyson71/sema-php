@@ -537,6 +537,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
+                    <a href="denuncias.php" class="<?php echo ($currentPage === 'denuncias.php' || $currentPage === 'nova_denuncia.php' || $currentPage === 'visualizar_denuncia.php') ? 'active' : ''; ?>">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Denúncias Internas</span>
+                    </a>
+                </li>
+                <li>
                     <a href="requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>">
                         <i class="fas fa-archive"></i>
                         <span>Arquivados</span>
