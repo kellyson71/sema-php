@@ -2,6 +2,8 @@
 
 namespace Admin\Services;
 
+require_once __DIR__ . '/../vendor/autoload.php';
+
 use OTPHP\TOTP;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;

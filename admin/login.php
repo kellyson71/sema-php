@@ -417,20 +417,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         </div>
 
         <div id="login-etapa-2" style="display: none; margin-top: 1.5rem; text-align: center;">
-            <div id="totp-msg-available" style="display: none;">
-                <i class="fas fa-mobile-alt fa-2x text-primary mb-3"></i>
-                <p class="text-muted mb-4">Abra seu <strong>App Autenticador</strong> e digite o código de 6 dígitos.</p>
-                <p class="small text-muted mb-3">Ou use o código enviado para <strong id="email-mascarado-display-1">...</strong></p>
-            </div>
-            
-            <div id="totp-msg-unavailable" style="display: none;">
-                <i class="fas fa-envelope fa-2x text-primary mb-3"></i>
-                <p class="text-muted mb-4">Para sua segurança, informe o código enviado para <strong id="email-mascarado-display-2">...</strong></p>
-                <div class="mt-2">
-                    <a href="perfil.php" class="text-decoration-none small text-primary fw-bold">
-                        <i class="fas fa-shield-alt me-1"></i> Ativar App Autenticador (Mais Seguro)
-                    </a>
-                </div>
+            <div id="totp-header-msg">
+                <i class="fas fa-envelope fa-2x text-primary mb-3" id="totp-icon"></i>
+                <p class="text-muted mb-4" id="totp-text">Para sua segurança, informe o código enviado para <strong id="email-mascarado-display">...</strong></p>
             </div>
             
             <form class="login-form" id="otpForm">
@@ -443,17 +432,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 <input type="hidden" name="action" value="validar_otp">
                 
                 <div class="form-group mb-4">
-                    <input type="text" id="codigo" name="codigo" class="form-control fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px; text-align: center;" required>
+                    <input type="text" id="codigo" name="codigo" class="form-control fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px; text-align: center;" required autocomplete="off">
                 </div>
                 
-                <button type="submit" class="btn btn-primary" id="btn-submit-2">
-                    <i class="fas fa-check-circle me-2"></i>
-                    Entrar
+                <button type="submit" class="btn btn-primary btn-lg rounded-3 mb-2" id="btn-submit-2">
+                    <i class="fas fa-check-circle me-2"></i> Entrar
                 </button>
-                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none mt-2" onclick="voltarParaLogin()">
+                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" onclick="voltarParaLogin()">
                     Voltar e tentar outro usuário
                 </button>
             </form>
+            
+            <!-- Opção de usar o Autenticador -->
+            <div id="totp-option-container" style="display: none;">
+                <div class="d-flex align-items-center my-4">
+                    <hr class="flex-grow-1 opacity-25">
+                    <span class="mx-3 text-muted small fw-bold">OU</span>
+                    <hr class="flex-grow-1 opacity-25">
+                </div>
+                <button type="button" class="btn btn-outline-primary rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-medium shadow-sm transition" onclick="toggleTotpMethod()" id="btn-switch-totp">
+                    <i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador
+                </button>
+            </div>
+
+            <!-- Divulgação do Autenticador para quem não tem -->
+            <div id="totp-setup-prompt" style="display: none;">
+                <div class="d-flex align-items-center my-4">
+                    <hr class="flex-grow-1 opacity-25">
+                    <span class="mx-3 text-muted small fw-bold"><i class="fas fa-shield-alt text-primary"></i> MAIS SEGURANÇA</span>
+                    <hr class="flex-grow-1 opacity-25">
+                </div>
+                <button type="button" class="btn btn-light rounded-pill w-100 d-flex align-items-center justify-content-center py-2 border fw-medium shadow-sm" onclick="alert('Após entrar, acesse Meu Perfil para configurar o App Autenticador!')">
+                    <i class="fas fa-qrcode me-2 text-primary"></i> Configurar App Autenticador
+                </button>
+            </div>
         </div>
     </div>
 
@@ -491,17 +503,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                             btn.disabled = false;
                             btn.innerHTML = originalText;
                             if (data.success) {
+                                window.maskedEmail = data.email_mascarado || '...';
+                                window.currentAuthMethod = data.has_totp ? 'totp' : 'email';
                                 document.getElementById('js-erro-1').classList.add('d-none');
-                                document.getElementById('email-mascarado-display-1').textContent = data.email_mascarado || '...';
-                                document.getElementById('email-mascarado-display-2').textContent = data.email_mascarado || '...';
                                 
-                                if (data.has_totp) {
-                                    document.getElementById('totp-msg-available').style.display = 'block';
-                                    document.getElementById('totp-msg-unavailable').style.display = 'none';
+                                // Atualiza a UI baseada no estado do usuário
+                                if (window.currentAuthMethod === 'totp') {
+                                    renderTotpUI();
+                                    document.getElementById('totp-option-container').style.display = 'block';
+                                    document.getElementById('totp-setup-prompt').style.display = 'none';
                                 } else {
-                                    document.getElementById('totp-msg-available').style.display = 'none';
-                                    document.getElementById('totp-msg-unavailable').style.display = 'block';
+                                    renderEmailUI();
+                                    document.getElementById('totp-option-container').style.display = 'none';
+                                    document.getElementById('totp-setup-prompt').style.display = 'block';
                                 }
+                                
                                 document.getElementById('login-etapa-1').style.display = 'none';
                                 document.getElementById('login-etapa-2').style.display = 'block';
                             } else {
@@ -563,6 +579,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             document.getElementById('codigo').value = '';
             document.getElementById('js-erro-1').classList.add('d-none');
             document.getElementById('js-erro-2').classList.add('d-none');
+        }
+
+        function toggleTotpMethod() {
+            if (window.currentAuthMethod === 'totp') {
+                window.currentAuthMethod = 'email';
+                renderEmailUI();
+            } else {
+                window.currentAuthMethod = 'totp';
+                renderTotpUI();
+            }
+        }
+
+        function renderTotpUI() {
+            document.getElementById('totp-icon').className = 'fas fa-mobile-alt fa-3x text-primary mb-3 mt-2';
+            document.getElementById('totp-text').innerHTML = `Abra seu <strong>App Autenticador</strong> e informe o código gerado.`;
+            const btn = document.getElementById('btn-switch-totp');
+            if (btn) btn.innerHTML = `<i class="fas fa-envelope me-2"></i> Usar código por E-mail`;
+        }
+
+        function renderEmailUI() {
+            document.getElementById('totp-icon').className = 'fas fa-envelope-open-text fa-3x text-primary mb-3 mt-2';
+            document.getElementById('totp-text').innerHTML = `Para sua segurança, informe o código enviado para <strong class="text-dark">${window.maskedEmail}</strong>`;
+            const btn = document.getElementById('btn-switch-totp');
+            if (btn) btn.innerHTML = `<i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador`;
         }
     </script>
 </body>

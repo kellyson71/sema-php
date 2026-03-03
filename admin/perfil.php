@@ -235,19 +235,43 @@ include 'header.php';
 
                     <hr class="my-4">
 
-                    <h5>Autenticação em Duas Etapas (App)</h5>
-                    <p class="text-muted small mb-3">Aumente a segurança da sua conta usando um aplicativo como Google Authenticator ou Authy.</p>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-shield-alt text-primary fs-4 me-2"></i>
+                        <h5 class="mb-0">Autenticação em Duas Etapas (App)</h5>
+                    </div>
+                    <p class="text-muted small mb-4">Aumente a segurança da sua conta usando um aplicativo como Google Authenticator ou Authy.</p>
                     
-                    <div id="totp-status-container">
+                    <div id="totp-status-container" class="bg-light p-4 rounded-4 border shadow-sm">
                         <?php if (!empty($admin['totp_secret'])): ?>
-                            <div class="alert alert-success d-flex align-items-center justify-content-between">
-                                <div><i class="fas fa-check-circle me-1"></i> Autenticador Ativado</div>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="desativarTotp()">Desativar</button>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center text-success">
+                                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                                        <i class="fas fa-check fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <strong class="d-block fs-5">Autenticador Ativado</strong>
+                                        <small class="text-muted">Sua conta está protegida com segurança extra.</small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger rounded-pill px-4" onclick="desativarTotp()">
+                                    <i class="fas fa-power-off me-1"></i> Desativar
+                                </button>
                             </div>
                         <?php else: ?>
-                            <button type="button" class="btn btn-outline-primary mb-3" onclick="iniciarSetupTotp()">
-                                <i class="fas fa-qrcode me-1"></i> Configurar App Autenticador
-                            </button>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center text-secondary">
+                                    <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                                        <i class="fas fa-shield-alt fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <strong class="d-block fs-5 text-dark">Autenticador Desativado</strong>
+                                        <small class="text-muted">Recomendamos ativar para evitar invasões.</small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="iniciarSetupTotp()">
+                                    <i class="fas fa-qrcode me-1"></i> Configurar Agora
+                                </button>
+                            </div>
                         <?php endif; ?>
                     </div>
 
@@ -283,27 +307,33 @@ include 'header.php';
 </div>
 
 <!-- Modal Configurar TOTP -->
-<div class="modal fade" id="modalSetupTotp" tabindex="-1" aria-labelledby="modalSetupTotpLabel" aria-hidden="true">
+<div class="modal fade" id="modalSetupTotp" tabindex="-1" aria-labelledby="modalSetupTotpLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalSetupTotpLabel">Configurar App Autenticador</h5>
+        <div class="modal-content border-0 shadow-lg border-top border-primary border-4 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="modalSetupTotpLabel"><i class="fas fa-mobile-alt text-primary me-2"></i> App Autenticador</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body text-center">
-                <p>Escaneie o QR Code abaixo usando o seu aplicativo autenticador preferido.</p>
-                <div id="qr-code-container" class="my-3">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div>
+            <div class="modal-body text-center pt-2">
+                <p class="text-muted mb-4">Escaneie o QR Code abaixo usando um aplicativo como <strong>Google Authenticator</strong>, <strong>Authy</strong> ou <strong>Microsoft Authenticator</strong>.</p>
+                
+                <div id="qr-code-container" class="my-4 d-flex justify-content-center">
+                    <div class="p-3 bg-white border rounded-4 shadow-sm" style="display:inline-block">
+                        <div class="spinner-border text-primary my-4" role="status"><span class="visually-hidden">Carregando...</span></div>
+                    </div>
                 </div>
-                <div class="form-group mt-3 text-start">
-                    <label for="totp-code-input" class="form-label">Digite o código de 6 dígitos gerado:</label>
-                    <input type="text" class="form-control text-center fs-4 letter-spacing-lg" id="totp-code-input" placeholder="000 000" maxlength="6" style="letter-spacing: 5px;">
-                    <div class="invalid-feedback" id="totp-error-msg">Código inválido.</div>
+                
+                <div class="form-group mt-4 text-start px-md-4">
+                    <label for="totp-code-input" class="form-label fw-medium text-secondary">Código de verificação (6 dígitos):</label>
+                    <input type="text" class="form-control form-control-lg text-center fw-bold text-primary" id="totp-code-input" placeholder="000 000" maxlength="6" style="letter-spacing: 0.5em; font-size: 1.5rem; border-radius: 12px; background-color: #f8f9fa;">
+                    <div class="invalid-feedback text-center mt-2 fw-medium" id="totp-error-msg">Código inválido.</div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="verificarSetupTotp()" id="btn-verify-totp">Confirmar</button>
+            <div class="modal-footer border-0 pt-0 pb-4 px-md-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary rounded-pill px-5 shadow-sm" onclick="verificarSetupTotp()" id="btn-verify-totp">
+                    <i class="fas fa-check me-1"></i> Ativar Proteção
+                </button>
             </div>
         </div>
     </div>
