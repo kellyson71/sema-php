@@ -1,6 +1,5 @@
-```ignore
 # ===== CONFIGURAÇÕES SENSÍVEIS =====
-# /includes/config.php
+/includes/config.php
 /includes/env.php
 .env
 .env.backup
@@ -190,6 +189,4 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# ===== FINAL =====
 !docker-compose.yml
-```
