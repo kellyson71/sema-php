@@ -2617,24 +2617,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          return mapa[tipo] || 'Documento';
      }
 
-     async function abrirModalParecer() {
-         const btn = document.querySelector('.btn-action-primary'); // Botão Gerar Parecer
-         const originalHtml = btn.innerHTML;
-         
-         // Feedback visual de carregamento
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
-
-         const sessaoValida = await verificarSessaoAssinatura();
-         
-         btn.disabled = false;
-         btn.innerHTML = originalHtml;
-
-         if (sessaoValida) {
-             exibirModalParecer();
-         } else {
-             iniciarVerificacaoEmail();
-         }
+     function abrirModalParecer() {
+         exibirModalParecer();
      }
 
      function exibirModalParecer() {
