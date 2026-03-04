@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
 
         // 1. Tentar validar via App Autenticador (TOTP)
         if (!empty($admin['totp_secret'])) {
-            require_once 'TwoFactorService.php';
+            require_once 'MultiFactorService.php';
             $twoFactorService = new \Admin\Services\TwoFactorService();
             if ($twoFactorService->verify($admin['totp_secret'], $codigoRecebido)) {
                 $codigoValido = true;
