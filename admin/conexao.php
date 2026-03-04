@@ -35,11 +35,56 @@ try {
     die("Erro na conexão: " . $e->getMessage());
 }
 
-// Função para verificar se o usuário está logado
+// Função para verificar se o usuário está logado e com sessão/12h válida
 function verificaLogin()
 {
+    $redirect = false;
+    $uri = urlencode($_SERVER['REQUEST_URI']);
+
+    // 1. O usuário não tem a variável essencial na sessão
     if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
-        $uri = urlencode($_SERVER['REQUEST_URI']);
+        $redirect = true;
+    } else {
+        // 2. O usuário tem sessão, mas vamos verificar as travas de segurança (Anti-Hijacking)
+        $current_ip = $_SERVER['REMOTE_ADDR'];
+        $current_ua = $_SERVER['HTTP_USER_AGENT'];
+        
+        $session_ip = $_SESSION['login_ip'] ?? '';
+        $session_ua = $_SESSION['login_user_agent'] ?? '';
+        
+        if ($current_ip !== $session_ip || $current_ua !== $session_ua) {
+            // Acesso detectado de outro IP ou Navegador com a mesma sessão! 
+            // Força expiração imediata.
+            $redirect = true;
+        }
+
+        // 3. Verifica se o Cookie de 12 horas expirou ou sumiu
+        // (A sessão estrita do PHP muitas vezes sobrevive ao fechamento se o GC não rodar, 
+        // mas o cookie expira perfeitamente após 12h).
+        if (!isset($_COOKIE['sema_auth_persist'])) {
+            $redirect = true;
+        } else {
+            // Valida o conteúdo do cookie
+            $cookie_data = base64_decode($_COOKIE['sema_auth_persist']);
+            $parts = explode('::', $cookie_data);
+            if (count($parts) === 2) {
+                $c_id = $parts[0];
+                $c_token = $parts[1];
+                if ($c_id != $_SESSION['admin_id'] || $c_token !== ($_SESSION['auth_token'] ?? '')) {
+                    $redirect = true; // Cookie forjado
+                }
+            } else {
+                $redirect = true;
+            }
+        }
+    }
+
+    if ($redirect) {
+        // Limpar tudo por segurança
+        session_unset();
+        session_destroy();
+        setcookie('sema_auth_persist', '', time() - 3600, '/');
+        
         header("Location: login.php?redirect=" . $uri);
         exit;
     }
