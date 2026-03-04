@@ -74,18 +74,6 @@ define('RECAPTCHA_SECRET_KEY', '6LcXuX0sAAAAAKUwd1S8pnR8uL-_n5-b2yR2sA6T');
 // Timezone
 date_default_timezone_set('America/Sao_Paulo');
 
-// Módulo de Persistência de Sessão (12 horas = 43200 segundos)
-$session_lifetime = 43200;
-ini_set('session.gc_maxlifetime', $session_lifetime);
-session_set_cookie_params([
-    'lifetime' => $session_lifetime,
-    'path' => '/',
-    'domain' => '', // Mantém o domínio atual
-    'secure' => isset($_SERVER['HTTPS']), // Apenas HTTPS se estiver ativo
-    'httponly' => true, // Previne acesso via JavaScript (XSS)
-    'samesite' => 'Lax' // Proteção contra CSRF
-]);
-
 // Iniciar sessão se ainda não foi iniciada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

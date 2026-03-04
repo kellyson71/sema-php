@@ -1947,7 +1947,103 @@ $isBlocked = $isFinalized || $isIndeferido;
     </div>
 </div>
 
-<?php include 'assinatura/assinatura_modal.php'; ?>
+<!-- Modal de Geração de Parecer -->
+<div class="modal fade" id="parecerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-contract text-info me-2"></i>
+                    Gerar Parecer Técnico
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Etapa 1: Seleção de Template -->
+                <div id="etapa-selecao-template">
+                    <label class="form-label">Selecione o Template:</label>
+                    <select id="template-select" class="form-select mb-3"></select>
+                    <button type="button" class="btn btn-primary" onclick="carregarTemplateParaEdicao()">
+                        <i class="fas fa-file-import me-2"></i>Carregar Template
+                    </button>
+                </div>
+
+                <!-- Etapa 2: Editor -->
+                <div id="etapa-editor" style="display:none;">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        O template foi preenchido automaticamente. Edite conforme necessário.
+                    </div>
+                    <textarea id="editor-parecer-content"></textarea>
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
+                            <i class="fas fa-arrow-right me-2"></i>Continuar para Assinar e Posicionar
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Etapa 3 (única): Posicionamento da Assinatura -->
+                <div id="etapa-posicionamento" style="display:none;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="alert alert-info mb-0 flex-grow-1 py-2 px-3">
+                            <i class="fas fa-hand-paper me-2"></i>
+                            Arraste a assinatura ou use as posições rápidas para finalizar
+                        </div>
+                        <span id="assinatura-status-badge" class="badge bg-secondary">Assinatura: Digitada (Arial)</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="abrirConfigAssinatura()">
+                            <i class="fas fa-edit me-1"></i>Configurar assinatura
+                        </button>
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2">
+                        <span class="text-muted small">Posições rápidas:</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('esquerda')">Esquerda</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('centro')">Centro</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('direita')">Direita</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetarPosicaoAssinatura()">Reposicionar padrão</button>
+                    </div>
+                    <div class="mb-3" id="preview-wrapper" style="overflow: auto; max-height: 70vh; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden; transform-origin: top center;">
+                            <iframe id="preview-iframe" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1;"></iframe>
+                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 2; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                                <img id="preview-qr-code" src="" style="width: 55px; height: 55px; flex-shrink: 0;" />
+                                <div style="font-size: 11px; text-align: left; line-height: 1.3; display: flex; flex-direction: column; gap: 2px;">
+                                    <strong>Assinado digitalmente por:</strong>
+                                    <span id="preview-nome-assinante" style="font-size: 12px; font-weight: bold;"></span>
+                                    <span id="preview-cargo-assinante"></span>
+                                    <span id="preview-matricula-assinante"></span>
+                                    <span id="preview-data-assinatura" style="font-size: 10px; color: #666;"></span>
+                                    <span id="preview-assinatura-visual" style="font-size: 14px; display: block; margin-top: 2px;"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <small><i class="fas fa-info-circle me-1"></i>Posição inicial: Canto inferior direito. Arraste para reposicionar.</small>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title mb-2"><i class="fas fa-lock me-2"></i>Validação final</h6>
+                            <label class="form-label mb-1">Digite sua senha para assinar:</label>
+                            <input type="password" id="senha-finalizacao" class="form-control" placeholder="Senha da sua conta">
+                            <div id="erro-senha-finalizacao" class="text-danger small mt-2" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="confirmarPosicaoEGerarPdf()">
+                            <i class="fas fa-check me-2"></i>Assinar e Gerar PDF
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="voltarParaEditor()">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar para Edição
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal para Indeferimento de Processo -->
 <div class="modal fade" id="indeferimentoModal" tabindex="-1" aria-hidden="true">

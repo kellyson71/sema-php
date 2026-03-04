@@ -166,19 +166,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
             $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
             
-            // Segurança da sessão: Amarrar ao IP e User-Agent atuais para evitar roubo de sessão (Hijacking)
-            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'];
-            $_SESSION['login_user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-            
             // Sessão para assinaturas liberada indefinidamente via login
             $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
-
-            // Criar um cookie extra deAuth para reconhecer se o navegador foi fechado/reaberto
-            // Encriptamos o ID e um token simples para validação futura, validade 12 horas
-            $token_auth = bin2hex(random_bytes(16));
-            $_SESSION['auth_token'] = $token_auth;
-            $cookie_value = base64_encode($admin['id'] . '::' . $token_auth);
-            setcookie('sema_auth_persist', $cookie_value, time() + 43200, '/', '', isset($_SERVER['HTTPS']), true);
 
             $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
             $stmt->execute([$admin['id']]);
