@@ -166,6 +166,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
             $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
             
+            // Segurança da Sessão
+            $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
+            $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+
+            // Cookie Extra (Fallback opcional)
+            setcookie('sema_auth_persist', hash('sha256', $admin['id'] . $_SERVER['HTTP_USER_AGENT']), time() + 43200, '/');
+
             // Sessão para assinaturas liberada indefinidamente via login
             $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
 
