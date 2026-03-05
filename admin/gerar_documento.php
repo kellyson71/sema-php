@@ -206,16 +206,16 @@ include 'header.php';
     const reqId = <?= $requerimento_id ?>;
     let currentTemplate = '';
 
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         carregarTemplates();
     });
 
     function initEditor(html, title) {
-        $('#secao-selecao').addClass('d-none');
-        $('#secao-editor').removeClass('d-none');
-        $('#editor-title').html('<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + title + '</b>');
+        document.getElementById('secao-selecao').classList.add('d-none');
+        document.getElementById('secao-editor').classList.remove('d-none');
+        document.getElementById('editor-title').innerHTML = '<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + title + '</b>';
         
-        let editorNode = $('#editor-conteudo');
+        let editorNode = $('#editor-conteudo'); // O plugin summernote ainda precisa de JQ interno pra instanciar, garantido lá no footer de carregar tudo.
         
         if (editorNode.data('summernote')) {
             editorNode.summernote('destroy');
@@ -237,23 +237,36 @@ include 'header.php';
             ],
             callbacks: {
                 onInit: function() {
-                    $('.note-editor').css('height', '100%');
-                    $('.note-editable').css('height', 'calc(100% - 40px)').css('overflow-y', 'auto');
+                    document.querySelector('.note-editor').style.height = '100%';
+                    document.querySelector('.note-editable').style.height = 'calc(100% - 40px)';
+                    document.querySelector('.note-editable').style.overflowY = 'auto';
                 }
             }
         });
     }
 
     function carregarTemplates() {
-        $.post('parecer_handler.php', { action: 'listar_templates', requerimento_id: reqId }, function(ret) {
+        fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'action': 'listar_templates',
+                'requerimento_id': reqId
+            })
+        })
+        .then(res => res.json())
+        .then(ret => {
+            const listTpl = document.getElementById('lista-templates');
+            const listHist = document.getElementById('lista-historico');
+            
             if(ret.success && ret.templates) {
                 let html = '';
                 ret.templates.forEach(t => {
+                    let fileKey = t.nome ? t.nome : t;
                     let rawName = t.nome ? t.nome : t.replace('.html', '');
                     rawName = rawName.replace(/_/g, ' ').toUpperCase();
-                    let fileKey = t.nome ? t.nome : t;
 
-                    let desc = 'Modelo padrão oficial validado para a secretária. Clique para aplicar o modelo no editor.';
+                    let desc = 'Modelo padrão oficial validado para a secretaria. Clique para aplicar o modelo no editor.';
                     let icone = 'fa-file-signature text-secondary';
                     if(rawName.includes('ALVARA') || rawName.includes('CONSTRU')) icone = 'fa-hard-hat text-warning';
                     if(rawName.includes('HABITE') || rawName.includes('DESMEMBRAMENTO')) icone = 'fa-home text-success';
@@ -274,12 +287,12 @@ include 'header.php';
                         </div>
                     </div>`;
                 });
-                $('#lista-templates').html(html);
+                listTpl.innerHTML = html;
             } else {
-                $('#lista-templates').html('<div class="col-12 text-danger">Falha ao carregar os templates do sistema.</div>');
+                listTpl.innerHTML = '<div class="col-12 text-danger">Falha ao carregar os templates do sistema.</div>';
             }
 
-            // Historico Recente (Para Aproveitamento de Texto)
+            // Historico Recente
             if(ret.success && ret.historico_recente && ret.historico_recente.length > 0) {
                 let htmlHist = '';
                 ret.historico_recente.forEach(h => {
@@ -300,10 +313,11 @@ include 'header.php';
                         </div>
                      </div>`;
                 });
-                $('#lista-historico').html(htmlHist);
+                listHist.innerHTML = htmlHist;
             }
-        }, 'json').fail(function(){
-            $('#lista-templates').html('<div class="col-12 text-danger">Falha na conexão com o servidor.</div>');
+        })
+        .catch(err => {
+             document.getElementById('lista-templates').innerHTML = '<div class="col-12 text-danger">Falha na conexão com o servidor.</div>';
         });
     }
 
@@ -315,26 +329,33 @@ include 'header.php';
             didOpen: () => { Swal.showLoading(); }
         });
         
-        $.post('parecer_handler.php', {
-            action: 'carregar_template',
-            template: arquivo,
-            requerimento_id: reqId,
-            origem: 'tecnico'
-        }, function(ret) {
+        fetch('parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                'action': 'carregar_template',
+                'template': arquivo,
+                'requerimento_id': reqId,
+                'origem': 'tecnico'
+            })
+        })
+        .then(res => res.json())
+        .then(ret => {
             Swal.close();
             if (ret.success) {
                 initEditor(ret.html, nomeLimpo);
             } else {
                 Swal.fire('Erro', ret.error || 'Erro ao carregar os metadados do processo.', 'error');
             }
-        }, 'json').fail(function() {
+        })
+        .catch(err => {
             Swal.close();
             Swal.fire('Erro', 'Falha na comunicação com o servidor ao carregar template.', 'error');
         });
     }
 
     function voltarParaSelecao() {
-        let val = $('#editor-conteudo').val();
+        let val = document.getElementById('editor-conteudo').value;
         if(val && val.length > 50) {
             Swal.fire({
                 title: 'Descartar alterações?',
@@ -356,8 +377,10 @@ include 'header.php';
     }
 
     function fecharEditor() {
-        $('#secao-editor').addClass('d-none');
-        $('#secao-selecao').removeClass('d-none');
+        document.getElementById('secao-editor').classList.add('d-none');
+        document.getElementById('secao-selecao').classList.remove('d-none');
+        
+        // Destroy summernote if active
         if ($('#editor-conteudo').data('summernote')) {
             $('#editor-conteudo').summernote('destroy');
         }
@@ -370,8 +393,9 @@ include 'header.php';
             return;
         }
         
-        $('#checkDiretrizes').prop('checked', false);
-        document.getElementById('checkDiretrizes').setCustomValidity('O aceite nas diretrizes é um bloco obrigatório legal.');
+        let checkDiretrizes = document.getElementById('checkDiretrizes');
+        checkDiretrizes.checked = false;
+        checkDiretrizes.setCustomValidity('O aceite nas diretrizes é um bloco obrigatório legal.');
         
         var modalConf = new bootstrap.Modal(document.getElementById('modalConfirmacao'));
         modalConf.show();
@@ -389,57 +413,59 @@ include 'header.php';
             return;
         }
 
-        const btn = $('#btnAssinarFinal');
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Autenticando Ofício...');
+        const btn = document.getElementById('btnAssinarFinal');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Autenticando Ofício...';
         
+        // Obtendo conteúdo final do editor usando jQ (pois Summernote é restrito JQ)
         let conteudoHtml = $('#editor-conteudo').summernote('code');
-        let fazDownload = $('#checkDownload').is(':checked');
+        let fazDownload = document.getElementById('checkDownload').checked;
+        
+        let fd = new FormData();
+        fd.append('conteudo_parecer', conteudoHtml);
+        fd.append('requerimento_id', reqId);
+        fd.append('salvar_banco', 'true');
+        fd.append('download', fazDownload);
 
-        $.ajax({
-            url: 'assinatura/processa_assinatura.php', 
-            type: 'POST',
-            data: {
-                conteudo_parecer: conteudoHtml,
-                requerimento_id: reqId,
-                origem: 'tecnico',
-                salvar_banco: true,    // Envia flag pro PHP renderizar para disco (`F`) e registrar no Postgres
-                download: fazDownload
-            },
-            dataType: 'json',
-            success: function(ret) {
-                btn.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica');
+        fetch('assinatura/processa_assinatura.php', {
+            method: 'POST',
+            body: fd
+        })
+        .then(res => res.json())
+        .then(ret => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
+            
+            if (ret.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
                 
-                if (ret.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
-                    
-                    Swal.fire({
-                        title: 'Autenticado com Sucesso!',
-                        text: 'O arquivo consta permanentemente armazenado nos registros eletrônicos do Processo.',
-                        icon: 'success',
-                        timer: 2500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        if (fazDownload && ret.url_pdf) {
-                            let a = document.createElement('a');
-                            a.href = ret.url_pdf;
-                            a.download = ret.nome_arquivo || 'Documento_Assinado.pdf';
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
-                        }
-                        setTimeout(() => {
-                            window.location.href = 'visualizar_requerimento.php?id=' + reqId;
-                        }, 500);
-                    });
-                } else {
-                    Swal.fire('Erro Interno', ret.error || 'Não foi possível carimbar o documento nas bases governamentais.', 'error');
-                }
-            },
-            error: function(xhr) {
-                 btn.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica');
-                 console.error(xhr.responseText);
-                 Swal.fire('Falha Crítica do Autenticador', xhr.responseText || 'Erro ao conectar no Endpoint de Assinaturas (Status 500). Verifique Log Central.', 'error');
+                Swal.fire({
+                    title: 'Autenticado com Sucesso!',
+                    text: 'O arquivo consta permanentemente armazenado nos registros eletrônicos do Processo.',
+                    icon: 'success',
+                    timer: 2500,
+                    showConfirmButton: false
+                }).then(() => {
+                    if (fazDownload && ret.url_pdf) {
+                        let a = document.createElement('a');
+                        a.href = ret.url_pdf;
+                        a.download = ret.nome_arquivo || 'Documento_Assinado.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    }
+                    setTimeout(() => {
+                        window.location.href = 'visualizar_requerimento.php?id=' + reqId;
+                    }, 500);
+                });
+            } else {
+                Swal.fire('Erro Interno', ret.error || 'Não foi possível carimbar o documento nas bases governamentais.', 'error');
             }
+        })
+        .catch(err => {
+             btn.disabled = false;
+             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
+             Swal.fire('Falha Crítica', 'Falha estrutural ao registrar no Endpoint de Assinaturas (Erro Nativo JS).', 'error');
         });
     }
     </script>

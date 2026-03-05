@@ -117,8 +117,8 @@ try {
 
 
             // 4. Templates Padrão (Do sistema)
-            // Ajustar caminho para garantir que encontre a pasta assets/doc
-            $templatesDiretorio = realpath(dirname(__DIR__) . '/assets/doc') . '/';
+            // Ajustar caminho para garantir que encontre a pasta admin/templates
+            $templatesDiretorio = realpath(__DIR__ . '/templates') . '/';
             $templates = [];
             
             // Adicionar template em branco
@@ -244,9 +244,9 @@ try {
                 break; // Sai do switch/case
             }
 
-            // C. Verificar se é Template Padrão (.html em assets/doc)
+            // C. Verificar se é Template Padrão (.html em admin/templates)
             // Se o arquivo existir, deixamos fluir para o preenchimento de dados
-            $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+            $templatesDiretorio = __DIR__ . '/templates/';
             $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
             
             // Se não existir e não for DOCX, vai dar erro no ParecerService.
