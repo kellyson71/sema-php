@@ -2460,6 +2460,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                  lista.innerHTML = '';
                  data.pareceres.forEach(p => {
                      const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                     const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
                     const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                     const nomeLimpo = formatarNomeParecer(p.nome);
                     const seloTipo = gerarSeloTipoParecer(p.tipo);
@@ -2480,10 +2481,15 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <a href="${viewerUrl}"
                                    class="copy-btn me-1"
                                    target="_blank"
-                                   title="Visualizar parecer">
+                                   title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir parecer" style="color: #dc2626;">
+                                <a href="${downloadUrl}" 
+                                   class="copy-btn me-1" 
+                                   title="Baixar PDF">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir" style="color: #dc2626;">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
