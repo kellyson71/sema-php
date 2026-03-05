@@ -393,6 +393,21 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             color: white;
         }
 
+        .status-aguardando-fiscalizacao {
+            background-color: #0284c7; /* Azul / Cyan / Amber */
+            color: white;
+        }
+
+        .status-apto-a-gerar-alvara {
+            background-color: #8b5cf6; /* Roxo */
+            color: white;
+        }
+
+        .status-alvara-emitido {
+            background-color: #10b981; /* Verde esmeralda */
+            color: white;
+        }
+
         /* Estilos para as linhas da tabela clicáveis */
         .table tbody tr.clickable-row {
             cursor: pointer;
@@ -587,16 +602,43 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 
                 <?php 
                 // Menu específico para o Secretário
-                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br');
+                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_nivel'] === 'admin');
                 if ($isSecretario): 
                 ?>
                     <li>
                         <a href="secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
-                            <i class="fas fa-signature"></i>
+                            <i class="fas fa-signature" style="color:#8b5cf6;"></i>
                             <span>Aprovação de Alvarás</span>
                         </a>
                     </li>
                 <?php endif; ?>
+
+                <?php 
+                // Menu específico para o Analista
+                $isAnalista = ($_SESSION['admin_nivel'] === 'analista' || $_SESSION['admin_nivel'] === 'admin');
+                if ($isAnalista): 
+                ?>
+                    <li>
+                        <a href="requerimentos.php?status=Pendente" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
+                            <i class="fas fa-search" style="color:#0284c7;"></i>
+                            <span>Triagem de Protocolos</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php 
+                // Menu específico para a Fiscalização
+                $isFiscal = ($_SESSION['admin_nivel'] === 'fiscal' || $_SESSION['admin_nivel'] === 'admin');
+                if ($isFiscal): 
+                ?>
+                    <li>
+                        <a href="requerimentos.php?status=Aguardando Fiscalização" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Aguardando Fiscalização') ? 'active' : ''; ?>">
+                            <i class="fas fa-hard-hat" style="color:#10b981;"></i>
+                            <span>Fiscalização de Obras</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
 
                 <li>
                     <a href="logout.php">

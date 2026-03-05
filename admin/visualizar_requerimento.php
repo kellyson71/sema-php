@@ -340,6 +340,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     }
 }
 
+// Processar envio para fiscalizacao
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_fiscalizacao'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Fiscalização', data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Enviou processo para Fiscalização de Obras"]);
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+        $mensagem = "✅ Processo enviado para fiscalização de obras com sucesso!";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
+        $mensagemTipo = "danger";
+    }
+}
+
+// Processar envio para secretario
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Apto a gerar alvará', data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Concluiu a vistoria técnica e enviou para o Secretário"]);
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+        $mensagem = "✅ Processo enviado para assinatura do Secretário com sucesso!";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
+        $mensagemTipo = "danger";
+    }
+}
+
 // Buscar documentos do requerimento
 $stmt = $pdo->prepare("SELECT * FROM documentos WHERE requerimento_id = ? ORDER BY id");
 $stmt->execute([$id]);
@@ -1760,6 +1792,28 @@ $isBlocked = $isFinalized || $isIndeferido;
                                   <i class="fas fa-info-circle text-primary"></i>
                                   Selecione a ação desejada para este processo:
                               </p>
+                              
+                              <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
+                              <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                                  <!-- Botão envio analista -> fiscal -->
+                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
+                                      <form method="post" action="" style="display: inline;">
+                                          <button type="submit" name="enviar_fiscalizacao" class="btn fw-medium text-white shadow-sm" style="background:#0284c7;" onclick="return confirm('Confirmar envio para a Fiscalização de Obras?')">
+                                              <i class="fas fa-hard-hat me-2"></i>Enviar p/ Fiscalização de Obras
+                                          </button>
+                                      </form>
+                                  <?php endif; ?>
+
+                                  <!-- Botão envio fiscal -> secretario -->
+                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'fiscal'): ?>
+                                      <form method="post" action="" style="display: inline;">
+                                          <button type="submit" name="enviar_secretario" class="btn fw-medium text-white shadow-sm" style="background:#8b5cf6;" onclick="return confirm('Confirmar envio para assinatura do Secretário?')">
+                                              <i class="fas fa-paper-plane me-2"></i>Enviar p/ Secretário (Apto a Gerar Alvará)
+                                          </button>
+                                      </form>
+                                  <?php endif; ?>
+                              </div>
+
                               <div class="d-flex flex-wrap gap-2">
 
                                   <button type="button" class="btn btn-outline-primary fw-medium"

@@ -12,6 +12,8 @@ function getStatusColor($status)
             return ['color' => '#6b7280', 'textClass' => 'text-gray-500'];
         case 'reprovado':
             return ['color' => '#ef4444', 'textClass' => 'text-red-700'];
+        case 'aguardando fiscalização':
+            return ['color' => '#0284c7', 'textClass' => 'text-sky-700'];
         case 'apto a gerar alvará':
             return ['color' => '#6610f2', 'textClass' => 'text-purple-700'];
         case 'alvará emitido':
