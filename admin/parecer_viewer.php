@@ -398,14 +398,106 @@ if (file_exists(dirname(__DIR__) . '/assets/SEMA/PNG/Azul/fundo.png')) {
                 display: none !important;
             }
         }
+        /* Barra de ações flutuante */
+        .action-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: rgba(17,24,39,0.95);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        }
+        .action-bar .bar-title {
+            color: #e5e7eb;
+            font-size: 13px;
+            font-family: system-ui, sans-serif;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+        .action-bar .bar-title span {
+            color: #9ca3af;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        .action-bar .bar-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .action-bar button, .action-bar a {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: system-ui, sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: opacity .15s;
+        }
+        .action-bar button:hover, .action-bar a:hover { opacity: .85; }
+        .btn-close-viewer { background: #374151; color: #e5e7eb; }
+        .btn-print-viewer { background: #1d4ed8; color: white; }
+        .btn-download-viewer { background: #15803d; color: white; }
+        .btn-save-pos {
+            background: #d97706;
+            color: white;
+            display: none;
+        }
+        .pagina {
+            margin-top: 55px; /* espaço para a barra */
+        }
+        .no-print { display: none; } /* legado */
+        @media print {
+            .action-bar { display: none !important; }
+            .pagina { margin-top: 0 !important; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="no-print">
-        <button id="btn-save-position" class="btn-save-pos" onclick="salvarPosicaoAssinatura()">
-            Salvar Posição
-        </button>
+
+    <!-- Barra de Ações -->
+    <div class="action-bar">
+        <div class="bar-title">
+            📄 <?php echo htmlspecialchars($assinaturaInicial['nome_arquivo']); ?>
+            <span>Processo #<?php echo htmlspecialchars($assinaturaInicial['requerimento_id']); ?></span>
+        </div>
+        <div class="bar-actions">
+            <!-- Salvar posição (aparece só após arrastar assinatura) -->
+            <button id="btn-save-position" class="btn-save-pos" onclick="salvarPosicaoAssinatura()">
+                💾 Salvar Posição
+            </button>
+
+            <!-- Fechar (volta para o requerimento) -->
+            <button class="btn-close-viewer" onclick="history.back()">
+                ✕ Fechar
+            </button>
+
+            <!-- Imprimir -->
+            <button class="btn-print-viewer" onclick="window.print()">
+                🖨️ Imprimir
+            </button>
+
+            <!-- Baixar PDF -->
+            <a class="btn-download-viewer"
+               href="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>"
+               title="Baixar PDF gerado com assinatura">
+                ⬇ Baixar PDF
+            </a>
+        </div>
     </div>
 
     <div class="pagina" id="document-page">

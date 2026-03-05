@@ -1207,70 +1207,90 @@ class ParecerService
     public function listarPareceres($requerimento_id)
     {
         global $pdo;
-        $pastaRequerimento = $this->uploadsPath . $requerimento_id . '/';
         $pareceres = [];
+        $arquivosJaAdicionados = []; // evita duplicatas
 
+        // ── 1. Fontes do banco de dados (assinaturas_digitais) ────────────────
+        // Inclui arquivos salvos em admin/pareceres/{id}/ pelo processa_assinatura.php
+        try {
+            $stmt = $pdo->prepare("
+                SELECT ad.documento_id, ad.nome_arquivo, ad.caminho_arquivo,
+                       ad.timestamp_assinatura, ad.assinante_nome, ad.tipo_documento
+                FROM assinaturas_digitais ad
+                WHERE ad.requerimento_id = ?
+                ORDER BY ad.timestamp_assinatura DESC
+            ");
+            $stmt->execute([$requerimento_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($rows as $row) {
+                $caminho = $row['caminho_arquivo'];
+                // Tentar resolver o caminho físico
+                if (!file_exists($caminho)) {
+                    $caminho = dirname(__DIR__) . '/' . ltrim($row['caminho_arquivo'], '/');
+                }
+                $ext = strtolower(pathinfo($row['nome_arquivo'], PATHINFO_EXTENSION));
+
+                $tamanho = file_exists($caminho) ? filesize($caminho) : 0;
+                $data    = date('d/m/Y H:i', strtotime($row['timestamp_assinatura']));
+
+                $pareceres[] = [
+                    'nome'        => $row['nome_arquivo'],
+                    'arquivo'     => $row['nome_arquivo'],
+                    'caminho'     => $caminho,
+                    'data'        => $data,
+                    'tamanho'     => $tamanho,
+                    'tipo'        => $ext ?: 'html',
+                    'documento_id'=> $row['documento_id'],
+                    'assinante'   => $row['assinante_nome'],
+                ];
+                $arquivosJaAdicionados[] = $row['nome_arquivo'];
+            }
+        } catch (\Exception $e) {
+            // fallback silencioso — continua para varredura de disco
+        }
+
+        // ── 2. Varredura de disco (uploads/pareceres/{id}/) — fallback ────────
+        $pastaRequerimento = $this->uploadsPath . $requerimento_id . '/';
         if (is_dir($pastaRequerimento)) {
             $files = scandir($pastaRequerimento);
             foreach ($files as $file) {
+                if (in_array($file, $arquivosJaAdicionados)) continue; // já listado
                 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (in_array($ext, ['pdf', 'html'])) {
-                    $caminhoCompleto = $pastaRequerimento . $file;
-                    $parecerData = [
-                        'nome' => $file,
-                        'arquivo' => $file,
-                        'caminho' => $caminhoCompleto,
-                        'data' => date('d/m/Y H:i', filemtime($caminhoCompleto)),
-                        'tamanho' => filesize($caminhoCompleto),
-                        'tipo' => $ext,
-                        'documento_id' => null,
-                        'assinante' => 'Desconhecido'
-                    ];
+                if (!in_array($ext, ['pdf', 'html'])) continue;
 
-                    $caminhoJson = $pastaRequerimento . pathinfo($file, PATHINFO_FILENAME) . '.json';
-                    if (file_exists($caminhoJson)) {
-                        $jsonData = json_decode(file_get_contents($caminhoJson), true);
-                        if ($jsonData) {
-                            if (isset($jsonData['documento_id'])) {
-                                $parecerData['documento_id'] = $jsonData['documento_id'];
-                            }
-                            if (isset($jsonData['dados_assinatura']['assinante_nome'])) {
-                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome'];
-                            } elseif (isset($jsonData['dados_assinatura']['assinante_nome_completo'])) {
-                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome_completo'];
-                            }
-                        }
-                    } else {
-                        // Buscar documento_id na tabela de assinaturas digitais
-                        // Tentar buscar pelo nome do arquivo ou pelo caminho
-                        $stmt = $pdo->prepare("
-                            SELECT documento_id, assinante_nome
-                            FROM assinaturas_digitais
-                            WHERE requerimento_id = ?
-                            AND (nome_arquivo = ? OR caminho_arquivo LIKE ?)
-                            LIMIT 1
-                        ");
-                        $nomeArquivo = $file;
-                        $caminhoPattern = '%/' . $requerimento_id . '/' . $nomeArquivo;
-                        $stmt->execute([$requerimento_id, $nomeArquivo, $caminhoPattern]);
-                        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-                        if ($resultado) {
-                            $parecerData['documento_id'] = $resultado['documento_id'];
-                            $parecerData['assinante'] = $resultado['assinante_nome'];
-                        }
+                $caminhoCompleto = $pastaRequerimento . $file;
+                $parecerData = [
+                    'nome'        => $file,
+                    'arquivo'     => $file,
+                    'caminho'     => $caminhoCompleto,
+                    'data'        => date('d/m/Y H:i', filemtime($caminhoCompleto)),
+                    'tamanho'     => filesize($caminhoCompleto),
+                    'tipo'        => $ext,
+                    'documento_id'=> null,
+                    'assinante'   => null,
+                ];
+
+                // Tentar enriquecer com JSON lateral
+                $caminhoJson = $pastaRequerimento . pathinfo($file, PATHINFO_FILENAME) . '.json';
+                if (file_exists($caminhoJson)) {
+                    $jsonData = json_decode(file_get_contents($caminhoJson), true);
+                    if ($jsonData) {
+                        $parecerData['documento_id'] = $jsonData['documento_id'] ?? null;
+                        $parecerData['assinante']    = $jsonData['dados_assinatura']['assinante_nome']
+                            ?? $jsonData['dados_assinatura']['assinante_nome_completo']
+                            ?? null;
                     }
-
-                    $pareceres[] = $parecerData;
                 }
-            }
 
-            usort($pareceres, function($a, $b) {
-                return filemtime($b['caminho']) - filemtime($a['caminho']);
-            });
+                $pareceres[]            = $parecerData;
+                $arquivosJaAdicionados[] = $file;
+            }
         }
 
         return $pareceres;
     }
+
 
     public function excluirParecer($requerimento_id, $nomeArquivo)
     {
