@@ -1314,13 +1314,72 @@ class ParecerService
 
     public function excluirParecer($requerimento_id, $nomeArquivo)
     {
+        global $pdo;
+        
+        // Garantir que $pdo existe
+        if (!isset($pdo) || !$pdo) {
+            try {
+                @require_once dirname(__DIR__) . '/admin/conexao.php';
+            } catch (\Exception $e) {}
+        }
+        
+        $sucesso = false;
+
+        // 1. Tentar excluir do banco de dados (novo fluxo)
+        // Precisamos encontrar qual documento_id corresponde a este nome_arquivo
+        if (isset($pdo) && $pdo) {
+            try {
+                $stmtBusca = $pdo->prepare("SELECT documento_id, caminho_arquivo FROM assinaturas_digitais WHERE requerimento_id = ? AND nome_arquivo = ? LIMIT 1");
+                $stmtBusca->execute([$requerimento_id, $nomeArquivo]);
+                $doc = $stmtBusca->fetch(PDO::FETCH_ASSOC);
+
+                if ($doc) {
+                    $caminhoNoBanco = $doc['caminho_arquivo'];
+                    
+                    // Excluir do banco
+                    $stmtDel = $pdo->prepare("DELETE FROM assinaturas_digitais WHERE documento_id = ?");
+                    $stmtDel->execute([$doc['documento_id']]);
+                    $sucesso = true; // Se estava no banco e excluiu, conta como sucesso
+                    
+                    // Tentar excluir o arquivo listado no banco
+                    $caminhosParaTestar = [
+                        $caminhoNoBanco,
+                        dirname(__DIR__) . '/' . ltrim($caminhoNoBanco, '/'),
+                        dirname(__DIR__) . '/admin/' . ltrim($caminhoNoBanco, '/')
+                    ];
+                    
+                    foreach ($caminhosParaTestar as $cPath) {
+                        if (file_exists($cPath)) {
+                            @unlink($cPath);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Falha silenciosa no BD, tenta via filepath clássico
+            }
+        }
+
+        // 2. Fluxo clássico (pasta uploads/pareceres/{id}/)
         $caminhoCompleto = $this->uploadsPath . $requerimento_id . '/' . $nomeArquivo;
 
         if (file_exists($caminhoCompleto)) {
-            return unlink($caminhoCompleto);
+            @unlink($caminhoCompleto);
+            $sucesso = true;
+        }
+        
+        // 3. Limpar arquivos secundários (.json, .pdf) na pasta clássica
+        $baseName = pathinfo($nomeArquivo, PATHINFO_FILENAME);
+        $arquivosAssociados = glob($this->uploadsPath . $requerimento_id . '/' . $baseName . '.*');
+        if ($arquivosAssociados) {
+            foreach ($arquivosAssociados as $arq) {
+                if (file_exists($arq)) {
+                    @unlink($arq);
+                }
+            }
         }
 
-        return false;
+        return $sucesso;
     }
 
     public function downloadParecer($requerimento_id, $nomeArquivo)

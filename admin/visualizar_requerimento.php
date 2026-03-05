@@ -1625,18 +1625,6 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
             </div>
 
-            <!-- Pareceres Técnicos -->
-            <div class="modern-card mb-3" id="pareceres-section" style="display:none;">
-                <div class="modern-card-header">
-                    <i class="fas fa-file-contract icon"></i>
-                    <h6>Pareceres Técnicos (Assinados Digitalmente)</h6>
-                </div>
-                <div class="card-body p-0" id="pareceres-documentos-list">
-                    <!-- Pareceres serão carregados aqui -->
-                </div>
-            </div>
-            
-
         </div>
 
         <!-- Aba: Histórico -->
@@ -2503,66 +2491,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                      `;
                  });
              }
-
-             // Também carregar na aba de documentos
-             carregarPareceresDocumentos(data.pareceres);
          })
          .catch(error => {
              console.error('Erro ao carregar pareceres:', error);
          });
-     }
-
-     function carregarPareceresDocumentos(pareceres) {
-         const listaDocumentos = document.getElementById('pareceres-documentos-list');
-         const pareceresSection = document.getElementById('pareceres-section');
-
-         if (pareceres.length === 0) {
-             pareceresSection.style.display = 'none';
-             return;
-         }
-
-         pareceresSection.style.display = 'block';
-         let html = '';
-         pareceres.forEach(p => {
-             const { iconClass, iconColor } = obterIconeParecer(p.tipo);
-             const nomeLimpo = formatarNomeParecer(p.nome);
-             const seloTipo = gerarSeloTipoParecer(p.tipo);
-             const downloadUrl = p.documento_id
-                 ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}`
-                 : `../uploads/pareceres/<?= $id ?>/${p.arquivo}`;
-             const viewerUrl = p.documento_id
-                 ? `parecer_viewer.php?id=${p.documento_id}`
-                 : `../uploads/pareceres/<?= $id ?>/${p.arquivo}`;
-             html += `
-                 <div class="data-row">
-                     <div class="data-label" style="min-width:40px">
-                         <i class="fas ${iconClass}" style="color:${iconColor}; font-size:20px"></i>
-                     </div>
-                     <div class="data-value">
-                         <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
-                             <span>${nomeLimpo}</span>
-                             ${seloTipo}
-                         </div>
-                         <div class="text-muted small">
-                             ${p.data}
-                             ${ p.assinante ? `&bull; <i class="fas fa-user-check text-primary me-1"></i><span class="text-primary">${p.assinante}</span>` : '' }
-                         </div>
-                     </div>
-                     <div class="data-actions">
-                         <a href="${viewerUrl}" class="copy-btn me-1" target="_blank" title="Visualizar">
-                             <i class="fas fa-eye"></i>
-                         </a>
-                         <a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF">
-                             <i class="fas fa-download"></i>
-                         </a>
-                         <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir" style="color:#dc2626">
-                             <i class="fas fa-trash"></i>
-                         </button>
-                     </div>
-                 </div>
-             `;
-         });
-         listaDocumentos.innerHTML = html;
      }
 
      function _REMOVIDO_carregarPareceresDocumentos_OLD(pareceres) {
