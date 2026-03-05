@@ -71,7 +71,22 @@ try {
         exit;
     }
 
-    // Ler o HTML do arquivo em disco
+    // Verifica se o arquivo gravado no disco já é um PDF
+    $ext = strtolower(pathinfo($caminhoHtml, PATHINFO_EXTENSION));
+    
+    if ($ext === 'pdf') {
+        $isInline = isset($_GET['inline']) && $_GET['inline'] == '1';
+        $disposition = $isInline ? 'inline' : 'attachment';
+        
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: ' . $disposition . '; filename="' . basename($caminhoHtml) . '"');
+        header('Content-Length: ' . filesize($caminhoHtml));
+        header('Accept-Ranges: bytes');
+        @readfile($caminhoHtml);
+        exit;
+    }
+
+    // Se não for PDF, é HTML. Ler o conteúdo para gerar o PDF dinamicamente
     $conteudoHtml = file_get_contents($caminhoHtml);
 
     if ($conteudoHtml === false || trim($conteudoHtml) === '') {

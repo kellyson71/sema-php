@@ -8,154 +8,141 @@ if (empty($documentoId)) {
     die('ID do documento não fornecido');
 }
 
-try {
-    // 1. Buscar dados do documento
-    $stmt = $pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ?");
-    $stmt->execute([$documentoId]);
-    $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+// Buscar o nome do arquivo para exibir no título
+$stmt = $pdo->prepare("SELECT nome_arquivo FROM assinaturas_digitais WHERE documento_id = ?");
+$stmt->execute([$documentoId]);
+$doc = $stmt->fetch(PDO::FETCH_ASSOC);
+$nomeArquivo = $doc ? $doc['nome_arquivo'] : 'Documento';
 
-    if (!$doc) {
-        die('Documento não encontrado no banco de dados');
-    }
-
-    $caminhoHtml = $doc['caminho_arquivo'];
-    
-    // Tenta resolver o caminho físico se não existir diretamente
-    if (!file_exists($caminhoHtml)) {
-        // Tenta relativo à raiz (../../)
-        $tentativa1 = dirname(__DIR__, 1) . '/' . ltrim($caminhoHtml, '/');
-        // Tenta na pasta admin (onde estamos)
-        $tentativa2 = __DIR__ . '/' . ltrim($caminhoHtml, '/');
-        
-        if (file_exists($tentativa1)) {
-            $caminhoHtml = $tentativa1;
-        } elseif (file_exists($tentativa2)) {
-            $caminhoHtml = $tentativa2;
-        }
-    }
-
-    if (!file_exists($caminhoHtml)) {
-        die('Arquivo físico não encontrado no servidor: ' . htmlspecialchars($doc['caminho_arquivo']));
-    }
-
-    $htmlContent = file_get_contents($caminhoHtml);
-    
-    // Se for arquivo JSON lateral (metadados), tenta extrair o HTML de lá
-    $caminhoJson = dirname($caminhoHtml) . '/' . pathinfo($caminhoHtml, PATHINFO_FILENAME) . '.json';
-    if (file_exists($caminhoJson)) {
-        $jsonData = json_decode(file_get_contents($caminhoJson), true);
-        if ($jsonData) {
-            $htmlContent = $jsonData['html_com_assinatura'] ?? $jsonData['html_completo'] ?? $htmlContent;
-        }
-    }
-
-} catch (Exception $e) {
-    die('Erro ao carregar documento: ' . $e->getMessage());
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Visualizador Rápido - <?php echo htmlspecialchars($documentoId); ?></title>
+    <title>Visualizador - <?php echo htmlspecialchars($nomeArquivo); ?></title>
+    <!-- Incluir FontAwesome para ícones mais bonitos -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: sans-serif;
-            background: #f0f2f5;
+        body, html {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #111827; /* Fundo escuro igual ao admin */
             display: flex;
             flex-direction: column;
-            align-items: center;
+            overflow: hidden;
         }
-        .toolbar {
-            width: 100%;
-            max-width: 850px;
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+        
+        .top-bar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 20px;
-            z-index: 100;
+            justify-content: space-between;
+            background: #1f2937;
+            padding: 12px 24px;
+            color: #f3f4f6;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            flex-shrink: 0;
+            height: 60px;
+            box-sizing: border-box;
         }
+
+        .document-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .document-title i {
+            color: #ef4444; /* Vermelho estilo PDF */
+            font-size: 20px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
         .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 8px 16px;
             border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
             text-decoration: none;
-            font-weight: bold;
-            font-size: 14px;
             cursor: pointer;
             border: none;
+            transition: all 0.2s;
         }
-        .btn-back { background: #e4e6eb; color: #050505; }
-        .btn-print { background: #1877f2; color: #fff; }
-        .btn-pdf { background: #00a400; color: #fff; }
+
+        .btn-close {
+            background: #374151;
+            color: #d1d5db;
+        }
         
-        .document-container {
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            padding: 20mm;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        .btn-close:hover {
+            background: #4b5563;
+        }
+
+        .btn-download {
+            background: #059669;
+            color: #ffffff;
+        }
+
+        .btn-download:hover {
+            background: #047857;
+        }
+
+        .viewer-container {
+            flex: 1;
+            width: 100%;
+            height: calc(100% - 60px);
             position: relative;
-            overflow-wrap: break-word;
         }
-
-        /* Estilos básicos para o conteúdo do documento */
-        .document-content {
-            font-family: "Times New Roman", Times, serif;
-            font-size: 11pt;
-            line-height: 1.5;
-            text-align: justify;
-        }
-        .document-content img { max-width: 100%; height: auto; }
         
-        .footer-info {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            font-size: 12px;
-            color: #65676b;
-            text-align: center;
-        }
-
-        @media print {
-            body { background: white; padding: 0; }
-            .toolbar { display: none; }
-            .document-container { box-shadow: none; padding: 0; width: 100%; }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #525659; /* Cor de fundo típica de visualizadores de PDF */
         }
     </style>
 </head>
 <body>
 
-    <div class="toolbar">
-        <div>
-            <strong>Visualizando:</strong> <?php echo htmlspecialchars($doc['nome_arquivo']); ?>
+    <div class="top-bar">
+        <div class="document-title">
+            <i class="fas fa-file-pdf"></i>
+            <div>
+                <?php echo htmlspecialchars($nomeArquivo); ?>
+            </div>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-back" onclick="history.back()">Voltar</button>
-            <button class="btn btn-print" onclick="window.print()">Imprimir</button>
-            <a href="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>" class="btn btn-pdf">Baixar PDF</a>
+        <div class="actions">
+            <!-- Botão Fechar -->
+            <button onclick="history.back()" class="btn btn-close">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </button>
+            
+            <!-- Botão Download -->
+            <a href="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>" class="btn btn-download">
+                <i class="fas fa-download"></i> Baixar PDF
+            </a>
         </div>
     </div>
 
-    <div class="document-container">
-        <div class="document-content">
-            <?php echo $htmlContent; ?>
-        </div>
-        
-        <div class="footer-info">
-            Documento assinado digitalmente por <strong><?php echo htmlspecialchars($doc['assinante_nome']); ?></strong><br>
-            CPF: <?php echo htmlspecialchars($doc['assinante_cpf']); ?> | Cargo: <?php echo htmlspecialchars($doc['assinante_cargo']); ?><br>
-            Data da Assinatura: <?php echo date('d/m/Y H:i:s', strtotime($doc['timestamp_assinatura'])); ?><br>
-            Identificador: <?php echo htmlspecialchars($documentoId); ?>
-        </div>
+    <!-- O iframe carrega o PDF nativamente aproveitando o redownload_pdf.php (que configuramos para suportar o flag inline=1) -->
+    <div class="viewer-container">
+        <iframe src="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>&inline=1" title="Visualizador de PDF"></iframe>
     </div>
 
 </body>
 </html>
+
