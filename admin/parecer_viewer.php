@@ -72,31 +72,53 @@ if ($jsonData && isset($jsonData['posicao_assinatura'])) {
 }
 
 // Parse do HTML para extrair conteúdo
-$parser = new DOMDocument();
-libxml_use_internal_errors(true);
-@$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent);
-libxml_clear_errors();
+$htmlDisnivelado = false;
+$conteudoTexto = '';
 
-// Extrair conteúdo (mantém lógica existente)
-$conteudoDiv = $parser->getElementById('conteudo');
-if ($conteudoDiv) {
-    foreach ($conteudoDiv->childNodes as $node) {
-        $conteudoTexto .= $parser->saveHTML($node);
-    }
-} else {
-    $body = $parser->getElementsByTagName('body')->item(0);
-    if ($body) {
-        foreach ($body->childNodes as $node) {
-            $conteudoTexto .= $parser->saveHTML($node);
+try {
+    if (class_exists('DOMDocument')) {
+        $parser = new DOMDocument();
+        libxml_use_internal_errors(true);
+        // Tentar carregar. Se falhar feio, o @ e o try pegam.
+        if (@$parser->loadHTML('<?xml encoding="UTF-8">' . $htmlContent)) {
+            libxml_clear_errors();
+
+            // Extrair conteúdo
+            $conteudoDiv = $parser->getElementById('conteudo');
+            if ($conteudoDiv) {
+                foreach ($conteudoDiv->childNodes as $node) {
+                    $conteudoTexto .= $parser->saveHTML($node);
+                }
+            } else {
+                $body = $parser->getElementsByTagName('body')->item(0);
+                if ($body) {
+                    foreach ($body->childNodes as $node) {
+                        $conteudoTexto .= $parser->saveHTML($node);
+                    }
+                } else {
+                    $conteudoTexto = $htmlContent;
+                }
+            }
+        } else {
+            $htmlDisnivelado = true;
+            $conteudoTexto = $htmlContent;
         }
     } else {
+        $htmlDisnivelado = true;
         $conteudoTexto = $htmlContent;
     }
+} catch (Exception $e) {
+    $htmlDisnivelado = true;
+    $conteudoTexto = $htmlContent;
 }
 
 // GERAÇÃO DOS BLOCOS DE ASSINATURA (Loop para cada assinante)
 // Vamos criar um container flex para as assinaturas
-require_once '../includes/qrcode_service.php';
+try {
+    @require_once '../includes/qrcode_service.php';
+} catch (Exception $e) {
+    // Falha silenciosa se o QR code falhar (ex: composer ou php version)
+}
 
 $blocosAssinaturaHtml = '<div id="container-assinaturas" style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; width: 100%;">';
 
@@ -109,14 +131,24 @@ foreach ($assinaturas as $ass) {
     $basePath = dirname(dirname($scriptName)); // Subir um nível de /admin para raiz
     $basePath = rtrim($basePath, '/\\');
     
-    // URL específica para este documento (pode ser a mesma para todos, ou por hash se necessário)
-    // Aqui usamos o ID do documento que é o agrupador
+    // URL específica para este documento
     $urlVerificacaoFinal = $protocolo . '://' . $host . $basePath . '/consultar/verificar.php?id=' . $documentoId;
 
-    $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacaoFinal);
+    $qrCodeDataUri = '';
+    if (class_exists('QRCodeService')) {
+        try {
+            $qrCodeDataUri = QRCodeService::gerarQRCode($urlVerificacaoFinal);
+        } catch (Exception $e) {
+            // Se falhar o QR code, continua sem ele
+        }
+    }
 
     $blocosAssinaturaHtml .= '<div class="assinatura-item" style="position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px dashed #ccc; background: rgba(255,255,255,0.85); border-radius: 8px; cursor: move; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-width: 200px;">';
-    $blocosAssinaturaHtml .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 55px; height: 55px; flex-shrink: 0;" />';
+    if ($qrCodeDataUri) {
+        $blocosAssinaturaHtml .= '<img src="' . htmlspecialchars($qrCodeDataUri) . '" style="width: 55px; height: 55px; flex-shrink: 0;" />';
+    } else {
+        $blocosAssinaturaHtml .= '<div style="width: 55px; height: 55px; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #999; text-align: center;">QR Code<br>Indisp.</div>';
+    }
     $blocosAssinaturaHtml .= '<div class="dados-assinante" style="font-size: 11px; text-align: left; line-height: 1.3;">';
     $blocosAssinaturaHtml .= '<strong>Assinado digitalmente por:</strong><br>';
     $blocosAssinaturaHtml .= '<span style="font-size: 12px; font-weight: bold;">' . htmlspecialchars($ass['assinante_nome']) . '</span><br>';

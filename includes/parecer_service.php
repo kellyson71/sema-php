@@ -1207,6 +1207,15 @@ class ParecerService
     public function listarPareceres($requerimento_id)
     {
         global $pdo;
+        
+        // Garantir que $pdo existe (em alguns contextos de include pode haver problema de escopo)
+        if (!isset($pdo) || !$pdo) {
+            try {
+                // Tenta incluir conexao.php para recuperar o $pdo se ele sumiu
+                @require_once dirname(__DIR__) . '/admin/conexao.php';
+            } catch (\Exception $e) {}
+        }
+        
         $pareceres = [];
         $arquivosJaAdicionados = []; // evita duplicatas
 
@@ -1225,9 +1234,20 @@ class ParecerService
 
             foreach ($rows as $row) {
                 $caminho = $row['caminho_arquivo'];
-                // Tentar resolver o caminho físico
+                
+                // Tentar resolver o caminho físico (várias tentativas)
                 if (!file_exists($caminho)) {
-                    $caminho = dirname(__DIR__) . '/' . ltrim($row['caminho_arquivo'], '/');
+                    // Tentativa 1: relativo à raiz
+                    $tentativa1 = dirname(__DIR__) . '/' . ltrim($row['caminho_arquivo'], '/');
+                    if (file_exists($tentativa1)) {
+                        $caminho = $tentativa1;
+                    } else {
+                        // Tentativa 2: relativo a admin/ (onde processa_assinatura salva)
+                        $tentativa2 = dirname(__DIR__) . '/admin/' . ltrim($row['caminho_arquivo'], '/');
+                        if (file_exists($tentativa2)) {
+                            $caminho = $tentativa2;
+                        }
+                    }
                 }
                 $ext = strtolower(pathinfo($row['nome_arquivo'], PATHINFO_EXTENSION));
 
