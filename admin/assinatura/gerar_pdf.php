@@ -68,16 +68,16 @@ class SEMA_PDF extends TCPDF {
  */
 function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo) {
     
-    // Instanciar o PDF
-    $pdf = new SEMA_PDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+    // Instanciar o PDF - Usando strings diretas para evitar erro de constante indefinida no PHP 8+ antes do autoload
+    $pdf = new SEMA_PDF('P', 'mm', 'A4', true, 'UTF-8', false);
     
     // Preencher as infos para rodapé
-    $pdf->assinante_nome = mb_strtoupper($assinante['nome'], 'UTF-8');
+    $pdf->assinante_nome = strtoupper($assinante['nome']);
     $pdf->assinante_cargo = $assinante['cargo'];
     $pdf->assinante_data = $assinante['data_hora'];
 
     // Definições do documento
-    $pdf->SetCreator(PDF_CREATOR);
+    $pdf->SetCreator('SEMA-PHP');
     $pdf->SetAuthor($pdf->assinante_nome);
     $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
     $pdf->SetSubject('Parecer Técnico SEMA');
@@ -89,7 +89,7 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo) {
 
     // Quebra de página automática
     $pdf->SetAutoPageBreak(TRUE, 45); // Quebrar página antes de tocar na assinatura
-    $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+    $pdf->setImageScale(1.25);
     
     // Fontes
     $pdf->SetFont('helvetica', '', 12);
@@ -105,13 +105,7 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo) {
     $pdf->Ln(5);
 
     // Corpo (Processa formatação e espaçamento HTML do conteúdo que veio do form)
-    // Opcionalmente podemos tratar nl2br, porém vamos assumir html básico
-    $conteudo = nl2br(htmlspecialchars($conteudo_html));
-    $html_corpo = <<<EOF
-    <div style="text-align: justify; line-height: 1.6;">
-        {$conteudo}
-    </div>
-EOF;
+    $html_corpo = '<div style="text-align: justify; line-height: 1.6;">' . $conteudo_html . '</div>';
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
 

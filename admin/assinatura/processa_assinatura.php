@@ -1,46 +1,68 @@
 <?php
-require_once '../conexao.php';
-verificaLogin();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// O login já foi validado na linha acima pelo verificaLogin()
+// Debug para o usuário ver o progresso
+echo "DEBUG: Iniciando processa_assinatura.php...<br>";
+
+// Carregar conexão
+echo "DEBUG: Tentando carregar conexao.php...<br>";
+require_once '../conexao.php';
+echo "DEBUG: conexao.php carregado.<br>";
+
+// Validar login
+echo "DEBUG: Verificando login...<br>";
+verificaLogin();
+echo "DEBUG: Login verificado.<br>";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    echo "DEBUG: Recebido POST.<br>";
     $conteudo = trim($_POST['conteudo_parecer'] ?? '');
     $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 
     if (empty($conteudo)) {
-        die("O conteúdo do parecer não pode estar vazio.");
+        die("ERRO: O conteúdo do parecer não pode estar vazio.");
     }
 
-    // Buscar dados do administrador logado
+    echo "DEBUG: Buscando admin no banco...<br>";
     $admin_id = $_SESSION['admin_id'];
-    $stmt = $pdo->prepare("SELECT nome_completo, cargo, cpf, matricula_portaria FROM administradores WHERE id = ?");
-    $stmt->execute([$admin_id]);
-    $admin = $stmt->fetch();
-
-    if (!$admin) {
-        die("Erro ao buscar dados do assinante.");
+    
+    try {
+        // Tentar buscar as colunas desejadas, mas com fallback se falhar
+        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE id = ?");
+        $stmt->execute([$admin_id]);
+        $admin = $stmt->fetch();
+        
+        if (!$admin) {
+            die("ERRO: Administrador não encontrado no banco.");
+        }
+        
+        echo "DEBUG: Admin encontrado. Identificado como: " . ($admin['nome'] ?? 'N/A') . "<br>";
+    } catch (Exception $e) {
+        die("ERRO SQL: " . $e->getMessage());
     }
 
+    // Preparar dados do assinante com fallbacks seguros
     $assinante = [
-        'nome' => $admin['nome_completo'] ?: $_SESSION['admin_nome'],
-        'cargo' => $admin['cargo'] ?: 'Administrador(a)',
+        'nome' => ($admin['nome_completo'] ?? $admin['nome'] ?? $_SESSION['admin_nome'] ?? 'Assinante Desconhecido'),
+        'cargo' => ($admin['cargo'] ?? 'Administrador(a)'),
         'data_hora' => date('d/m/Y H:i:s')
     ];
 
     $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
-    // Registrar assinatura no banco, se necessário (tabela assinaturas_digitais)
-    // $stmt_insert = $pdo->prepare("INSERT INTO assinaturas_digitais (codigo_verificacao, requerimento_id, admin_id, tipo_assinatura, ...) VALUES (...)");
-    
-    // Repassar dados para a geração de PDF
+    echo "DEBUG: Carregando gerar_pdf.php...<br>";
     require_once 'gerar_pdf.php';
+    echo "DEBUG: gerar_pdf.php carregado.<br>";
     
-    // Exemplo: chamando função que estará dentro do gerar_pdf.php
+    echo "DEBUG: Chamando emitirParecerAssinado...<br>";
     emitirParecerAssinado($conteudo, $assinante, $numero_processo);
+    
+    // Se chegar aqui, algo deu errado pois o Output do PDF deveria ter encerrado o script
+    echo "DEBUG: Fim do script (PDF Output não interrompeu a execução).<br>";
     exit;
 } else {
-    // Redireciona via get
+    echo "DEBUG: Não é POST. Redirecionando...<br>";
     header("Location: ../index.php");
     exit;
 }
