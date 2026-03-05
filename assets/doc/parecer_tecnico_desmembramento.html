@@ -1,7 +1,7 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<!--?xml encoding="utf-8" ?--><html>
     <head>
-        <meta charset="UTF-8" />
+        <meta charset="UTF-8">
         <style>
             @page {
                 size: A4;
@@ -145,10 +145,10 @@
     </head>
     <body>
         <div id="documento">
-            <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4" />
+            <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4">
             <div id="conteudo" contenteditable="true">
                 <div class="titulo-licenca">
-                    PARECER TÉCNICO DE DESMEMBRAMENTO (Nº {{numero_documento_ano}})<br />
+                    PARECER TÉCNICO DE DESMEMBRAMENTO (Nº {{numero_documento_ano}})<br>
                     <span style="font-size: 12pt; font-weight: normal">Nº PROCESSO: {{protocolo}}</span>
                 </div>
 
@@ -180,28 +180,12 @@
                     </p>
                 </div>
 
-                <div class="data-local">Pau dos Ferros/RN, {{data_atual}}</div>
+                
 
-                <div class="assinaturas">
-                    <div class="assinatura-esquerda">
-                        <div class="linha-assinatura">
-                            <div class="nome-assinante">{{admin_nome_completo}}</div>
-                            <div class="cargo-assinante">{{admin_cargo}}</div>
-                            <div class="cargo-assinante">{{admin_matricula_portaria}}</div>
-                        </div>
-                    </div>
-                </div>
+                
             </div>
 
-            <div id="area-assinatura" style="display: none">
-                <div class="assinatura-bloco">
-                    <img src="" alt="QR Code" id="qr-assinatura" />
-                    <div class="dados-assinante">
-                        <strong id="nome-assinante"></strong>
-                        <span id="cargo-assinante"></span>
-                    </div>
-                </div>
-            </div>
+            
         </div>
     </body>
 </html>
