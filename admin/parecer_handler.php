@@ -10,7 +10,13 @@ verificaLogin();
 header('Content-Type: application/json');
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Aceita JSON no body, URLSearchParams no body ($_POST) ou query string ($_GET)
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true);
+    if (!is_array($input)) {
+        // Frontend enviou application/x-www-form-urlencoded (URLSearchParams)
+        $input = $_POST;
+    }
     $action = $input['action'] ?? $_GET['action'] ?? '';
 
     $parecerService = new ParecerService();
@@ -42,8 +48,50 @@ try {
             break;
 
         case 'listar_templates':
-            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
-            
+            $requerimento_id = (int)($input['requerimento_id'] ?? $_GET['requerimento_id'] ?? 0);
+
+            // Função auxiliar: extrair texto de prévia do HTML do template
+            $extrairPreview = function($caminhoHtml) {
+                if (!file_exists($caminhoHtml)) return '';
+                $html = file_get_contents($caminhoHtml);
+                // Pegar só o conteúdo da div #conteudo ou do body
+                if (preg_match('/<div[^>]+id=["\']conteudo["\'][^>]*>(.*?)<\/div>/is', $html, $m)) {
+                    $txt = strip_tags($m[1]);
+                } else {
+                    $txt = strip_tags($html);
+                }
+                $txt = preg_replace('/\s+/', ' ', trim($txt));
+                // Limpar placeholders {{variavel}}
+                $txt = preg_replace('/\{\{[^}]+\}\}/', '…', $txt);
+                return mb_substr($txt, 0, 220);
+            };
+
+            // Mapa de descrições por slug do nome
+            $mapaDescricoes = [
+                'em_branco'                          => 'Documento em branco para redação livre no editor.',
+                'parecer_tecnico_alvara_construcao'  => 'Parecer técnico para Alvará de Construção com fundamentação legal (Lei 2117/2025 e NBR 12721).',
+                'parecer_tecnico_alvara_construcao_ambiental' => 'Parecer técnico ambiental complementar ao alvará de construção.',
+                'parecer_tecnico_desmembramento'     => 'Parecer técnico para processo de desmembramento de lote urbano.',
+                'parecer_tecnico_desmembramento_ambiental' => 'Análise ambiental para desmembramento de terreno.',
+                'parecer_tecnico_habite_se'          => 'Parecer técnico de Habite-se para edificação concluída.',
+                'parecer_tecnico_habite_se_ambiental'=> 'Análise ambiental para emissão do Habite-se.',
+                'licenca_previa_projeto'             => 'Licença prévia de projeto com campos obrigatórios e condicionantes.',
+                'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
+            ];
+
+            // Mapa de ícones por slug
+            $mapaIcones = [
+                'em_branco'                          => ['icon' => 'fa-file-alt',        'cor' => 'text-secondary', 'badge' => 'Livre'],
+                'parecer_tecnico_alvara_construcao'  => ['icon' => 'fa-hard-hat',        'cor' => 'text-warning',   'badge' => 'Construção'],
+                'parecer_tecnico_alvara_construcao_ambiental' => ['icon' => 'fa-leaf',   'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'parecer_tecnico_desmembramento'     => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
+                'parecer_tecnico_desmembramento_ambiental' => ['icon' => 'fa-leaf',      'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'parecer_tecnico_habite_se'          => ['icon' => 'fa-home',            'cor' => 'text-primary',   'badge' => 'Habite-se'],
+                'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
+                'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
+            ];
+
             // 1. Meus Rascunhos (Banco de Dados)
             $meusRascunhos = [];
             if ($requerimento_id > 0) {
@@ -58,13 +106,13 @@ try {
 
                 foreach ($dbRascunhos as $r) {
                     $meusRascunhos[] = [
-                        'id' => 'db_draft:' . $r['id'],
-                        'nome' => $r['nome'], 
-                        'data' => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
-                        'data_ts' => strtotime($r['data_atualizacao']),
-                        'assinante' => 'Você',
-                        'label' => $r['nome'], // Agora usamos o nome limpo salvo no banco
-                        'origem' => 'db'
+                        'id'       => 'db_draft:' . $r['id'],
+                        'nome'     => $r['nome'],
+                        'data'     => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
+                        'data_ts'  => strtotime($r['data_atualizacao']),
+                        'assinante'=> 'Você',
+                        'label'    => $r['nome'],
+                        'origem'   => 'db'
                     ];
                 }
             }
@@ -72,93 +120,115 @@ try {
             // 2. Histórico Legado (Arquivos JSON)
             $historicoDocs = [];
             $pastaPareceres = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
-           
+
             if (is_dir($pastaPareceres)) {
                 $arquivos = glob($pastaPareceres . '*.json');
                 foreach ($arquivos as $arquivo) {
                     $dados = json_decode(file_get_contents($arquivo), true);
                     if ($dados) {
-                        $nomeArquivo = basename($arquivo, '.json');
-                        $timestamp = filemtime($arquivo);
-                        $dataFmt = date('d/m/Y H:i', $timestamp);
-                        $idDoc = $dados['documento_id'] ?? '';
-                        
-                        // Tentar gerar um nome melhorzinho pro legado
-                        $nomeExibicao = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
-                        $nomeExibicao = ucwords(str_replace('_', ' ', $nomeExibicao));
-                        // Se tiver ID curto, remove timestamp do nome se tiver
-                        $nomeExibicao = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
-                        
-                        $label = "$nomeExibicao (Arquivo Antigo)";
+                        $nomeArquivo   = basename($arquivo, '.json');
+                        $timestamp     = filemtime($arquivo);
+                        $dataFmt       = date('d/m/Y H:i', $timestamp);
+                        $nomeExibicao  = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
+                        $nomeExibicao  = ucwords(str_replace('_', ' ', $nomeExibicao));
+                        $nomeExibicao  = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
 
                         $historicoDocs[] = [
-                            'id' => 'draft:' . $nomeArquivo . '.json',
-                            'nome' => $nomeExibicao,
-                            'data' => $dataFmt,
-                            'data_ts' => $timestamp,
-                            'assinante' => $dados['dados_assinatura']['assinante_nome'] ?? '...',
-                            'label' => $label,
-                            'origem' => 'file'
+                            'id'       => 'draft:' . $nomeArquivo . '.json',
+                            'nome'     => $nomeExibicao,
+                            'data'     => $dataFmt,
+                            'data_ts'  => $timestamp,
+                            'assinante'=> $dados['dados_assinatura']['assinante_nome'] ?? '...',
+                            'label'    => $nomeExibicao . ' (Arquivo Antigo)',
+                            'origem'   => 'file'
                         ];
                     }
                 }
             }
 
-            // 3. UNIFICAR E ORDENAR
+            // 3. Unificar e ordenar histórico
             $historicoUnificado = array_merge($meusRascunhos, $historicoDocs);
-            
-            // Ordenar por data (DESC) - Mais recente primeiro
-            usort($historicoUnificado, function($a, $b) {
-                return $b['data_ts'] - $a['data_ts'];
-            });
-
-            // Pegar apenas os 5 mais recentes para exibir na sessão "Histórico Recente"
+            usort($historicoUnificado, function($a, $b) { return $b['data_ts'] - $a['data_ts']; });
             $historicoRecente = array_slice($historicoUnificado, 0, 5);
 
-
-            // 4. Templates Padrão (Do sistema)
-            // Ajustar caminho para garantir que encontre a pasta admin/templates
-            $templatesDiretorio = realpath(__DIR__ . '/templates') . '/';
+            // 4. Templates Padrão
+            $templatesDiretorio = realpath(__DIR__ . '/templates');
+            if ($templatesDiretorio) {
+                $templatesDiretorio = rtrim($templatesDiretorio, '/') . '/';
+            }
             $templates = [];
-            
-            // Adicionar template em branco
+
+            // Template em branco (sempre primeiro)
             $templates[] = [
-                'nome' => 'em_branco', 
-                'tipo' => 'html',
-                'caminho' => ''
+                'nome'          => 'em_branco',
+                'tipo'          => 'html',
+                'label_amigavel'=> 'Documento em Branco',
+                'descricao'     => $mapaDescricoes['em_branco'],
+                'icone'         => $mapaIcones['em_branco']['icon'],
+                'icone_cor'     => $mapaIcones['em_branco']['cor'],
+                'badge'         => $mapaIcones['em_branco']['badge'],
+                'preview'       => 'Crie um documento do zero, sem modelo predefinido. O editor abrirá em branco para redação livre.',
+                'caminho'       => ''
             ];
 
-            if (is_dir($templatesDiretorio)) {
-                // Listar HTMLs
+            if ($templatesDiretorio && is_dir($templatesDiretorio)) {
                 $arquivosHtml = glob($templatesDiretorio . '*.html');
                 if ($arquivosHtml) {
                     foreach ($arquivosHtml as $arquivo) {
                         $nomeBase = basename($arquivo, '.html');
-                        if ($nomeBase == 'modelo_base') continue;
-                        $templates[] = ['nome' => $nomeBase, 'tipo' => 'html'];
+                        if ($nomeBase === 'modelo_base') continue;
+
+                        // Slug normalizado (sem espaços) para lookup nos mapas
+                        $slug = preg_replace('/\s*-\s*/', '_', $nomeBase); // "nome - ambiental" → "nome_ambiental"
+                        $slug = trim($slug, '_');
+
+                        $iconeInfo = $mapaIcones[$slug] ?? $mapaIcones[$nomeBase] ?? ['icon' => 'fa-file-signature', 'cor' => 'text-secondary', 'badge' => 'Parecer'];
+
+                        $templates[] = [
+                            'nome'          => $nomeBase, // Nome REAL do arquivo (para carregar o template)
+                            'tipo'          => 'html',
+                            'label_amigavel'=> ucwords(str_replace(['_', ' - '], [' ', ' | '], $nomeBase)),
+                            'descricao'     => $mapaDescricoes[$slug] ?? $mapaDescricoes[$nomeBase] ?? 'Modelo disponível para edição no editor online.',
+                            'icone'         => $iconeInfo['icon'],
+                            'icone_cor'     => $iconeInfo['cor'],
+                            'badge'         => $iconeInfo['badge'],
+                            'preview'       => $extrairPreview($arquivo),
+                        ];
                     }
                 }
-                
-                // Listar DOCXs (se houver suporte)
+
+                // DOCXs (se houver)
                 $arquivosDocx = glob($templatesDiretorio . '*.docx');
                 if ($arquivosDocx) {
                     foreach ($arquivosDocx as $arquivo) {
-                         $nomeBase = basename($arquivo, '.docx');
-                         $templates[] = ['nome' => $nomeBase, 'tipo' => 'docx'];
+                        $nomeBase = basename($arquivo, '.docx');
+                        $templates[] = [
+                            'nome'          => $nomeBase,
+                            'tipo'          => 'docx',
+                            'label_amigavel'=> ucwords(str_replace('_', ' ', $nomeBase)),
+                            'descricao'     => 'Modelo no formato Word.',
+                            'icone'         => 'fa-file-word',
+                            'icone_cor'     => 'text-primary',
+                            'badge'         => 'DOCX',
+                            'preview'       => '',
+                        ];
                     }
                 }
             } else {
-                error_log("Diretório de templates não encontrado: " . dirname(__DIR__) . '/assets/doc');
+                error_log('[listar_templates] Diretório de templates não encontrado: ' . __DIR__ . '/templates');
             }
-            // Ordenar templates
+
+            // Ordenar: em_branco primeiro, demais por nome
             usort($templates, function($a, $b) {
-                return strcmp($a['nome'], $b['nome']); 
+                if ($a['nome'] === 'em_branco') return -1;
+                if ($b['nome'] === 'em_branco') return 1;
+                return strcmp($a['nome'], $b['nome']);
             });
 
             echo json_encode([
-                'success' => true,
+                'success'         => true,
                 'historico_recente' => $historicoRecente,
-                'templates' => $templates
+                'templates'       => $templates
             ]);
             break;
 
