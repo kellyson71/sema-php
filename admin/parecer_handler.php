@@ -48,7 +48,7 @@ try {
             $meusRascunhos = [];
             if ($requerimento_id > 0) {
                 $stmt = $pdo->prepare("
-                    SELECT id, nome, data_atualizacao, conteudo_html 
+                    SELECT id, nome, data_atualizacao 
                     FROM parecer_rascunhos 
                     WHERE usuario_id = ? AND requerimento_id = ? 
                     ORDER BY data_atualizacao DESC
@@ -57,22 +57,17 @@ try {
                 $dbRascunhos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($dbRascunhos as $r) {
-                    $htmlLimpo = strip_tags($r['conteudo_html'] ?? '');
-                    $preview = mb_substr(trim($htmlLimpo), 0, 100) . '...';
-                    
                     $meusRascunhos[] = [
                         'id' => 'db_draft:' . $r['id'],
                         'nome' => $r['nome'], 
                         'data' => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
                         'data_ts' => strtotime($r['data_atualizacao']),
                         'assinante' => 'Você',
-                        'label' => $r['nome'],
-                        'preview' => $preview,
+                        'label' => $r['nome'], // Agora usamos o nome limpo salvo no banco
                         'origem' => 'db'
                     ];
                 }
             }
-
 
             // 2. Histórico Legado (Arquivos JSON)
             $historicoDocs = [];
@@ -88,13 +83,10 @@ try {
                         $dataFmt = date('d/m/Y H:i', $timestamp);
                         $idDoc = $dados['documento_id'] ?? '';
                         
-                        $htmlCompleto = $dados['html_completo'] ?? $dados['html_com_assinatura'] ?? '';
-                        $htmlLimpo = strip_tags($htmlCompleto);
-                        $preview = mb_substr(trim($htmlLimpo), 0, 100) . '...';
-                        
                         // Tentar gerar um nome melhorzinho pro legado
                         $nomeExibicao = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
                         $nomeExibicao = ucwords(str_replace('_', ' ', $nomeExibicao));
+                        // Se tiver ID curto, remove timestamp do nome se tiver
                         $nomeExibicao = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
                         
                         $label = "$nomeExibicao (Arquivo Antigo)";
@@ -106,7 +98,6 @@ try {
                             'data_ts' => $timestamp,
                             'assinante' => $dados['dados_assinatura']['assinante_nome'] ?? '...',
                             'label' => $label,
-                            'preview' => $preview,
                             'origem' => 'file'
                         ];
                     }

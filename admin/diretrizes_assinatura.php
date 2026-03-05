@@ -1,76 +1,87 @@
 <?php
-require_once 'conexao.php';
+session_start();
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/conexao.php';
 
-// Validar login (assumindo que conexao.php ou algo similar importe a função)
-if (function_exists('verificaLogin')) {
-    verificaLogin();
-}
+// Apenas usuários logados
+verificaLogin();
 
-$page_title = 'Diretrizes de Assinatura';
-include 'header.php';
+$titulo_pagina = "Diretrizes de Assinatura Eletrônica";
 ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $titulo_pagina; ?> - SEMA</title>
+    <!-- Frameworks & Estilos baseados no sistema -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #333; }
+        .legal-header { background: #1c4b36; color: white; padding: 40px 0; text-align: center; }
+        .legal-header h1 { font-weight: 700; font-size: 2rem; }
+        .legal-container { max-width: 800px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .legal-section { margin-bottom: 30px; }
+        .legal-section h3 { color: #1c4b36; font-size: 1.25rem; font-weight: 600; border-bottom: 2px solid #e9ecef; padding-bottom: 8px; margin-bottom: 15px; }
+        .legal-section p, .legal-section li { font-size: 0.95rem; line-height: 1.6; color: #555; }
+        .legal-section ul { padding-left: 20px; }
+    </style>
+</head>
+<body>
 
-<div class="container-fluid py-4">
-    <div class="row mb-4 align-items-center">
-        <div class="col-auto">
-            <a href="javascript:history.back()" class="btn btn-outline-secondary rounded-circle">
-                <i class="fas fa-arrow-left"></i>
-            </a>
-        </div>
-        <div class="col">
-            <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-shield-alt text-primary me-2"></i>
-                Termos e Diretrizes de Assinatura Digital
-            </h1>
+    <div class="legal-header">
+        <div class="container">
+            <h1>Termo de Concordância e Diretrizes</h1>
+            <p class="mb-0">Uso de Assinatura Eletrônica no Sistema da Secretaria Municipal de Meio Ambiente</p>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-xl-8 col-lg-10 mx-auto">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 bg-light">
-                    <h6 class="m-0 font-weight-bold text-primary">Informações Legais e Responsabilidades</h6>
-                </div>
-                <div class="card-body" style="font-size: 1.05rem; line-height: 1.6;">
-                    
-                    <div class="alert alert-info border-left-info shadow-sm mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Ao utilizar a ferramenta de <strong>Assinatura Digital</strong> oferecida pelo sistema SEMA-PHP, o usuário reconhece e concorda expressamente com os termos estabelecidos neste documento.
-                    </div>
+    <div class="container">
+        <div class="legal-container">
+            <div class="text-center mb-4">
+                <img src="../assets/SEMA/PNG/Azul/Logo SEMA Horizontal.png" alt="SEMA Logo" height="50">
+            </div>
 
-                    <h5 class="fw-bold text-dark mt-4 border-bottom pb-2"><i class="fas fa-gavel text-secondary me-2"></i>1. Validade Jurídica e Equivalência</h5>
-                    <p class="text-justify mb-4">
-                        A assinatura digital aposta nos documentos e pareceres técnicos gerados neste sistema possui presunção de veracidade e equivalência à assinatura manuscrita (física) para todos os efeitos de tramitação processual na Secretaria de Meio Ambiente. 
-                        A cada documento gerado, será vinculada uma <strong>Hash de Autenticidade (SHA-256)</strong> e registrado o Endereço IP, data e hora da assinatura no Banco de Dados.
-                    </p>
+            <div class="legal-section">
+                <h3>1. Validade e Amparo Legal</h3>
+                <p>
+                    A assinatura eletrônica aqui proferida tem validade legal e administrativa para todos os fins de direito, em conformidade com as diretrizes e legislações vigentes sobre processos eletrônicos e validade de documentos digitais do Município de Pau dos Ferros/RN e do Governo Federal. 
+                </p>
+            </div>
 
-                    <h5 class="fw-bold text-dark mt-4 border-bottom pb-2"><i class="fas fa-user-shield text-secondary me-2"></i>2. Responsabilidade do Assinante</h5>
-                    <p class="text-justify mb-4">
-                        O usuário (servidor, técnico ou administrador) é <strong>pessoalmente e funcionalmente responsável</strong> pelo conteúdo dos documentos que assina. 
-                        É dever do usuário realizar a conferência minuciosa dos dados, condicionantes, valores e aprovações contidas no Parecer Técnico antes de confirmar a assinatura.
-                    </p>
-                    <ul class="mb-4">
-                        <li class="mb-2">A senha de acesso ao sistema é pessoal e intransferível, não devendo ser compartilhada.</li>
-                        <li class="mb-2">A alegação de uso indevido da conta não exime o servidor de responsabilização administrativa caso não tenha comunicado tempestivamente eventual vazamento de credenciais.</li>
-                    </ul>
+            <div class="legal-section">
+                <h3>2. Concordância e Veracidade das Informações</h3>
+                <p>Ao utilizar o recurso de assinatura digital neste sistema ("Assinar e Baixar" / "Confirmar Assinatura"), o servidor público ou administrador concorda expressamente que:</p>
+                <ul>
+                    <li>Leu detidamente todo o conteúdo constante no documento gerado.</li>
+                    <li>As informações técnicas, condicionantes e restrições (quando aplicáveis) são verdadeiras e refletem a realidade dos fatos observados e a legislação que rege a matéria.</li>
+                    <li>Está no pleno exercício de suas atribuições laborais e possui prerrogativa para a emissão deste tipo de documento ou parecer.</li>
+                </ul>
+            </div>
 
-                    <h5 class="fw-bold text-dark mt-4 border-bottom pb-2"><i class="fas fa-file-archive text-secondary me-2"></i>3. Irrevogabilidade e Registro</h5>
-                    <p class="text-justify mb-4">
-                        Uma vez que o botão "Eu Concordo, Assinar" é acionado, a ação <strong>não não pode ser desfeita</strong> da cópia baixada, sendo gerado um arquivo final. Um registro imutável do ato (log de evento) e uma cópia exata do PDF gerado são guardados de forma permanente nos servidores da SEMA. Caso seja detectado erro material após a assinatura, um novo documento retificador deverá ser tramitado de acordo com as normas da secretaria.
-                    </p>
+            <div class="legal-section">
+                <h3>3. Caráter Definitivo e Irrevogabilidade</h3>
+                <p>
+                    A confirmação da assinatura anexada em um Parecer ou Alvará equivale à concordância formal plena sobre o texto da peça. Uma vez anexado o registro digital com os carimbos de data/hora (TimeStamping) e chaves de segurança interna (Hashes criptográficos), a ação é inserida em banco de dados perene para fins de responsabilização legal e integridade documental, não cabendo exclusão retroativa por vias não oficiais.
+                </p>
+            </div>
 
-                    <h5 class="fw-bold text-dark mt-4 border-bottom pb-2"><i class="fas fa-user-lock text-secondary me-2"></i>4. Auditoria</h5>
-                    <p class="text-justify mb-4">
-                        O sistema possui módulos de auditoria voltados para investigação de fraudes e eventuais divergências no processo de licenciamento ambiental. Modificações ou tentativas de adulteração de documentos já assinados, seja no arquivo físico (`.pdf`) ou em consultas à base de dados, configuram infração e serão reportadas à Corregedoria.
-                    </p>
+            <div class="legal-section">
+                <h3>4. Responsabilidade e Guarda de Credenciais</h3>
+                <p>
+                    O acesso a esta chancela digital é pessoal e intransferível. O servidor é inteiramente responsável por sua senha, acesso autenticado (com ou sem dupla validação) e pela sessão aberta (cookies ativos) na máquina de uso corrente. Assinaturas produzidas através do próprio login em sessão ativa têm autoria técnica inegável imputada ao titular logado.
+                </p>
+            </div>
 
-                </div>
-                <div class="card-footer text-center bg-light py-4">
-                    <p class="text-muted mb-0 small">Secretaria Municipal de Meio Ambiente <br> Setor de Licenciamento e Fiscalização</p>
-                </div>
+            <div class="mt-5 text-center">
+                <a href="javascript:window.close();" class="btn btn-outline-secondary px-4 py-2">
+                    <i class="fas fa-times me-2"></i> Fechar esta janela
+                </a>
             </div>
         </div>
     </div>
-</div>
 
-<?php include 'footer.php'; ?>
+</body>
+</html>

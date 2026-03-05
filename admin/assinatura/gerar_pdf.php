@@ -99,9 +99,9 @@ class SEMA_PDF extends TCPDF {
 }
 
 /**
- * Função para gerar e salvar o PDF assinado
+ * Função para gerar e baixar/exibir o PDF assinado
  */
-function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $requerimento_id = null) {
+function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $modo_saida = 'D', $caminho_salvar = null) {
     
     $pdf = new SEMA_PDF('P', 'mm', 'A4', true, 'UTF-8', false);
     
@@ -122,6 +122,8 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $re
     $pdf->SetAutoPageBreak(TRUE, 28); 
     
     // Suavizando o VSpace para evitar "espaço duplo" mantendo as propriedades de quebra de bloco
+    // Arrays para UL e LI foram removidos para evitar quebra em listas (ficando no padrão do TCPDF)
+    // Para P e DIV, usar uma fração minúscula de margin vertical (0.01) ao invés do 0 absoluto
     $pdf->setHtmlVSpace(array(
         'p' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1)),
         'div' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1))
@@ -147,28 +149,16 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $re
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
 
+    if (ob_get_length()) {
+       ob_clean();
+    }
+
     $nome_arquivo = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '_' . date('His') . '.pdf';
     
-    // Preparar o diretório de destino
-    $diretorioBase = dirname(__DIR__, 2) . '/uploads/pareceres/';
-    if ($requerimento_id) {
-         $diretorioBase .= $requerimento_id . '/';
+    if ($modo_saida === 'F' && $caminho_salvar) {
+        $pdf->Output($caminho_salvar, 'F');
+        return $nome_arquivo;
     } else {
-         $diretorioBase .= 'avulsos/';
+        $pdf->Output($nome_arquivo, $modo_saida);
     }
-    
-    if (!is_dir($diretorioBase)) {
-        mkdir($diretorioBase, 0755, true);
-    }
-    
-    $caminhoAbsoluto = $diretorioBase . $nome_arquivo;
-
-    // Salvar no disco
-    $pdf->Output($caminhoAbsoluto, 'F');
-    
-    return [
-         'success' => true,
-         'nome_arquivo' => $nome_arquivo,
-         'caminho_absoluto' => $caminhoAbsoluto
-    ];
 }
