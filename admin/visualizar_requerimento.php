@@ -1949,7 +1949,7 @@ $isBlocked = $isFinalized || $isIndeferido;
 
 <!-- Modal de Geração de Parecer -->
 <div class="modal fade" id="parecerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -1958,39 +1958,91 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body bg-light">
                 <!-- Etapa 1: Seleção de Template -->
-                <div id="etapa-selecao-template">
-                    <label class="form-label">Selecione o Template:</label>
-                    <select id="template-select" class="form-select mb-3"></select>
-                    <button type="button" class="btn btn-primary" onclick="carregarTemplateParaEdicao()">
-                        <i class="fas fa-file-import me-2"></i>Carregar Template
-                    </button>
+                <div id="etapa-selecao-template" class="container mt-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <label class="form-label fw-bold">Selecione o Template:</label>
+                            <select id="template-select" class="form-select form-select-lg mb-3"></select>
+                            <button type="button" class="btn btn-primary btn-lg w-100" onclick="carregarTemplateParaEdicao()">
+                                <i class="fas fa-file-import me-2"></i>Carregar Template
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Etapa 2: Editor -->
-                <div id="etapa-editor" style="display:none;">
-                    <div class="alert alert-info mb-3">
+                <div id="etapa-editor" style="display:none;" class="h-100 d-flex flex-column">
+                    <div class="alert alert-info mb-3 flex-shrink-0">
                         <i class="fas fa-lightbulb me-2"></i>
-                        O template foi preenchido automaticamente. Edite conforme necessário.
+                        O template foi preenchido automaticamente. Revise e edite conforme necessário.
                     </div>
-                    <textarea id="editor-parecer-content"></textarea>
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
-                            <i class="fas fa-arrow-right me-2"></i>Continuar para Assinar e Posicionar
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
-                            <i class="fas fa-arrow-left me-2"></i>Voltar
-                        </button>
+                    <div class="flex-grow-1" style="min-height: 500px;">
+                        <textarea id="editor-parecer-content" style="height: 100%;"></textarea>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer" id="footer-editor" style="display:none;">
+                <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar à Seleção
+                </button>
+                <button type="button" class="btn btn-success" onclick="abrirModalConfirmacaoAssinatura()">
+                    <i class="fas fa-file-signature me-2"></i>Assinar e Baixar PDF
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Incluir o Novo Modal Simplificado de Assinatura -->
-<?php include 'assinatura/assinatura_modal.php'; ?>
+<!-- Modal de Confirmação de Assinatura -->
+<div class="modal fade" id="confirmacaoAssinaturaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-success">
+                    <i class="fas fa-shield-alt me-2"></i>Confirmação de Assinatura
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> Você está prestes a assinar de forma digital este documento. Esta ação possui validade legal e não pode ser desfeita.
+                </div>
+                
+                <div class="form-check mb-3 p-3 bg-light border rounded">
+                    <input class="form-check-input ms-1" type="checkbox" value="" id="checkTermosAssinatura" style="transform: scale(1.3); margin-top: 0.2rem;">
+                    <label class="form-check-label ms-3 fw-bold" for="checkTermosAssinatura">
+                        Li e concordo com as responsabilidades e implicações legais descritas nas <a href="diretrizes_assinatura.php" target="_blank" class="text-primary text-decoration-underline">Diretrizes de Assinatura</a>.
+                    </label>
+                </div>
+                <div class="text-center">
+                    <p class="text-muted small">Assinando como: <strong><?php echo htmlspecialchars($_SESSION['admin_nome']); ?></strong></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-assinar" onclick="processarAssinaturaFinal()" disabled>
+                    <i class="fas fa-check-circle me-2"></i>Eu Concordo, Assinar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxTermos = document.getElementById('checkTermosAssinatura');
+    const btnConfirmar = document.getElementById('btn-confirmar-assinar');
+    
+    if (checkboxTermos && btnConfirmar) {
+        checkboxTermos.addEventListener('change', function() {
+            btnConfirmar.disabled = !this.checked;
+        });
+    }
+});
+</script>
 
 <!-- Modal para Indeferimento de Processo -->
 <div class="modal fade" id="indeferimentoModal" tabindex="-1" aria-hidden="true">
@@ -2705,7 +2757,8 @@ $isBlocked = $isFinalized || $isIndeferido;
          .then(data => {
              if (data.success) {
                  document.getElementById('etapa-selecao-template').style.display = 'none';
-                 document.getElementById('etapa-editor').style.display = 'block';
+                 document.getElementById('etapa-editor').style.display = 'flex'; // Mudado para flex devido ao h-100 flex-column
+                 document.getElementById('footer-editor').style.display = 'flex'; // Exibe o footer
 
                  // Extrair imagem de fundo do template original para uso posterior
                  const parser = new DOMParser();
@@ -2759,7 +2812,8 @@ $isBlocked = $isFinalized || $isIndeferido;
 
          tinymce.init({
              selector: '#editor-parecer-content',
-             height: 600,
+             height: '100%',
+             min_height: 500,
              language: 'pt_BR',
              plugins: 'lists link image table code fullscreen',
              toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | fullscreen code',
@@ -2810,10 +2864,11 @@ $isBlocked = $isFinalized || $isIndeferido;
      function voltarParaSelecao() {
          tinymce.remove('#editor-parecer-content');
          document.getElementById('etapa-editor').style.display = 'none';
+         document.getElementById('footer-editor').style.display = 'none';
          document.getElementById('etapa-selecao-template').style.display = 'block';
      }
 
-     function irParaAssinatura() {
+     function abrirModalConfirmacaoAssinatura() {
          templateAtual = document.getElementById('template-select').value;
          
          const editor = tinymce.get('editor-parecer-content');
@@ -2828,9 +2883,74 @@ $isBlocked = $isFinalized || $isIndeferido;
              return;
          }
          
-         // Injetar dados no Modal novo
-         document.getElementById('conteudo_parecer').value = conteudoHTML;
-         abrirModalAssinatura(<?php echo $id; ?>);
+         // Limpar checkbox
+         const checkboxTermos = document.getElementById('checkTermosAssinatura');
+         if (checkboxTermos) {
+             checkboxTermos.checked = false;
+         }
+         const btnConfirmar = document.getElementById('btn-confirmar-assinar');
+         if (btnConfirmar) {
+             btnConfirmar.disabled = true;
+         }
+         
+         // Abre modal de confirmação
+         const modal = new bootstrap.Modal(document.getElementById('confirmacaoAssinaturaModal'));
+         modal.show();
+     }
+
+     function processarAssinaturaFinal() {
+        const editor = tinymce.get('editor-parecer-content');
+        const conteudoHTML = editor.getContent();
+        const template = document.getElementById('template-select').value;
+        const btnConfirmar = document.getElementById('btn-confirmar-assinar');
+        
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+
+        // Cria o formulario dinâmico para enviar para o PHP que forçara o download
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'assinatura/processa_assinatura.php';
+        form.style.display = 'none';
+
+        const inpRequerimento = document.createElement('input');
+        inpRequerimento.type = 'hidden';
+        inpRequerimento.name = 'requerimento_id';
+        inpRequerimento.value = '<?php echo $id; ?>';
+        form.appendChild(inpRequerimento);
+
+        const inpConteudo = document.createElement('input');
+        inpConteudo.type = 'hidden';
+        inpConteudo.name = 'conteudo_parecer';
+        inpConteudo.value = conteudoHTML;
+        form.appendChild(inpConteudo);
+
+        const inpOrigem = document.createElement('input');
+        inpOrigem.type = 'hidden';
+        inpOrigem.name = 'origem';
+        inpOrigem.value = 'painel';
+        form.appendChild(inpOrigem);
+
+        const inpTemplate = document.createElement('input');
+        inpTemplate.type = 'hidden';
+        inpTemplate.name = 'template';
+        inpTemplate.value = template;
+        form.appendChild(inpTemplate);
+
+        document.body.appendChild(form);
+        
+        // Simular o Submit (isso baixará o arquivo e deixará na mesma pagina)
+        form.submit();
+        
+        // Atualiza a tabela após 1 segundo, assumindo que o download começou
+        setTimeout(() => {
+            document.body.removeChild(form);
+            btnConfirmar.innerHTML = '<i class="fas fa-check-circle me-2"></i>Eu Concordo, Assinar';
+            bootstrap.Modal.getInstance(document.getElementById('confirmacaoAssinaturaModal')).hide();
+            parecerModal.hide();
+            carregarPareceresExistentes();
+            showToast('Documento gerado e assinatura registrada com sucesso!', 'success');
+        }, 1500);
      }
 
      function inicializarSignaturePad() {
@@ -3059,11 +3179,11 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : "" }</div>
                             </div>
                             <div class="data-actions">
-                                <a href="${viewerUrl}"
-                                   class="copy-btn me-1"
+                                <a href="parecer_handler.php?action=download_parecer&arquivo=${p.arquivo}&requerimento_id=<?php echo $id; ?>"
+                                   class="copy-btn me-1 text-info"
                                    target="_blank"
-                                   title="Visualizar parecer">
-                                    <i class="fas fa-eye"></i>
+                                   title="Baixar parecer">
+                                    <i class="fas fa-download"></i>
                                 </a>
                                 <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir parecer" style="color: #dc2626;">
                                     <i class="fas fa-trash"></i>
@@ -3110,14 +3230,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : "" }</div>
                          </div>
                          <div class="data-actions">
-                             <a href="${viewerUrl}"
-                                class="copy-btn me-1"
-                                target="_blank"
-                                title="Visualizar parecer">
-                                 <i class="fas fa-eye"></i>
-                             </a>
                              <a href="parecer_handler.php?action=download_parecer&arquivo=${p.arquivo}&requerimento_id=<?php echo $id; ?>"
-                                class="copy-btn me-1"
+                                class="copy-btn me-1 text-info"
+                                target="_blank"
                                 title="Baixar parecer">
                                  <i class="fas fa-download"></i>
                              </a>
