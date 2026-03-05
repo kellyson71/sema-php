@@ -24,18 +24,18 @@ class SEMA_PDF extends TCPDF {
         }
         $this->SetAlpha(1); 
         
-        // 2. Logo no Topo Esquerdo (Ainda menor: 15mm)
+        // 2. Logo no Topo Esquerdo (Movida um pouco mais para cima: de Y 10 para Y 5, mantendo o tamanho 15mm)
         if (file_exists($image_file)) {
-            $this->Image($image_file, 15, 10, 15, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+            $this->Image($image_file, 15, 6, 17, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
         }
         
         $this->SetFont('helvetica', 'B', 10);
-        $this->SetXY(32, 11);
+        $this->SetXY(35, 11);
         $this->SetTextColor(40, 40, 40);
         $this->Cell(0, 5, 'PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN', 0, 1, 'L', 0, '', 0, false, 'M', 'M');
         
         $this->SetFont('helvetica', 'B', 8);
-        $this->SetXY(32, 15);
+        $this->SetXY(35, 15);
         $this->SetTextColor(100, 100, 100);
         $this->Cell(0, 5, 'SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA', 0, 1, 'L', 0, '', 0, false, 'M', 'M');
         
@@ -46,17 +46,17 @@ class SEMA_PDF extends TCPDF {
 
     // Footer Premium com Carimbo Ultramoderno e Pequeno
     public function Footer() {
-        $this->SetY(-25); // Mais para baixo para não roubar espaço
+        $this->SetY(-25); // Posição do rodapé (25mm do fundo)
 
         // Bloco de Assinatura Desenhado (Canto inferior direito)
-        $w = 60;  // Largura do carimbo (reduzido de 65)
+        $w = 60;  // Largura do carimbo
         $x = 210 - 15 - $w; 
         $y = $this->GetY();
         
         // Borda do Carimbo ultra fina e cinza suave
         $this->SetLineStyle(array('width' => 0.1, 'color' => array(200, 200, 200))); 
         $this->SetFillColor(253, 255, 253); 
-        $this->RoundedRect($x, $y, $w, 15, 1, '1111', 'DF'); // Altura 15 (era 18)
+        $this->RoundedRect($x, $y, $w, 15, 1, '1111', 'DF'); 
 
         // Título do Carimbo
         $this->SetFont('helvetica', 'B', 5);
@@ -117,14 +117,16 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo) {
     
     // Margens super otimizadas
     $pdf->SetMargins(15, 27, 15); 
+    // É obrigatório SetFooterMargin para o TCPDF saber o espaço inferior reservado ao rodapé, senão ele esmaga o rodapé.
+    $pdf->SetFooterMargin(25);
     $pdf->SetAutoPageBreak(TRUE, 28); 
     
-    // ZERAR vertical space do HTML para evitar o efeito "espaço duplo"
+    // Suavizando o VSpace para evitar "espaço duplo" mantendo as propriedades de quebra de bloco
+    // Arrays para UL e LI foram removidos para evitar quebra em listas (ficando no padrão do TCPDF)
+    // Para P e DIV, usar uma fração minúscula de margin vertical (0.01) ao invés do 0 absoluto
     $pdf->setHtmlVSpace(array(
-        'p' => array(0 => array('h' => 0, 'n' => 0), 1 => array('h' => 0, 'n' => 0)),
-        'div' => array(0 => array('h' => 0, 'n' => 0), 1 => array('h' => 0, 'n' => 0)),
-        'ul' => array(0 => array('h' => 0, 'n' => 0), 1 => array('h' => 0, 'n' => 0)),
-        'li' => array(0 => array('h' => 0, 'n' => 0), 1 => array('h' => 0, 'n' => 0))
+        'p' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1)),
+        'div' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1))
     ));
     
     $pdf->AddPage();
@@ -142,7 +144,7 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo) {
     $pdf->SetFont('helvetica', '', 11);
     $pdf->SetTextColor(50, 50, 50);
 
-    // HTML Rendering com line-height compacto para evitar espaçamento excessivo
+    // HTML Rendering com line-height compacto
     $html_corpo = '<div style="text-align: justify; line-height: 1.2;">' . $conteudo_html . '</div>';
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
