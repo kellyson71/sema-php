@@ -591,7 +591,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <span>Meu Perfil</span>
                     </a>
                 </li>
-                <?php if ($_SESSION['admin_nivel'] === 'admin'): ?>
+                <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral'): ?>
                     <li>
                         <a href="administradores.php" class="<?php echo $currentPage === 'administradores.php' ? 'active' : ''; ?>">
                             <i class="fas fa-users-cog"></i>
@@ -602,7 +602,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 
                 <?php 
                 // Menu específico para o Secretário
-                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_nivel'] === 'admin');
+                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
                 if ($isSecretario): 
                 ?>
                     <li>
@@ -615,7 +615,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
                 <?php 
                 // Menu específico para o Analista
-                $isAnalista = ($_SESSION['admin_nivel'] === 'analista' || $_SESSION['admin_nivel'] === 'admin');
+                $isAnalista = ($_SESSION['admin_nivel'] === 'analista' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
                 if ($isAnalista): 
                 ?>
                     <li>
@@ -628,7 +628,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
                 <?php 
                 // Menu específico para a Fiscalização
-                $isFiscal = ($_SESSION['admin_nivel'] === 'fiscal' || $_SESSION['admin_nivel'] === 'admin');
+                $isFiscal = ($_SESSION['admin_nivel'] === 'fiscal' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
                 if ($isFiscal): 
                 ?>
                     <li>

@@ -77,6 +77,10 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> 'Análise ambiental para emissão do Habite-se.',
                 'licenca_previa_projeto'             => 'Licença prévia de projeto com campos obrigatórios e condicionantes.',
                 'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
+                'notificacao_fiscal'                 => 'Notificação oficial expedida pela fiscalização.',
+                'laudo_relatorio_tecnico'            => 'Laudo ou Relatório Técnico detalhado de vistoria.',
+                'comunicados_orientacoes'            => 'Comunicados ou orientações técnicas ao requerente.',
+                'auto_de_infracao'                   => 'Auto de infração para documentação de irregularidades.',
             ];
 
             // Mapa de ícones por slug
@@ -90,6 +94,10 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
                 'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
+                'notificacao_fiscal'                 => ['icon' => 'fa-exclamation-triangle','cor' => 'text-warning', 'badge' => 'Notificação'],
+                'laudo_relatorio_tecnico'            => ['icon' => 'fa-microscope',      'cor' => 'text-info',      'badge' => 'Laudo'],
+                'comunicados_orientacoes'            => ['icon' => 'fa-bullhorn',        'cor' => 'text-secondary', 'badge' => 'Comunicado'],
+                'auto_de_infracao'                   => ['icon' => 'fa-ban',             'cor' => 'text-danger',    'badge' => 'Auto de Infração'],
             ];
 
             // 1. Meus Rascunhos (Banco de Dados)
