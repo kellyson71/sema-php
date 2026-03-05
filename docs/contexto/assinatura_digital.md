@@ -1,54 +1,50 @@
-# Fluxo de Assinatura Digital
+# Fluxo de Assinatura Digital (Novo Sistema)
 
-Este documento detalha o funcionamento técnico e o fluxo de negócio do módulo de **Assinatura Digital** do sistema SEMA-PHP, garantindo integridade, autenticidade e validade jurídica aos documentos emitidos.
+Este documento detalha o funcionamento técnico do novo módulo de **Assinatura Digital** do sistema SEMA-PHP, implementado para garantir maior agilidade, flexibilidade na visualização e segurança jurídica.
 
-## 1. Validação de Identidade (Autenticação)
+## 1. Geração e Persistência de Documentos
 
-Para que um documento receba uma assinatura digital, o assinante (Técnico ou Secretário) deve passar por um rigoroso processo de validação:
+O novo fluxo abandona a dependência exclusiva de binários PDF imediatos, priorizando a persistência do conteúdo fonte:
 
-- MFA (Multi-Factor Authentication): O sistema utiliza o protocolo **TOTP** (Time-based One-Time Password). O usuário deve configurar seu dispositivo (Google Authenticator, Authy, etc.) e fornecer um código de 6 dígitos.
-- Consentimento e Sessão:
-    - Ao validar o 2FA, o sistema cria uma sessão segura (`assinatura_auth_valid_until`) com validade de até **24 horas**.
-    - Este período representa o consentimento explícito do usuário para realizar atos administrativos durante aquela jornada de trabalho.
-    - Tentativas de assinatura fora desse prazo ou sem validação prévia são bloqueadas e registradas no log de erros.
+- **Templates HTML**: Os documentos são gerados a partir de templates HTML (localizados em `admin/templates/`), permitindo customização rica via CSS.
+- **Armazenamento Híbrido**:
+    - **Banco de Dados**: A tabela `assinaturas_digitais` armazena os metadados (quem assinou, cargo, CPF, hash do conteúdo, timestamp e IP).
+    - **Sistema de Arquivos**: O conteúdo HTML assinado é salvo em disco (ex: `admin/pareceres/{id_requerimento}/...html`). Isso permite que o documento seja re-gerado fielmente a qualquer momento.
+- **Redundância JSON**: Cada documento gera um arquivo `.json` lateral contendo o "snapshot" completo do HTML e das assinaturas, garantindo que o documento possa ser recuperado mesmo em falhas de banco de dados.
 
-## 2. Implementação Técnica
+## 2. O Processo de Assinatura
 
-A assinatura não é apenas um "visto visual", mas uma operação criptográfica complexa.
+Quando um administrador (Técnico ou Secretário) assina um documento:
 
-### Criptografia e Hashing
+1. **Captura de Dados**: O sistema captura o conteúdo atual do editor e os dados do assinante da sessão.
+2. **Criptografia**: É gerado um hash SHA-256 do conteúdo.
+3. **Registro**: Uma entrada é criada em `assinaturas_digitais`. O `documento_id` (UUID único) é gerado para identificar este ato administrativo.
+4. **QR Code**: (Opcional) Se a biblioteca estiver disponível, um QR Code é gerado apontando para `/consultar/verificar.php?id={documento_id}` para validação pública.
 
-- Algoritmo de Hash: **SHA-256**. O sistema gera uma impressão digital única (hash) do conteúdo binário do arquivo PDF.
-- Criptografia Assimétrica: Utiliza chaves **RSA-2048**.
-    - **Chave Privada**: Armazenada de forma protegida no servidor (pasta `includes/keys/`), usada exclusivamente para gerar a assinatura.
-    - **Chave Pública**: Usada para verificar a autenticidade da assinatura sem expor a chave privada.
+## 3. Visualização Dinâmica (`parecer_viewer.php`)
 
-### O Ato de Assinar
+O visualizador foi otimizado para velocidade e compatibilidade:
 
-Quando o Secretário aprova um processo:
+- **Casca Iframe**: O visualizador agora é uma interface leve (Shell) que utiliza um `iframe` para carregar o documento.
+- **Renderização Inline**: O `iframe` chama o script `redownload_pdf.php?id={id}&inline=1`.
+- **Leitor Nativo**: O sistema detecta se o arquivo em disco é um PDF ou HTML. Se for PDF, ele instrui o navegador a usar o plugin nativo (Chrome/Safari/Firefox), garantindo perfeição visual e rapidez.
 
-1. O sistema lê o **hash** do documento original gerado pelo técnico.
-2. Utiliza a função `openssl_sign` para cifrar esse hash com a chave privada do sistema, vinculando-o aos dados do Secretário (ID, Nome, Cargo).
-3. Uma nova entrada é criada na tabela `assinaturas_digitais`, contendo a assinatura criptografada em Base64.
+## 4. Gestão e Controle (`visualizar_requerimento.php`)
 
-## 3. Fluxo de Trabalho (Workflow)
+Os documentos assinados são gerenciados diretamente na tela do processo:
 
-1. **Fase Técnica**: O consultor técnico analisa o requerimento e gera um "Parecer". O sistema assina automaticamente este parecer com o selo técnico.
-2. **Revisão do Secretário**: O Secretário visualiza o documento através do `parecer_viewer.php`.
-3. **Decisão**:
-    - **Correção**: O Secretário devolve o processo com observações, reiniciando o fluxo técnico.
-    - **Assinatura**: O Secretário confirma a emissão. O sistema "reassina" os documentos, elevando o status do processo para **Alvará Emitido**.
+- **Listagem de Ações Administrativas**: Todos os pareceres e alvarás associados ao protocolo aparecem listados com:
+    - **Ícone de Visualização**: Abre o visualizador dinâmico.
+    - **Ícone de Download**: Força o download do PDF oficial (gerado sob demanda se necessário).
+    - **Exclusão Segura**: Permite remover um parecer, limpando automaticamente o registro no BD e os arquivos físicos associados (`.html`, `.json`, `.pdf`).
 
-## 4. Auditoria e Verificação
+## 5. Script de Entrega (`redownload_pdf.php`)
 
-- **Histórico de Assinaturas**: Cada tentativa (sucesso ou falha) é gravada na tabela `historico_assinaturas`, incluindo IP, User-Agent e timestamps.
-- **Metadados JSON**: Além do banco de dados, o sistema gera um arquivo `.json` ao lado de cada PDF assinado com todos os metadados da assinatura para redundância.
-- **Validação de Integridade**: O sistema possui uma função de verificação que recalcula o hash do arquivo atual e o compara com o hash assinado. Se o arquivo for alterado em um único Byte, a assinatura é invalidada automaticamente.
+Este é o motor central de distribuição:
 
-## 5. Segurança Jurídica
+- **Resolução de Caminhos**: Possui lógica inteligente para encontrar arquivos mesmo se o sistema de pastas for alterado (procura na raiz, em `admin/`, etc).
+- **Geração On-the-fly**: Se apenas o HTML estiver disponível, ele utiliza a biblioteca de PDF para gerar o binário assinado no momento do download, garantindo que o usuário sempre receba um PDF pronto para baixar.
 
-As assinaturas seguem padrões inspirados na ICP-Brasil, garantindo que o documento:
+---
 
-1. **Não possa ser alterado** (Integridade).
-2. **Tenha autoria confirmada** (Autenticidade).
-3. **Não possa ser repudiado** pelo assinante (Não-repúdio).
+_Documentação atualizada em Março de 2026._
