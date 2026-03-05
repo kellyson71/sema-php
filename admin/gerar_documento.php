@@ -377,9 +377,27 @@ include 'header.php';
       </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <!-- SweetAlert2 pode ser carregado de forma independente do jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
+         Usamos um carregador dinâmico que aguarda o jQuery estar pronto. -->
+    <script>
+    (function waitForJQuery() {
+        if (typeof window.jQuery === 'undefined') {
+            // jQuery ainda não carregou — tenta de novo em 50ms
+            setTimeout(waitForJQuery, 50);
+            return;
+        }
+        // jQuery disponível: carrega Summernote dinamicamente
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js';
+        s.onload = function() {
+            // Sinaliza que o Summernote está pronto
+            window._summernoteReady = true;
+        };
+        document.head.appendChild(s);
+    })();
+    </script>
 
     <script>
     const reqId = <?= $requerimento_id ?>;
@@ -555,6 +573,15 @@ include 'header.php';
         });
     }
 
+    /* ─── Aguardar Summernote estar pronto ─────────────────── */
+    function waitForSummernote(cb) {
+        if (typeof window.jQuery !== 'undefined' && typeof jQuery.fn.summernote !== 'undefined') {
+            cb();
+        } else {
+            setTimeout(function() { waitForSummernote(cb); }, 80);
+        }
+    }
+
     /* ─── Inicializar editor Summernote ────────────────────── */
     function initEditor(html, title) {
         document.getElementById('secao-selecao').classList.add('d-none');
@@ -562,37 +589,37 @@ include 'header.php';
         document.getElementById('editor-title').innerHTML =
             '<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + escapeHtml(title) + '</b>';
 
-        const $editor = $('#editor-conteudo');
+        waitForSummernote(function() {
+            var $editor = $('#editor-conteudo');
 
-        if ($editor.data('summernote')) {
-            $editor.summernote('destroy');
-        }
-        $editor.val(html);
+            if ($editor.data('summernote')) {
+                $editor.summernote('destroy');
+            }
+            $editor.val(html);
 
-        $editor.summernote({
-            height: 540,
-            focus: true,
-            toolbar: [
-                ['style',    ['style']],
-                ['font',     ['bold', 'underline', 'italic', 'clear']],
-                ['fontname', ['fontname']],
-                ['color',    ['color']],
-                ['para',     ['ul', 'ol', 'paragraph']],
-                ['table',    ['table']],
-                ['insert',   ['link']],
-                ['view',     ['codeview', 'fullscreen']]
-            ],
-            callbacks: {
-                onInit: function() {
-                    const editor = document.querySelector('.note-editor');
-                    if (editor) editor.style.height = '100%';
-                    const editable = document.querySelector('.note-editable');
-                    if (editable) {
-                        editable.style.minHeight = '480px';
-                        editable.style.overflowY = 'auto';
+            $editor.summernote({
+                height: 480,
+                focus: true,
+                toolbar: [
+                    ['style',    ['style']],
+                    ['font',     ['bold', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color',    ['color']],
+                    ['para',     ['ul', 'ol', 'paragraph']],
+                    ['table',    ['table']],
+                    ['insert',   ['link']],
+                    ['view',     ['codeview', 'fullscreen']]
+                ],
+                callbacks: {
+                    onInit: function() {
+                        var editable = document.querySelector('.note-editable');
+                        if (editable) {
+                            editable.style.minHeight = '440px';
+                            editable.style.overflowY = 'auto';
+                        }
                     }
                 }
-            }
+            });
         });
     }
 
