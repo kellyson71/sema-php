@@ -29,34 +29,13 @@ $stmtDocs->execute([$requerimento_id]);
 $pastDocs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
 
 $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
+include 'header.php';
 ?>
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $titulo_pagina; ?> - SEMA</title>
-    <!-- Assets Essenciais -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Assets Extras Específicos do Gerador -->
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; overflow-x: hidden; }
-        
-        /* Navbar Superior Minimalista */
-        .doc-navbar {
-            background-color: white;
-            border-bottom: 1px solid #e0e4e8;
-            padding: 12px 24px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
         /* Estilo dos Cards UX */
         .template-card { 
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
@@ -67,7 +46,7 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
         }
         .template-card:hover { 
             transform: translateY(-4px); 
-            border-bottom-color: #1c4b36; 
+            border-bottom-color: var(--primary-color); 
             box-shadow: 0 10px 25px rgba(28, 75, 54, 0.1); 
         }
         .template-card .icon-placeholder {
@@ -93,44 +72,42 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
         }
 
         /* Editor Fullscreen Fake */
-        #secao-editor { height: calc(100vh - 70px); background: #f4f6f9; }
+        #secao-editor { height: calc(100vh - var(--topbar-height) - 70px); background: #f8f9fa; }
         .editor-container-wrapper {
             height: calc(100% - 70px);
             background: white;
             border-radius: 8px;
             border: 1px solid #e0e4e8;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin: 0 24px;
+            /* Sem margens para ficar grande e imersivo */
         }
         
         /* Modal Custom */
         .modal-header-sema { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        .text-sema { color: #1c4b36 !important; }
-        .btn-sema { background-color: #1c4b36; border-color: #1c4b36; color: white; }
-        .btn-sema:hover { background-color: #143627; border-color: #143627; color: white; }
+        .text-sema { color: var(--primary-color) !important; }
+        .btn-sema { background-color: var(--primary-color); border-color: var(--primary-color); color: white; }
+        .btn-sema:hover { background-color: var(--secondary-color); border-color: var(--secondary-color); color: white; }
     </style>
-</head>
-<body>
 
-    <!-- Navegação de Topo Limpa -->
-    <div class="doc-navbar">
+    <!-- Navegação de Topo Limpa para Retorno -->
+    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
         <div class="d-flex align-items-center">
             <a href="visualizar_requerimento.php?id=<?= $requerimento_id ?>" class="btn btn-sm btn-light border fw-medium px-3 text-secondary me-4">
                 <i class="fas fa-arrow-left me-2"></i> Voltar ao Processo
             </a>
             <h5 class="mb-0 fw-bold text-dark">
-                <i class="fas fa-file-signature text-success me-2"></i> Emissão de Documento Oficial
+                <i class="fas fa-file-signature text-success me-2"></i> Gestor de Documentos
             </h5>
         </div>
         <div>
-            <span class="badge bg-secondary px-3 py-2 rounded-pill fw-medium">Protocolo #<?= htmlspecialchars($req['protocolo']) ?></span>
+            <span class="badge bg-secondary px-3 py-2 rounded-pill fw-medium fs-6">Protocolo #<?= htmlspecialchars($req['protocolo']) ?></span>
         </div>
     </div>
 
     <!-- ETAPA 1: Seleção de Templates e Histórico -->
-    <div class="container-fluid py-5 px-5" id="secao-selecao">
+    <div class="py-2" id="secao-selecao">
         
-        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-plus-square text-primary me-2"></i> Criar Novo Documento (Templates)</h5>
+        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-plus-square text-primary me-2"></i> Criar Novo Documento (Templates Padrão)</h5>
         
         <!-- Grid Carregado via AJAX -->
         <div class="row g-4 mb-5" id="lista-templates">
@@ -139,28 +116,11 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
             </div>
         </div>
 
-        <?php if (!empty($pastDocs)): ?>
-        <hr class="text-black-50 my-5">
-        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-history text-warning me-2"></i> Documentos Anteriores Deste Processo</h5>
-        <div class="row g-4">
-            <?php foreach ($pastDocs as $doc): ?>
-            <div class="col-md-3">
-                <div class="card h-100 template-card rounded-4 border-0" onclick="alert('Estes documentos originais e assinados não podem ser alterados. Baixe o PDF no Histórico de Respostas do processo para visualizá-lo.')">
-                    <div class="card-body text-center p-4">
-                        <div class="icon-placeholder bg-light">
-                            <i class="fas fa-file-pdf fs-3 text-danger"></i>
-                        </div>
-                        <h6 class="fw-bold text-dark text-truncate" title="<?= htmlspecialchars(ucfirst($doc['tipo_documento'] ?? 'Parecer Legal')) ?>">
-                            <?= htmlspecialchars(ucfirst($doc['tipo_documento'] ?? 'Parecer Legal')) ?>
-                        </h6>
-                        <small class="text-muted d-block mb-1">Assinado por: <b><?= htmlspecialchars($doc['assinante_nome']) ?></b></small>
-                        <small class="text-muted"><i class="fas fa-clock"></i> <?= date('d/m/Y \à\s H:i', strtotime($doc['timestamp_assinatura'])) ?></small>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
+        <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-history text-warning me-2"></i> Reaproveitar Documento Passado Deste Processo</h5>
+        
+        <div class="row g-4 mb-5" id="lista-historico">
+             <div class="col-12 text-muted"><p class="small text-muted mb-0">Nenhum rascunho ou documento anterior para herdar conteúdo foi encontrado neste processo.</p></div>
         </div>
-        <?php endif; ?>
         
     </div>
 
@@ -238,9 +198,7 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
     </div>
 
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts Essenciais (Bootst. e jQuery já no Footer) -->
     <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -275,11 +233,10 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
                 ['para', ['ul', 'ol', 'paragraph']],
                 ['table', ['table']],
                 ['insert', ['link']],
-                ['view', ['codeview']]
+                ['view', ['codeview', 'fullscreen']]
             ],
             callbacks: {
                 onInit: function() {
-                    // Force height inside wrapper
                     $('.note-editor').css('height', '100%');
                     $('.note-editable').css('height', 'calc(100% - 40px)').css('overflow-y', 'auto');
                 }
@@ -288,13 +245,15 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
     }
 
     function carregarTemplates() {
-        $.post('parecer_handler.php', { action: 'listar_templates' }, function(ret) {
+        $.post('parecer_handler.php', { action: 'listar_templates', requerimento_id: reqId }, function(ret) {
             if(ret.success && ret.templates) {
                 let html = '';
                 ret.templates.forEach(t => {
-                    let rawName = t.replace('.html', '').replace(/_/g, ' ').toUpperCase();
-                    let desc = 'Formulário padrão validado pelo plano diretor ambiental. Clique para aplicar o modelo no editor de tela cheia.';
-                    
+                    let rawName = t.nome ? t.nome : t.replace('.html', '');
+                    rawName = rawName.replace(/_/g, ' ').toUpperCase();
+                    let fileKey = t.nome ? t.nome : t;
+
+                    let desc = 'Modelo padrão oficial validado para a secretária. Clique para aplicar o modelo no editor.';
                     let icone = 'fa-file-signature text-secondary';
                     if(rawName.includes('ALVARA') || rawName.includes('CONSTRU')) icone = 'fa-hard-hat text-warning';
                     if(rawName.includes('HABITE') || rawName.includes('DESMEMBRAMENTO')) icone = 'fa-home text-success';
@@ -302,9 +261,9 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
                     
                     html += `
                     <div class="col-md-3 col-sm-6">
-                        <div class="card h-100 template-card rounded-4 border-0 shadow-sm" onclick="selecionarTemplate('${t}', '${rawName}')">
+                        <div class="card h-100 template-card rounded-4 border-0 shadow-sm" onclick="selecionarTemplate('${fileKey}', '${rawName}')">
                             <div class="card-body text-center p-4">
-                                <div class="icon-placeholder">
+                                <div class="icon-placeholder bg-light">
                                     <i class="fas ${icone} fs-2"></i>
                                 </div>
                                 <h6 class="fw-bold text-dark lh-sm">${rawName}</h6>
@@ -318,6 +277,30 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
                 $('#lista-templates').html(html);
             } else {
                 $('#lista-templates').html('<div class="col-12 text-danger">Falha ao carregar os templates do sistema.</div>');
+            }
+
+            // Historico Recente (Para Aproveitamento de Texto)
+            if(ret.success && ret.historico_recente && ret.historico_recente.length > 0) {
+                let htmlHist = '';
+                ret.historico_recente.forEach(h => {
+                     let rawName = h.label || h.nome;
+                     let icone = h.origem == 'db' ? 'fa-file-edit text-primary' : 'fa-file-pdf text-danger';
+                     
+                     htmlHist += `
+                     <div class="col-md-3 col-sm-6">
+                        <div class="card h-100 template-card rounded-4 border-0 shadow-sm" style="border-left: 3px solid #1c4b36 !important;" onclick="selecionarTemplate('${h.id}', 'Cópia: ${rawName}')">
+                            <div class="card-body text-center p-3">
+                                <div class="icon-placeholder rounded-circle" style="width: 45px; height: 45px; background: #f8fafc;">
+                                    <i class="fas ${icone} fs-4"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark text-truncate" title="${rawName}">${rawName}</h6>
+                                <small class="text-muted d-block mb-1">Atualizado/Gerado em: <b>${h.data}</b></small>
+                                <small class="text-secondary"><i class="fas fa-copy me-1"></i> Usar como base</small>
+                            </div>
+                        </div>
+                     </div>`;
+                });
+                $('#lista-historico').html(htmlHist);
             }
         }, 'json').fail(function(){
             $('#lista-templates').html('<div class="col-12 text-danger">Falha na conexão com o servidor.</div>');
@@ -460,6 +443,4 @@ $titulo_pagina = 'Gerar Documento Oficial - Fluxo de Assinatura';
         });
     }
     </script>
-
-</body>
-</html>
+<?php include 'footer.php'; ?>
