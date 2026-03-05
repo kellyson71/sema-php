@@ -1,9 +1,13 @@
 <?php
-require_once 'includes/config.php';
-require_once 'includes/auth.php';
+require_once 'conexao.php';
+
+// Validar login (assumindo que conexao.php ou algo similar importe a função)
+if (function_exists('verificaLogin')) {
+    verificaLogin();
+}
 
 $page_title = 'Diretrizes de Assinatura';
-include 'includes/header.php';
+include 'header.php';
 ?>
 
 <div class="container-fluid py-4">
@@ -69,4 +73,4 @@ include 'includes/header.php';
     </div>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php include 'footer.php'; ?>

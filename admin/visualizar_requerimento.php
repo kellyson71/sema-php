@@ -1948,8 +1948,8 @@ $isBlocked = $isFinalized || $isIndeferido;
 </div>
 
 <!-- Modal de Geração de Parecer -->
-<div class="modal fade" id="parecerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
+<div class="modal fade" id="parecerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -1958,22 +1958,38 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body bg-light">
+            <div class="modal-body bg-light position-relative">
                 <!-- Etapa 1: Seleção de Template -->
-                <div id="etapa-selecao-template" class="container mt-4">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body">
-                            <label class="form-label fw-bold">Selecione o Template:</label>
-                            <select id="template-select" class="form-select form-select-lg mb-3"></select>
-                            <button type="button" class="btn btn-primary btn-lg w-100" onclick="carregarTemplateParaEdicao()">
-                                <i class="fas fa-file-import me-2"></i>Carregar Template
+                <div id="etapa-selecao-template" class="container-fluid py-2">
+                    <ul class="nav nav-tabs mb-4 px-2" id="templateTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold text-dark" id="recent-tab" data-bs-toggle="tab" data-bs-target="#recent-tab-pane" type="button" role="tab" aria-controls="recent-tab-pane" aria-selected="true" style="border-top: 3px solid #ffc107;">
+                                <i class="fas fa-clock text-warning me-2"></i>Histórico Recente / Rascunhos
                             </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold text-dark" id="modelos-tab" data-bs-toggle="tab" data-bs-target="#modelos-tab-pane" type="button" role="tab" aria-controls="modelos-tab-pane" aria-selected="false" style="border-top: 3px solid #0d6efd;">
+                                <i class="fas fa-file-alt text-primary me-2"></i>Modelos Padrão (Sem preenchimento)
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content px-2" id="templateTabsContent">
+                        <div class="tab-pane fade show active" id="recent-tab-pane" role="tabpanel" aria-labelledby="recent-tab" tabindex="0">
+                            <div id="container-historico" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                                <!-- Preenchido dinamicamente pelo JS -->
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="modelos-tab-pane" role="tabpanel" aria-labelledby="modelos-tab" tabindex="0">
+                            <div id="container-modelos" class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3">
+                                <!-- Preenchido dinamicamente pelo JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Etapa 2: Editor -->
-                <div id="etapa-editor" style="display:none;" class="h-100 d-flex flex-column">
+                <div id="etapa-editor" class="h-100 d-none flex-column">
                     <div class="alert alert-info mb-3 flex-shrink-0">
                         <i class="fas fa-lightbulb me-2"></i>
                         O template foi preenchido automaticamente. Revise e edite conforme necessário.
@@ -2006,15 +2022,15 @@ $isBlocked = $isFinalized || $isIndeferido;
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="alert alert-warning mb-4">
+                <div class="alert alert-warning mb-4 shadow-sm border-0 border-start border-warning border-4">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Atenção:</strong> Você está prestes a assinar de forma digital este documento. Esta ação possui validade legal e não pode ser desfeita.
+                    <strong>Atenção:</strong> Você está prestes a assinar de forma digital este documento. Verifique todas as informações na tela de edição antes de prosseguir.
                 </div>
                 
-                <div class="form-check mb-3 p-3 bg-light border rounded">
-                    <input class="form-check-input ms-1" type="checkbox" value="" id="checkTermosAssinatura" style="transform: scale(1.3); margin-top: 0.2rem;">
-                    <label class="form-check-label ms-3 fw-bold" for="checkTermosAssinatura">
-                        Li e concordo com as responsabilidades e implicações legais descritas nas <a href="diretrizes_assinatura.php" target="_blank" class="text-primary text-decoration-underline">Diretrizes de Assinatura</a>.
+                <div class="form-check mb-3 p-3 bg-white border border-secondary shadow-sm" style="border-radius: 8px;">
+                    <input class="form-check-input" type="checkbox" value="" id="checkTermosAssinatura" style="border: 2px solid #0d6efd; width: 1.25rem; height: 1.25rem; margin-top: 0.1rem; cursor: pointer;">
+                    <label class="form-check-label ms-2 text-dark" style="font-size: 0.95rem; cursor: pointer;" for="checkTermosAssinatura">
+                        Confirmo que verifiquei as informações do parecer e concordo sob as penas da lei com o seu teor, bem como com as <a href="diretrizes_assinatura.php" target="_blank" class="text-primary fw-bold text-decoration-underline">Diretrizes de Assinatura</a>.
                     </label>
                 </div>
                 <div class="text-center">
@@ -2694,40 +2710,73 @@ document.addEventListener('DOMContentLoaded', function() {
          })
          .then(res => res.json())
          .then(data => {
-             const select = document.getElementById('template-select');
-             select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
-
-             // 1. Histórico Recente (Unificado: DB + Arquivos)
-             if (data.historico_recente && data.historico_recente.length > 0) {
-                 const groupHistorico = document.createElement('optgroup');
-                 groupHistorico.label = "🕒 Histórico Recente";
-                 data.historico_recente.forEach(r => {
-                     const option = document.createElement('option');
-                     option.value = r.id; 
-                     option.textContent = r.label;
-                     groupHistorico.appendChild(option);
-                 });
-                 select.appendChild(groupHistorico);
+             // 1. Histórico Recente
+             const containerHistorico = document.getElementById('container-historico');
+             if (containerHistorico) {
+                 if (data.historico_recente && data.historico_recente.length > 0) {
+                     let htmlHistorico = '';
+                     data.historico_recente.forEach(r => {
+                         htmlHistorico += `
+                            <div class="col">
+                                <div class="card h-100 shadow-sm border-0 bg-white hover-shadow template-card" style="cursor: pointer; transition: transform 0.2s;" onclick="tentarCarregarTemplate('${r.id}')" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-primary fw-bold text-truncate" title="${r.label}">
+                                            <i class="fas fa-history me-2"></i>${r.label}
+                                        </h6>
+                                        <p class="card-text text-muted small mb-3">
+                                            <i class="fas fa-calendar-alt me-1"></i>${r.data}
+                                        </p>
+                                        <div class="bg-light p-2 rounded small text-secondary" style="font-size: 0.8rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; min-height: 48px;">
+                                            ${r.preview || 'Sem texto de pré-visualização...'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                         `;
+                     });
+                     containerHistorico.innerHTML = htmlHistorico;
+                 } else {
+                     containerHistorico.innerHTML = '<div class="col-12"><div class="alert alert-light text-center w-100"><i class="fas fa-info-circle me-2"></i>Nenhum histórico ou rascunho encontrado.</div></div>';
+                 }
              }
 
-             // 3. Modelos Padrão
-             const groupModelos = document.createElement('optgroup');
-             groupModelos.label = "📄 Modelos Padrão";
+             // 2. Modelos Padrão
+             const containerModelos = document.getElementById('container-modelos');
+             if (containerModelos) {
+                 const templates = data.templates_detalhados || data.templates || [];
+                 if (templates.length > 0) {
+                     let htmlModelos = '';
+                     templates.forEach(t => {
+                         const nome = typeof t === 'object' ? t.nome : t;
+                         const tipo = typeof t === 'object' ? t.tipo : 'docx';
+                         const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
+                         
+                         // Tratamento para ícone: se for rascunho em branco vs padrão html 
+                         let icone = '<i class="fas fa-file-alt text-secondary"></i>';
+                         if (nome === 'em_branco') {
+                             icone = '<i class="fas fa-file text-muted"></i>';
+                         } else if (tipo === 'html') {
+                             icone = '<i class="fas fa-file-code text-primary"></i>';
+                         } else if (tipo === 'docx') {
+                             icone = '<i class="fas fa-file-word text-info"></i>';
+                         }
 
-             const templates = data.templates_detalhados || data.templates;
-             templates.forEach(t => {
-                 const nome = typeof t === 'object' ? t.nome : t;
-                 const tipo = typeof t === 'object' ? t.tipo : 'docx';
-                 const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
-                 const tipoLabel = textoTipoTemplate(tipo);
-                 const icone = tipo === 'docx' ? '📝' : '📄';
-                 
-                 const option = document.createElement('option');
-                 option.value = nome;
-                 option.innerHTML = `${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}`;
-                 groupModelos.appendChild(option);
-             });
-             select.appendChild(groupModelos);
+                         htmlModelos += `
+                            <div class="col">
+                                <div class="card h-100 shadow-sm border-0 bg-white hover-shadow template-card" style="cursor: pointer; transition: transform 0.2s;" onclick="tentarCarregarTemplate('${nome}')" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center py-4">
+                                        <div class="display-5 mb-3">${icone}</div>
+                                        <h6 class="card-title fw-bold text-dark w-100 px-2" style="font-size: 0.95rem;">${rotulo}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                         `;
+                     });
+                     containerModelos.innerHTML = htmlModelos;
+                 } else {
+                     containerModelos.innerHTML = '<div class="col-12"><div class="alert alert-light text-center w-100"><i class="fas fa-info-circle me-2"></i>Nenhum modelo padrão carregado.</div></div>';
+                 }
+             }
          })
          .catch(error => {
              console.error('Erro ao carregar templates:', error);
@@ -2735,12 +2784,17 @@ document.addEventListener('DOMContentLoaded', function() {
          });
      }
 
+     function tentarCarregarTemplate(templateId) {
+         carregarTemplateParaEdicao(templateId);
+     }
 
-
-     function carregarTemplateParaEdicao() {
-         const template = document.getElementById('template-select').value;
+     function carregarTemplateParaEdicao(template = null) {
          if (!template) {
-             alert('Selecione um template');
+             template = document.getElementById('template-select') ? document.getElementById('template-select').value : null;
+         }
+         
+         if (!template) {
+             alert('Selecione ou clique em um template válido.');
              return;
          }
 
@@ -2756,8 +2810,15 @@ document.addEventListener('DOMContentLoaded', function() {
          .then(res => res.json())
          .then(data => {
              if (data.success) {
-                 document.getElementById('etapa-selecao-template').style.display = 'none';
-                 document.getElementById('etapa-editor').style.display = 'flex'; // Mudado para flex devido ao h-100 flex-column
+                 const etapaSel = document.getElementById('etapa-selecao-template');
+                 if (etapaSel) {
+                     etapaSel.classList.add('d-none');
+                 }
+                 const etapaEd = document.getElementById('etapa-editor');
+                 if (etapaEd) {
+                     etapaEd.classList.remove('d-none');
+                     etapaEd.classList.add('d-flex');
+                 }
                  document.getElementById('footer-editor').style.display = 'flex'; // Exibe o footer
 
                  // Extrair imagem de fundo do template original para uso posterior
@@ -3319,11 +3380,14 @@ document.addEventListener('DOMContentLoaded', function() {
      function resetarFluxoParecer(resetTemplate = false) {
          const etapaSelecao = document.getElementById('etapa-selecao-template');
          const etapaEditor = document.getElementById('etapa-editor');
-         const etapaPosicionamento = document.getElementById('etapa-posicionamento');
 
-         if (etapaSelecao) etapaSelecao.style.display = 'block';
-         if (etapaEditor) etapaEditor.style.display = 'none';
-         if (etapaPosicionamento) etapaPosicionamento.style.display = 'none';
+         if (etapaSelecao) {
+             etapaSelecao.classList.remove('d-none');
+         }
+         if (etapaEditor) {
+             etapaEditor.classList.add('d-none');
+             etapaEditor.classList.remove('d-flex');
+         }
 
          if (resetTemplate) {
              const select = document.getElementById('template-select');
