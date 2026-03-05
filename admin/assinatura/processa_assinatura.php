@@ -2,29 +2,18 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Debug para o usuário ver o progresso
-echo "DEBUG: Iniciando processa_assinatura.php...<br>";
-
-// WORKAROUND: Mudar o diretório de execução para a pasta 'admin' para que os requires
-// relativos de arquivos dependentes (como conexao.php) funcionem mesmo se o arquivo
-// conexao.php estiver antigo no servidor.
-echo "DEBUG: Alterando diretório de execução para /admin/...<br>";
-chdir(dirname(__DIR__));
-
-// Carregar conexão (agora o caminho '../' irá funcionar vindo direto da raiz do admin)
-echo "DEBUG: Carregando conexao.php...<br>";
-require_once 'conexao.php';
-echo "DEBUG: conexao.php carregado.<br>";
+// Conexão e Sessão (Caminhos Absolutos a partir da raiz)
+$rootDir = dirname(__DIR__, 2); // Raiz (sema-php)
+require_once $rootDir . '/includes/config.php';
+require_once dirname(__DIR__) . '/conexao.php'; // admin/conexao.php
 
 // Validar login
 if (function_exists('verificaLogin')) {
-    echo "DEBUG: Verificando login...<br>";
     verificaLogin();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conteudo = trim($_POST['conteudo_parecer'] ?? '');
-    // Recuperar o req_id vindo do POST
     $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 
     if (empty($conteudo)) {
@@ -33,13 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $admin_id = $_SESSION['admin_id'] ?? null;
     if (!$admin_id) {
-        die("ERRO: Sessão de administrador ausente.");
+        die("ERRO: Sessão expirada ou não encontrada.");
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT nome, nome_completo, cargo, cpf, matricula_portaria FROM administradores WHERE id = ?");
         $stmt->execute([$admin_id]);
-        $admin = $stmt->fetch();
+        $admin = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$admin) {
              die("ERRO: Administrador não encontrado no banco.");
@@ -50,16 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Preparar dados do assinante
     $assinante = [
-        'nome' => ($admin['nome_completo'] ?? $admin['nome'] ?? $_SESSION['admin_nome']),
-        'cargo' => ($admin['cargo'] ?? 'Administrador(a)'),
-        'data_hora' => date('d/m/Y H:i:s')
+        'nome' => ($admin['nome_completo'] ?: ($admin['nome'] ?: $_SESSION['admin_nome'])),
+        'cargo' => ($admin['cargo'] ?: 'Administrador(a)'),
+        'cpf' => ($admin['cpf'] ?? ''),
+        'matricula' => ($admin['matricula_portaria'] ?? ''),
+        'data_hora' => date('d/m/Y \à\s H:i:s')
     ];
 
     $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
-    // Carregar biblioteca de PDF da pasta assinatura (que agora é './assinatura/' do ponto de vista do admin)
-    echo "DEBUG: Chamando gerar_pdf.php de dentro da pasta assinatura/...<br>";
-    require_once 'assinatura/gerar_pdf.php';
+    // Requerer a classe TCPDF estendida
+    require_once __DIR__ . '/gerar_pdf.php';
     
     emitirParecerAssinado($conteudo, $assinante, $numero_processo);
     exit;
