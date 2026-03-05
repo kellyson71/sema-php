@@ -5,64 +5,65 @@ ini_set('display_errors', 1);
 // Debug para o usuário ver o progresso
 echo "DEBUG: Iniciando processa_assinatura.php...<br>";
 
-// Carregar conexão
-echo "DEBUG: Tentando carregar conexao.php...<br>";
-require_once '../conexao.php';
+// WORKAROUND: Mudar o diretório de execução para a pasta 'admin' para que os requires
+// relativos de arquivos dependentes (como conexao.php) funcionem mesmo se o arquivo
+// conexao.php estiver antigo no servidor.
+echo "DEBUG: Alterando diretório de execução para /admin/...<br>";
+chdir(dirname(__DIR__));
+
+// Carregar conexão (agora o caminho '../' irá funcionar vindo direto da raiz do admin)
+echo "DEBUG: Carregando conexao.php...<br>";
+require_once 'conexao.php';
 echo "DEBUG: conexao.php carregado.<br>";
 
 // Validar login
-echo "DEBUG: Verificando login...<br>";
-verificaLogin();
-echo "DEBUG: Login verificado.<br>";
+if (function_exists('verificaLogin')) {
+    echo "DEBUG: Verificando login...<br>";
+    verificaLogin();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    echo "DEBUG: Recebido POST.<br>";
     $conteudo = trim($_POST['conteudo_parecer'] ?? '');
+    // Recuperar o req_id vindo do POST
     $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 
     if (empty($conteudo)) {
         die("ERRO: O conteúdo do parecer não pode estar vazio.");
     }
 
-    echo "DEBUG: Buscando admin no banco...<br>";
-    $admin_id = $_SESSION['admin_id'];
-    
+    $admin_id = $_SESSION['admin_id'] ?? null;
+    if (!$admin_id) {
+        die("ERRO: Sessão de administrador ausente.");
+    }
+
     try {
-        // Tentar buscar as colunas desejadas, mas com fallback se falhar
         $stmt = $pdo->prepare("SELECT * FROM administradores WHERE id = ?");
         $stmt->execute([$admin_id]);
         $admin = $stmt->fetch();
         
         if (!$admin) {
-            die("ERRO: Administrador não encontrado no banco.");
+             die("ERRO: Administrador não encontrado no banco.");
         }
-        
-        echo "DEBUG: Admin encontrado. Identificado como: " . ($admin['nome'] ?? 'N/A') . "<br>";
     } catch (Exception $e) {
         die("ERRO SQL: " . $e->getMessage());
     }
 
-    // Preparar dados do assinante com fallbacks seguros
+    // Preparar dados do assinante
     $assinante = [
-        'nome' => ($admin['nome_completo'] ?? $admin['nome'] ?? $_SESSION['admin_nome'] ?? 'Assinante Desconhecido'),
+        'nome' => ($admin['nome_completo'] ?? $admin['nome'] ?? $_SESSION['admin_nome']),
         'cargo' => ($admin['cargo'] ?? 'Administrador(a)'),
         'data_hora' => date('d/m/Y H:i:s')
     ];
 
     $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
-    echo "DEBUG: Carregando gerar_pdf.php...<br>";
-    require_once 'gerar_pdf.php';
-    echo "DEBUG: gerar_pdf.php carregado.<br>";
+    // Carregar biblioteca de PDF da pasta assinatura (que agora é './assinatura/' do ponto de vista do admin)
+    echo "DEBUG: Chamando gerar_pdf.php de dentro da pasta assinatura/...<br>";
+    require_once 'assinatura/gerar_pdf.php';
     
-    echo "DEBUG: Chamando emitirParecerAssinado...<br>";
     emitirParecerAssinado($conteudo, $assinante, $numero_processo);
-    
-    // Se chegar aqui, algo deu errado pois o Output do PDF deveria ter encerrado o script
-    echo "DEBUG: Fim do script (PDF Output não interrompeu a execução).<br>";
     exit;
 } else {
-    echo "DEBUG: Não é POST. Redirecionando...<br>";
     header("Location: ../index.php");
     exit;
 }
