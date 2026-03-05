@@ -91,8 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     documento_id, requerimento_id, tipo_documento, nome_arquivo,
                     caminho_arquivo, hash_documento, assinante_id, assinante_nome,
                     assinante_cpf, assinante_cargo, tipo_assinatura, assinatura_visual,
-                    assinatura_criptografada, timestamp_assinatura, ip_assinante
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+                    assinatura_criptografada, timestamp_assinatura, ip_assinante,
+                    conteudo_html
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
             
             $stmt->execute([
@@ -109,8 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'digital_sema',
                 '{}',
                 hash('sha256', $documentoId . time() . $admin_id),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                $_SERVER['REMOTE_ADDR'] ?? null,
+                $conteudo  // HTML fonte para re-geração futura
             ]);
+
             
             // 4. Update Histórico de Protocolo
             $stmtHist = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");

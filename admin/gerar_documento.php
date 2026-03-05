@@ -184,9 +184,13 @@ include 'header.php';
             flex-shrink: 0;
         }
 
-        /* ═══════════════════════════════════════════════
-           EDITOR FULLSCREEN
-        ═══════════════════════════════════════════════ */
+        /* Ocultar imagem de fundo do template no editor — só usada na geração do PDF */
+        .note-editable #fundo-imagem,
+        .note-editable img[alt="Fundo A4"] {
+            display: none !important;
+        }
+
+        /* Editor fullscreen */
         #secao-editor {
             min-height: calc(100vh - var(--topbar-height, 60px) - 70px);
             background: #f8f9fa;

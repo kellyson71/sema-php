@@ -1766,182 +1766,184 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         </div>
                                          <?php else: ?>
-                         <!-- Ações normais para processos não finalizados -->
+                          <!-- Barra de Ações Modernas -->
+                          <div class="p-4">
+                              <p class="text-muted small mb-3 d-flex align-items-center gap-2">
+                                  <i class="fas fa-info-circle text-primary"></i>
+                                  Selecione a ação desejada para este processo:
+                              </p>
+                              <div class="d-flex flex-wrap gap-2">
 
-                         <div class="admin-actions-container">
-                            <!-- Atualizar Status -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="status-card" onclick="openCard('status-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('status-card')">
-                                    <i class="fas fa-edit text-primary"></i>
-                                    <h6>Atualizar Status</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-status-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-status-card">
-                                    <form method="post" action="">
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label for="status" class="form-label">Status</label>
-                                                <select class="form-select modern-select" id="status" name="status" required>
-                                                    <option value="Em análise" <?php echo $requerimento['status'] == 'Em análise' ? 'selected' : ''; ?>>Em análise</option>
-                                                    <option value="Aprovado" <?php echo $requerimento['status'] == 'Aprovado' ? 'selected' : ''; ?>>Aprovado</option>
-                                                    <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
-                                                    <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                                                    <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
-                                                    <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
-                                                    <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
-                                                    <option value="Apto a gerar alvará" <?php echo $requerimento['status'] == 'Apto a gerar alvará' ? 'selected' : ''; ?>>Apto a gerar alvará</option>
-                                                    <option value="Alvará Emitido" <?php echo $requerimento['status'] == 'Alvará Emitido' ? 'selected' : ''; ?>>Alvará Emitido</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="observacoes" class="form-label">Observações</label>
-                                                <textarea class="form-control modern-textarea" id="observacoes" name="observacoes" rows="3"
-                                                    placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?></textarea>
-                                            </div>
-                                        </div>
-                                        <div class="mt-3">
-                                            <button type="submit" class="btn-action btn-action-primary">
-                                                <i class="fas fa-save me-2"></i>Salvar Alterações
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-primary fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
+                                      <i class="fas fa-edit me-2"></i>Atualizar Status
+                                  </button>
 
-                                                        <!-- Conclusão do Processo -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="finalizacao-card" onclick="openCard('finalizacao-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('finalizacao-card')">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <h6>Finalização do Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-finalizacao-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-finalizacao-card">
-                                    <div class="action-description mb-3">
-                                        <i class="fas fa-info-circle text-info me-2"></i>
-                                        <small class="text-muted">Finalize o processo enviando o protocolo oficial para o requerente</small>
-                                    </div>
-                                    <div class="alert alert-info alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #e3f2fd; border: 1px solid #bbdefb; color: #1976d2; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        <strong>Atenção:</strong> Ao enviar o email, o status será automaticamente alterado para "Finalizado".
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
-                                            <label for="protocolo_oficial" class="form-label">Protocolo Oficial da Prefeitura</label>
-                                            <input type="text" class="form-control modern-input" id="protocolo_oficial" name="protocolo_oficial"
-                                                placeholder="Ex: 2025001234-SEMA" required>
-                                        </div>
-                                        <div class="col-md-4 d-flex align-items-end">
-                                            <button type="button" class="btn-action btn-action-success w-100"
-                                                onclick="showProtocolConfirmModal()">
-                                                <i class="fas fa-paper-plane me-2"></i>Enviar Protocolo Oficial
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-success fw-medium"
+                                      onclick="abrirFinalizacaoModal()">
+                                      <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
+                                  </button>
 
-                                                        <!-- Indeferimento do Processo -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="indeferimento-card" onclick="openCard('indeferimento-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('indeferimento-card')">
-                                    <i class="fas fa-times-circle text-danger"></i>
-                                    <h6>Indeferir Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-indeferimento-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-indeferimento-card">
-                                    <div class="action-description mb-3" style="border-left-color: var(--red-600);">
-                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
-                                        <small class="text-muted">Negue o requerimento informando os motivos detalhados</small>
-                                    </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento.
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label for="motivo_indeferimento" class="form-label">Motivo do Indeferimento</label>
-                                            <textarea class="form-control modern-textarea" id="motivo_indeferimento" name="motivo_indeferimento" rows="3"
-                                                placeholder="Descreva detalhadamente o motivo do indeferimento..." required></textarea>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="orientacoes_adicionais" class="form-label">Orientações Adicionais <small class="text-muted">(opcional)</small></label>
-                                            <textarea class="form-control modern-textarea" id="orientacoes_adicionais" name="orientacoes_adicionais" rows="3"
-                                                placeholder="Orientações para correção ou reenvio do processo..."></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="mt-3">
-                                        <button type="button" class="btn-action btn-action-danger"
-                                            onclick="showIndeferimentoModal()">
-                                            <i class="fas fa-times me-2"></i>Indeferir Processo
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-danger fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#indeferirInputModal">
+                                      <i class="fas fa-times-circle me-2"></i>Indeferir Processo
+                                  </button>
 
-                                                        <!-- Card de Arquivamento -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="arquivamento-card" onclick="openCard('arquivamento-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('arquivamento-card')">
-                                    <i class="fas fa-archive text-secondary"></i>
-                                    <h6>Arquivar Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-arquivamento-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-arquivamento-card">
-                                    <div class="action-description mb-3" style="border-left-color: var(--gray-400);">
-                                        <i class="fas fa-info-circle text-secondary me-2"></i>
-                                        <small class="text-muted">Remove o processo da lista principal sem deletar permanentemente</small>
-                                    </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        <strong>Atenção:</strong> O processo será movido para arquivo e ficará oculto da lista principal.
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
-                                            <label for="motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
-                                            <textarea class="form-control modern-textarea" id="motivo_arquivamento" name="motivo_arquivamento" rows="3"
-                                                placeholder="Descreva o motivo do arquivamento..." required></textarea>
-                                        </div>
-                                        <div class="col-md-4 d-flex align-items-end">
-                                            <button type="button" class="btn-action" style="background: var(--gray-600); color: white;"
-                                                onclick="showArquivarModal()">
-                                                <i class="fas fa-archive me-2"></i>Arquivar Processo
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-secondary fw-medium"
+                                      onclick="showArquivarModal()">
+                                      <i class="fas fa-archive me-2"></i>Arquivar
+                                  </button>
 
-                            <!-- Card de Gerar Parecer Técnico -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="parecer-card" onclick="openCard('parecer-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('parecer-card')">
-                                    <i class="fas fa-file-contract text-info"></i>
-                                    <h6>Gerar Documento (Parecer/Licença)</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-parecer-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-parecer-card">
-                                    <div class="action-description mb-3">
-                                        <i class="fas fa-info-circle text-info me-2"></i>
-                                        <small class="text-muted">Gere documentos técnicos preenchidos automaticamente com os dados do requerimento no <b>Novo Editor Tela Cheia</b>.</small>
-                                    </div>
+                                  <a href="gerar_documento.php?requerimento_id=<?= $id ?>"
+                                      class="btn fw-medium text-white"
+                                      style="background: var(--primary-600);">
+                                      <i class="fas fa-file-signature me-2"></i>Gerar Documento
+                                      <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
+                                  </a>
+                              </div>
+                          </div>
+                          <!-- Pareceres já gerados -->
+                          <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
+                      <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                                    <button type="button" class="btn-action btn-action-primary" onclick="window.location.href='gerar_documento.php?requerimento_id=<?= $id ?>'">
-                                        <i class="fas fa-external-link-alt me-2"></i>Acessar Estúdio de Edição
-                                    </button>
+<!-- ══════════════════════════════════════════════════
+     MODAIS DE AÇÕES ADMINISTRATIVAS
+══════════════════════════════════════════════════ -->
 
-                                    <!-- Lista Simplificada de Documentos Anteriores via ViewPort -->
-                                    <div id="pareceres-existentes-list" class="mt-3"></div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+<!-- Modal: Atualizar Status -->
+<div class="modal fade" id="atualizarStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-edit text-primary me-2"></i>Atualizar Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Status atual:</small>
+                        <span class="badge px-3 py-2 fw-semibold"
+                              style="background:#f0fdf4; color:var(--primary-600); border:1px solid #bbf7d0;">
+                            <?= htmlspecialchars($requerimento['status']) ?>
+                        </span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal_status" class="form-label fw-semibold">Novo Status</label>
+                        <select class="form-select" id="modal_status" name="status" required>
+                            <option value="Em análise" <?= $requerimento['status']=='Em análise'?'selected':'' ?>>Em análise</option>
+                            <option value="Aprovado"   <?= $requerimento['status']=='Aprovado'  ?'selected':'' ?>>Aprovado</option>
+                            <option value="Reprovado"  <?= $requerimento['status']=='Reprovado' ?'selected':'' ?>>Reprovado</option>
+                            <option value="Pendente"   <?= $requerimento['status']=='Pendente'  ?'selected':'' ?>>Pendente</option>
+                            <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
+                            <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
+                            <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
+                            <option value="Apto a gerar alvará" <?= $requerimento['status']=='Apto a gerar alvará'?'selected':'' ?>>Apto a gerar alvará</option>
+                            <option value="Alvará Emitido"      <?= $requerimento['status']=='Alvará Emitido'    ?'selected':'' ?>>Alvará Emitido</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modal_obs" class="form-label fw-semibold">
+                            Observação <small class="fw-normal text-muted">(opcional)</small>
+                        </label>
+                        <textarea class="form-control" id="modal_obs" name="observacoes" rows="3"
+                            placeholder="Justificativa ou feedback para o requerente..."><?= htmlspecialchars($requerimento['observacoes']??'') ?></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="fas fa-save me-2"></i>Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Indeferir (coleta de dados) -->
+<div class="modal fade" id="indeferirInputModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="fas fa-times-circle me-2"></i>Indeferir Processo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning d-flex gap-2 mb-3">
+                    <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
+                    <div>
+                        O requerente <strong><?= htmlspecialchars($requerimento['requerente_nome']) ?></strong>
+                        será notificado por email sobre o indeferimento do processo
+                        <strong>#<?= $requerimento['protocolo'] ?></strong>.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="motivo_indeferimento" class="form-label fw-semibold">
+                        Motivo <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control" id="motivo_indeferimento" rows="4"
+                        placeholder="Descreva os motivos..." required></textarea>
+                </div>
+                <div>
+                    <label for="orientacoes_adicionais" class="form-label fw-semibold">
+                        Orientações Adicionais <small class="fw-normal text-muted">(opcional)</small>
+                    </label>
+                    <textarea class="form-control" id="orientacoes_adicionais" rows="3"
+                        placeholder="Orientações para correção ou reenvio..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewIndeferimentoEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+                    </button>
+                    <button type="button" class="btn btn-danger fw-semibold" onclick="showIndeferimentoModal()">
+                        <i class="fas fa-times me-2"></i>Indeferir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Finalização (protocolo oficial) -->
+<div class="modal fade" id="finalizacaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-success">
+                    <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info d-flex gap-2 mb-3">
+                    <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+                    <small>Ao enviar o email, o status será alterado automaticamente para <strong>Finalizado</strong>.</small>
+                </div>
+                <label for="protocolo_oficial" class="form-label fw-semibold">Protocolo Oficial da Prefeitura</label>
+                <input type="text" class="form-control form-control-lg" id="protocolo_oficial"
+                    placeholder="Ex: 2025001234-SEMA">
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewProtocolEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+                    </button>
+                    <button type="button" class="btn btn-success fw-semibold" onclick="showProtocolConfirmModal()">
+                        <i class="fas fa-paper-plane me-2"></i>Confirmar Envio
+                    </button>
                 </div>
             </div>
         </div>
@@ -2275,15 +2277,13 @@ $isBlocked = $isFinalized || $isIndeferido;
 
     // Função para mostrar modal de arquivamento
     function showArquivarModal() {
-        const motivoInput = document.getElementById('motivo_arquivamento');
-        const motivoValue = motivoInput ? motivoInput.value.trim() : '';
-
-        // Se há um motivo preenchido no formulário, usar ele no modal
-        if (motivoValue) {
-            document.getElementById('modal_motivo_arquivamento').value = motivoValue;
-        }
-
         const modal = new bootstrap.Modal(document.getElementById('arquivarModal'));
+        modal.show();
+    }
+
+    // Abre modal de finalização / protocolo oficial
+    function abrirFinalizacaoModal() {
+        const modal = new bootstrap.Modal(document.getElementById('finalizacaoModal'));
         modal.show();
     }
 
@@ -2450,47 +2450,7 @@ $isBlocked = $isFinalized || $isIndeferido;
         modal.show();
     }
 
-    // Função para abrir o card (clique em qualquer lugar)
-    function openCard(cardId) {
-        const card = document.querySelector(`[data-card-id="${cardId}"]`);
-        const content = document.getElementById(`content-${cardId}`);
-        const icon = document.getElementById(`icon-${cardId}`);
-
-        // Só abre se estiver fechado
-        if (card.classList.contains('collapsed')) {
-            card.classList.remove('collapsed');
-            content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(0deg)';
-        }
-    }
-
-    // Função para alternar o colapso dos cards (apenas no cabeçalho)
-    function toggleCard(cardId) {
-        const card = document.querySelector(`[data-card-id="${cardId}"]`);
-        const content = document.getElementById(`content-${cardId}`);
-        const icon = document.getElementById(`icon-${cardId}`);
-
-        if (card.classList.contains('collapsed')) {
-            // Expandir
-            card.classList.remove('collapsed');
-            content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(0deg)';
-        } else {
-            // Recolher
-            card.classList.add('collapsed');
-            content.style.maxHeight = '0';
-            icon.style.transform = 'rotate(-90deg)';
-        }
-    }
-
-         // Inicializar cards colapsados por padrão
      document.addEventListener('DOMContentLoaded', function() {
-         const cards = document.querySelectorAll('.collapsible-card');
-         cards.forEach(card => {
-             card.classList.add('collapsed');
-         });
-
-         // Carregar pareceres existentes automaticamente
          carregarPareceresExistentes();
      });
 
@@ -2553,6 +2513,59 @@ $isBlocked = $isFinalized || $isIndeferido;
      }
 
      function carregarPareceresDocumentos(pareceres) {
+         const listaDocumentos = document.getElementById('pareceres-documentos-list');
+         const pareceresSection = document.getElementById('pareceres-section');
+
+         if (pareceres.length === 0) {
+             pareceresSection.style.display = 'none';
+             return;
+         }
+
+         pareceresSection.style.display = 'block';
+         let html = '';
+         pareceres.forEach(p => {
+             const { iconClass, iconColor } = obterIconeParecer(p.tipo);
+             const nomeLimpo = formatarNomeParecer(p.nome);
+             const seloTipo = gerarSeloTipoParecer(p.tipo);
+             const downloadUrl = p.documento_id
+                 ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}`
+                 : `../uploads/pareceres/<?= $id ?>/${p.arquivo}`;
+             const viewerUrl = p.documento_id
+                 ? `parecer_viewer.php?id=${p.documento_id}`
+                 : `../uploads/pareceres/<?= $id ?>/${p.arquivo}`;
+             html += `
+                 <div class="data-row">
+                     <div class="data-label" style="min-width:40px">
+                         <i class="fas ${iconClass}" style="color:${iconColor}; font-size:20px"></i>
+                     </div>
+                     <div class="data-value">
+                         <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                             <span>${nomeLimpo}</span>
+                             ${seloTipo}
+                         </div>
+                         <div class="text-muted small">
+                             ${p.data}
+                             ${ p.assinante ? `&bull; <i class="fas fa-user-check text-primary me-1"></i><span class="text-primary">${p.assinante}</span>` : '' }
+                         </div>
+                     </div>
+                     <div class="data-actions">
+                         <a href="${viewerUrl}" class="copy-btn me-1" target="_blank" title="Visualizar">
+                             <i class="fas fa-eye"></i>
+                         </a>
+                         <a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF">
+                             <i class="fas fa-download"></i>
+                         </a>
+                         <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir" style="color:#dc2626">
+                             <i class="fas fa-trash"></i>
+                         </button>
+                     </div>
+                 </div>
+             `;
+         });
+         listaDocumentos.innerHTML = html;
+     }
+
+     function _REMOVIDO_carregarPareceresDocumentos_OLD(pareceres) {
          const listaDocumentos = document.getElementById('pareceres-documentos-list');
          const pareceresSection = document.getElementById('pareceres-section');
 
