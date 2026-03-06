@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<!--?xml encoding="utf-8" ?--><html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        line-height: 1.5;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 140px;
+        left: 70px;
+        width: calc(100% - 140px);
+        z-index: 2;
+        text-align: justify;
+      }
+      .titulo-ai {
+        font-size: 15pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        letter-spacing: 1px;
+      }
+      .numero-ai {
+        font-size: 11pt;
+        text-align: center;
+        margin-bottom: 4px;
+      }
+      .subtitulo-ai {
+        font-size: 10pt;
+        text-align: center;
+        margin-bottom: 18px;
+        font-style: italic;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        text-transform: uppercase;
+        background-color: #f0f0f0;
+        padding: 5px 8px;
+        margin-top: 12px;
+        margin-bottom: 8px;
+        font-size: 10pt;
+        border: 1px solid #ccc;
+      }
+      .tabela-dados {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 10.5pt;
+      }
+      .tabela-dados td {
+        padding: 4px 6px;
+        border: 1px solid #ccc;
+        vertical-align: top;
+      }
+      .tabela-dados .label {
+        font-weight: bold;
+        background-color: #f9f9f9;
+        width: 35%;
+      }
+      .texto-ai {
+        margin-bottom: 14px;
+        font-size: 10.5pt;
+        line-height: 1.6;
+      }
+      .texto-ai p {
+        margin-bottom: 12px;
+        text-indent: 2cm;
+      }
+      .dispositivo-legal {
+        border-left: 3px solid #000;
+        padding: 8px 12px;
+        margin: 12px 0;
+        background-color: #f9f9f9;
+        font-size: 10.5pt;
+        font-style: italic;
+      }
+      .penalidades-box {
+        border: 2px solid #000;
+        padding: 10px 14px;
+        margin: 14px 0;
+        background-color: #fff3f3;
+        font-size: 10.5pt;
+      }
+      .penalidades-box strong {
+        font-size: 11pt;
+      }
+      .ciencia-box {
+        border: 1px solid #000;
+        padding: 10px 14px;
+        margin: 14px 0;
+        font-size: 10pt;
+      }
+      .data-local {
+        margin-top: 20px;
+        text-align: right;
+        font-size: 11pt;
+      }
+      .assinaturas {
+        margin-top: 30px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .assinatura-esquerda {
+        width: 45%;
+        text-align: center;
+      }
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 5px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        font-size: 10pt;
+        text-transform: uppercase;
+      }
+      .cargo-assinante {
+        font-size: 9.5pt;
+        display: block;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4">
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo-ai">Auto de Infração</div>
+        <div class="numero-ai"><strong>Nº {{numero_documento_ano}}/{{ano_atual}} – Protocolo: {{protocolo}}</strong></div>
+        <div class="subtitulo-ai">
+          Secretaria Municipal de Meio Ambiente (SEMA) – Fiscalização de Serviços Urbanos<br>
+          Pau dos Ferros/RN
+        </div>
+
+        <div class="secao-titulo">1. Identificação do Autuado</div>
+        <table class="tabela-dados">
+          <tr>
+            <td class="label">Nome/Razão Social</td>
+            <td colspan="3">{{nome_interessado}}</td>
+          </tr>
+          <tr>
+            <td class="label">CPF/CNPJ</td>
+            <td>{{cpf_interessado}}</td>
+            <td class="label">Telefone</td>
+            <td>{{telefone_requerente}}</td>
+          </tr>
+          <tr>
+            <td class="label">Endereço da Infração</td>
+            <td colspan="3">{{endereco_objetivo}}</td>
+          </tr>
+          <tr>
+            <td class="label">Data da Constatação</td>
+            <td>{{data_atual}}</td>
+            <td class="label">Protocolo</td>
+            <td>{{protocolo}}</td>
+          </tr>
+        </table>
+
+        <div class="secao-titulo">2. Descrição da Infração</div>
+        <div class="texto-ai">
+          <p>
+            O(A) Fiscal de Serviços Urbanos abaixo assinado(a), no exercício regular de suas atribuições, constatou que o(a) autuado(a) <strong>{{nome_interessado}}</strong>, inscrito(a) no CPF/CNPJ sob o nº <strong>{{cpf_interessado}}</strong>, no imóvel/estabelecimento situado em <strong>{{endereco_objetivo}}</strong>, cometeu a seguinte infração:
+          </p>
+          <p>
+            <strong>Infração constatada:</strong> {{especificacao}}
+          </p>
+          <p>
+            A situação acima descrita constitui infração às normas do ordenamento urbano municipal, conforme legislação aplicável ao Município de Pau dos Ferros/RN.
+          </p>
+        </div>
+
+        <div class="secao-titulo">3. Fundamento Legal</div>
+        <div class="dispositivo-legal">
+          A presente autuação tem fundamento nas seguintes normas: Código de Obras e Posturas do Município de Pau dos Ferros/RN; Lei Municipal nº 017/2022 (Plano Diretor); demais normas municipais aplicáveis. {{observacoes}}
+        </div>
+
+        <div class="secao-titulo">4. Penalidades Aplicáveis</div>
+        <div class="penalidades-box">
+          <strong>O(A) autuado(a) fica sujeito(a) às seguintes penalidades:</strong><br><br>
+          ☐ Advertência<br>
+          ☐ Multa no valor de R$ _____________ (______________________________)<br>
+          ☐ Embargo da obra/atividade<br>
+          ☐ Demolição das obras irregulares<br>
+          ☐ Cassação de licença ou alvará<br><br>
+          <strong>Prazo para regularização / recurso administrativo: ___ (___) dias a partir desta data.</strong>
+        </div>
+
+        <div class="texto-ai">
+          <p>
+            O(A) autuado(a) poderá apresentar defesa ou recurso administrativo no prazo de 20 (vinte) dias úteis, contados do recebimento deste Auto de Infração, junto à Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN.
+          </p>
+        </div>
+
+        <div class="ciencia-box">
+          <strong>CIÊNCIA DO AUTUADO:</strong><br><br>
+          Declaro ter tomado ciência do presente Auto de Infração nesta data.<br><br>
+          Assinatura do autuado(a): __________________________________________________<br>
+          Data: ___/___/________ &nbsp;&nbsp;&nbsp; Hora: ________
+        </div>
+
+        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}.</div>
+
+        <div class="assinaturas">
+          <div class="assinatura-esquerda">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <span class="cargo-assinante">{{admin_cargo}}</span>
+              <span class="cargo-assinante">Fiscal de Serviços Urbanos – SEMA</span>
+              <span class="cargo-assinante">Matrícula/Portaria: {{admin_matricula_portaria}}</span>
+            </div>
+          </div>
+          <div class="assinatura-esquerda">
+            <div class="linha-assinatura">
+              <div class="nome-assinante"> </div>
+              <span class="cargo-assinante">Chefe da Fiscalização / Secretário(a)</span>
+              <span class="cargo-assinante">SEMA – Pau dos Ferros/RN</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      
+    </div>
+  </body>
+</html>

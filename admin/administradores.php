@@ -197,8 +197,25 @@ include 'header.php';
                             </td>
                             <td><?php echo htmlspecialchars($admin['email']); ?></td>
                             <td>
-                                <span class="badge <?php echo $admin['nivel'] === 'admin' ? 'bg-danger' : 'bg-info'; ?>">
-                                    <?php echo $admin['nivel'] === 'admin' ? 'Administrador' : 'Operador'; ?>
+                                <span class="badge <?php
+                                    $cor = match($admin['nivel']) {
+                                        'admin' => 'bg-danger',
+                                        'secretario' => 'bg-dark',
+                                        'fiscal' => 'bg-success',
+                                        'analista' => 'bg-primary',
+                                        default => 'bg-info'
+                                    };
+                                    echo $cor;
+                                ?>">
+                                    <?php
+                                    echo match($admin['nivel']) {
+                                        'admin' => 'Administrador',
+                                        'secretario' => 'Secretário(a)',
+                                        'fiscal' => 'Fiscal de Serviços Urbanos',
+                                        'analista' => 'Analista',
+                                        default => 'Operador'
+                                    };
+                                    ?>
                                 </span>
                             </td>
                             <td>
@@ -278,6 +295,9 @@ include 'header.php';
                         <label for="nivel" class="form-label">Nível</label>
                         <select class="form-select" id="admin_nivel" name="nivel">
                             <option value="operador">Operador</option>
+                            <option value="analista">Analista</option>
+                            <option value="fiscal">Fiscal de Serviços Urbanos</option>
+                            <option value="secretario">Secretário(a)</option>
                             <option value="admin">Administrador</option>
                         </select>
                     </div>
