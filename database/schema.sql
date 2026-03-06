@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS administradores (
     nome VARCHAR(255) NOT NULL,
     email VARCHAR(191) NOT NULL UNIQUE,
     senha VARCHAR(191) NOT NULL,
-    nivel ENUM('admin', 'operador') DEFAULT 'operador',
+    nivel ENUM('admin', 'operador', 'analista', 'fiscal', 'secretario') DEFAULT 'operador',
     ativo BOOLEAN DEFAULT TRUE,
     ultimo_acesso TIMESTAMP NULL,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP

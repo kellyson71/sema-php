@@ -751,7 +751,10 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                             <span class="user-role">
                                 <?php 
                                 if ($_SESSION['admin_nivel'] === 'admin') echo 'Administrador';
+                                elseif ($_SESSION['admin_nivel'] === 'admin_geral') echo 'Administrador Geral';
                                 elseif ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br') echo 'Secretário(a)';
+                                elseif ($_SESSION['admin_nivel'] === 'fiscal') echo 'Fiscal de Serviços Urbanos';
+                                elseif ($_SESSION['admin_nivel'] === 'analista') echo 'Analista';
                                 else echo 'Operador'; 
                                 ?>
                             </span>

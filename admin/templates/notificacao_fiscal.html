@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<!--?xml encoding="utf-8" ?--><html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+      }
+      #documento {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        background: white;
+      }
+      #fundo-imagem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      #conteudo {
+        position: absolute;
+        top: 150px;
+        left: 80px;
+        width: calc(100% - 160px);
+        z-index: 2;
+        text-align: justify;
+      }
+      .titulo {
+        font-size: 15pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        letter-spacing: 1px;
+      }
+      .subtitulo {
+        font-size: 11pt;
+        text-align: center;
+        margin-bottom: 24px;
+        font-style: italic;
+      }
+      .dados-notificado {
+        margin-bottom: 24px;
+        line-height: 1.8;
+        border: 1px solid #ccc;
+        padding: 10px 14px;
+        background-color: #fafafa;
+      }
+      .dados-notificado .linha {
+        margin-bottom: 4px;
+      }
+      .dados-notificado .label {
+        font-weight: bold;
+      }
+      .secao-titulo {
+        font-weight: bold;
+        margin: 20px 0 12px 0;
+        text-transform: uppercase;
+      }
+      .texto-notificacao {
+        margin-bottom: 20px;
+      }
+      .texto-notificacao p {
+        margin-bottom: 16px;
+        text-indent: 2.5cm;
+        line-height: 1.7;
+      }
+      .prazo-box {
+        border: 2px solid #000;
+        padding: 10px 14px;
+        margin: 20px 0;
+        background-color: #fff8e1;
+      }
+      .prazo-box strong {
+        font-size: 12pt;
+      }
+      .data-local {
+        margin-top: 40px;
+        margin-bottom: 40px;
+        text-align: right;
+        font-weight: normal;
+      }
+      .assinaturas {
+        margin-top: 50px;
+        display: flex;
+        justify-content: center;
+      }
+      .assinatura-bloco-central {
+        width: 60%;
+        text-align: center;
+      }
+      .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 8px;
+      }
+      .nome-assinante {
+        font-weight: bold;
+        font-size: 11pt;
+        text-transform: uppercase;
+      }
+      .cargo-assinante {
+        font-size: 10pt;
+        display: block;
+      }
+      #area-assinatura {
+        position: absolute;
+        z-index: 3;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="documento">
+      <img id="fundo-imagem" src="images/image1.png" alt="Fundo A4">
+      <div id="conteudo" contenteditable="true">
+        <div class="titulo">
+          Notificação de Fiscalização de Serviços Urbanos<br>
+          <span style="font-size: 12pt; font-weight: normal;">Nº {{numero_documento_ano}}/{{ano_atual}} – Protocolo: {{protocolo}}</span>
+        </div>
+
+        <div class="dados-notificado">
+          <div class="linha"><span class="label">Notificado(a):</span> {{nome_interessado}}</div>
+          <div class="linha"><span class="label">CPF/CNPJ:</span> {{cpf_interessado}}</div>
+          <div class="linha"><span class="label">Endereço do Imóvel/Estabelecimento:</span> {{endereco_objetivo}}</div>
+          <div class="linha"><span class="label">Telefone:</span> {{telefone_requerente}}</div>
+        </div>
+
+        <div class="secao-titulo">I – Da Identificação</div>
+        <div class="texto-notificacao">
+          <p>
+            A Secretaria Municipal de Meio Ambiente (SEMA) do Município de Pau dos Ferros/RN, por meio da Fiscalização de Serviços Urbanos, vem, por intermédio desta Notificação, comunicar ao(à) Sr.(a) <strong>{{nome_interessado}}</strong>, inscrito(a) no CPF/CNPJ sob o nº <strong>{{cpf_interessado}}</strong>, proprietário(a) do imóvel/estabelecimento situado em <strong>{{endereco_objetivo}}</strong>, sobre o que segue.
+          </p>
+        </div>
+
+        <div class="secao-titulo">II – Do Objeto da Notificação</div>
+        <div class="texto-notificacao">
+          <p>
+            Em vistoria realizada nesta data, a fiscalização constatou a seguinte situação: {{especificacao}}
+          </p>
+          <p>
+            A situação acima descrita está em desacordo com a legislação municipal vigente, especialmente no que diz respeito às normas de uso e ocupação do solo, ordenamento urbano e ao Código de Obras e Posturas do Município de Pau dos Ferros/RN.
+          </p>
+        </div>
+
+        <div class="secao-titulo">III – Das Exigências</div>
+        <div class="texto-notificacao">
+          <p>
+            Fica o(a) notificado(a) <strong>INTIMADO(A)</strong> a providenciar a regularização da situação acima descrita, adotando as medidas cabíveis para adequação às normas legais aplicáveis.
+          </p>
+        </div>
+
+        <div class="prazo-box">
+          <strong>PRAZO PARA REGULARIZAÇÃO: ___ (___) dias corridos a partir do recebimento desta Notificação.</strong><br>
+          O não cumprimento das exigências no prazo estipulado sujeitará o(a) notificado(a) às penalidades previstas em lei, incluindo embargo, multa e outras sanções administrativas cabíveis.
+        </div>
+
+        <div class="texto-notificacao">
+          <p>
+            Informamos que qualquer impugnação a esta Notificação deverá ser apresentada por escrito, no prazo de 05 (cinco) dias úteis, diretamente à Secretaria Municipal de Meio Ambiente, situada na sede da Prefeitura Municipal de Pau dos Ferros/RN.
+          </p>
+        </div>
+
+        <div class="data-local">Pau dos Ferros/RN, {{data_atual}}.</div>
+
+        <div class="assinaturas">
+          <div class="assinatura-bloco-central">
+            <div class="linha-assinatura">
+              <div class="nome-assinante">{{admin_nome_completo}}</div>
+              <span class="cargo-assinante">{{admin_cargo}}</span>
+              <span class="cargo-assinante">Fiscalização de Serviços Urbanos – SEMA</span>
+              <span class="cargo-assinante">Matrícula/Portaria: {{admin_matricula_portaria}}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      
+    </div>
+  </body>
+</html>
