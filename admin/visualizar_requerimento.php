@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                 $requerimento['requerente_email'],
                 $requerimento['requerente_nome'],
                 $requerimento['protocolo'],
-                $requerimento['tipo_alvara'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
                 $motivoIndeferimento,
                 $orientacoesAdicionais
             );
@@ -336,6 +336,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     } catch (PDOException $e) {
         $pdo->rollBack();
         $mensagem = "Erro ao atualizar status: " . $e->getMessage();
+        $mensagemTipo = "danger";
+    }
+}
+
+// Processar envio para fiscalizacao
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_fiscalizacao'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Fiscalização', data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Enviou processo para Fiscalização de Obras"]);
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+        $mensagem = "✅ Processo enviado para fiscalização de obras com sucesso!";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
+        $mensagemTipo = "danger";
+    }
+}
+
+// Processar envio para secretario
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Apto a gerar alvará', data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Concluiu a vistoria técnica e enviou para o Secretário"]);
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+        $mensagem = "✅ Processo enviado para assinatura do Secretário com sucesso!";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
         $mensagemTipo = "danger";
     }
 }
@@ -1625,18 +1657,6 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
             </div>
 
-            <!-- Pareceres Técnicos -->
-            <div class="modern-card mb-3" id="pareceres-section" style="display:none;">
-                <div class="modern-card-header">
-                    <i class="fas fa-file-contract icon"></i>
-                    <h6>Pareceres Técnicos (Assinados Digitalmente)</h6>
-                </div>
-                <div class="card-body p-0" id="pareceres-documentos-list">
-                    <!-- Pareceres serão carregados aqui -->
-                </div>
-            </div>
-            
-
         </div>
 
         <!-- Aba: Histórico -->
@@ -1766,279 +1786,206 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         </div>
                                          <?php else: ?>
-                         <!-- Ações normais para processos não finalizados -->
+                          <!-- Barra de Ações Modernas -->
+                          <div class="p-4">
+                              <p class="text-muted small mb-3 d-flex align-items-center gap-2">
+                                  <i class="fas fa-info-circle text-primary"></i>
+                                  Selecione a ação desejada para este processo:
+                              </p>
+                              
+                              <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
+                              <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                                  <!-- Botão envio analista -> fiscal -->
+                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
+                                      <form method="post" action="" style="display: inline;">
+                                          <button type="submit" name="enviar_fiscalizacao" class="btn fw-medium text-white shadow-sm" style="background:#0284c7;" onclick="return confirm('Confirmar envio para a Fiscalização de Obras?')">
+                                              <i class="fas fa-hard-hat me-2"></i>Enviar p/ Fiscalização de Obras
+                                          </button>
+                                      </form>
+                                  <?php endif; ?>
 
-                         <div class="admin-actions-container">
-                            <!-- Atualizar Status -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="status-card" onclick="openCard('status-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('status-card')">
-                                    <i class="fas fa-edit text-primary"></i>
-                                    <h6>Atualizar Status</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-status-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-status-card">
-                                    <form method="post" action="">
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label for="status" class="form-label">Status</label>
-                                                <select class="form-select modern-select" id="status" name="status" required>
-                                                    <option value="Em análise" <?php echo $requerimento['status'] == 'Em análise' ? 'selected' : ''; ?>>Em análise</option>
-                                                    <option value="Aprovado" <?php echo $requerimento['status'] == 'Aprovado' ? 'selected' : ''; ?>>Aprovado</option>
-                                                    <option value="Reprovado" <?php echo $requerimento['status'] == 'Reprovado' ? 'selected' : ''; ?>>Reprovado</option>
-                                                    <option value="Pendente" <?php echo $requerimento['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                                                    <option value="Cancelado" <?php echo $requerimento['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
-                                                    <option value="Finalizado" <?php echo $requerimento['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
-                                                    <option value="Indeferido" <?php echo $requerimento['status'] == 'Indeferido' ? 'selected' : ''; ?>>Indeferido</option>
-                                                    <option value="Apto a gerar alvará" <?php echo $requerimento['status'] == 'Apto a gerar alvará' ? 'selected' : ''; ?>>Apto a gerar alvará</option>
-                                                    <option value="Alvará Emitido" <?php echo $requerimento['status'] == 'Alvará Emitido' ? 'selected' : ''; ?>>Alvará Emitido</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="observacoes" class="form-label">Observações</label>
-                                                <textarea class="form-control modern-textarea" id="observacoes" name="observacoes" rows="3"
-                                                    placeholder="Adicione observações ou feedback para o requerente"><?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?></textarea>
-                                            </div>
-                                        </div>
-                                        <div class="mt-3">
-                                            <button type="submit" class="btn-action btn-action-primary">
-                                                <i class="fas fa-save me-2"></i>Salvar Alterações
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+                                  <!-- Botão envio fiscal -> secretario -->
+                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'fiscal'): ?>
+                                      <form method="post" action="" style="display: inline;">
+                                          <button type="submit" name="enviar_secretario" class="btn fw-medium text-white shadow-sm" style="background:#8b5cf6;" onclick="return confirm('Confirmar envio para assinatura do Secretário?')">
+                                              <i class="fas fa-paper-plane me-2"></i>Enviar p/ Secretário (Apto a Gerar Alvará)
+                                          </button>
+                                      </form>
+                                  <?php endif; ?>
+                              </div>
 
-                                                        <!-- Conclusão do Processo -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="finalizacao-card" onclick="openCard('finalizacao-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('finalizacao-card')">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <h6>Finalização do Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-finalizacao-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-finalizacao-card">
-                                    <div class="action-description mb-3">
-                                        <i class="fas fa-info-circle text-info me-2"></i>
-                                        <small class="text-muted">Finalize o processo enviando o protocolo oficial para o requerente</small>
-                                    </div>
-                                    <div class="alert alert-info alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #e3f2fd; border: 1px solid #bbdefb; color: #1976d2; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        <strong>Atenção:</strong> Ao enviar o email, o status será automaticamente alterado para "Finalizado".
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
-                                            <label for="protocolo_oficial" class="form-label">Protocolo Oficial da Prefeitura</label>
-                                            <input type="text" class="form-control modern-input" id="protocolo_oficial" name="protocolo_oficial"
-                                                placeholder="Ex: 2025001234-SEMA" required>
-                                        </div>
-                                        <div class="col-md-4 d-flex align-items-end">
-                                            <button type="button" class="btn-action btn-action-success w-100"
-                                                onclick="showProtocolConfirmModal()">
-                                                <i class="fas fa-paper-plane me-2"></i>Enviar Protocolo Oficial
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                              <div class="d-flex flex-wrap gap-2">
 
-                                                        <!-- Indeferimento do Processo -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="indeferimento-card" onclick="openCard('indeferimento-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('indeferimento-card')">
-                                    <i class="fas fa-times-circle text-danger"></i>
-                                    <h6>Indeferir Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-indeferimento-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-indeferimento-card">
-                                    <div class="action-description mb-3" style="border-left-color: var(--red-600);">
-                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
-                                        <small class="text-muted">Negue o requerimento informando os motivos detalhados</small>
-                                    </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento.
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label for="motivo_indeferimento" class="form-label">Motivo do Indeferimento</label>
-                                            <textarea class="form-control modern-textarea" id="motivo_indeferimento" name="motivo_indeferimento" rows="3"
-                                                placeholder="Descreva detalhadamente o motivo do indeferimento..." required></textarea>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="orientacoes_adicionais" class="form-label">Orientações Adicionais <small class="text-muted">(opcional)</small></label>
-                                            <textarea class="form-control modern-textarea" id="orientacoes_adicionais" name="orientacoes_adicionais" rows="3"
-                                                placeholder="Orientações para correção ou reenvio do processo..."></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="mt-3">
-                                        <button type="button" class="btn-action btn-action-danger"
-                                            onclick="showIndeferimentoModal()">
-                                            <i class="fas fa-times me-2"></i>Indeferir Processo
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-primary fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
+                                      <i class="fas fa-edit me-2"></i>Atualizar Status
+                                  </button>
 
-                                                        <!-- Card de Arquivamento -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="arquivamento-card" onclick="openCard('arquivamento-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('arquivamento-card')">
-                                    <i class="fas fa-archive text-secondary"></i>
-                                    <h6>Arquivar Processo</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-arquivamento-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-arquivamento-card">
-                                    <div class="action-description mb-3" style="border-left-color: var(--gray-400);">
-                                        <i class="fas fa-info-circle text-secondary me-2"></i>
-                                        <small class="text-muted">Remove o processo da lista principal sem deletar permanentemente</small>
-                                    </div>
-                                    <div class="alert alert-warning alert-sm mb-3" style="padding: 12px 16px; font-size: 13px; border-radius: 8px; background-color: #fef3c7; border: 1px solid #fbbf24; color: #92400e; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        <strong>Atenção:</strong> O processo será movido para arquivo e ficará oculto da lista principal.
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
-                                            <label for="motivo_arquivamento" class="form-label">Motivo do Arquivamento</label>
-                                            <textarea class="form-control modern-textarea" id="motivo_arquivamento" name="motivo_arquivamento" rows="3"
-                                                placeholder="Descreva o motivo do arquivamento..." required></textarea>
-                                        </div>
-                                        <div class="col-md-4 d-flex align-items-end">
-                                            <button type="button" class="btn-action" style="background: var(--gray-600); color: white;"
-                                                onclick="showArquivarModal()">
-                                                <i class="fas fa-archive me-2"></i>Arquivar Processo
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                  <button type="button" class="btn btn-outline-success fw-medium"
+                                      onclick="abrirFinalizacaoModal()">
+                                      <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
+                                  </button>
 
-                            <!-- Card de Gerar Parecer Técnico -->
-                            <div class="admin-action-card-large collapsible-card" data-card-id="parecer-card" onclick="openCard('parecer-card')">
-                                <div class="admin-action-header collapsible-header" onclick="event.stopPropagation(); toggleCard('parecer-card')">
-                                    <i class="fas fa-file-contract text-info"></i>
-                                    <h6>Gerar Parecer Técnico</h6>
-                                    <div class="ms-auto">
-                                        <i class="fas fa-chevron-down collapse-icon" id="icon-parecer-card"></i>
-                                    </div>
-                                </div>
-                                <div class="collapsible-content" id="content-parecer-card">
-                                    <div class="action-description mb-3">
-                                        <i class="fas fa-info-circle text-info me-2"></i>
-                                        <small class="text-muted">Gere documentos técnicos preenchidos automaticamente com os dados do requerimento</small>
-                                    </div>
+                                  <button type="button" class="btn btn-outline-danger fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#indeferirInputModal">
+                                      <i class="fas fa-times-circle me-2"></i>Indeferir Processo
+                                  </button>
 
-                                    <button type="button" class="btn-action btn-action-primary" onclick="abrirModalParecer()">
-                                        <i class="fas fa-plus me-2"></i>Criar Novo Parecer
-                                    </button>
+                                  <button type="button" class="btn btn-outline-secondary fw-medium"
+                                      onclick="showArquivarModal()">
+                                      <i class="fas fa-archive me-2"></i>Arquivar
+                                  </button>
 
-                                    <div id="pareceres-existentes-list" class="mt-3"></div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                                  <a href="gerar_documento.php?requerimento_id=<?= $id ?>"
+                                      class="btn fw-medium text-white"
+                                      style="background: var(--primary-600);">
+                                      <i class="fas fa-file-signature me-2"></i>Gerar Documento
+                                      <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
+                                  </a>
+                              </div>
+                          </div>
+                          <!-- Pareceres já gerados -->
+                          <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
+                      <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Geração de Parecer -->
-<div class="modal fade" id="parecerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+<!-- ══════════════════════════════════════════════════
+     MODAIS DE AÇÕES ADMINISTRATIVAS
+══════════════════════════════════════════════════ -->
+
+<!-- Modal: Atualizar Status -->
+<div class="modal fade" id="atualizarStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
             <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-file-contract text-info me-2"></i>
-                    Gerar Parecer Técnico
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-edit text-primary me-2"></i>Atualizar Status
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <!-- Etapa 1: Seleção de Template -->
-                <div id="etapa-selecao-template">
-                    <label class="form-label">Selecione o Template:</label>
-                    <select id="template-select" class="form-select mb-3"></select>
-                    <button type="button" class="btn btn-primary" onclick="carregarTemplateParaEdicao()">
-                        <i class="fas fa-file-import me-2"></i>Carregar Template
+            <form method="post" action="">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Status atual:</small>
+                        <span class="badge px-3 py-2 fw-semibold"
+                              style="background:#f0fdf4; color:var(--primary-600); border:1px solid #bbf7d0;">
+                            <?= htmlspecialchars($requerimento['status']) ?>
+                        </span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal_status" class="form-label fw-semibold">Novo Status</label>
+                        <select class="form-select" id="modal_status" name="status" required>
+                            <option value="Em análise" <?= $requerimento['status']=='Em análise'?'selected':'' ?>>Em análise</option>
+                            <option value="Aprovado"   <?= $requerimento['status']=='Aprovado'  ?'selected':'' ?>>Aprovado</option>
+                            <option value="Reprovado"  <?= $requerimento['status']=='Reprovado' ?'selected':'' ?>>Reprovado</option>
+                            <option value="Pendente"   <?= $requerimento['status']=='Pendente'  ?'selected':'' ?>>Pendente</option>
+                            <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
+                            <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
+                            <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
+                            <option value="Apto a gerar alvará" <?= $requerimento['status']=='Apto a gerar alvará'?'selected':'' ?>>Apto a gerar alvará</option>
+                            <option value="Alvará Emitido"      <?= $requerimento['status']=='Alvará Emitido'    ?'selected':'' ?>>Alvará Emitido</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modal_obs" class="form-label fw-semibold">
+                            Observação <small class="fw-normal text-muted">(opcional)</small>
+                        </label>
+                        <textarea class="form-control" id="modal_obs" name="observacoes" rows="3"
+                            placeholder="Justificativa ou feedback para o requerente..."><?= htmlspecialchars($requerimento['observacoes']??'') ?></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                        <i class="fas fa-save me-2"></i>Salvar
                     </button>
                 </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-                <!-- Etapa 2: Editor -->
-                <div id="etapa-editor" style="display:none;">
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-lightbulb me-2"></i>
-                        O template foi preenchido automaticamente. Edite conforme necessário.
-                    </div>
-                    <textarea id="editor-parecer-content"></textarea>
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="button" class="btn btn-success" onclick="irParaAssinatura()">
-                            <i class="fas fa-arrow-right me-2"></i>Continuar para Assinar e Posicionar
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="voltarParaSelecao()">
-                            <i class="fas fa-arrow-left me-2"></i>Voltar
-                        </button>
+<!-- Modal: Indeferir (coleta de dados) -->
+<div class="modal fade" id="indeferirInputModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="fas fa-times-circle me-2"></i>Indeferir Processo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning d-flex gap-2 mb-3">
+                    <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
+                    <div>
+                        O requerente <strong><?= htmlspecialchars($requerimento['requerente_nome']) ?></strong>
+                        será notificado por email sobre o indeferimento do processo
+                        <strong>#<?= $requerimento['protocolo'] ?></strong>.
                     </div>
                 </div>
+                <div class="mb-3">
+                    <label for="motivo_indeferimento" class="form-label fw-semibold">
+                        Motivo <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control" id="motivo_indeferimento" rows="4"
+                        placeholder="Descreva os motivos..." required></textarea>
+                </div>
+                <div>
+                    <label for="orientacoes_adicionais" class="form-label fw-semibold">
+                        Orientações Adicionais <small class="fw-normal text-muted">(opcional)</small>
+                    </label>
+                    <textarea class="form-control" id="orientacoes_adicionais" rows="3"
+                        placeholder="Orientações para correção ou reenvio..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewIndeferimentoEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+                    </button>
+                    <button type="button" class="btn btn-danger fw-semibold" onclick="showIndeferimentoModal()">
+                        <i class="fas fa-times me-2"></i>Indeferir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <!-- Etapa 3 (única): Posicionamento da Assinatura -->
-                <div id="etapa-posicionamento" style="display:none;">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <div class="alert alert-info mb-0 flex-grow-1 py-2 px-3">
-                            <i class="fas fa-hand-paper me-2"></i>
-                            Arraste a assinatura ou use as posições rápidas para finalizar
-                        </div>
-                        <span id="assinatura-status-badge" class="badge bg-secondary">Assinatura: Digitada (Arial)</span>
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="abrirConfigAssinatura()">
-                            <i class="fas fa-edit me-1"></i>Configurar assinatura
-                        </button>
-                    </div>
-                    <div class="mb-3 d-flex align-items-center gap-2">
-                        <span class="text-muted small">Posições rápidas:</span>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('esquerda')">Esquerda</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('centro')">Centro</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="posicionarAssinaturaRapido('direita')">Direita</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetarPosicaoAssinatura()">Reposicionar padrão</button>
-                    </div>
-                    <div class="mb-3" id="preview-wrapper" style="overflow: auto; max-height: 70vh; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                        <div id="preview-documento" style="position: relative; width: 210mm; height: 297mm; margin: 0 auto; background: white; border: 2px solid #ddd; overflow: hidden; transform-origin: top center;">
-                            <iframe id="preview-iframe" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1;"></iframe>
-                            <div id="bloco-assinatura-arrastavel" class="assinatura-bloco-arrastavel" draggable="true" style="position: absolute; z-index: 2; cursor: move; display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.82); padding: 8px; border: 1px dashed #ccc; border-radius: 8px; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                                <img id="preview-qr-code" src="" style="width: 55px; height: 55px; flex-shrink: 0;" />
-                                <div style="font-size: 11px; text-align: left; line-height: 1.3; display: flex; flex-direction: column; gap: 2px;">
-                                    <strong>Assinado digitalmente por:</strong>
-                                    <span id="preview-nome-assinante" style="font-size: 12px; font-weight: bold;"></span>
-                                    <span id="preview-cargo-assinante"></span>
-                                    <span id="preview-matricula-assinante"></span>
-                                    <span id="preview-data-assinatura" style="font-size: 10px; color: #666;"></span>
-                                    <span id="preview-assinatura-visual" style="font-size: 14px; display: block; margin-top: 2px;"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning">
-                        <small><i class="fas fa-info-circle me-1"></i>Posição inicial: Canto inferior direito. Arraste para reposicionar.</small>
-                    </div>
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <h6 class="card-title mb-2"><i class="fas fa-lock me-2"></i>Validação final</h6>
-                            <label class="form-label mb-1">Digite sua senha para assinar:</label>
-                            <input type="password" id="senha-finalizacao" class="form-control" placeholder="Senha da sua conta">
-                            <div id="erro-senha-finalizacao" class="text-danger small mt-2" style="display:none;"></div>
-                        </div>
-                    </div>
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="button" class="btn btn-success" onclick="confirmarPosicaoEGerarPdf()">
-                            <i class="fas fa-check me-2"></i>Assinar e Gerar PDF
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="voltarParaEditor()">
-                            <i class="fas fa-arrow-left me-2"></i>Voltar para Edição
-                        </button>
-                    </div>
+<!-- Modal: Finalização (protocolo oficial) -->
+<div class="modal fade" id="finalizacaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-success">
+                    <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info d-flex gap-2 mb-3">
+                    <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+                    <small>Ao enviar o email, o status será alterado automaticamente para <strong>Finalizado</strong>.</small>
+                </div>
+                <label for="protocolo_oficial" class="form-label fw-semibold">Protocolo Oficial da Prefeitura</label>
+                <input type="text" class="form-control form-control-lg" id="protocolo_oficial"
+                    placeholder="Ex: 2025001234-SEMA">
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="previewProtocolEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+                    </button>
+                    <button type="button" class="btn btn-success fw-semibold" onclick="showProtocolConfirmModal()">
+                        <i class="fas fa-paper-plane me-2"></i>Confirmar Envio
+                    </button>
                 </div>
             </div>
         </div>
@@ -2072,7 +2019,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?>
+                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'] ?? ''))); ?>
                 </div>
 
                 <div class="mb-3">
@@ -2102,83 +2049,8 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
         </div>
     </div>
+</div>
 
-<!-- Modal de Configuração de Assinatura -->
-<div class="modal fade" id="configAssinaturaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-pen-fancy me-2"></i>Configurar assinatura</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <ul class="nav nav-tabs mb-3" id="assinaturaTabsConfig" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="config-digitar-tab" data-bs-toggle="tab"
-                                data-bs-target="#config-digitar-assinatura" type="button">
-                            <i class="fas fa-font me-2"></i>Assinatura digitada
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="config-desenhar-tab" data-bs-toggle="tab"
-                                data-bs-target="#config-desenhar-assinatura" type="button">
-                            <i class="fas fa-pencil-alt me-2"></i>Desenhar assinatura
-                        </button>
-                    </li>
-                </ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="config-digitar-assinatura">
-                        <div class="mb-3">
-                            <label class="form-label">Nome a exibir:</label>
-                            <input type="text" id="signature-text" class="form-control" placeholder="Nome completo">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Fonte:</label>
-                            <div class="d-flex align-items-center">
-                                <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="anteriorFonte()" title="Fonte anterior">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <div class="flex-grow-1 text-center">
-                                    <span id="fonte-atual" class="fw-bold">Arial</span>
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="proximaFonte()" title="Próxima fonte">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                            <input type="hidden" id="signature-font" value="'Arial', sans-serif">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Preview:</label>
-                            <div id="signature-preview" style="border: 2px solid #dee2e6; border-radius: 8px;
-                                     padding: 20px; min-height: 100px; display: flex; align-items: center;
-                                     justify-content: center; font-size: 32px; font-family: Arial, sans-serif;">
-                                <?php echo htmlspecialchars($_SESSION['admin_nome']); ?>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="config-desenhar-assinatura">
-                        <div class="signature-pad-container mb-3">
-                            <canvas id="signature-canvas" width="600" height="200"
-                                    style="border: 2px solid #dee2e6; border-radius: 8px; cursor: crosshair;">
-                            </canvas>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparAssinatura()">
-                            <i class="fas fa-eraser me-1"></i>Limpar
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <div class="text-muted small">Escolha o tipo de assinatura e salve para atualizar o bloco.</div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarConfigAssinatura()">Salvar e aplicar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</div>
 
 <!-- Modal para Reabertura de Processo -->
 <div class="modal fade" id="reopenProcessModal" tabindex="-1" aria-hidden="true">
@@ -2447,15 +2319,13 @@ $isBlocked = $isFinalized || $isIndeferido;
 
     // Função para mostrar modal de arquivamento
     function showArquivarModal() {
-        const motivoInput = document.getElementById('motivo_arquivamento');
-        const motivoValue = motivoInput ? motivoInput.value.trim() : '';
-
-        // Se há um motivo preenchido no formulário, usar ele no modal
-        if (motivoValue) {
-            document.getElementById('modal_motivo_arquivamento').value = motivoValue;
-        }
-
         const modal = new bootstrap.Modal(document.getElementById('arquivarModal'));
+        modal.show();
+    }
+
+    // Abre modal de finalização / protocolo oficial
+    function abrirFinalizacaoModal() {
+        const modal = new bootstrap.Modal(document.getElementById('finalizacaoModal'));
         modal.show();
     }
 
@@ -2622,1027 +2492,9 @@ $isBlocked = $isFinalized || $isIndeferido;
         modal.show();
     }
 
-    // Função para abrir o card (clique em qualquer lugar)
-    function openCard(cardId) {
-        const card = document.querySelector(`[data-card-id="${cardId}"]`);
-        const content = document.getElementById(`content-${cardId}`);
-        const icon = document.getElementById(`icon-${cardId}`);
-
-        // Só abre se estiver fechado
-        if (card.classList.contains('collapsed')) {
-            card.classList.remove('collapsed');
-            content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(0deg)';
-        }
-    }
-
-    // Função para alternar o colapso dos cards (apenas no cabeçalho)
-    function toggleCard(cardId) {
-        const card = document.querySelector(`[data-card-id="${cardId}"]`);
-        const content = document.getElementById(`content-${cardId}`);
-        const icon = document.getElementById(`icon-${cardId}`);
-
-        if (card.classList.contains('collapsed')) {
-            // Expandir
-            card.classList.remove('collapsed');
-            content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(0deg)';
-        } else {
-            // Recolher
-            card.classList.add('collapsed');
-            content.style.maxHeight = '0';
-            icon.style.transform = 'rotate(-90deg)';
-        }
-    }
-
-         // Inicializar cards colapsados por padrão
      document.addEventListener('DOMContentLoaded', function() {
-         const cards = document.querySelectorAll('.collapsible-card');
-         cards.forEach(card => {
-             card.classList.add('collapsed');
-         });
-
-         // Carregar pareceres existentes automaticamente
          carregarPareceresExistentes();
-
-         // Event listener para preview de assinatura em tempo real
-         const signatureText = document.getElementById('signature-text');
-         if (signatureText) {
-             signatureText.addEventListener('input', atualizarPreviewAssinatura);
-         }
-
-        window.addEventListener('resize', ajustarEscalaPreview);
      });
-
-     // Sistema de Pareceres
-     let parecerModal;
-     let editorTiny;
-     let signaturePad;
-     let configAssinaturaModal;
-     let senhaMemorizada = null;
-     let indiceFonteAtual = 0;
-     let dadosAssinatura = null;
-     let coordenadasAssinatura = { x: 0, y: 0 };
-     let templateAtual = null;
-     let handlerPreviewEdicao = null;
-     const fontesDisponiveis = [
-         { nome: 'Arial', valor: "'Arial', sans-serif" },
-         { nome: 'Brush Script', valor: "'Brush Script MT', cursive" },
-         { nome: 'Lucida Handwriting', valor: "'Lucida Handwriting', cursive" },
-         { nome: 'Dancing Script', valor: "'Dancing Script', cursive" },
-         { nome: 'Great Vibes', valor: "'Great Vibes', cursive" }
-     ];
-
-     document.addEventListener('DOMContentLoaded', () => {
-         const modalElement = document.getElementById('parecerModal');
-         if (modalElement) {
-             modalElement.addEventListener('hidden.bs.modal', () => resetarFluxoParecer(false));
-         }
-
-         const configModalElement = document.getElementById('configAssinaturaModal');
-         if (configModalElement) {
-             configAssinaturaModal = new bootstrap.Modal(configModalElement);
-             configModalElement.addEventListener('shown.bs.modal', () => {
-                 inicializarSignaturePad();
-                 atualizarFonteAtual();
-                 atualizarPreviewAssinatura();
-             });
-         }
-
-         const signatureTextInput = document.getElementById('signature-text');
-         if (signatureTextInput) {
-             signatureTextInput.value = '<?php echo $_SESSION['admin_nome']; ?>';
-             atualizarPreviewAssinatura();
-         }
-     });
-
-     function nomeTemplateAmigavel(template) {
-         if (!template) return 'Template';
-
-         if (typeof template === 'object' && template.label) {
-             return template.label;
-         }
-
-         const nomeArquivo = typeof template === 'object' ? template.nome : template;
-         if (!nomeArquivo) return 'Template';
-
-         const semExtensao = nomeArquivo.replace(/\.[^.]+$/, '');
-         const legivel = semExtensao.replace(/[_-]+/g, ' ').trim().replace(/\s+/g, ' ');
-
-         if (!legivel) return nomeArquivo;
-
-         return legivel
-             .split(' ')
-             .map(parte => parte.charAt(0).toUpperCase() + parte.slice(1))
-             .join(' ');
-     }
-
-     function textoTipoTemplate(tipo) {
-         const mapa = {
-             docx: 'Editor online (DOCX)',
-             html: ''
-         };
-         return mapa[tipo] || 'Documento';
-     }
-
-     async function abrirModalParecer() {
-         const btn = document.querySelector('.btn-action-primary'); // Botão Gerar Parecer
-         const originalHtml = btn.innerHTML;
-         
-         // Feedback visual de carregamento
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
-
-         const sessaoValida = await verificarSessaoAssinatura();
-         
-         btn.disabled = false;
-         btn.innerHTML = originalHtml;
-
-         if (sessaoValida) {
-             exibirModalParecer();
-         } else {
-             iniciarVerificacaoEmail();
-         }
-     }
-
-     function exibirModalParecer() {
-         if (!parecerModal) {
-             parecerModal = new bootstrap.Modal(document.getElementById('parecerModal'));
-         }
-         resetarFluxoParecer(true);
-         parecerModal.show();
-         carregarListaTemplates();
-         carregarPareceresExistentes();
-     }
-
-     function carregarListaTemplates() {
-         fetch('parecer_handler.php', {
-             method: 'POST',
-             headers: {'Content-Type': 'application/json'},
-             body: JSON.stringify({
-                 action: 'listar_templates',
-                 requerimento_id: <?php echo $id; ?>
-             })
-         })
-         .then(res => res.json())
-         .then(data => {
-             const select = document.getElementById('template-select');
-             select.innerHTML = '<option value="">Selecione um modelo de parecer</option>';
-
-             // 1. Histórico Recente (Unificado: DB + Arquivos)
-             if (data.historico_recente && data.historico_recente.length > 0) {
-                 const groupHistorico = document.createElement('optgroup');
-                 groupHistorico.label = "🕒 Histórico Recente";
-                 data.historico_recente.forEach(r => {
-                     const option = document.createElement('option');
-                     option.value = r.id; 
-                     option.textContent = r.label;
-                     groupHistorico.appendChild(option);
-                 });
-                 select.appendChild(groupHistorico);
-             }
-
-             // 3. Modelos Padrão
-             const groupModelos = document.createElement('optgroup');
-             groupModelos.label = "📄 Modelos Padrão";
-
-             const templates = data.templates_detalhados || data.templates;
-             templates.forEach(t => {
-                 const nome = typeof t === 'object' ? t.nome : t;
-                 const tipo = typeof t === 'object' ? t.tipo : 'docx';
-                 const rotulo = typeof t === 'object' ? nomeTemplateAmigavel(t) : nome;
-                 const tipoLabel = textoTipoTemplate(tipo);
-                 const icone = tipo === 'docx' ? '📝' : '📄';
-                 
-                 const option = document.createElement('option');
-                 option.value = nome;
-                 option.innerHTML = `${icone} ${rotulo}${tipoLabel ? ' — ' + tipoLabel : ''}`;
-                 groupModelos.appendChild(option);
-             });
-             select.appendChild(groupModelos);
-         })
-         .catch(error => {
-             console.error('Erro ao carregar templates:', error);
-             alert('Erro ao carregar templates');
-         });
-     }
-
-
-
-     function carregarTemplateParaEdicao() {
-         const template = document.getElementById('template-select').value;
-         if (!template) {
-             alert('Selecione um template');
-             return;
-         }
-
-         fetch('parecer_handler.php', {
-             method: 'POST',
-             headers: {'Content-Type': 'application/json'},
-             body: JSON.stringify({
-                 action: 'carregar_template',
-                 template: template,
-                 requerimento_id: <?php echo $id; ?>
-             })
-         })
-         .then(res => res.json())
-         .then(data => {
-             if (data.success) {
-                 document.getElementById('etapa-selecao-template').style.display = 'none';
-                 document.getElementById('etapa-editor').style.display = 'block';
-
-                 // Extrair imagem de fundo do template original para uso posterior
-                 const parser = new DOMParser();
-                 const doc = parser.parseFromString(data.html, 'text/html');
-                 const imgFundo = doc.querySelector('#fundo-imagem');
-                 if (imgFundo && imgFundo.src) {
-                     // Armazenar imagem de fundo globalmente para uso no preview
-                     // Converter caminho relativo para absoluto se necessário
-                     let imgSrc = imgFundo.src;
-                     if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
-                         // Se for caminho relativo como 'images/image1.png', converter para caminho completo
-                         if (imgSrc.startsWith('images/')) {
-                             imgSrc = '../assets/doc/' + imgSrc;
-                         }
-                     }
-                     window.templateFundoImg = imgSrc;
-                 }
-
-                 // Sempre usar TinyMCE para preservar formatação
-                 inicializarEditorTiny(data.html);
-             } else {
-                 alert('Erro: ' + data.error);
-             }
-         })
-         .catch(error => {
-             console.error('Erro ao carregar template:', error);
-             alert('Erro ao carregar template');
-         });
-     }
-
-     function inicializarEditorTiny(conteudo) {
-         if (tinymce.get('editor-parecer-content')) {
-             tinymce.remove('#editor-parecer-content');
-         }
-
-         // Extrair conteúdo do template A4 se necessário
-         let conteudoExtraido = conteudo;
-         const parser = new DOMParser();
-         const doc = parser.parseFromString(conteudo, 'text/html');
-         const conteudoDiv = doc.querySelector('#conteudo');
-         if (conteudoDiv) {
-             // Se tem div#conteudo, extrair apenas o conteúdo interno
-             conteudoExtraido = conteudoDiv.innerHTML;
-         } else {
-             // Se não tem estrutura específica, usar o HTML completo do body
-             const body = doc.querySelector('body');
-             if (body) {
-                 conteudoExtraido = body.innerHTML;
-             }
-         }
-
-         tinymce.init({
-             selector: '#editor-parecer-content',
-             height: 600,
-             language: 'pt_BR',
-             plugins: 'lists link image table code fullscreen',
-             toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | fullscreen code',
-             content_style: 'body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.45; } p { margin: 0 0 10px; } ul,ol { margin: 0 0 10px 20px; padding-left: 14px; } .titulo { text-align: center !important; font-weight: bold !important; text-transform: uppercase; } .label { font-weight: bold !important; } .dados-interessado .linha { margin-bottom: 4px; } .secao-titulo { font-weight: bold; text-transform: uppercase; margin: 20px 0 12px 0; }',
-             valid_elements: '*[*]',
-             extended_valid_elements: '*[*]',
-             valid_styles: {
-                 '*': 'color,font-size,font-weight,font-style,text-decoration,text-align,margin,padding,border,width,height'
-             },
-             setup: function(editor) {
-                 editor.on('init', function() {
-                     editor.setContent(conteudoExtraido);
-                 });
-             }
-         });
-     }
-
-     function gerarPdfFinal() {
-         const html = tinymce.get('editor-parecer-content').getContent();
-         const template = document.getElementById('template-select').value;
-
-         fetch('parecer_handler.php', {
-             method: 'POST',
-             headers: {'Content-Type': 'application/json'},
-             body: JSON.stringify({
-                 action: 'gerar_pdf',
-                 html: html,
-                 template: template,
-                 requerimento_id: <?php echo $id; ?>
-             })
-         })
-         .then(res => res.json())
-         .then(data => {
-             if (data.success) {
-                 alert('Parecer gerado com sucesso!');
-                 parecerModal.hide();
-                 carregarPareceresExistentes(); // Isso também atualizará a aba de documentos
-             } else {
-                 alert('Erro ao gerar PDF: ' + data.error);
-             }
-         })
-         .catch(error => {
-             console.error('Erro ao gerar PDF:', error);
-             alert('Erro ao gerar PDF: ' + error.message);
-         });
-     }
-
-     function voltarParaSelecao() {
-         tinymce.remove('#editor-parecer-content');
-         document.getElementById('etapa-editor').style.display = 'none';
-         document.getElementById('etapa-selecao-template').style.display = 'block';
-     }
-
-     function irParaAssinatura() {
-         templateAtual = document.getElementById('template-select').value;
-
-         // Ocultar editor e ir direto para posicionamento com assinatura padrão digitada
-         const etapaEditor = document.getElementById('etapa-editor');
-         if (etapaEditor) {
-             etapaEditor.style.display = 'none';
-         }
-         if (!dadosAssinatura) {
-             definirAssinaturaPadrao();
-         }
-         prepararEtapaPosicionamento();
-     }
-
-     function inicializarSignaturePad() {
-         const canvas = document.getElementById('signature-canvas');
-         if (!canvas) return;
-         signaturePad = new SignaturePad(canvas, {
-             backgroundColor: 'rgb(255, 255, 255)',
-             penColor: 'rgb(0, 0, 0)',
-             minWidth: 1,
-             maxWidth: 3
-         });
-
-         // Limpar assinatura anterior se existir
-         signaturePad.clear();
-     }
-
-     function limparAssinatura() {
-         if (signaturePad) {
-             signaturePad.clear();
-         }
-     }
-
-     function atualizarPreviewAssinatura() {
-         const texto = document.getElementById('signature-text').value || 'Seu Nome Aqui';
-         const fonte = document.getElementById('signature-font').value;
-         const preview = document.getElementById('signature-preview');
-         preview.style.fontFamily = fonte;
-         preview.textContent = texto;
-     }
-
-     function definirAssinaturaPadrao() {
-         dadosAssinatura = {
-             assinatura: { texto: '<?php echo $_SESSION['admin_nome']; ?>', fonte: "'Arial', sans-serif" },
-             tipo_assinatura: 'texto',
-             admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-            admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-            admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
-            admin_matricula_portaria: '<?php echo $_SESSION['admin_matricula_portaria'] ?? ''; ?>',
-             data_assinatura: new Date().toLocaleString('pt-BR')
-         };
-         atualizarBadgeAssinatura();
-     }
-
-     function abrirConfigAssinatura() {
-         if (!dadosAssinatura) {
-             definirAssinaturaPadrao();
-         }
-
-         const assinaturaAtual = dadosAssinatura.assinatura;
-         if (typeof assinaturaAtual === 'object' && assinaturaAtual.texto) {
-             document.getElementById('signature-text').value = assinaturaAtual.texto;
-             const fonteIndex = fontesDisponiveis.findIndex(f => f.valor === assinaturaAtual.fonte);
-             indiceFonteAtual = fonteIndex >= 0 ? fonteIndex : 0;
-             document.getElementById('signature-font').value = assinaturaAtual.fonte;
-             atualizarPreviewAssinatura();
-             document.getElementById('config-digitar-tab').classList.add('active');
-             document.getElementById('config-digitar-assinatura').classList.add('show', 'active');
-             document.getElementById('config-desenhar-tab').classList.remove('active');
-             document.getElementById('config-desenhar-assinatura').classList.remove('show', 'active');
-         } else {
-             limparAssinatura();
-             document.getElementById('config-desenhar-tab').classList.add('active');
-             document.getElementById('config-desenhar-assinatura').classList.add('show', 'active');
-             document.getElementById('config-digitar-tab').classList.remove('active');
-             document.getElementById('config-digitar-assinatura').classList.remove('show', 'active');
-         }
-
-         if (configAssinaturaModal) {
-             configAssinaturaModal.show();
-         }
-     }
-
-     function salvarConfigAssinatura() {
-         const tabAtiva = document.querySelector('#assinaturaTabsConfig .nav-link.active').id;
-         let assinaturaData = null;
-         let tipoAssinatura = '';
-
-         if (tabAtiva === 'config-desenhar-tab') {
-             if (!signaturePad || signaturePad.isEmpty()) {
-                 alert('Por favor, desenhe sua assinatura.');
-                 return;
-             }
-             assinaturaData = signaturePad.toDataURL('image/png');
-             tipoAssinatura = 'desenho';
-         } else {
-             const texto = document.getElementById('signature-text').value.trim() || '<?php echo $_SESSION['admin_nome']; ?>';
-             const fonte = document.getElementById('signature-font').value;
-             assinaturaData = { texto: texto, fonte: fonte };
-             tipoAssinatura = 'texto';
-         }
-
-         dadosAssinatura = {
-             assinatura: assinaturaData,
-             tipo_assinatura: tipoAssinatura,
-             admin_nome: '<?php echo $_SESSION['admin_nome']; ?>',
-            admin_cpf: '<?php echo $_SESSION['admin_cpf'] ?? ''; ?>',
-            admin_cargo: '<?php echo $_SESSION['admin_cargo'] ?? 'Administrador'; ?>',
-            admin_matricula_portaria: '<?php echo $_SESSION['admin_matricula_portaria'] ?? ''; ?>',
-             data_assinatura: new Date().toLocaleString('pt-BR')
-         };
-
-         atualizarBadgeAssinatura();
-         atualizarBlocoAssinaturaPreview();
-         if (configAssinaturaModal) configAssinaturaModal.hide();
-     }
-
-     function atualizarBadgeAssinatura() {
-         const badge = document.getElementById('assinatura-status-badge');
-         if (!badge || !dadosAssinatura) return;
-         if (dadosAssinatura.tipo_assinatura === 'desenho') {
-             badge.textContent = 'Assinatura: Desenho';
-             badge.className = 'badge bg-primary';
-         } else {
-             const fonteNome = fontesDisponiveis.find(f => f.valor === (dadosAssinatura.assinatura.fonte || ""))?.nome || 'Arial';
-             badge.textContent = `Assinatura: Digitada (${fonteNome})`;
-             badge.className = 'badge bg-secondary';
-         }
-     }
-
-     function atualizarBlocoAssinaturaPreview() {
-         const visual = document.getElementById('preview-assinatura-visual');
-         if (!visual || !dadosAssinatura) return;
-
-         if (dadosAssinatura.tipo_assinatura === 'desenho' && typeof dadosAssinatura.assinatura === 'string') {
-            visual.innerHTML = `<img src="${dadosAssinatura.assinatura}" style="max-width: 120px; height: auto;">`;
-        } else if (dadosAssinatura.assinatura && dadosAssinatura.assinatura.texto) {
-             visual.textContent = dadosAssinatura.assinatura.texto;
-             visual.style.fontFamily = dadosAssinatura.assinatura.fonte || "'Arial', sans-serif";
-         } else {
-             visual.textContent = '';
-         }
-     }
-
-     function anteriorFonte() {
-         indiceFonteAtual = (indiceFonteAtual - 1 + fontesDisponiveis.length) % fontesDisponiveis.length;
-         atualizarFonteAtual();
-     }
-
-     function proximaFonte() {
-         indiceFonteAtual = (indiceFonteAtual + 1) % fontesDisponiveis.length;
-         atualizarFonteAtual();
-     }
-
-     function atualizarFonteAtual() {
-         const fonteAtual = fontesDisponiveis[indiceFonteAtual];
-         document.getElementById('fonte-atual').textContent = fonteAtual.nome;
-         document.getElementById('signature-font').value = fonteAtual.valor;
-         atualizarPreviewAssinatura();
-     }
-
-    function aplicarEspacamentoPreview() {
-        return;
-    }
-
-    function habilitarEdicaoPreview() {
-        return;
-    }
-
-     function voltarParaEditor() {
-         document.getElementById('etapa-posicionamento').style.display = 'none';
-         document.getElementById('etapa-editor').style.display = 'block';
-     }
-
-    async function salvarPreviewParecer(html) {
-        const template = document.getElementById('template-select').value;
-        const response = await fetch('parecer_handler.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                action: 'salvar_preview',
-                html: html,
-                template: template
-            })
-        });
-        return response.json();
-    }
-
-    function ajustarEscalaPreview() {
-        const previewDoc = document.getElementById('preview-documento');
-        const wrapper = document.getElementById('preview-wrapper');
-        if (!previewDoc || !wrapper) return;
-
-        const padding = 24;
-        const availableWidth = Math.max(0, wrapper.clientWidth - padding);
-        const docWidth = previewDoc.offsetWidth || 1;
-        const scale = Math.min(1, availableWidth / docWidth);
-
-        previewDoc.style.transform = `scale(${scale})`;
-    }
-
-     function prepararEtapaPosicionamento() {
-         if (!dadosAssinatura) {
-             definirAssinaturaPadrao();
-         }
-
-         const editor = tinymce.get('editor-parecer-content');
-         let html = '';
-
-         if (editor) {
-             html = editor.getContent();
-         } else {
-             alert('Erro: Editor TinyMCE não encontrado. Por favor, recarregue a página.');
-             return;
-         }
-
-        const previewDoc = document.getElementById('preview-documento');
-        const previewIframe = document.getElementById('preview-iframe');
-        const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-        if (!previewDoc || !previewIframe || !blocoAssinatura) return;
-
-        salvarPreviewParecer(html)
-            .then((data) => {
-                if (data && data.success) {
-                    previewIframe.src = 'parecer_viewer_preview.php?ts=' + Date.now();
-                }
-            })
-            .catch(() => {});
-
-         document.getElementById('preview-nome-assinante').textContent = dadosAssinatura.admin_nome;
-        document.getElementById('preview-cargo-assinante').textContent = dadosAssinatura.admin_cargo;
-        const matriculaEl = document.getElementById('preview-matricula-assinante');
-        if (matriculaEl) {
-            matriculaEl.textContent = dadosAssinatura.admin_matricula_portaria
-                ? `Matrícula/Portaria: ${dadosAssinatura.admin_matricula_portaria}`
-                : '';
-        }
-         atualizarBlocoAssinaturaPreview();
-         atualizarBadgeAssinatura();
-
-         // Gerar QR code temporário para preview (será substituído pelo real no backend)
-         const previewQr = document.getElementById('preview-qr-code');
-         if (previewQr) {
-             // Criar URL temporária de verificação para preview
-             const protocolo = window.location.protocol;
-             const host = window.location.host;
-             const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin'));
-             const urlVerificacaoPreview = protocolo + '//' + host + basePath + '/consultar/verificar.php?id=preview';
-
-             // Usar biblioteca QRCode se disponível, senão usar placeholder
-             if (typeof QRCode !== 'undefined') {
-                 QRCode.toDataURL(urlVerificacaoPreview, {
-                     width: 80,
-                     height: 80,
-                     margin: 1
-                 }, function (err, url) {
-                     if (!err && previewQr) {
-                         previewQr.src = url;
-                     } else {
-                         previewQr.src = 'data:image/svg+xml;base64,' + btoa('<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#f0f0f0"/><text x="40" y="40" text-anchor="middle" font-size="10">QR Code</text></svg>');
-                     }
-                 });
-             } else {
-                 previewQr.src = 'data:image/svg+xml;base64,' + btoa('<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#f0f0f0"/><text x="40" y="40" text-anchor="middle" font-size="10">QR Code</text></svg>');
-             }
-         }
-
-        previewIframe.onload = () => {
-            atualizarStatusPaginacao(previewDoc, previewIframe);
-        };
-
-        setTimeout(() => {
-             const previewDocRect = previewDoc.getBoundingClientRect();
-            const blocoRect = blocoAssinatura.getBoundingClientRect();
-            const blocoWidth = blocoRect.width || 200;
-            const blocoHeight = blocoRect.height || 100;
-            
-            // Posicionar no canto inferior direito por padrão
-            const centroX = previewDocRect.width - blocoWidth - 40 + (blocoWidth / 2);
-            const centroY = previewDocRect.height - blocoHeight - 60 + (blocoHeight / 2);
-
-            coordenadasAssinatura.x = centroX / previewDocRect.width;
-            coordenadasAssinatura.y = centroY / previewDocRect.height;
-
-            blocoAssinatura.style.left = (centroX - blocoWidth / 2) + 'px';
-            blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
-            
-            // Atualizar data na visualização
-            const dataEl = document.getElementById('preview-data-assinatura');
-            if (dataEl) dataEl.textContent = 'Em: ' + new Date().toLocaleString('pt-BR').substring(0, 16);
-
-            atualizarStatusPaginacao(previewDoc, previewIframe);
-        }, 100);
-
-         document.getElementById('etapa-posicionamento').style.display = 'block';
-
-        setTimeout(() => {
-            ajustarEscalaPreview();
-            inicializarDragAndDrop();
-        }, 200);
-    }
-
-    function atualizarStatusPaginacao(previewDoc, previewIframe) {
-        const statusPreview = document.getElementById('parecer-preview-status');
-        const statusPreviewTexto = document.getElementById('parecer-preview-status-text');
-
-        if (!statusPreview || !statusPreviewTexto || !previewDoc || !previewIframe) return;
-
-        const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow?.document;
-        if (!iframeDoc) return;
-
-        const conteudoEl = iframeDoc.querySelector('.conteudo-texto') || iframeDoc.body;
-        if (!conteudoEl) return;
-
-        const conteudoHeight = conteudoEl.scrollHeight;
-        const margemInferior = 60;
-        const areaUtil = previewDoc.clientHeight - margemInferior;
-        const paginas = Math.max(1, Math.ceil(conteudoHeight / areaUtil));
-
-        statusPreview.style.display = 'block';
-        statusPreviewTexto.textContent = paginas > 1
-            ? `O conteúdo atual ocupa aproximadamente ${paginas} páginas A4. Ajuste o texto ou template caso queira manter em menos páginas.`
-            : 'O conteúdo cabe dentro de uma página A4.';
-    }
-
-     function inicializarDragAndDrop() {
-         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-         const previewDoc = document.getElementById('preview-documento');
-         if (!blocoAssinatura || !previewDoc) return;
-
-         let isDragging = false;
-         let currentX = 0;
-         let currentY = 0;
-         let initialX = 0;
-         let initialY = 0;
-
-         blocoAssinatura.addEventListener('mousedown', function(e) {
-             if (e.target.tagName === 'IMG' || e.target.closest('.dados-assinante')) {
-                 return;
-             }
-             e.preventDefault();
-             isDragging = true;
-             const rect = blocoAssinatura.getBoundingClientRect();
-             const previewRect = previewDoc.getBoundingClientRect();
-             initialX = e.clientX - rect.left;
-             initialY = e.clientY - rect.top;
-             blocoAssinatura.style.cursor = 'grabbing';
-         });
-
-         document.addEventListener('mousemove', function(e) {
-             if (!isDragging) return;
-             e.preventDefault();
-
-             const previewRect = previewDoc.getBoundingClientRect();
-             const blocoRect = blocoAssinatura.getBoundingClientRect();
-
-             currentX = e.clientX - previewRect.left - initialX;
-             currentY = e.clientY - previewRect.top - initialY;
-
-             const maxX = previewRect.width - blocoRect.width;
-             const maxY = previewRect.height - blocoRect.height;
-
-             currentX = Math.max(0, Math.min(currentX, maxX));
-             currentY = Math.max(0, Math.min(currentY, maxY));
-
-             blocoAssinatura.style.left = currentX + 'px';
-             blocoAssinatura.style.top = currentY + 'px';
-         });
-
-         document.addEventListener('mouseup', function() {
-            if (isDragging) {
-                isDragging = false;
-                blocoAssinatura.style.cursor = 'move';
-
-                const previewRect = previewDoc.getBoundingClientRect();
-                const blocoRect = blocoAssinatura.getBoundingClientRect();
-
-                const centroX = blocoRect.left - previewRect.left + (blocoRect.width / 2);
-                const centroY = blocoRect.top - previewRect.top + (blocoRect.height / 2);
-
-                coordenadasAssinatura.x = centroX / previewRect.width;
-                coordenadasAssinatura.y = centroY / previewRect.height;
-            }
-        });
-
-         blocoAssinatura.addEventListener('dragstart', function(e) {
-             e.preventDefault();
-         });
-     }
-
-     function posicionarAssinaturaRapido(posicao) {
-         const previewDoc = document.getElementById('preview-documento');
-         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-         if (!previewDoc || !blocoAssinatura) return;
-
-         const previewRect = previewDoc.getBoundingClientRect();
-         const blocoRect = blocoAssinatura.getBoundingClientRect();
-         let centroX;
-         const margem = 40;
-         const baseY = previewRect.height - blocoRect.height - margem + (blocoRect.height / 2);
-
-         if (posicao === 'esquerda') {
-             centroX = margem + (blocoRect.width / 2);
-         } else if (posicao === 'centro') {
-             centroX = previewRect.width / 2;
-         } else {
-             centroX = previewRect.width - margem - (blocoRect.width / 2);
-         }
-
-         coordenadasAssinatura.x = centroX / previewRect.width;
-         coordenadasAssinatura.y = baseY / previewRect.height;
-
-         blocoAssinatura.style.left = (centroX - blocoRect.width / 2) + 'px';
-         blocoAssinatura.style.top = (baseY - blocoRect.height / 2) + 'px';
-     }
-
-     function resetarPosicaoAssinatura() {
-         const previewDoc = document.getElementById('preview-documento');
-         const blocoAssinatura = document.getElementById('bloco-assinatura-arrastavel');
-         if (!previewDoc || !blocoAssinatura) return;
-         const previewRect = previewDoc.getBoundingClientRect();
-         const blocoWidth = 200;
-         const blocoHeight = 100;
-         const centroX = previewRect.width - blocoWidth - 40 + (blocoWidth / 2);
-         const centroY = previewRect.height - blocoHeight - 40 + (blocoHeight / 2);
-         coordenadasAssinatura.x = centroX / previewRect.width;
-         coordenadasAssinatura.y = centroY / previewRect.height;
-         blocoAssinatura.style.left = (centroX - blocoWidth / 2) + 'px';
-         blocoAssinatura.style.top = (centroY - blocoHeight / 2) + 'px';
-     }
-
-     // Variáveis globais para o modal de verificação e persistência da senha
-     let modalVerificacao = null;
-     let senhaTemporaria = '';
-
-     async function verificarSessaoAssinatura() {
-        try {
-            const response = await fetch('parecer_handler.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: 'verificar_sessao_assinatura' })
-            });
-            const data = await response.json();
-            return data.success && data.sessao_valida;
-        } catch (error) {
-            console.error('Erro ao verificar sessão:', error);
-            return false;
-        }
-     }
-
-     function iniciarVerificacaoEmail() {
-         // Salvar a senha digitada antes de fechar o modal
-         const senhaInput = document.getElementById('senha-finalizacao');
-         if (senhaInput) {
-             senhaTemporaria = senhaInput.value;
-         }
-
-         // Fechar modal de parecer se estiver aberto para limpar a tela
-         if (typeof parecerModal !== 'undefined' && parecerModal) {
-             parecerModal.hide();
-         }
-         
-         if (!modalVerificacao) {
-             modalVerificacao = new bootstrap.Modal(document.getElementById('modalVerificacaoSeguranca'));
-         }
-         
-         // Resetar estado
-         document.getElementById('etapa-enviar-codigo').style.display = 'block';
-         document.getElementById('etapa-validar-codigo').style.display = 'none';
-         document.getElementById('codigo_verificacao').value = '';
-         document.getElementById('codigo_verificacao').classList.remove('is-invalid');
-         
-         modalVerificacao.show();
-     }
-
-     async function enviarCodigoVerificacao() {
-         const btn = document.querySelector('#etapa-enviar-codigo button');
-         const originalText = btn.innerHTML;
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
-
-         try {
-            const response = await fetch('parecer_handler.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    action: 'enviar_codigo_assinatura',
-                    origem: 'tecnico',
-                    requerimento_id: <?php echo (int)$id; ?>
-                })
-            });
-             const data = await response.json();
-             
-             if (data.success) {
-                 document.getElementById('email-mascarado-display').textContent = data.email_mascarado;
-                 document.getElementById('etapa-enviar-codigo').style.display = 'none';
-                 document.getElementById('etapa-validar-codigo').style.display = 'block';
-             } else {
-                 showToast(data.error || 'Falha ao enviar email.', 'error');
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             showToast('Erro de conexão ao enviar código.', 'error');
-         } finally {
-             btn.disabled = false;
-             btn.innerHTML = originalText;
-         }
-     }
-
-     function voltarEnviarCodigo() {
-         document.getElementById('etapa-enviar-codigo').style.display = 'block';
-         document.getElementById('etapa-validar-codigo').style.display = 'none';
-     }
-
-     async function validarCodigoVerificacao() {
-         const input = document.getElementById('codigo_verificacao');
-         const btn = document.querySelector('#etapa-validar-codigo .btn-success');
-         const codigo = input.value.trim();
-         
-         if (codigo.length !== 6) {
-             input.classList.add('is-invalid');
-             document.getElementById('erro-codigo').textContent = 'O código deve ter 6 dígitos.';
-             return;
-         }
-
-         const originalText = btn.innerHTML;
-         btn.disabled = true;
-         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
-
-         try {
-            const response = await fetch('parecer_handler.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    action: 'validar_codigo_assinatura',
-                    codigo: codigo,
-                    origem: 'tecnico',
-                    requerimento_id: <?php echo (int)$id; ?>
-                })
-            });
-             const data = await response.json();
-             
-             if (data.success) {
-                 // Sucesso! Fechar modal e mostrar notificação moderna
-                 if (modalVerificacao) modalVerificacao.hide();
-                showToast('Verificação realizada com sucesso! Acesso liberado por 8 horas.');
-                 
-                 // CONTINUAR FLUXO: Abrir o modal de parecer
-                 setTimeout(() => {
-                    exibirModalParecer();
-                 }, 500);
-                 
-             } else {
-                 input.classList.add('is-invalid');
-                 document.getElementById('erro-codigo').textContent = data.error || 'Código inválido.';
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             showToast('Erro de conexão ao validar código.', 'error');
-         } finally {
-             btn.disabled = false;
-             btn.innerHTML = originalText;
-         }
-     }
-
-
-     async function confirmarPosicaoEGerarPdf() {
-         // O fluxo agora garante sessão válida no INÍCIO.
-         // Mantemos apenas uma verificação silenciosa para logging/segurança redundante
-         // sem interromper a UI bruscamente.
-
-         const editor = tinymce.get('editor-parecer-content');
-         let html = '';
-
-
-         if (editor) {
-             html = editor.getContent();
-         } else {
-             alert('Erro: Editor TinyMCE não encontrado. Por favor, recarregue a página.');
-             return;
-         }
-
-         const senha = document.getElementById('senha-finalizacao').value;
-         const erroSenhaEl = document.getElementById('erro-senha-finalizacao');
-         if (erroSenhaEl) erroSenhaEl.style.display = 'none';
-         if (!dadosAssinatura) {
-             definirAssinaturaPadrao();
-         }
-         if (!senha) {
-             if (erroSenhaEl) {
-                 erroSenhaEl.textContent = 'Informe sua senha para finalizar a assinatura.';
-                 erroSenhaEl.style.display = 'block';
-             }
-             return;
-         }
-
-         try {
-             const validacaoResponse = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
-                     action: 'validar_senha',
-                     senha: senha
-                 })
-             });
-             const validacaoData = await validacaoResponse.json();
-             if (!validacaoData.success) {
-                 if (erroSenhaEl) {
-                     erroSenhaEl.textContent = 'Senha incorreta. Tente novamente.';
-                     erroSenhaEl.style.display = 'block';
-                 }
-                 return;
-             }
-
-             dadosAssinatura.data_assinatura = new Date().toLocaleString('pt-BR');
-
-             const response = await fetch('parecer_handler.php', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
-                     action: 'gerar_pdf_com_assinatura_posicionada',
-                     html: html,
-                     template: templateAtual,
-                     requerimento_id: <?php echo $id; ?>,
-                     assinatura: dadosAssinatura.assinatura,
-                     tipo_assinatura: dadosAssinatura.tipo_assinatura,
-                     admin_nome: dadosAssinatura.admin_nome,
-                     admin_cpf: dadosAssinatura.admin_cpf,
-                    admin_cargo: dadosAssinatura.admin_cargo,
-                    admin_matricula_portaria: dadosAssinatura.admin_matricula_portaria,
-                     data_assinatura: dadosAssinatura.data_assinatura,
-                     posicao_x: coordenadasAssinatura.x,
-                     posicao_y: coordenadasAssinatura.y
-                 })
-             });
-
-             const data = await response.json();
-
-             if (data.success) {
-                 // Configurar e mostrar modal de sucesso
-                 const btnVisualizar = document.getElementById('btn-visualizar-sucesso');
-                 if (data.url_viewer) {
-                     btnVisualizar.onclick = function() { window.open(data.url_viewer, '_blank'); };
-                     btnVisualizar.style.display = 'inline-block';
-                 } else {
-                     btnVisualizar.style.display = 'none';
-                 }
-                 
-                 // Limpar senha temporária
-                 senhaTemporaria = '';
-                 
-                 const modalSucesso = new bootstrap.Modal(document.getElementById('modalSucessoAssinatura'));
-                 modalSucesso.show();
-
-                 // Limpar interface
-                 parecerModal.hide();
-                 carregarPareceresExistentes();
-
-                 if (signaturePad) signaturePad.clear();
-                 document.getElementById('signature-text').value = '';
-                 const senhaFinalizacao = document.getElementById('senha-finalizacao');
-                 if (senhaFinalizacao) senhaFinalizacao.value = '';
-                 if (erroSenhaEl) erroSenhaEl.style.display = 'none';
-
-                 document.getElementById('etapa-posicionamento').style.display = 'none';
-                 document.getElementById('etapa-selecao-template').style.display = 'block';
-                 tinymce.remove('#editor-parecer-content');
-
-                 dadosAssinatura = null;
-                 coordenadasAssinatura = { x: 0, y: 0 };
-                 templateAtual = null;
-             } else {
-                 // VERIFICA SE É ERRO DE SESSÃO
-                 if (data.code === 'SESSION_EXPIRED') {
-                     showToast('Sua sessão de assinatura expirou. Realize a verificação novamente.', 'warning');
-                     iniciarVerificacaoEmail();
-                 } else {
-                     showToast('Erro ao gerar PDF: ' + data.error, 'error');
-                 }
-             }
-         } catch (error) {
-             console.error('Erro:', error);
-             showToast('Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'), 'error');
-         }
-     }
 
      function carregarPareceresExistentes() {
          fetch('parecer_handler.php', {
@@ -3662,6 +2514,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                  lista.innerHTML = '';
                  data.pareceres.forEach(p => {
                      const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                     const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
                     const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                     const nomeLimpo = formatarNomeParecer(p.nome);
                     const seloTipo = gerarSeloTipoParecer(p.tipo);
@@ -3682,10 +2535,15 @@ $isBlocked = $isFinalized || $isIndeferido;
                                 <a href="${viewerUrl}"
                                    class="copy-btn me-1"
                                    target="_blank"
-                                   title="Visualizar parecer">
+                                   title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir parecer" style="color: #dc2626;">
+                                <a href="${downloadUrl}" 
+                                   class="copy-btn me-1" 
+                                   title="Baixar PDF">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir" style="color: #dc2626;">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -3693,16 +2551,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                      `;
                  });
              }
-
-             // Também carregar na aba de documentos
-             carregarPareceresDocumentos(data.pareceres);
          })
          .catch(error => {
              console.error('Erro ao carregar pareceres:', error);
          });
      }
 
-     function carregarPareceresDocumentos(pareceres) {
+     function _REMOVIDO_carregarPareceresDocumentos_OLD(pareceres) {
          const listaDocumentos = document.getElementById('pareceres-documentos-list');
          const pareceresSection = document.getElementById('pareceres-section');
 
@@ -3901,60 +2756,7 @@ function getStatusDotColor($status)
 }
 ?>
 
-<!-- Modal de Verificação de Segurança -->
-<div class="modal fade" id="modalVerificacaoSeguranca" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom-0 pb-0">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center px-4 pb-4">
-                <div class="mb-4">
-                    <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-                        <i class="fas fa-shield-alt text-success" style="font-size: 40px;"></i>
-                    </div>
-                </div>
-                
-                <h4 class="fw-bold mb-2">Verificação de Segurança</h4>
-                <p class="text-muted mb-4">Para sua segurança, precisamos confirmar sua identidade antes de prosseguir com a assinatura digital.</p>
-                
-                <!-- Etapa 1: Enviar Email -->
-                <div id="etapa-enviar-codigo">
-                    <button onclick="enviarCodigoVerificacao()" class="btn btn-primary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
-                        <i class="fas fa-paper-plane"></i>
-                        Enviar código para meu email
-                    </button>
-                    <p class="small text-muted mb-0">
-                        Um código de 6 dígitos será enviado para seu email cadastrado.
-                    </p>
-                </div>
-                
-                <!-- Etapa 2: Digitar Código -->
-                <div id="etapa-validar-codigo" style="display: none;">
-                    <p class="small text-muted mb-3">
-                        Enviamos um código para <strong id="email-mascarado-display">...</strong>
-                    </p>
-                    
-                    <div class="mb-3">
-                        <input type="text" id="codigo_verificacao" class="form-control form-control-lg text-center fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px;">
-                        <div class="invalid-feedback text-start" id="erro-codigo">
-                            Código incorreto.
-                        </div>
-                    </div>
-                    
-                    <button onclick="validarCodigoVerificacao()" class="btn btn-success w-100 py-2 mb-3">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Validar Código
-                    </button>
-                    
-                    <button onclick="voltarEnviarCodigo()" class="btn btn-link text-muted btn-sm text-decoration-none">
-                        Reenviar código
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- O Modal de Verificação de Segurança (modalVerificacaoSeguranca) foi removido pois a checagem ocorre agora no Login -->
 
 <!-- Modal de Sucesso -->
 <div class="modal fade" id="modalSucessoAssinatura" tabindex="-1" aria-hidden="true">

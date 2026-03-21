@@ -1,0 +1,46 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8090:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+      - DOCKER_ENV=1
+
+  db:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: u492577848_SEMA
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - sema_db_data:/var/lib/mysql
+      - ./database/u492577848_SEMA.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-proot", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8091:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  sema_db_data:

@@ -173,6 +173,22 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             text-align: center;
         }
 
+        .sidebar-menu .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 25px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.8) !important;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-menu .nav-link:hover,
+        .sidebar-menu .nav-link:not(.collapsed) {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff !important;
+            border-left: 4px solid #fff;
+        }
+
         .content-wrapper {
             margin-left: var(--sidebar-width);
             min-height: 100vh;
@@ -393,6 +409,21 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             color: white;
         }
 
+        .status-aguardando-fiscalizacao {
+            background-color: #0284c7; /* Azul / Cyan / Amber */
+            color: white;
+        }
+
+        .status-apto-a-gerar-alvara {
+            background-color: #8b5cf6; /* Roxo */
+            color: white;
+        }
+
+        .status-alvara-emitido {
+            background-color: #10b981; /* Verde esmeralda */
+            color: white;
+        }
+
         /* Estilos para as linhas da tabela clicáveis */
         .table tbody tr.clickable-row {
             cursor: pointer;
@@ -537,40 +568,55 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
-                    <a href="requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-archive"></i>
-                        <span>Arquivados</span>
+                    <a href="denuncias.php" class="<?php echo ($currentPage === 'denuncias.php' || $currentPage === 'nova_denuncia.php' || $currentPage === 'visualizar_denuncia.php') ? 'active' : ''; ?>">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Denúncias</span>
                     </a>
                 </li>
-                <li>
-                    <a href="documentos_assinados.php" class="<?php echo $currentPage === 'documentos_assinados.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-file-signature"></i>
-                        <span>Documentos Assinados</span>
+                <li class="nav-item">
+                    <a href="#submenuRelatorios" data-bs-toggle="collapse" class="nav-link text-white <?php echo in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php']) ? '' : 'collapsed'; ?>">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-folder-open"></i>
+                                <span>Acervo e Dados</span>
+                            </div>
+                            <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i>
+                        </div>
                     </a>
-                </li>
-                <li>
-                    <a href="estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Estatísticas</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="logs_email.php" class="<?php echo $currentPage === 'logs_email.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-history"></i>
-                        <span>Histórico de Envios</span>
-                    </a>
+                    <div class="collapse <?php echo in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php']) ? 'show' : ''; ?>" id="submenuRelatorios">
+                        <ul class="nav flex-column ms-3 mt-1" style="border-left: 1px solid rgba(255,255,255,0.2);">
+                            <li>
+                                <a href="requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                    <i class="fas fa-archive" style="width: 15px; font-size: 0.8rem;"></i>
+                                    <span>Arquivados</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="documentos_assinados.php" class="<?php echo $currentPage === 'documentos_assinados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                    <i class="fas fa-file-signature" style="width: 15px; font-size: 0.8rem;"></i>
+                                    <span>Doc. Assinados</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                    <i class="fas fa-chart-bar" style="width: 15px; font-size: 0.8rem;"></i>
+                                    <span>Estatísticas</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="logs_email.php" class="<?php echo $currentPage === 'logs_email.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                    <i class="fas fa-history" style="width: 15px; font-size: 0.8rem;"></i>
+                                    <span>Hist. Envios</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
             </ul>
 
             <div class="menu-header">Administração</div>
             <ul>
-                <li>
-                    <a href="perfil.php" class="<?php echo $currentPage === 'perfil.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-user"></i>
-                        <span>Meu Perfil</span>
-                    </a>
-                </li>
-                <?php if ($_SESSION['admin_nivel'] === 'admin'): ?>
+                <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral'): ?>
                     <li>
                         <a href="administradores.php" class="<?php echo $currentPage === 'administradores.php' ? 'active' : ''; ?>">
                             <i class="fas fa-users-cog"></i>
@@ -581,16 +627,43 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 
                 <?php 
                 // Menu específico para o Secretário
-                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br');
+                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
                 if ($isSecretario): 
                 ?>
                     <li>
                         <a href="secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
-                            <i class="fas fa-signature"></i>
+                            <i class="fas fa-signature" style="color:#8b5cf6;"></i>
                             <span>Aprovação de Alvarás</span>
                         </a>
                     </li>
                 <?php endif; ?>
+
+                <?php 
+                // Menu específico para o Analista
+                $isAnalista = ($_SESSION['admin_nivel'] === 'analista' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
+                if ($isAnalista): 
+                ?>
+                    <li>
+                        <a href="requerimentos.php?status=Pendente" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
+                            <i class="fas fa-search" style="color:#0284c7;"></i>
+                            <span>Triagem de Protocolos</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php 
+                // Menu específico para a Fiscalização
+                $isFiscal = ($_SESSION['admin_nivel'] === 'fiscal' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
+                if ($isFiscal): 
+                ?>
+                    <li>
+                        <a href="requerimentos.php?status=Aguardando Fiscalização" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Aguardando Fiscalização') ? 'active' : ''; ?>">
+                            <i class="fas fa-hard-hat" style="color:#10b981;"></i>
+                            <span>Fiscalização de Obras</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
 
                 <li>
                     <a href="logout.php">
