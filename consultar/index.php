@@ -12,6 +12,7 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
                 require_once '../includes/config.php';
                 require_once '../includes/database.php';
                 require_once '../includes/functions.php';
+                require_once '../tipos_alvara.php';
 
                 // Inicializar variáveis
                 $mensagem = null;
@@ -35,9 +36,8 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
 
                             // Buscar requerimento
                             $stmt = $pdo->prepare("
-                SELECT r.*, ta.nome as tipo_alvara
+                SELECT r.*
                 FROM requerimentos r
-                LEFT JOIN tipos_alvara ta ON r.tipo_alvara = ta.id
                 WHERE r.protocolo = ?
             ");
                             $stmt->execute([$protocolo]);
@@ -448,7 +448,7 @@ if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
                                 </div>
                                 <div>
                                     <div class="info-label">Tipo de Alvará</div>
-                                    <div class="info-value"><?php echo sanitize($requerimento['tipo_alvara']); ?></div>
+                                    <div class="info-value"><?php echo sanitize($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))); ?></div>
                                 </div>
                                 <div>
                                     <div class="info-label">Data de Envio</div>

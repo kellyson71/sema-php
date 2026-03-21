@@ -10,7 +10,13 @@ verificaLogin();
 header('Content-Type: application/json');
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Aceita JSON no body, URLSearchParams no body ($_POST) ou query string ($_GET)
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true);
+    if (!is_array($input)) {
+        // Frontend enviou application/x-www-form-urlencoded (URLSearchParams)
+        $input = $_POST;
+    }
     $action = $input['action'] ?? $_GET['action'] ?? '';
 
     $parecerService = new ParecerService();
@@ -36,165 +42,64 @@ try {
             break;
 
         case 'enviar_codigo_assinatura':
-            // Gerar código de 6 dígitos
-            $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-            
-            // Salvar na sessão (expira em 15 min)
-            $_SESSION['assinatura_otp_code'] = $codigo;
-            $_SESSION['assinatura_otp_expires'] = time() + (15 * 60);
-            
-            // Obter dados do admin
-            $stmt = $pdo->prepare("SELECT nome, email FROM administradores WHERE id = ?");
-            $stmt->execute([$_SESSION['admin_id']]);
-            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$admin || empty($admin['email'])) {
-                echo json_encode(['success' => false, 'error' => 'Email do administrador não encontrado.']);
-                exit;
-            }
-            
-            $origem = $input['origem'] ?? 'tecnico';
-            $requerimentoIdLog = isset($input['requerimento_id']) ? (int)$input['requerimento_id'] : null;
-            $codigoHash = hash('sha256', $codigo);
-            $codigoUltimos = substr($codigo, -2);
-
-            // Enviar email
-            $emailService = new EmailService();
-            $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
-            
-            if ($enviado) {
-                // Mascarar email para exibir no frontend
-                $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'envio_codigo',
-                    'origem' => $origem,
-                    'status' => 'sucesso',
-                    'email_destino' => $admin['email'],
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null
-                ]);
-                echo json_encode(['success' => true, 'email_mascarado' => $emailMascarado]);
-            } else {
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'envio_codigo',
-                    'origem' => $origem,
-                    'status' => 'erro',
-                    'email_destino' => $admin['email'],
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null,
-                    'erro' => 'Falha ao enviar email'
-                ]);
-                echo json_encode(['success' => false, 'error' => 'Erro ao enviar email. Tente novamente.']);
-            }
-            break;
-
         case 'validar_codigo_assinatura':
-            $codigoRecebido = $input['codigo'] ?? '';
-            $origem = $input['origem'] ?? 'tecnico';
-            $requerimentoIdLog = isset($input['requerimento_id']) ? (int)$input['requerimento_id'] : null;
-            $codigoHash = $codigoRecebido !== '' ? hash('sha256', $codigoRecebido) : null;
-            $codigoUltimos = $codigoRecebido !== '' ? substr($codigoRecebido, -2) : null;
-            
-            if (empty($codigoRecebido)) {
-                echo json_encode(['success' => false, 'error' => 'Código não informado.']);
-                exit;
-            }
-            
-            if (!isset($_SESSION['assinatura_otp_code']) || !isset($_SESSION['assinatura_otp_expires'])) {
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'validar_codigo',
-                    'origem' => $origem,
-                    'status' => 'erro',
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null,
-                    'erro' => 'Nenhum código gerado ou código expirado'
-                ]);
-                echo json_encode(['success' => false, 'error' => 'Nenhum código gerado ou código expirado.']);
-                exit;
-            }
-            
-            if (time() > $_SESSION['assinatura_otp_expires']) {
-                unset($_SESSION['assinatura_otp_code']);
-                unset($_SESSION['assinatura_otp_expires']);
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'validar_codigo',
-                    'origem' => $origem,
-                    'status' => 'erro',
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null,
-                    'erro' => 'Código expirado'
-                ]);
-                echo json_encode(['success' => false, 'error' => 'Código expirado. Solicite um novo.']);
-                exit;
-            }
-            
-            if ($codigoRecebido === $_SESSION['assinatura_otp_code']) {
-                $_SESSION['assinatura_auth_valid_until'] = time() + (8 * 60 * 60);
-                
-                // Limpar OTP
-                unset($_SESSION['assinatura_otp_code']);
-                unset($_SESSION['assinatura_otp_expires']);
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'validar_codigo',
-                    'origem' => $origem,
-                    'status' => 'sucesso',
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null
-                ]);
-                
-                echo json_encode(['success' => true]);
-            } else {
-                registrarHistoricoAssinatura($pdo, [
-                    'requerimento_id' => $requerimentoIdLog,
-                    'admin_id' => $_SESSION['admin_id'] ?? null,
-                    'evento' => 'validar_codigo',
-                    'origem' => $origem,
-                    'status' => 'erro',
-                    'codigo_hash' => $codigoHash,
-                    'codigo_ultimos' => $codigoUltimos,
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                    'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null,
-                    'host' => $_SERVER['HTTP_HOST'] ?? null,
-                    'erro' => 'Código incorreto'
-                ]);
-                echo json_encode(['success' => false, 'error' => 'Código incorreto.']);
-            }
+            // Estas ações foram descontinuadas e movidas para o fluxo principal de Login do sistema.
+            echo json_encode(['success' => false, 'error' => 'Ação descontinuada. Verificações de segurança integradas ao Login.']);
             break;
 
         case 'listar_templates':
-            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
-            
+            $requerimento_id = (int)($input['requerimento_id'] ?? $_GET['requerimento_id'] ?? 0);
+
+            // Função auxiliar: extrair texto de prévia do HTML do template
+            $extrairPreview = function($caminhoHtml) {
+                if (!file_exists($caminhoHtml)) return '';
+                $html = file_get_contents($caminhoHtml);
+                // Pegar só o conteúdo da div #conteudo ou do body
+                if (preg_match('/<div[^>]+id=["\']conteudo["\'][^>]*>(.*?)<\/div>/is', $html, $m)) {
+                    $txt = strip_tags($m[1]);
+                } else {
+                    $txt = strip_tags($html);
+                }
+                $txt = preg_replace('/\s+/', ' ', trim($txt));
+                // Limpar placeholders {{variavel}}
+                $txt = preg_replace('/\{\{[^}]+\}\}/', '…', $txt);
+                return mb_substr($txt, 0, 220);
+            };
+
+            // Mapa de descrições por slug do nome
+            $mapaDescricoes = [
+                'em_branco'                          => 'Documento em branco para redação livre no editor.',
+                'parecer_tecnico_alvara_construcao'  => 'Parecer técnico para Alvará de Construção com fundamentação legal (Lei 2117/2025 e NBR 12721).',
+                'parecer_tecnico_alvara_construcao_ambiental' => 'Parecer técnico ambiental complementar ao alvará de construção.',
+                'parecer_tecnico_desmembramento'     => 'Parecer técnico para processo de desmembramento de lote urbano.',
+                'parecer_tecnico_desmembramento_ambiental' => 'Análise ambiental para desmembramento de terreno.',
+                'parecer_tecnico_habite_se'          => 'Parecer técnico de Habite-se para edificação concluída.',
+                'parecer_tecnico_habite_se_ambiental'=> 'Análise ambiental para emissão do Habite-se.',
+                'licenca_previa_projeto'             => 'Licença prévia de projeto com campos obrigatórios e condicionantes.',
+                'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
+                'notificacao_fiscal'                 => 'Notificação oficial expedida pela fiscalização.',
+                'laudo_relatorio_tecnico'            => 'Laudo ou Relatório Técnico detalhado de vistoria.',
+                'comunicados_orientacoes'            => 'Comunicados ou orientações técnicas ao requerente.',
+                'auto_de_infracao'                   => 'Auto de infração para documentação de irregularidades.',
+            ];
+
+            // Mapa de ícones por slug
+            $mapaIcones = [
+                'em_branco'                          => ['icon' => 'fa-file-alt',        'cor' => 'text-secondary', 'badge' => 'Livre'],
+                'parecer_tecnico_alvara_construcao'  => ['icon' => 'fa-hard-hat',        'cor' => 'text-warning',   'badge' => 'Construção'],
+                'parecer_tecnico_alvara_construcao_ambiental' => ['icon' => 'fa-leaf',   'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'parecer_tecnico_desmembramento'     => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
+                'parecer_tecnico_desmembramento_ambiental' => ['icon' => 'fa-leaf',      'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'parecer_tecnico_habite_se'          => ['icon' => 'fa-home',            'cor' => 'text-primary',   'badge' => 'Habite-se'],
+                'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
+                'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
+                'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
+                'notificacao_fiscal'                 => ['icon' => 'fa-exclamation-triangle','cor' => 'text-warning', 'badge' => 'Notificação'],
+                'laudo_relatorio_tecnico'            => ['icon' => 'fa-microscope',      'cor' => 'text-info',      'badge' => 'Laudo'],
+                'comunicados_orientacoes'            => ['icon' => 'fa-bullhorn',        'cor' => 'text-secondary', 'badge' => 'Comunicado'],
+                'auto_de_infracao'                   => ['icon' => 'fa-ban',             'cor' => 'text-danger',    'badge' => 'Auto de Infração'],
+            ];
+
             // 1. Meus Rascunhos (Banco de Dados)
             $meusRascunhos = [];
             if ($requerimento_id > 0) {
@@ -209,13 +114,13 @@ try {
 
                 foreach ($dbRascunhos as $r) {
                     $meusRascunhos[] = [
-                        'id' => 'db_draft:' . $r['id'],
-                        'nome' => $r['nome'], 
-                        'data' => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
-                        'data_ts' => strtotime($r['data_atualizacao']),
-                        'assinante' => 'Você',
-                        'label' => $r['nome'], // Agora usamos o nome limpo salvo no banco
-                        'origem' => 'db'
+                        'id'       => 'db_draft:' . $r['id'],
+                        'nome'     => $r['nome'],
+                        'data'     => date('d/m/Y H:i', strtotime($r['data_atualizacao'])),
+                        'data_ts'  => strtotime($r['data_atualizacao']),
+                        'assinante'=> 'Você',
+                        'label'    => $r['nome'],
+                        'origem'   => 'db'
                     ];
                 }
             }
@@ -223,93 +128,115 @@ try {
             // 2. Histórico Legado (Arquivos JSON)
             $historicoDocs = [];
             $pastaPareceres = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
-           
+
             if (is_dir($pastaPareceres)) {
                 $arquivos = glob($pastaPareceres . '*.json');
                 foreach ($arquivos as $arquivo) {
                     $dados = json_decode(file_get_contents($arquivo), true);
                     if ($dados) {
-                        $nomeArquivo = basename($arquivo, '.json');
-                        $timestamp = filemtime($arquivo);
-                        $dataFmt = date('d/m/Y H:i', $timestamp);
-                        $idDoc = $dados['documento_id'] ?? '';
-                        
-                        // Tentar gerar um nome melhorzinho pro legado
-                        $nomeExibicao = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
-                        $nomeExibicao = ucwords(str_replace('_', ' ', $nomeExibicao));
-                        // Se tiver ID curto, remove timestamp do nome se tiver
-                        $nomeExibicao = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
-                        
-                        $label = "$nomeExibicao (Arquivo Antigo)";
+                        $nomeArquivo   = basename($arquivo, '.json');
+                        $timestamp     = filemtime($arquivo);
+                        $dataFmt       = date('d/m/Y H:i', $timestamp);
+                        $nomeExibicao  = str_replace(['parecer_', 'rascunho_', 'template_oficial_', 'a4_'], '', $nomeArquivo);
+                        $nomeExibicao  = ucwords(str_replace('_', ' ', $nomeExibicao));
+                        $nomeExibicao  = preg_replace('/ [0-9]{14}$/', '', $nomeExibicao);
 
                         $historicoDocs[] = [
-                            'id' => 'draft:' . $nomeArquivo . '.json',
-                            'nome' => $nomeExibicao,
-                            'data' => $dataFmt,
-                            'data_ts' => $timestamp,
-                            'assinante' => $dados['dados_assinatura']['assinante_nome'] ?? '...',
-                            'label' => $label,
-                            'origem' => 'file'
+                            'id'       => 'draft:' . $nomeArquivo . '.json',
+                            'nome'     => $nomeExibicao,
+                            'data'     => $dataFmt,
+                            'data_ts'  => $timestamp,
+                            'assinante'=> $dados['dados_assinatura']['assinante_nome'] ?? '...',
+                            'label'    => $nomeExibicao . ' (Arquivo Antigo)',
+                            'origem'   => 'file'
                         ];
                     }
                 }
             }
 
-            // 3. UNIFICAR E ORDENAR
+            // 3. Unificar e ordenar histórico
             $historicoUnificado = array_merge($meusRascunhos, $historicoDocs);
-            
-            // Ordenar por data (DESC) - Mais recente primeiro
-            usort($historicoUnificado, function($a, $b) {
-                return $b['data_ts'] - $a['data_ts'];
-            });
-
-            // Pegar apenas os 5 mais recentes para exibir na sessão "Histórico Recente"
+            usort($historicoUnificado, function($a, $b) { return $b['data_ts'] - $a['data_ts']; });
             $historicoRecente = array_slice($historicoUnificado, 0, 5);
 
-
-            // 4. Templates Padrão (Do sistema)
-            // Ajustar caminho para garantir que encontre a pasta assets/doc
-            $templatesDiretorio = realpath(dirname(__DIR__) . '/assets/doc') . '/';
+            // 4. Templates Padrão
+            $templatesDiretorio = realpath(__DIR__ . '/templates');
+            if ($templatesDiretorio) {
+                $templatesDiretorio = rtrim($templatesDiretorio, '/') . '/';
+            }
             $templates = [];
-            
-            // Adicionar template em branco
+
+            // Template em branco (sempre primeiro)
             $templates[] = [
-                'nome' => 'em_branco', 
-                'tipo' => 'html',
-                'caminho' => ''
+                'nome'          => 'em_branco',
+                'tipo'          => 'html',
+                'label_amigavel'=> 'Documento em Branco',
+                'descricao'     => $mapaDescricoes['em_branco'],
+                'icone'         => $mapaIcones['em_branco']['icon'],
+                'icone_cor'     => $mapaIcones['em_branco']['cor'],
+                'badge'         => $mapaIcones['em_branco']['badge'],
+                'preview'       => 'Crie um documento do zero, sem modelo predefinido. O editor abrirá em branco para redação livre.',
+                'caminho'       => ''
             ];
 
-            if (is_dir($templatesDiretorio)) {
-                // Listar HTMLs
+            if ($templatesDiretorio && is_dir($templatesDiretorio)) {
                 $arquivosHtml = glob($templatesDiretorio . '*.html');
                 if ($arquivosHtml) {
                     foreach ($arquivosHtml as $arquivo) {
                         $nomeBase = basename($arquivo, '.html');
-                        if ($nomeBase == 'modelo_base') continue;
-                        $templates[] = ['nome' => $nomeBase, 'tipo' => 'html'];
+                        if ($nomeBase === 'modelo_base') continue;
+
+                        // Slug normalizado (sem espaços) para lookup nos mapas
+                        $slug = preg_replace('/\s*-\s*/', '_', $nomeBase); // "nome - ambiental" → "nome_ambiental"
+                        $slug = trim($slug, '_');
+
+                        $iconeInfo = $mapaIcones[$slug] ?? $mapaIcones[$nomeBase] ?? ['icon' => 'fa-file-signature', 'cor' => 'text-secondary', 'badge' => 'Parecer'];
+
+                        $templates[] = [
+                            'nome'          => $nomeBase, // Nome REAL do arquivo (para carregar o template)
+                            'tipo'          => 'html',
+                            'label_amigavel'=> ucwords(str_replace(['_', ' - '], [' ', ' | '], $nomeBase)),
+                            'descricao'     => $mapaDescricoes[$slug] ?? $mapaDescricoes[$nomeBase] ?? 'Modelo disponível para edição no editor online.',
+                            'icone'         => $iconeInfo['icon'],
+                            'icone_cor'     => $iconeInfo['cor'],
+                            'badge'         => $iconeInfo['badge'],
+                            'preview'       => $extrairPreview($arquivo),
+                        ];
                     }
                 }
-                
-                // Listar DOCXs (se houver suporte)
+
+                // DOCXs (se houver)
                 $arquivosDocx = glob($templatesDiretorio . '*.docx');
                 if ($arquivosDocx) {
                     foreach ($arquivosDocx as $arquivo) {
-                         $nomeBase = basename($arquivo, '.docx');
-                         $templates[] = ['nome' => $nomeBase, 'tipo' => 'docx'];
+                        $nomeBase = basename($arquivo, '.docx');
+                        $templates[] = [
+                            'nome'          => $nomeBase,
+                            'tipo'          => 'docx',
+                            'label_amigavel'=> ucwords(str_replace('_', ' ', $nomeBase)),
+                            'descricao'     => 'Modelo no formato Word.',
+                            'icone'         => 'fa-file-word',
+                            'icone_cor'     => 'text-primary',
+                            'badge'         => 'DOCX',
+                            'preview'       => '',
+                        ];
                     }
                 }
             } else {
-                error_log("Diretório de templates não encontrado: " . dirname(__DIR__) . '/assets/doc');
+                error_log('[listar_templates] Diretório de templates não encontrado: ' . __DIR__ . '/templates');
             }
-            // Ordenar templates
+
+            // Ordenar: em_branco primeiro, demais por nome
             usort($templates, function($a, $b) {
-                return strcmp($a['nome'], $b['nome']); 
+                if ($a['nome'] === 'em_branco') return -1;
+                if ($b['nome'] === 'em_branco') return 1;
+                return strcmp($a['nome'], $b['nome']);
             });
 
             echo json_encode([
-                'success' => true,
+                'success'         => true,
                 'historico_recente' => $historicoRecente,
-                'templates' => $templates
+                'templates'       => $templates
             ]);
             break;
 
@@ -395,9 +322,9 @@ try {
                 break; // Sai do switch/case
             }
 
-            // C. Verificar se é Template Padrão (.html em assets/doc)
+            // C. Verificar se é Template Padrão (.html em admin/templates)
             // Se o arquivo existir, deixamos fluir para o preenchimento de dados
-            $templatesDiretorio = dirname(__DIR__) . '/assets/doc/';
+            $templatesDiretorio = __DIR__ . '/templates/';
             $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
             
             // Se não existir e não for DOCX, vai dar erro no ParecerService.

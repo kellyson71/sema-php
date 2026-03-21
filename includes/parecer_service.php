@@ -136,7 +136,16 @@ class ParecerService
             'email_requerente' => $requerimento['requerente_email'] ?? '',
             'telefone_requerente' => $requerimento['requerente_telefone'] ?? '',
             'endereco_objetivo' => $requerimento['endereco_objetivo'] ?? '',
-            'tipo_alvara' => $requerimento['tipo_alvara'] ?? '',
+            'tipo_alvara' => (function() use ($requerimento) {
+                $slug = $requerimento['tipo_alvara'] ?? '';
+                static $tipos = null;
+                if ($tipos === null) {
+                    $arquivo = dirname(__DIR__) . '/tipos_alvara.php';
+                    if (file_exists($arquivo)) { include $arquivo; $tipos = $tipos_alvara ?? []; }
+                    else { $tipos = []; }
+                }
+                return $tipos[$slug]['nome'] ?? ucwords(str_replace('_', ' ', $slug));
+            })(),
             'status' => $requerimento['status'] ?? '',
             'data_envio' => isset($requerimento['data_envio']) ? date('d/m/Y H:i', strtotime($requerimento['data_envio'])) : '',
             'data_atual' => date('d/m/Y'),
@@ -150,6 +159,8 @@ class ParecerService
             'especificacao' => $especificacao,
             'art_numero' => $artNumero,
             'area_construida' => $area !== '' ? $area : 'a ser informada',
+            'area' => $area !== '' ? $area : 'a ser informada',
+            'detalhes_imovel' => $especificacao,
             'area_lote' => $requerimento['area_lote'] ?? '',
             'nome_interessado' => $nomeInteressado,
             'cpf_interessado' => $cpfInteressado,
@@ -1207,80 +1218,179 @@ class ParecerService
     public function listarPareceres($requerimento_id)
     {
         global $pdo;
-        $pastaRequerimento = $this->uploadsPath . $requerimento_id . '/';
+        
+        // Garantir que $pdo existe (em alguns contextos de include pode haver problema de escopo)
+        if (!isset($pdo) || !$pdo) {
+            try {
+                // Tenta incluir conexao.php para recuperar o $pdo se ele sumiu
+                @require_once dirname(__DIR__) . '/admin/conexao.php';
+            } catch (\Exception $e) {}
+        }
+        
         $pareceres = [];
+        $arquivosJaAdicionados = []; // evita duplicatas
 
+        // ── 1. Fontes do banco de dados (assinaturas_digitais) ────────────────
+        // Inclui arquivos salvos em admin/pareceres/{id}/ pelo processa_assinatura.php
+        try {
+            $stmt = $pdo->prepare("
+                SELECT ad.documento_id, ad.nome_arquivo, ad.caminho_arquivo,
+                       ad.timestamp_assinatura, ad.assinante_nome, ad.tipo_documento
+                FROM assinaturas_digitais ad
+                WHERE ad.requerimento_id = ?
+                ORDER BY ad.timestamp_assinatura DESC
+            ");
+            $stmt->execute([$requerimento_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($rows as $row) {
+                $caminho = $row['caminho_arquivo'];
+                
+                // Tentar resolver o caminho físico (várias tentativas)
+                if (!file_exists($caminho)) {
+                    // Tentativa 1: relativo à raiz
+                    $tentativa1 = dirname(__DIR__) . '/' . ltrim($row['caminho_arquivo'], '/');
+                    if (file_exists($tentativa1)) {
+                        $caminho = $tentativa1;
+                    } else {
+                        // Tentativa 2: relativo a admin/ (onde processa_assinatura salva)
+                        $tentativa2 = dirname(__DIR__) . '/admin/' . ltrim($row['caminho_arquivo'], '/');
+                        if (file_exists($tentativa2)) {
+                            $caminho = $tentativa2;
+                        }
+                    }
+                }
+                $ext = strtolower(pathinfo($row['nome_arquivo'], PATHINFO_EXTENSION));
+
+                $tamanho = file_exists($caminho) ? filesize($caminho) : 0;
+                $data    = date('d/m/Y H:i', strtotime($row['timestamp_assinatura']));
+
+                $pareceres[] = [
+                    'nome'        => $row['nome_arquivo'],
+                    'arquivo'     => $row['nome_arquivo'],
+                    'caminho'     => $caminho,
+                    'data'        => $data,
+                    'tamanho'     => $tamanho,
+                    'tipo'        => $ext ?: 'html',
+                    'documento_id'=> $row['documento_id'],
+                    'assinante'   => $row['assinante_nome'],
+                ];
+                $arquivosJaAdicionados[] = $row['nome_arquivo'];
+            }
+        } catch (\Exception $e) {
+            // fallback silencioso — continua para varredura de disco
+        }
+
+        // ── 2. Varredura de disco (uploads/pareceres/{id}/) — fallback ────────
+        $pastaRequerimento = $this->uploadsPath . $requerimento_id . '/';
         if (is_dir($pastaRequerimento)) {
             $files = scandir($pastaRequerimento);
             foreach ($files as $file) {
+                if (in_array($file, $arquivosJaAdicionados)) continue; // já listado
                 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (in_array($ext, ['pdf', 'html'])) {
-                    $caminhoCompleto = $pastaRequerimento . $file;
-                    $parecerData = [
-                        'nome' => $file,
-                        'arquivo' => $file,
-                        'caminho' => $caminhoCompleto,
-                        'data' => date('d/m/Y H:i', filemtime($caminhoCompleto)),
-                        'tamanho' => filesize($caminhoCompleto),
-                        'tipo' => $ext,
-                        'documento_id' => null,
-                        'assinante' => 'Desconhecido'
-                    ];
+                if (!in_array($ext, ['pdf', 'html'])) continue;
 
-                    $caminhoJson = $pastaRequerimento . pathinfo($file, PATHINFO_FILENAME) . '.json';
-                    if (file_exists($caminhoJson)) {
-                        $jsonData = json_decode(file_get_contents($caminhoJson), true);
-                        if ($jsonData) {
-                            if (isset($jsonData['documento_id'])) {
-                                $parecerData['documento_id'] = $jsonData['documento_id'];
-                            }
-                            if (isset($jsonData['dados_assinatura']['assinante_nome'])) {
-                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome'];
-                            } elseif (isset($jsonData['dados_assinatura']['assinante_nome_completo'])) {
-                                $parecerData['assinante'] = $jsonData['dados_assinatura']['assinante_nome_completo'];
-                            }
-                        }
-                    } else {
-                        // Buscar documento_id na tabela de assinaturas digitais
-                        // Tentar buscar pelo nome do arquivo ou pelo caminho
-                        $stmt = $pdo->prepare("
-                            SELECT documento_id, assinante_nome
-                            FROM assinaturas_digitais
-                            WHERE requerimento_id = ?
-                            AND (nome_arquivo = ? OR caminho_arquivo LIKE ?)
-                            LIMIT 1
-                        ");
-                        $nomeArquivo = $file;
-                        $caminhoPattern = '%/' . $requerimento_id . '/' . $nomeArquivo;
-                        $stmt->execute([$requerimento_id, $nomeArquivo, $caminhoPattern]);
-                        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-                        if ($resultado) {
-                            $parecerData['documento_id'] = $resultado['documento_id'];
-                            $parecerData['assinante'] = $resultado['assinante_nome'];
-                        }
+                $caminhoCompleto = $pastaRequerimento . $file;
+                $parecerData = [
+                    'nome'        => $file,
+                    'arquivo'     => $file,
+                    'caminho'     => $caminhoCompleto,
+                    'data'        => date('d/m/Y H:i', filemtime($caminhoCompleto)),
+                    'tamanho'     => filesize($caminhoCompleto),
+                    'tipo'        => $ext,
+                    'documento_id'=> null,
+                    'assinante'   => null,
+                ];
+
+                // Tentar enriquecer com JSON lateral
+                $caminhoJson = $pastaRequerimento . pathinfo($file, PATHINFO_FILENAME) . '.json';
+                if (file_exists($caminhoJson)) {
+                    $jsonData = json_decode(file_get_contents($caminhoJson), true);
+                    if ($jsonData) {
+                        $parecerData['documento_id'] = $jsonData['documento_id'] ?? null;
+                        $parecerData['assinante']    = $jsonData['dados_assinatura']['assinante_nome']
+                            ?? $jsonData['dados_assinatura']['assinante_nome_completo']
+                            ?? null;
                     }
-
-                    $pareceres[] = $parecerData;
                 }
-            }
 
-            usort($pareceres, function($a, $b) {
-                return filemtime($b['caminho']) - filemtime($a['caminho']);
-            });
+                $pareceres[]            = $parecerData;
+                $arquivosJaAdicionados[] = $file;
+            }
         }
 
         return $pareceres;
     }
 
+
     public function excluirParecer($requerimento_id, $nomeArquivo)
     {
+        global $pdo;
+        
+        // Garantir que $pdo existe
+        if (!isset($pdo) || !$pdo) {
+            try {
+                @require_once dirname(__DIR__) . '/admin/conexao.php';
+            } catch (\Exception $e) {}
+        }
+        
+        $sucesso = false;
+
+        // 1. Tentar excluir do banco de dados (novo fluxo)
+        // Precisamos encontrar qual documento_id corresponde a este nome_arquivo
+        if (isset($pdo) && $pdo) {
+            try {
+                $stmtBusca = $pdo->prepare("SELECT documento_id, caminho_arquivo FROM assinaturas_digitais WHERE requerimento_id = ? AND nome_arquivo = ? LIMIT 1");
+                $stmtBusca->execute([$requerimento_id, $nomeArquivo]);
+                $doc = $stmtBusca->fetch(PDO::FETCH_ASSOC);
+
+                if ($doc) {
+                    $caminhoNoBanco = $doc['caminho_arquivo'];
+                    
+                    // Excluir do banco
+                    $stmtDel = $pdo->prepare("DELETE FROM assinaturas_digitais WHERE documento_id = ?");
+                    $stmtDel->execute([$doc['documento_id']]);
+                    $sucesso = true; // Se estava no banco e excluiu, conta como sucesso
+                    
+                    // Tentar excluir o arquivo listado no banco
+                    $caminhosParaTestar = [
+                        $caminhoNoBanco,
+                        dirname(__DIR__) . '/' . ltrim($caminhoNoBanco, '/'),
+                        dirname(__DIR__) . '/admin/' . ltrim($caminhoNoBanco, '/')
+                    ];
+                    
+                    foreach ($caminhosParaTestar as $cPath) {
+                        if (file_exists($cPath)) {
+                            @unlink($cPath);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Falha silenciosa no BD, tenta via filepath clássico
+            }
+        }
+
+        // 2. Fluxo clássico (pasta uploads/pareceres/{id}/)
         $caminhoCompleto = $this->uploadsPath . $requerimento_id . '/' . $nomeArquivo;
 
         if (file_exists($caminhoCompleto)) {
-            return unlink($caminhoCompleto);
+            @unlink($caminhoCompleto);
+            $sucesso = true;
+        }
+        
+        // 3. Limpar arquivos secundários (.json, .pdf) na pasta clássica
+        $baseName = pathinfo($nomeArquivo, PATHINFO_FILENAME);
+        $arquivosAssociados = glob($this->uploadsPath . $requerimento_id . '/' . $baseName . '.*');
+        if ($arquivosAssociados) {
+            foreach ($arquivosAssociados as $arq) {
+                if (file_exists($arq)) {
+                    @unlink($arq);
+                }
+            }
         }
 
-        return false;
+        return $sucesso;
     }
 
     public function downloadParecer($requerimento_id, $nomeArquivo)

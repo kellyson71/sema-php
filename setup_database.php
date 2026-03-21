@@ -50,7 +50,6 @@ try {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         echo "Conectado sem senha!\n";
 
-        // Repetir o processo de criação do banco
         $pdo->exec("CREATE DATABASE IF NOT EXISTS $database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         echo "Banco de dados '$database' criado/verificado com sucesso!\n";
     } catch (PDOException $e2) {

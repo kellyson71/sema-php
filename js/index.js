@@ -12,24 +12,24 @@ function decreaseFont() {
   }
 }
 
-// Máscara para CPF/CNPJ
+// Máscara para CPF/CNPJ (padrão de mercado — formatação posicional)
 function mascara(input) {
-  let value = input.value.replace(/\D/g, "");
+  let v = input.value.replace(/\D/g, "").substring(0, 14);
 
-  if (value.length <= 11) {
-    // Formato CPF: 000.000.000-00
-    value = value.replace(/(\d{3})(\d)/, "$1.$2");
-    value = value.replace(/(\d{3})(\d)/, "$1.$2");
-    value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  if (v.length <= 11) {
+    // CPF: 000.000.000-00
+    if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
+    else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
+    else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})/, "$1.$2");
   } else {
-    // Formato CNPJ: 00.000.000/0000-00
-    value = value.replace(/^(\d{2})(\d)/, "$1.$2");
-    value = value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-    value = value.replace(/\.(\d{3})(\d)/, ".$1/$2");
-    value = value.replace(/(\d{4})(\d)/, "$1-$2");
+    // CNPJ: 00.000.000/0000-00
+    if (v.length > 12)     v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})$/, "$1.$2.$3/$4-$5");
+    else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})/, "$1.$2.$3/$4");
+    else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})/, "$1.$2.$3");
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,3})/, "$1.$2");
   }
 
-  input.value = value;
+  input.value = v;
 }
 
 // Máscara para telefone

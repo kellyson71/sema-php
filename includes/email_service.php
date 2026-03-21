@@ -51,7 +51,7 @@ function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status
         ];
 
         return $db->insert('email_logs', $data);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Erro ao registrar log de email: " . $e->getMessage());
         return false;
     }
@@ -140,7 +140,7 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
             }
             return true;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $erro = $e->getMessage();
         error_log("Exceção ao enviar email: " . $erro);
         if ($requerimento_id) {
@@ -180,7 +180,7 @@ class EmailService
             }
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de protocolo: " . $e->getMessage());
             return false;
         }
@@ -203,7 +203,7 @@ class EmailService
             $body = $this->carregarTemplateProtocoloOficial($to_name, $protocolo_oficial);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de protocolo oficial: " . $e->getMessage());
             return false;
         }
@@ -229,7 +229,7 @@ class EmailService
             $body = $this->carregarTemplateIndeferimento($to_name, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de indeferimento: " . $e->getMessage());
             return false;
         }
@@ -262,6 +262,113 @@ class EmailService
     {
         ob_start();
         include __DIR__ . '/../templates/email_indeferimento.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Enviar email notificando aprovação técnica (Apto a gerar alvará)
+     *
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $protocolo Protocolo do requerimento
+     * @param string $tipo_alvara Tipo de alvará solicitado
+     * @param int|null $requerimento_id ID do requerimento
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailAprovado($to_email, $to_name, $protocolo, $tipo_alvara, $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Aprovado";
+
+            $nome_destinatario = $to_name;
+            $body = $this->carregarTemplateAprovado($nome_destinatario, $protocolo, $tipo_alvara);
+
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de aprovação: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Enviar email notificando pendências de documentação
+     *
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $protocolo Protocolo do requerimento
+     * @param string $tipo_alvara Tipo de alvará solicitado
+     * @param string|array $pendencias Lista ou texto descrevendo as pendências
+     * @param int|null $requerimento_id ID do requerimento
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailPendencia($to_email, $to_name, $protocolo, $tipo_alvara, $pendencias, $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Documentação Pendente";
+
+            $nome_destinatario = $to_name;
+            $body = $this->carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias);
+
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de pendência: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Enviar email notificando devolução do processo para correção
+     *
+     * @param string $to_email Email do destinatário
+     * @param string $to_name Nome do destinatário
+     * @param string $protocolo Protocolo do requerimento
+     * @param string $tipo_alvara Tipo de alvará solicitado
+     * @param string $motivo_reenvio Motivo da devolução / o que precisa ser corrigido
+     * @param int|null $requerimento_id ID do requerimento
+     * @return bool True se enviado com sucesso, false caso contrário
+     */
+    public function enviarEmailReenvio($to_email, $to_name, $protocolo, $tipo_alvara, $motivo_reenvio, $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Devolvido para Correção";
+
+            $nome_destinatario = $to_name;
+            $body = $this->carregarTemplateReenvio($nome_destinatario, $protocolo, $tipo_alvara, $motivo_reenvio);
+
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Exception $e) {
+            error_log("Erro ao enviar email de reenvio: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Carregar template de email para aprovação técnica
+     */
+    private function carregarTemplateAprovado($nome_destinatario, $protocolo, $tipo_alvara)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_aprovado.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Carregar template de email para pendências de documentação
+     */
+    private function carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_pendencia.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Carregar template de email para devolução do processo
+     */
+    private function carregarTemplateReenvio($nome_destinatario, $protocolo, $tipo_alvara, $motivo_reenvio)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_reenvio.php';
         return ob_get_clean();
     }
 
@@ -331,7 +438,7 @@ class EmailService
 
             // Não passa requerimento_id pois é um email de verificação do sistema
             return sendMail($to_email, $to_name, $subject, $body, null);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de código de verificação: " . $e->getMessage());
             return false;
         }
