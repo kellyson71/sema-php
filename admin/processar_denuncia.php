@@ -69,16 +69,19 @@ if ($acao === 'cadastrar') {
             }
         }
 
-        $pdo->commit();
-        
         // Registrar Histórico
         registrarHistoricoDenuncia($pdo, $denunciaId, 'Criação', 'Denúncia registrada no sistema.');
 
+        $pdo->commit();
+        
         header("Location: denuncias.php?success=registrada");
         exit;
 
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Erro ao salvar denúncia: " . $e->getMessage());
         header("Location: denuncias.php?error=criacao");
         exit;
     }
