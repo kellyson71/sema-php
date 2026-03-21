@@ -77,6 +77,9 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> 'Análise ambiental para emissão do Habite-se.',
                 'licenca_previa_projeto'             => 'Licença prévia de projeto com campos obrigatórios e condicionantes.',
                 'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
+                'carta_habite_se'                    => 'Carta de Habite-se para edificação concluída (documento final de conclusão de obra).',
+                'alvara_de_construcao'               => 'Alvará de Construção com dados do proprietário, responsável técnico e especificação da obra.',
+                'alvara_de_desmembramento'           => 'Álvará de Desmembramento com autorização formal e fundamentação na Lei 6.766/1979.',
                 'notificacao_fiscal'                 => 'Notificação oficial expedida pela fiscalização.',
                 'laudo_relatorio_tecnico'            => 'Laudo ou Relatório Técnico detalhado de vistoria.',
                 'comunicados_orientacoes'            => 'Comunicados ou orientações técnicas ao requerente.',
@@ -94,6 +97,9 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
                 'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
+                'carta_habite_se'                    => ['icon' => 'fa-house-check',     'cor' => 'text-primary',   'badge' => 'Habite-se'],
+                'alvara_de_construcao'               => ['icon' => 'fa-hard-hat',        'cor' => 'text-warning',   'badge' => 'Construção'],
+                'alvara_de_desmembramento'           => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
                 'notificacao_fiscal'                 => ['icon' => 'fa-exclamation-triangle','cor' => 'text-warning', 'badge' => 'Notificação'],
                 'laudo_relatorio_tecnico'            => ['icon' => 'fa-microscope',      'cor' => 'text-info',      'badge' => 'Laudo'],
                 'comunicados_orientacoes'            => ['icon' => 'fa-bullhorn',        'cor' => 'text-secondary', 'badge' => 'Comunicado'],
@@ -201,6 +207,17 @@ try {
                             'icone_cor'     => $iconeInfo['cor'],
                             'badge'         => $iconeInfo['badge'],
                             'preview'       => $extrairPreview($arquivo),
+                            'fiscalizacao'  => in_array($slug, [
+                                'alvara_de_construcao',
+                                'carta_habite_se',
+                                'alvara_de_desmembramento',
+                                'parecer_tecnico_alvara_construcao',
+                                'parecer_tecnico_alvara_construcao_ambiental',
+                                'parecer_tecnico_habite_se',
+                                'parecer_tecnico_habite_se_ambiental',
+                                'parecer_tecnico_desmembramento',
+                                'parecer_tecnico_desmembramento_ambiental',
+                            ]),
                         ];
                     }
                 }
@@ -226,10 +243,38 @@ try {
                 error_log('[listar_templates] Diretório de templates não encontrado: ' . __DIR__ . '/templates');
             }
 
-            // Ordenar: em_branco primeiro, demais por nome
-            usort($templates, function($a, $b) {
+            // Templates prioritários para usuários de fiscalização de obras
+            $templatesFiscalizacao = [
+                'alvara_de_construcao',
+                'carta_habite_se',
+                'alvara_de_desmembramento',
+                'parecer_tecnico_alvara_construcao',
+                'parecer_tecnico_alvara_construcao_ambiental',
+                'parecer_tecnico_habite_se',
+                'parecer_tecnico_habite_se_ambiental',
+                'parecer_tecnico_desmembramento',
+                'parecer_tecnico_desmembramento_ambiental',
+            ];
+
+            $nivelAdmin = $_SESSION['admin_nivel'] ?? '';
+            $isFiscal   = in_array($nivelAdmin, ['fiscal', 'admin', 'admin_geral']);
+
+            // Ordenar: em_branco primeiro; para fiscal, templates de obras em seguida; demais por nome
+            usort($templates, function($a, $b) use ($templatesFiscalizacao, $isFiscal) {
                 if ($a['nome'] === 'em_branco') return -1;
                 if ($b['nome'] === 'em_branco') return 1;
+
+                if ($isFiscal) {
+                    $aIsFisc = in_array($a['nome'], $templatesFiscalizacao);
+                    $bIsFisc = in_array($b['nome'], $templatesFiscalizacao);
+                    if ($aIsFisc && !$bIsFisc) return -1;
+                    if (!$aIsFisc && $bIsFisc) return 1;
+                    // Dentro do grupo de fiscalização, manter a ordem definida no array
+                    if ($aIsFisc && $bIsFisc) {
+                        return array_search($a['nome'], $templatesFiscalizacao) <=> array_search($b['nome'], $templatesFiscalizacao);
+                    }
+                }
+
                 return strcmp($a['nome'], $b['nome']);
             });
 

@@ -138,6 +138,16 @@ include 'header.php';
         .tpl-badge.parecer    { background: #f1f5f9; color: #475569; }
         .tpl-badge.desmembramento { background: #cffafe; color: #155e75; }
 
+        /* Destaque para templates de fiscalização de obras */
+        .template-card.border-warning {
+            border-color: #f59e0b !important;
+            border-bottom-color: #f59e0b !important;
+        }
+        .template-card.border-warning:hover {
+            border-bottom-color: #d97706 !important;
+            box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
+        }
+
         /* Preview de texto do template */
         .preview-miniature {
             font-size: 0.72rem;
@@ -405,6 +415,8 @@ include 'header.php';
 
     <script>
     const reqId = <?= $requerimento_id ?>;
+    const adminNivel = <?= json_encode($_SESSION['admin_nivel'] ?? '') ?>;
+    const isFiscal = ['fiscal', 'admin', 'admin_geral'].includes(adminNivel);
     let currentTemplate = '';
 
     /* ─── Helpers de badge ─────────────────────────────────── */
@@ -442,6 +454,8 @@ include 'header.php';
             // ── Templates ──────────────────────────────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
                 let html = '';
+                let separadorInserido = false;
+
                 ret.templates.forEach((t, idx) => {
                     const nome    = t.nome  || t;
                     const label   = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -450,13 +464,35 @@ include 'header.php';
                     const cor     = t.icone_cor  || 'text-secondary';
                     const badge   = t.badge      || 'Parecer';
                     const preview = t.preview    || desc;
+                    const ehFisc  = t.fiscalizacao === true;
                     const delay   = (idx * 0.06).toFixed(2);
+
+                    // Para usuário fiscal: inserir separador ao sair do bloco de obras
+                    if (isFiscal && !separadorInserido && idx > 0 && !ehFisc && nome !== 'em_branco') {
+                        separadorInserido = true;
+                        html += `
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <small class="text-muted fw-semibold text-uppercase" style="font-size:.7rem; letter-spacing:.06em;">
+                                <i class="fas fa-layer-group me-1"></i> Outros modelos
+                            </small>
+                        </div>`;
+                    }
+
+                    // Borda de destaque para templates de fiscalização (visível para todos, mais evidente para fiscal)
+                    const cardDestaque = ehFisc
+                        ? 'border-warning'
+                        : '';
+                    const pinFisc = (isFiscal && ehFisc)
+                        ? `<span class="position-absolute top-0 end-0 m-2 badge bg-warning text-dark" style="font-size:.6rem"><i class="fas fa-hard-hat me-1"></i>Obras</span>`
+                        : '';
 
                     html += `
                     <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-                        <div class="card template-card border-0 shadow-sm"
+                        <div class="card template-card border-0 shadow-sm ${cardDestaque}"
                              onclick="selecionarTemplate('${escaparAttr(nome)}', '${escaparAttr(label)}')"
                              title="${escaparAttr(desc)}">
+                            ${pinFisc}
                             <div class="card-body text-center p-4">
                                 <div class="icon-wrap mb-1">
                                     <i class="fas ${icone} ${cor} fs-2"></i>
