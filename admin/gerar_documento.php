@@ -237,6 +237,32 @@ include 'header.php';
             display: flex; align-items: center; justify-content: center;
         }
         .section-header h5 { margin: 0; font-weight: 700; color: #1e293b; }
+
+        /* ═══════════════════════════════════════════════
+           ABAS DE TEMPLATES
+        ═══════════════════════════════════════════════ */
+        #tabsTemplates {
+            border-bottom: 2px solid #e2e8f0;
+        }
+        #tabsTemplates .nav-link {
+            color: #64748b;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            padding: 10px 18px;
+            border-radius: 0;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        #tabsTemplates .nav-link:hover {
+            color: var(--sema-green);
+            background: transparent;
+        }
+        #tabsTemplates .nav-link.active {
+            color: var(--sema-green);
+            border-bottom-color: var(--sema-green);
+            background: transparent;
+            font-weight: 700;
+        }
     </style>
 
     <!-- Navegação de Topo -->
@@ -262,45 +288,76 @@ include 'header.php';
     ══════════════════════════════════════════════════════════════ -->
     <div id="secao-selecao">
 
-        <!-- Templates Padrão -->
-        <div class="section-header">
-            <div class="section-icon bg-success bg-opacity-10">
-                <i class="fas fa-layer-group text-success"></i>
-            </div>
-            <div>
-                <h5>Criar Novo Documento</h5>
-                <small class="text-muted fw-normal d-block" style="margin-top:-2px">Selecione um modelo oficial para gerar o documento</small>
-            </div>
-        </div>
+        <!-- Abas de navegação -->
+        <ul class="nav nav-tabs mb-4" id="tabsTemplates" role="tablist">
+            <?php
+            $isFiscalPhp = in_array($_SESSION['admin_nivel'] ?? '', ['fiscal', 'admin', 'admin_geral']);
+            $tabObrasActive  = $isFiscalPhp ? 'active' : '';
+            $tabTodosActive  = $isFiscalPhp ? '' : 'active';
+            $paneObrasActive = $isFiscalPhp ? 'show active' : '';
+            $paneTodosActive = $isFiscalPhp ? '' : 'show active';
+            ?>
+            <?php if ($isFiscalPhp): ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold <?= $tabObrasActive ?>" id="tab-obras" data-bs-toggle="tab"
+                        data-bs-target="#pane-obras" type="button" role="tab">
+                    <i class="fas fa-hard-hat me-2 text-warning"></i> Fiscalização de Obras
+                </button>
+            </li>
+            <?php endif; ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold <?= $tabTodosActive ?>" id="tab-todos" data-bs-toggle="tab"
+                        data-bs-target="#pane-todos" type="button" role="tab">
+                    <i class="fas fa-layer-group me-2 text-success"></i> Todos os Modelos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="tab-historico" data-bs-toggle="tab"
+                        data-bs-target="#pane-historico" type="button" role="tab">
+                    <i class="fas fa-history me-2 text-warning"></i> Documentos Anteriores
+                </button>
+            </li>
+        </ul>
 
-        <!-- Grid de Skeletons enquanto carrega -->
-        <div class="row g-4 mb-5" id="lista-templates">
-            <?php for($i=0;$i<6;$i++): ?>
-            <div class="col-xl-3 col-md-4 col-sm-6">
-                <div class="skeleton skeleton-card"></div>
-            </div>
-            <?php endfor; ?>
-        </div>
+        <div class="tab-content" id="tabsTemplatesContent">
 
-        <!-- Histórico -->
-        <div class="section-header mt-2">
-            <div class="section-icon bg-warning bg-opacity-10">
-                <i class="fas fa-history text-warning"></i>
-            </div>
-            <div>
-                <h5>Reaproveitar Documento Anterior</h5>
-                <small class="text-muted fw-normal d-block" style="margin-top:-2px">Documentos gerados neste processo que podem ser usados como base</small>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-5" id="lista-historico">
-            <div class="col-12">
-                <div class="text-center text-muted py-3">
-                    <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
-                    <small>Verificando histórico...</small>
+            <?php if ($isFiscalPhp): ?>
+            <!-- Aba: Fiscalização de Obras -->
+            <div class="tab-pane fade <?= $paneObrasActive ?>" id="pane-obras" role="tabpanel">
+                <div class="row g-4 mb-4" id="lista-obras">
+                    <?php for($i=0;$i<3;$i++): ?>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <div class="skeleton skeleton-card"></div>
+                    </div>
+                    <?php endfor; ?>
                 </div>
             </div>
-        </div>
+            <?php endif; ?>
+
+            <!-- Aba: Todos os Modelos -->
+            <div class="tab-pane fade <?= $paneTodosActive ?>" id="pane-todos" role="tabpanel">
+                <div class="row g-4 mb-4" id="lista-templates">
+                    <?php for($i=0;$i<6;$i++): ?>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <div class="skeleton skeleton-card"></div>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+
+            <!-- Aba: Documentos Anteriores -->
+            <div class="tab-pane fade" id="pane-historico" role="tabpanel">
+                <div class="row g-3 mb-4" id="lista-historico">
+                    <div class="col-12">
+                        <div class="text-center text-muted py-3">
+                            <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
+                            <small>Verificando histórico...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-content -->
 
     </div><!-- /secao-selecao -->
 
@@ -436,6 +493,38 @@ include 'header.php';
     /* ─── Inicializar ao abrir a página ────────────────────── */
     document.addEventListener('DOMContentLoaded', carregarTemplates);
 
+    /* ─── Montar HTML de um card de template ───────────────── */
+    function buildCardTemplate(t, idx) {
+        const nome    = t.nome  || t;
+        const label   = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const desc    = t.descricao  || 'Modelo padrão oficial da secretaria.';
+        const icone   = t.icone      || 'fa-file-signature';
+        const cor     = t.icone_cor  || 'text-secondary';
+        const badge   = t.badge      || 'Parecer';
+        const preview = t.preview    || desc;
+        const ehFisc  = t.fiscalizacao === true;
+        const delay   = (idx * 0.06).toFixed(2);
+        const cardDestaque = ehFisc ? 'border-warning' : '';
+
+        return `
+        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
+            <div class="card template-card border-0 shadow-sm ${cardDestaque}"
+                 onclick="selecionarTemplate('${escaparAttr(nome)}', '${escaparAttr(label)}')"
+                 title="${escaparAttr(desc)}">
+                <div class="card-body text-center p-4">
+                    <div class="icon-wrap mb-1">
+                        <i class="fas ${icone} ${cor} fs-2"></i>
+                    </div>
+                    <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
+                    <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
+                    <div class="preview-miniature">
+                        ${escapeHtml(preview)}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
     /* ─── Carregar templates via AJAX ──────────────────────── */
     function carregarTemplates() {
         fetch('parecer_handler.php', {
@@ -449,66 +538,32 @@ include 'header.php';
         .then(res => res.json())
         .then(ret => {
             const listTpl  = document.getElementById('lista-templates');
+            const listObras = document.getElementById('lista-obras');
             const listHist = document.getElementById('lista-historico');
 
-            // ── Templates ──────────────────────────────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
-                let html = '';
-                let separadorInserido = false;
+                let htmlTodos = '';
+                let htmlObras = '';
 
                 ret.templates.forEach((t, idx) => {
-                    const nome    = t.nome  || t;
-                    const label   = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                    const desc    = t.descricao  || 'Modelo padrão oficial da secretaria.';
-                    const icone   = t.icone      || 'fa-file-signature';
-                    const cor     = t.icone_cor  || 'text-secondary';
-                    const badge   = t.badge      || 'Parecer';
-                    const preview = t.preview    || desc;
-                    const ehFisc  = t.fiscalizacao === true;
-                    const delay   = (idx * 0.06).toFixed(2);
+                    const card = buildCardTemplate(t, idx);
+                    htmlTodos += card;
+                    if (t.fiscalizacao === true) htmlObras += card;
+                });
 
-                    // Para usuário fiscal: inserir separador ao sair do bloco de obras
-                    if (isFiscal && !separadorInserido && idx > 0 && !ehFisc && nome !== 'em_branco') {
-                        separadorInserido = true;
-                        html += `
-                        <div class="col-12">
-                            <hr class="my-1">
-                            <small class="text-muted fw-semibold text-uppercase" style="font-size:.7rem; letter-spacing:.06em;">
-                                <i class="fas fa-layer-group me-1"></i> Outros modelos
-                            </small>
-                        </div>`;
-                    }
+                listTpl.innerHTML = htmlTodos;
 
-                    // Borda de destaque para templates de fiscalização (visível para todos, mais evidente para fiscal)
-                    const cardDestaque = ehFisc
-                        ? 'border-warning'
-                        : '';
-                    const pinFisc = (isFiscal && ehFisc)
-                        ? `<span class="position-absolute top-0 end-0 m-2 badge bg-warning text-dark" style="font-size:.6rem"><i class="fas fa-hard-hat me-1"></i>Obras</span>`
-                        : '';
-
-                    html += `
-                    <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-                        <div class="card template-card border-0 shadow-sm ${cardDestaque}"
-                             onclick="selecionarTemplate('${escaparAttr(nome)}', '${escaparAttr(label)}')"
-                             title="${escaparAttr(desc)}">
-                            ${pinFisc}
-                            <div class="card-body text-center p-4">
-                                <div class="icon-wrap mb-1">
-                                    <i class="fas ${icone} ${cor} fs-2"></i>
-                                </div>
-                                <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
-                                <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                                <div class="preview-miniature">
-                                    ${escapeHtml(preview)}
-                                </div>
-                            </div>
+                if (listObras) {
+                    listObras.innerHTML = htmlObras || `
+                    <div class="col-12">
+                        <div class="text-muted py-2 d-flex align-items-center gap-2">
+                            <i class="fas fa-inbox text-secondary"></i>
+                            <small>Nenhum template de fiscalização encontrado.</small>
                         </div>
                     </div>`;
-                });
-                listTpl.innerHTML = html;
+                }
             } else {
-                listTpl.innerHTML = `
+                const errHtml = `
                 <div class="col-12">
                     <div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
                         <i class="fas fa-triangle-exclamation fs-4"></i>
@@ -518,6 +573,8 @@ include 'header.php';
                         </div>
                     </div>
                 </div>`;
+                listTpl.innerHTML = errHtml;
+                if (listObras) listObras.innerHTML = errHtml;
             }
 
             // ── Histórico ──────────────────────────────────
