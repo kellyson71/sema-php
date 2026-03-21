@@ -205,15 +205,6 @@ include_once 'tipos_alvara.php';
                         selectAlvara.dispatchEvent(new Event('change'));
                     }
                     
-                    // Restaurar mesmo_requerente
-                    if (formData.mesmo_requerente) {
-                        const radio = document.querySelector(`input[name="mesmo_requerente"][value="${formData.mesmo_requerente}"]`);
-                        if (radio) {
-                            radio.checked = true;
-                            radio.dispatchEvent(new Event('change'));
-                        }
-                    }
-                    
                     // Restaurar campos do proprietário
                     if (formData.proprietario) {
                         setTimeout(() => {
@@ -245,38 +236,25 @@ include_once 'tipos_alvara.php';
 
                 <!-- Seção 1: Dados do Proprietário -->
                 <div class="form-section">
-                    <div class="form-part-3">
-                        <div class="y-n-field">
-                            <p>O requerente é o mesmo que o proprietário?</p>
-                            <label for="mesmo-sim">
-                                <input required title="Sim" name="mesmo_requerente" id="mesmo-sim" type="radio"
-                                    value="true">
-                                Sim
-                            </label>
-                            <label for="mesmo-nao">
-                                <input required title="Não" name="mesmo_requerente" id="mesmo-nao" type="radio"
-                                    value="false">
-                                Não
-                            </label>
-                        </div>
-                    </div>
-
+                    <div class="form-section-label">Dados do Proprietário do Imóvel</div>
+                    <input type="hidden" name="mesmo_requerente" value="false">
                     <div class="form-part-2" id="proprietario-fields">
                         <input id="proprietario_nome" name="proprietario[nome]"
                             placeholder="Nome Completo do Proprietário *" autocomplete="name">
                         <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
                             id="proprietario_cpf_cnpj"
-                            placeholder="CPF/CNPJ do Proprietário: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                            placeholder="CPF ou CNPJ do Proprietário" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
                     </div>
                 </div>
 
                 <!-- Seção 2: Dados do Requerente -->
                 <div class="form-section">
+                    <div class="form-section-label">Dados do Requerente</div>
                     <div class="form-part-2">
-                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
+                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
                         <input required type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
                         <input oninput="mascara(this)" type="text" required name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF/CNPJ: 000.000.000-00 ou 00.000.000/0000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                            placeholder="CPF ou CNPJ do Requerente" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
                         <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required
                             name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
                     </div>
@@ -384,18 +362,12 @@ include_once 'tipos_alvara.php';
                 const tipoAlvara = document.getElementById('tipo_alvara').value;
                 if (!tipoAlvara) erros.push('Selecione um tipo de alvará');
                 
-                // Validar proprietário (se não for o mesmo)
-                const mesmoRequerente = document.querySelector('input[name="mesmo_requerente"]:checked');
-                if (!mesmoRequerente) {
-                    erros.push('Informe se o requerente é o mesmo que o proprietário');
-                } else if (mesmoRequerente.value === 'false') {
-                    const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]')?.value.trim();
-                    const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]')?.value.trim();
-                    
-                    if (nomeProprietario || cpfProprietario) {
-                        if (!nomeProprietario) erros.push('Nome do proprietário é obrigatório');
-                        if (!cpfProprietario) erros.push('CPF/CNPJ do proprietário é obrigatório');
-                    }
+                // Validar proprietário
+                const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]')?.value.trim();
+                const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]')?.value.trim();
+                if (nomeProprietario || cpfProprietario) {
+                    if (!nomeProprietario) erros.push('Nome do proprietário é obrigatório');
+                    if (!cpfProprietario) erros.push('CPF/CNPJ do proprietário é obrigatório');
                 }
                 
                 // Validar campos específicos de licenças ambientais
@@ -498,11 +470,7 @@ include_once 'tipos_alvara.php';
     </div>
 
     <script>
-        // Função para mostrar/esconder campos do proprietário
         document.addEventListener('DOMContentLoaded', function() {
-            const mesmoSimRadio = document.getElementById('mesmo-sim');
-            const mesmoNaoRadio = document.getElementById('mesmo-nao');
-            const proprietarioFields = document.getElementById('proprietario-fields');
             const documentosDiv = document.getElementById('documentos_necessarios');
 
             // Adiciona a mensagem inicial
@@ -512,20 +480,6 @@ include_once 'tipos_alvara.php';
                 <p>Selecione um tipo de alvará acima para visualizar os documentos necessários e iniciar o processo de requerimento.</p>
             </div>
         `;
-
-            function toggleProprietarioFields() {
-                if (mesmoSimRadio.checked) {
-                    proprietarioFields.style.display = 'none';
-                } else {
-                    proprietarioFields.style.display = 'grid';
-                }
-            }
-
-            mesmoSimRadio.addEventListener('change', toggleProprietarioFields);
-            mesmoNaoRadio.addEventListener('change', toggleProprietarioFields);
-
-            // Estado inicial
-            proprietarioFields.style.display = 'none';
 
             // Carregamento de campos para o tipo de alvará
             const tipoAlvaraSelect = document.getElementById('tipo_alvara');
@@ -628,6 +582,28 @@ include_once 'tipos_alvara.php';
                                 </select>
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
+                        `;
+                    } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
+                        campos = `
+                            <div class="form-grid-2">
+                                <input required name="area_construida" placeholder="Área Construída (m²) *">
+                                <input required name="numero_pavimentos" placeholder="Número de Pavimentos *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                            </div>
+                            <div class="form-grid-2">
+                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                                    <option value="" hidden>Tipo de Documento *</option>
+                                    <option value="ART">ART</option>
+                                    <option value="RRT">RRT</option>
+                                    <option value="TRT">TRT</option>
+                                    <option value="ART/RRT">ART/RRT</option>
+                                </select>
+                                <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
+                            </div>
+                            <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `

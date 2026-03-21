@@ -871,6 +871,16 @@ footer > div:nth-child(2) img {
   }
 }
 
+/* Label de título de seção do formulário */
+.form-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+
 /* Estilo específico para a seção de alvará - mais espaçamento */
 .form-section-alvara {
   margin-top: 50px;

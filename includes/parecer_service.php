@@ -136,7 +136,16 @@ class ParecerService
             'email_requerente' => $requerimento['requerente_email'] ?? '',
             'telefone_requerente' => $requerimento['requerente_telefone'] ?? '',
             'endereco_objetivo' => $requerimento['endereco_objetivo'] ?? '',
-            'tipo_alvara' => $requerimento['tipo_alvara'] ?? '',
+            'tipo_alvara' => (function() use ($requerimento) {
+                $slug = $requerimento['tipo_alvara'] ?? '';
+                static $tipos = null;
+                if ($tipos === null) {
+                    $arquivo = dirname(__DIR__) . '/tipos_alvara.php';
+                    if (file_exists($arquivo)) { include $arquivo; $tipos = $tipos_alvara ?? []; }
+                    else { $tipos = []; }
+                }
+                return $tipos[$slug]['nome'] ?? ucwords(str_replace('_', ' ', $slug));
+            })(),
             'status' => $requerimento['status'] ?? '',
             'data_envio' => isset($requerimento['data_envio']) ? date('d/m/Y H:i', strtotime($requerimento['data_envio'])) : '',
             'data_atual' => date('d/m/Y'),
@@ -150,6 +159,8 @@ class ParecerService
             'especificacao' => $especificacao,
             'art_numero' => $artNumero,
             'area_construida' => $area !== '' ? $area : 'a ser informada',
+            'area' => $area !== '' ? $area : 'a ser informada',
+            'detalhes_imovel' => $especificacao,
             'area_lote' => $requerimento['area_lote'] ?? '',
             'nome_interessado' => $nomeInteressado,
             'cpf_interessado' => $cpfInteressado,

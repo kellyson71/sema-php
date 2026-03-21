@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                 $requerimento['requerente_email'],
                 $requerimento['requerente_nome'],
                 $requerimento['protocolo'],
-                $requerimento['tipo_alvara'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
                 $motivoIndeferimento,
                 $orientacoesAdicionais
             );
@@ -2019,7 +2019,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($requerimento['tipo_alvara'] ?? ''); ?>
+                    <strong>Tipo de Alvará:</strong> <?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'] ?? ''))); ?>
                 </div>
 
                 <div class="mb-3">
