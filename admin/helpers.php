@@ -28,7 +28,7 @@ if (!function_exists('formatarTempoEstatisticas')) {
  * onde cada valor é um Unix timestamp ou null se não ocorreu.
  *
  * Mapeamento de ações reais gravadas em historico_acoes:
- *   tAnalise      → "Alterou status para 'Em análise'" ou "Em análise"
+ *   tVisualizacao → "Visualizou o requerimento pela primeira vez"
  *   tFiscalizacao → "Enviou processo para Fiscalização de Obras"
  *   tSecretario   → "Concluiu a vistoria técnica e enviou para o Secretário"
  *   tConclusao    → "Aprovou e Assinou o Alvará" | "Finalizado" | "Indeferido"
@@ -40,7 +40,7 @@ if (!function_exists('formatarTempoEstatisticas')) {
 function calcularTemposEtapas(array $historico, string $data_envio): array
 {
     $tEnvio        = strtotime($data_envio);
-    $tAnalise      = null;
+    $tVisualizacao = null;
     $tFiscalizacao = null;
     $tSecretario   = null;
     $tConclusao    = null;
@@ -49,9 +49,9 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
         $t   = strtotime($h['data_acao']);
         $aco = $h['acao'];
 
-        // Entrada em análise
-        if (stripos($aco, 'Em análise') !== false) {
-            if ($tAnalise === null || $t < $tAnalise) $tAnalise = $t;
+        // Primeira visualização
+        if (stripos($aco, 'primeira vez') !== false) {
+            if ($tVisualizacao === null || $t < $tVisualizacao) $tVisualizacao = $t;
         }
 
         // Enviado para fiscalização
@@ -67,7 +67,6 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
         // Conclusão: alvará assinado, finalizado ou indeferido
         if (
             stripos($aco, 'Assinou o Alvará') !== false ||
-            stripos($aco, 'Alvará Emitido')   !== false ||
             stripos($aco, 'Finalizado')        !== false ||
             stripos($aco, 'Indeferido')        !== false
         ) {
@@ -75,5 +74,5 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
         }
     }
 
-    return compact('tEnvio', 'tAnalise', 'tFiscalizacao', 'tSecretario', 'tConclusao');
+    return compact('tEnvio', 'tVisualizacao', 'tFiscalizacao', 'tSecretario', 'tConclusao');
 }

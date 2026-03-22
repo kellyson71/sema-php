@@ -13,9 +13,18 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $id = (int)$_GET['id'];
 
-// Marcar o requerimento como visualizado
+// Marcar como visualizado — registrar no histórico apenas na 1ª vez
+$stmtCheckVis = $pdo->prepare("SELECT visualizado FROM requerimentos WHERE id = ?");
+$stmtCheckVis->execute([$id]);
+$eraVisualizadoAntes = (int)$stmtCheckVis->fetchColumn();
+
 $stmtVisualizado = $pdo->prepare("UPDATE requerimentos SET visualizado = 1 WHERE id = ?");
 $stmtVisualizado->execute([$id]);
+
+if ($eraVisualizadoAntes === 0) {
+    $stmtHist = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+    $stmtHist->execute([$_SESSION['admin_id'], $id, "Visualizou o requerimento pela primeira vez"]);
+}
 
 // Função para buscar dados do requerimento
 function buscarDadosRequerimento($pdo, $id)
@@ -392,33 +401,26 @@ $historico = $stmt->fetchAll();
 // Calcular tempo por etapa usando o histórico já buscado
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
 $tEnvio        = $etapas['tEnvio'];
-$tAnalise      = $etapas['tAnalise'];
+$tVisualizacao = $etapas['tVisualizacao'];
 $tFiscalizacao = $etapas['tFiscalizacao'];
 $tSecretario   = $etapas['tSecretario'];
 $tConclusao    = $etapas['tConclusao'];
 
-// Etapa 1: Envio → Análise (triagem)
-$tempoEsperaAnalise = ($tAnalise && $tAnalise >= $tEnvio) ? ($tAnalise - $tEnvio) : null;
+// Etapa 1: Envio → 1ª Visualização
+$tempoAteVisualizacao = ($tVisualizacao && $tVisualizacao >= $tEnvio) ? ($tVisualizacao - $tEnvio) : null;
 
-// Etapa 2: Análise → Fiscalização
+// Etapa 2: 1ª Visualização → Fiscalização
 $tempoAnaliseFiscalizacao = null;
 if ($tFiscalizacao) {
-    $inicio = $tAnalise ?? $tEnvio;
+    $inicio = $tVisualizacao ?? $tEnvio;
     if ($tFiscalizacao >= $inicio) $tempoAnaliseFiscalizacao = $tFiscalizacao - $inicio;
 }
 
 // Etapa 3: Fiscalização → Secretário
 $tempoFiscalizacaoSecretario = null;
 if ($tSecretario) {
-    $inicio = $tFiscalizacao ?? $tAnalise ?? $tEnvio;
+    $inicio = $tFiscalizacao ?? $tVisualizacao ?? $tEnvio;
     if ($tSecretario >= $inicio) $tempoFiscalizacaoSecretario = $tSecretario - $inicio;
-}
-
-// Etapa 4: Secretário → Conclusão
-$tempoSecretarioConclusao = null;
-if ($tConclusao) {
-    $inicio = $tSecretario ?? $tFiscalizacao ?? $tAnalise ?? $tEnvio;
-    if ($tConclusao >= $inicio) $tempoSecretarioConclusao = $tConclusao - $inicio;
 }
 
 $tempoTotalProcesso = ($tConclusao && $tConclusao >= $tEnvio) ? ($tConclusao - $tEnvio) : null;
@@ -1707,74 +1709,66 @@ $isBlocked = $isFinalized || $isIndeferido;
                     <h6>Tempo por Etapa</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <!-- Pendente → Análise (triagem) -->
+                    <div class="row g-2">
+                        <!-- Etapa 1: Envio → 1ª Visualização -->
                         <div class="col-6 col-md-3">
-                            <div class="border-start border-4 border-info ps-3 py-2">
-                                <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Triagem
+                            <div class="p-3 rounded bg-light">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="fas fa-eye text-muted" style="font-size:.8rem;width:14px"></i>
+                                    <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Resposta</span>
                                 </div>
-                                <div class="small text-muted mb-1">Pendente <i class="fas fa-arrow-right mx-1"></i> Análise</div>
-                                <div class="h5 mb-0 text-info fw-bold">
-                                    <i class="fas fa-search me-1"></i>
-                                    <?php echo formatarTempoEstatisticas($tempoEsperaAnalise); ?>
-                                </div>
+                                <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoAteVisualizacao); ?></div>
+                                <div class="text-muted" style="font-size:.75rem">envio → visualização</div>
                             </div>
                         </div>
 
-                        <!-- Análise → Fiscalização -->
+                        <!-- Etapa 2: Visualização → Fiscalização -->
                         <div class="col-6 col-md-3">
-                            <div class="border-start border-4 border-warning ps-3 py-2">
-                                <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Análise Técnica
+                            <div class="p-3 rounded bg-light">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="fas fa-hard-hat text-muted" style="font-size:.8rem;width:14px"></i>
+                                    <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Análise</span>
                                 </div>
-                                <div class="small text-muted mb-1">Análise <i class="fas fa-arrow-right mx-1"></i> Fiscalização</div>
-                                <div class="h5 mb-0 text-warning fw-bold">
-                                    <i class="fas fa-hard-hat me-1"></i>
-                                    <?php echo formatarTempoEstatisticas($tempoAnaliseFiscalizacao); ?>
-                                </div>
+                                <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoAnaliseFiscalizacao); ?></div>
+                                <div class="text-muted" style="font-size:.75rem">análise → fiscalização</div>
                             </div>
                         </div>
 
-                        <!-- Fiscalização → Secretário -->
+                        <!-- Etapa 3: Fiscalização → Secretário -->
                         <div class="col-6 col-md-3">
-                            <div class="border-start border-4 border-success ps-3 py-2">
-                                <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Fiscalização
+                            <div class="p-3 rounded bg-light">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="fas fa-file-signature text-muted" style="font-size:.8rem;width:14px"></i>
+                                    <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Fiscalização</span>
                                 </div>
-                                <div class="small text-muted mb-1">Fiscal <i class="fas fa-arrow-right mx-1"></i> Secretário</div>
-                                <div class="h5 mb-0 text-success fw-bold">
-                                    <i class="fas fa-file-signature me-1"></i>
-                                    <?php echo formatarTempoEstatisticas($tempoFiscalizacaoSecretario); ?>
-                                </div>
+                                <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoFiscalizacaoSecretario); ?></div>
+                                <div class="text-muted" style="font-size:.75rem">fiscal → secretário</div>
                             </div>
                         </div>
 
                         <!-- Tempo Total / Em Aberto -->
                         <div class="col-6 col-md-3">
-                            <?php if ($tempoTotalProcesso !== null): ?>
-                                <div class="border-start border-4 border-secondary ps-3 py-2">
-                                    <div class="text-muted small fw-bold text-uppercase mb-1">Tempo Total</div>
-                                    <div class="small text-muted mb-1">Envio <i class="fas fa-arrow-right mx-1"></i> Conclusão</div>
-                                    <div class="h5 mb-0 text-secondary fw-bold">
-                                        <i class="fas fa-clock me-1"></i>
-                                        <?php echo formatarTempoEstatisticas($tempoTotalProcesso); ?>
+                            <div class="p-3 rounded bg-light">
+                                <?php if ($tempoTotalProcesso !== null): ?>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <i class="fas fa-flag-checkered text-muted" style="font-size:.8rem;width:14px"></i>
+                                        <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Tempo Total</span>
                                     </div>
-                                </div>
-                            <?php else: ?>
-                                <div class="border-start border-4 border-primary ps-3 py-2">
-                                    <div class="text-muted small fw-bold text-uppercase mb-1">Em Aberto</div>
-                                    <div class="small text-muted mb-1">Desde o envio</div>
-                                    <div class="h5 mb-0 text-primary fw-bold">
-                                        <i class="fas fa-hourglass-half me-1"></i>
-                                        <?php echo formatarTempoEstatisticas($tempoEmAberto); ?>
+                                    <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoTotalProcesso); ?></div>
+                                    <div class="text-muted" style="font-size:.75rem">envio → conclusão</div>
+                                <?php else: ?>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <i class="fas fa-hourglass-half text-muted" style="font-size:.8rem;width:14px"></i>
+                                        <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Em Aberto</span>
                                     </div>
-                                </div>
-                            <?php endif; ?>
+                                    <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoEmAberto); ?></div>
+                                    <div class="text-muted" style="font-size:.75rem">desde o envio</div>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
 
-                    <?php if ($tAnalise === null && $tFiscalizacao === null && $tConclusao === null): ?>
+                    <?php if ($tVisualizacao === null && $tFiscalizacao === null && $tConclusao === null): ?>
                         <div class="text-muted small mt-3">
                             <i class="fas fa-info-circle me-1"></i>
                             As etapas serão calculadas conforme o processo avança.

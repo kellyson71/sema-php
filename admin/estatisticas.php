@@ -55,78 +55,79 @@ $mediaPorDia = $dadosMedia['dias'] > 0 ? round($dadosMedia['total'] / $dadosMedi
 
 // Novas Métricas de Tempo
 $stmt = $pdo->query("
-    SELECT 
+    SELECT
         r.id,
         r.protocolo,
         r.data_envio,
         r.status as status_atual,
-        MIN(CASE WHEN ha.acao LIKE '%Em análise%' THEN ha.data_acao END) as data_analise,
-        MIN(CASE WHEN ha.acao LIKE '%Aprovado%' THEN ha.data_acao END) as data_aprovado,
-        MIN(CASE WHEN ha.acao LIKE '%Finalizado%' OR ha.acao LIKE '%Indeferido%' THEN ha.data_acao END) as data_conclusao
+        MIN(CASE WHEN ha.acao LIKE '%primeira vez%' THEN ha.data_acao END) as data_visualizacao,
+        MIN(CASE WHEN ha.acao LIKE '%Fiscalização%' THEN ha.data_acao END) as data_fiscalizacao,
+        MIN(CASE WHEN ha.acao LIKE '%Secretário%' OR ha.acao LIKE '%vistoria técnica%' THEN ha.data_acao END) as data_secretario,
+        MIN(CASE WHEN ha.acao LIKE '%Assinou o Alvará%' OR ha.acao LIKE '%Finalizado%' OR ha.acao LIKE '%Indeferido%' THEN ha.data_acao END) as data_conclusao
     FROM requerimentos r
     LEFT JOIN historico_acoes ha ON r.id = ha.requerimento_id
     GROUP BY r.id
 ");
 $temposRequerimentos = $stmt->fetchAll();
 
-$somaEsperaAnalise = 0; $qtdEsperaAnalise = 0;
-$somaAnaliseAprovacao = 0; $qtdAnaliseAprovacao = 0;
-$somaAprovacaoConclusao = 0; $qtdAprovacaoConclusao = 0;
+$somaResposta = 0; $qtdResposta = 0;
+$somaAnaliseFiscal = 0; $qtdAnaliseFiscal = 0;
+$somaFiscalSecretario = 0; $qtdFiscalSecretario = 0;
 $somaTempoTotal = 0; $qtdTempoTotal = 0;
 
 $processosTempoTotal = [];
 
 foreach ($temposRequerimentos as $req) {
     if (!$req['data_envio']) continue;
-    $tEnvio = strtotime($req['data_envio']);
-    $tAnalise = $req['data_analise'] ? strtotime($req['data_analise']) : null;
-    $tAprovado = $req['data_aprovado'] ? strtotime($req['data_aprovado']) : null;
-    $tConclusao = $req['data_conclusao'] ? strtotime($req['data_conclusao']) : null;
+    $tEnvio        = strtotime($req['data_envio']);
+    $tVisualizacao = $req['data_visualizacao'] ? strtotime($req['data_visualizacao']) : null;
+    $tFiscalizacao = $req['data_fiscalizacao'] ? strtotime($req['data_fiscalizacao']) : null;
+    $tSecretario   = $req['data_secretario']   ? strtotime($req['data_secretario'])   : null;
+    $tConclusao    = $req['data_conclusao']     ? strtotime($req['data_conclusao'])    : null;
 
-    if ($tAnalise && $tAnalise >= $tEnvio) {
-        $somaEsperaAnalise += ($tAnalise - $tEnvio);
-        $qtdEsperaAnalise++;
+    // Etapa 1: Envio → 1ª Visualização
+    if ($tVisualizacao && $tVisualizacao >= $tEnvio) {
+        $somaResposta += ($tVisualizacao - $tEnvio);
+        $qtdResposta++;
     }
-    
-    if ($tAprovado) {
-        $inicioAprovacao = $tAnalise ? $tAnalise : $tEnvio;
-        if ($tAprovado >= $inicioAprovacao) {
-            $somaAnaliseAprovacao += ($tAprovado - $inicioAprovacao);
-            $qtdAnaliseAprovacao++;
+
+    // Etapa 2: 1ª Visualização → Fiscalização
+    if ($tFiscalizacao) {
+        $inicio = $tVisualizacao ?? $tEnvio;
+        if ($tFiscalizacao >= $inicio) {
+            $somaAnaliseFiscal += ($tFiscalizacao - $inicio);
+            $qtdAnaliseFiscal++;
         }
     }
-    
-    if ($tConclusao && $tAprovado && $tConclusao >= $tAprovado) {
-        $somaAprovacaoConclusao += ($tConclusao - $tAprovado);
-        $qtdAprovacaoConclusao++;
+
+    // Etapa 3: Fiscalização → Secretário
+    if ($tSecretario) {
+        $inicio = $tFiscalizacao ?? $tVisualizacao ?? $tEnvio;
+        if ($tSecretario >= $inicio) {
+            $somaFiscalSecretario += ($tSecretario - $inicio);
+            $qtdFiscalSecretario++;
+        }
     }
-    
+
     if ($tConclusao && $tConclusao >= $tEnvio) {
         $tempoTotal = $tConclusao - $tEnvio;
         $somaTempoTotal += $tempoTotal;
         $qtdTempoTotal++;
-        
-        $processosTempoTotal[] = [
-            'protocolo' => $req['protocolo'],
-            'tempo' => $tempoTotal,
-            'id' => $req['id']
-        ];
+        $processosTempoTotal[] = ['protocolo' => $req['protocolo'], 'tempo' => $tempoTotal, 'id' => $req['id']];
     }
 }
 
-usort($processosTempoTotal, function($a, $b) {
-    return $a['tempo'] <=> $b['tempo'];
-});
+usort($processosTempoTotal, function($a, $b) { return $a['tempo'] <=> $b['tempo']; });
 
 $topRapidos = array_slice($processosTempoTotal, 0, 5);
 $topLentos = array_slice(array_reverse($processosTempoTotal), 0, 5);
 
 // formatarTempoEstatisticas() definida em helpers.php
 
-$mediaEsperaAnalise = $qtdEsperaAnalise > 0 ? $somaEsperaAnalise / $qtdEsperaAnalise : 0;
-$mediaAnaliseAprovacao = $qtdAnaliseAprovacao > 0 ? $somaAnaliseAprovacao / $qtdAnaliseAprovacao : 0;
-$mediaAprovacaoConclusao = $qtdAprovacaoConclusao > 0 ? $somaAprovacaoConclusao / $qtdAprovacaoConclusao : 0;
-$mediaTempoTotal = $qtdTempoTotal > 0 ? $somaTempoTotal / $qtdTempoTotal : 0;
+$mediaResposta        = $qtdResposta        > 0 ? $somaResposta / $qtdResposta               : 0;
+$mediaAnaliseFiscal   = $qtdAnaliseFiscal   > 0 ? $somaAnaliseFiscal / $qtdAnaliseFiscal     : 0;
+$mediaFiscalSecretario = $qtdFiscalSecretario > 0 ? $somaFiscalSecretario / $qtdFiscalSecretario : 0;
+$mediaTempoTotal      = $qtdTempoTotal      > 0 ? $somaTempoTotal / $qtdTempoTotal           : 0;
 
 // Gráfico de Médias de Tempo por Mês
 $tempoAnalisadoPorMes = [];
@@ -238,49 +239,53 @@ include 'header.php';
 
 <div class="row mb-4">
     <div class="col-md-3 mb-4">
-        <div class="card h-100 border-start border-4 border-info">
+        <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Pendente <i class="fas fa-arrow-right mx-1"></i> Análise</div>
-                <h3 class="mb-0 text-info fw-bold">
-                    <i class="fas fa-search me-2"></i>
-                    <?php echo formatarTempoEstatisticas($mediaEsperaAnalise); ?>
-                </h3>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-eye text-muted" style="font-size:.85rem;width:16px"></i>
+                    <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Resposta</span>
+                </div>
+                <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaResposta); ?></h3>
+                <div class="text-muted small mt-1">envio → 1ª visualização</div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3 mb-4">
-        <div class="card h-100 border-start border-4 border-warning">
+        <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Análise <i class="fas fa-arrow-right mx-1"></i> Aprovação</div>
-                <h3 class="mb-0 text-warning fw-bold">
-                    <i class="fas fa-file-signature me-2"></i>
-                    <?php echo formatarTempoEstatisticas($mediaAnaliseAprovacao); ?>
-                </h3>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-hard-hat text-muted" style="font-size:.85rem;width:16px"></i>
+                    <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Análise</span>
+                </div>
+                <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaAnaliseFiscal); ?></h3>
+                <div class="text-muted small mt-1">análise → fiscalização</div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3 mb-4">
-        <div class="card h-100 border-start border-4 border-success">
+        <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Aprovação <i class="fas fa-arrow-right mx-1"></i> Conclusão</div>
-                <h3 class="mb-0 text-success fw-bold">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <?php echo formatarTempoEstatisticas($mediaAprovacaoConclusao); ?>
-                </h3>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-file-signature text-muted" style="font-size:.85rem;width:16px"></i>
+                    <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Fiscalização</span>
+                </div>
+                <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaFiscalSecretario); ?></h3>
+                <div class="text-muted small mt-1">fiscal → secretário</div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3 mb-4">
-        <div class="card h-100 border-start border-4 border-secondary">
+        <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Tempo Total</div>
-                <h3 class="mb-0 text-secondary fw-bold">
-                    <i class="fas fa-clock me-2"></i>
-                    <?php echo formatarTempoEstatisticas($mediaTempoTotal); ?>
-                </h3>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-clock text-muted" style="font-size:.85rem;width:16px"></i>
+                    <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Tempo Total</span>
+                </div>
+                <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaTempoTotal); ?></h3>
+                <div class="text-muted small mt-1">envio → conclusão</div>
             </div>
         </div>
     </div>
