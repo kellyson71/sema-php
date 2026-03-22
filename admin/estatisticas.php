@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once 'helpers.php';
 verificaLogin();
 
 // Gráfico de requerimentos dos últimos 6 meses
@@ -120,22 +121,7 @@ usort($processosTempoTotal, function($a, $b) {
 $topRapidos = array_slice($processosTempoTotal, 0, 5);
 $topLentos = array_slice(array_reverse($processosTempoTotal), 0, 5);
 
-if (!function_exists('formatarTempoEstatisticas')) {
-    function formatarTempoEstatisticas($segundos) {
-        if ($segundos === 0 || $segundos === null) return 'N/A';
-        $dias = floor($segundos / 86400);
-        $horas = floor(($segundos % 86400) / 3600);
-        $minutos = floor(($segundos % 3600) / 60);
-        
-        $partes = [];
-        if ($dias > 0) $partes[] = "{$dias}d";
-        if ($horas > 0) $partes[] = "{$horas}h";
-        if ($minutos > 0 && $dias == 0) $partes[] = "{$minutos}m";
-        
-        if (empty($partes)) return "< 1m";
-        return implode(' ', $partes);
-    }
-}
+// formatarTempoEstatisticas() definida em helpers.php
 
 $mediaEsperaAnalise = $qtdEsperaAnalise > 0 ? $somaEsperaAnalise / $qtdEsperaAnalise : 0;
 $mediaAnaliseAprovacao = $qtdAnaliseAprovacao > 0 ? $somaAnaliseAprovacao / $qtdAnaliseAprovacao : 0;

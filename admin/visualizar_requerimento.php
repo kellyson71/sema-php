@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once 'helpers.php';
 require_once '../includes/email_service.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
@@ -387,6 +388,25 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$id]);
 $historico = $stmt->fetchAll();
+
+// Calcular tempo por etapa usando o histórico já buscado
+$etapas = calcularTemposEtapas($historico, $requerimento['data_envio']);
+$tEnvio     = $etapas['tEnvio'];
+$tAnalise   = $etapas['tAnalise'];
+$tAprovado  = $etapas['tAprovado'];
+$tConclusao = $etapas['tConclusao'];
+
+$tempoEsperaAnalise       = ($tAnalise && $tAnalise >= $tEnvio)    ? ($tAnalise - $tEnvio)       : null;
+$tempoAnaliseAprovacao    = null;
+if ($tAprovado) {
+    $inicio = $tAnalise ?? $tEnvio;
+    if ($tAprovado >= $inicio) $tempoAnaliseAprovacao = $tAprovado - $inicio;
+}
+$tempoAprovacaoConclusao  = ($tConclusao && $tAprovado && $tConclusao >= $tAprovado) ? ($tConclusao - $tAprovado) : null;
+$tempoTotalProcesso       = ($tConclusao && $tConclusao >= $tEnvio) ? ($tConclusao - $tEnvio) : null;
+
+// Tempo em aberto (processo ainda não concluído)
+$tempoEmAberto = ($tConclusao === null) ? (time() - $tEnvio) : null;
 
 include 'header.php';
 ?>
@@ -1661,6 +1681,85 @@ $isBlocked = $isFinalized || $isIndeferido;
 
         <!-- Aba: Histórico -->
         <div class="tab-pane fade" id="historico" role="tabpanel">
+
+            <!-- Tempo por Etapa -->
+            <div class="modern-card mb-3">
+                <div class="modern-card-header">
+                    <i class="fas fa-stopwatch icon"></i>
+                    <h6>Tempo por Etapa</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Pendente → Análise -->
+                        <div class="col-6 col-md-3">
+                            <div class="border-start border-4 border-info ps-3 py-2">
+                                <div class="text-muted small fw-bold text-uppercase mb-1">
+                                    Pendente <i class="fas fa-arrow-right mx-1"></i> Análise
+                                </div>
+                                <div class="h5 mb-0 text-info fw-bold">
+                                    <i class="fas fa-search me-1"></i>
+                                    <?php echo formatarTempoEstatisticas($tempoEsperaAnalise); ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Análise → Aprovação -->
+                        <div class="col-6 col-md-3">
+                            <div class="border-start border-4 border-warning ps-3 py-2">
+                                <div class="text-muted small fw-bold text-uppercase mb-1">
+                                    Análise <i class="fas fa-arrow-right mx-1"></i> Aprovação
+                                </div>
+                                <div class="h5 mb-0 text-warning fw-bold">
+                                    <i class="fas fa-file-signature me-1"></i>
+                                    <?php echo formatarTempoEstatisticas($tempoAnaliseAprovacao); ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aprovação → Conclusão -->
+                        <div class="col-6 col-md-3">
+                            <div class="border-start border-4 border-success ps-3 py-2">
+                                <div class="text-muted small fw-bold text-uppercase mb-1">
+                                    Aprovação <i class="fas fa-arrow-right mx-1"></i> Conclusão
+                                </div>
+                                <div class="h5 mb-0 text-success fw-bold">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    <?php echo formatarTempoEstatisticas($tempoAprovacaoConclusao); ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tempo Total / Em Aberto -->
+                        <div class="col-6 col-md-3">
+                            <?php if ($tempoTotalProcesso !== null): ?>
+                                <div class="border-start border-4 border-secondary ps-3 py-2">
+                                    <div class="text-muted small fw-bold text-uppercase mb-1">Tempo Total</div>
+                                    <div class="h5 mb-0 text-secondary fw-bold">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <?php echo formatarTempoEstatisticas($tempoTotalProcesso); ?>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="border-start border-4 border-primary ps-3 py-2">
+                                    <div class="text-muted small fw-bold text-uppercase mb-1">Em Aberto</div>
+                                    <div class="h5 mb-0 text-primary fw-bold">
+                                        <i class="fas fa-hourglass-half me-1"></i>
+                                        <?php echo formatarTempoEstatisticas($tempoEmAberto); ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if ($tAnalise === null && $tAprovado === null && $tConclusao === null): ?>
+                        <div class="text-muted small mt-3">
+                            <i class="fas fa-info-circle me-1"></i>
+                            As etapas serão calculadas conforme o processo avança.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
                     <i class="fas fa-history icon"></i>
