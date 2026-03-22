@@ -84,6 +84,25 @@ Schema completo em `database/u492577848_SEMA.sql`. Migrations incrementais em `d
 
 Arquivos ficam em `uploads/{protocolo}/` (formulário público) e `uploads/pareceres/{requerimento_id}/` (pareceres gerados). Apenas PDFs são aceitos, máximo 10MB. Validação dupla: extensão e MIME type.
 
+## Acesso ao banco de dados em produção via SSH
+
+```bash
+ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+  "mysql -h srv1844.hstgr.io -u u492577848_SEMA -pPmpfestagio2021 u492577848_SEMA -e 'SUA QUERY;'"
+```
+
+Exemplo — listar tabelas:
+```bash
+ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+  "mysql -h srv1844.hstgr.io -u u492577848_SEMA -pPmpfestagio2021 u492577848_SEMA -e 'SHOW TABLES;'"
+```
+
+Deploy manual (quando o painel falhar):
+```bash
+ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+  "cd ~/domains/sema.protocolosead.com/public_html && git pull"
+```
+
 ## Branches
 
 - `main` — produção
