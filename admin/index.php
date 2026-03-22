@@ -17,6 +17,12 @@ if ((isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'secretario
     exit;
 }
 
+// Se for o fiscal, redirecionar para o dashboard de fiscalização
+if (isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'fiscal') {
+    header("Location: fiscal_dashboard.php");
+    exit;
+}
+
 // Obter estatísticas para o dashboard
 // Total de requerimentos
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM requerimentos");

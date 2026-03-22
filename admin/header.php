@@ -15,6 +15,9 @@ $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM requerimentos WHERE visuali
 $stmt->execute();
 $totalNaoVisualizados = $stmt->fetch()['total'];
 
+// Contar processos aguardando fiscalização
+$totalAguardandoFiscal = $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aguardando Fiscalização'")->fetchColumn();
+
 // Buscar notificações recentes
 $stmt = $pdo->prepare("
     SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome as requerente
@@ -657,9 +660,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 if ($isFiscal): 
                 ?>
                     <li>
-                        <a href="requerimentos.php?status=Aguardando Fiscalização" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Aguardando Fiscalização') ? 'active' : ''; ?>">
+                        <a href="fiscal_dashboard.php" class="<?php echo ($currentPage === 'fiscal_dashboard.php') ? 'active' : ''; ?>">
                             <i class="fas fa-hard-hat" style="color:#10b981;"></i>
                             <span>Fiscalização de Obras</span>
+                            <?php if ($totalAguardandoFiscal > 0): ?>
+                                <span class="badge bg-info ms-2"><?php echo $totalAguardandoFiscal; ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -716,6 +722,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     break;
                 case 'revisao_secretario.php':
                     echo 'Revisão e Assinatura';
+                    break;
+                case 'fiscal_dashboard.php':
+                    echo 'Fiscalização de Obras';
                     break;
                 default:
                     echo 'Painel Administrativo';

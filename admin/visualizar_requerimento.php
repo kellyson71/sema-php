@@ -1893,6 +1893,21 @@ $isBlocked = $isFinalized || $isIndeferido;
                               </p>
                               
                               <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
+
+                              <?php if ($_SESSION['admin_nivel'] === 'fiscal'): ?>
+                              <!-- Destaque principal para o fiscal: concluir análise -->
+                              <div class="mb-3 pb-3 border-bottom">
+                                  <form method="post" action="">
+                                      <button type="submit" name="enviar_secretario" class="btn btn-lg fw-semibold text-white w-100 shadow" style="background:#8b5cf6;" onclick="return confirm('Confirmar conclusão da análise e envio ao Secretário para emissão do alvará?')">
+                                          <i class="fas fa-paper-plane me-2"></i>Concluir análise e enviar ao Secretário
+                                      </button>
+                                  </form>
+                                  <p class="text-muted small mt-2 mb-0 text-center">
+                                      <i class="fas fa-info-circle me-1"></i>Use este botão após gerar e assinar o parecer técnico.
+                                  </p>
+                              </div>
+                              <?php endif; ?>
+
                               <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
                                   <!-- Botão envio analista -> fiscal -->
                                   <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
@@ -1903,8 +1918,8 @@ $isBlocked = $isFinalized || $isIndeferido;
                                       </form>
                                   <?php endif; ?>
 
-                                  <!-- Botão envio fiscal -> secretario -->
-                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'fiscal'): ?>
+                                  <!-- Botão envio fiscal -> secretario (visível para admin também) -->
+                                  <?php if ($_SESSION['admin_nivel'] === 'admin'): ?>
                                       <form method="post" action="" style="display: inline;">
                                           <button type="submit" name="enviar_secretario" class="btn fw-medium text-white shadow-sm" style="background:#8b5cf6;" onclick="return confirm('Confirmar envio para assinatura do Secretário?')">
                                               <i class="fas fa-paper-plane me-2"></i>Enviar p/ Secretário (Apto a Gerar Alvará)
