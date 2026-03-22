@@ -402,6 +402,7 @@ $historico = $stmt->fetchAll();
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
 $tEnvio        = $etapas['tEnvio'];
 $tVisualizacao = $etapas['tVisualizacao'];
+$tPendente     = $etapas['tPendente'];
 $tFiscalizacao = $etapas['tFiscalizacao'];
 $tSecretario   = $etapas['tSecretario'];
 $tConclusao    = $etapas['tConclusao'];
@@ -409,17 +410,20 @@ $tConclusao    = $etapas['tConclusao'];
 // Etapa 1: Envio → 1ª Visualização
 $tempoAteVisualizacao = ($tVisualizacao && $tVisualizacao >= $tEnvio) ? ($tVisualizacao - $tEnvio) : null;
 
-// Etapa 2: 1ª Visualização → Fiscalização
+// Etapa 2: Em análise → Pendente (triagem)
+$tempoAnalisePendente = ($tPendente && $tPendente >= $tEnvio) ? ($tPendente - $tEnvio) : null;
+
+// Etapa 3: Pendente/Visualização → Fiscalização
 $tempoAnaliseFiscalizacao = null;
 if ($tFiscalizacao) {
-    $inicio = $tVisualizacao ?? $tEnvio;
+    $inicio = $tPendente ?? $tVisualizacao ?? $tEnvio;
     if ($tFiscalizacao >= $inicio) $tempoAnaliseFiscalizacao = $tFiscalizacao - $inicio;
 }
 
-// Etapa 3: Fiscalização → Secretário
+// Etapa 4: Fiscalização → Secretário
 $tempoFiscalizacaoSecretario = null;
 if ($tSecretario) {
-    $inicio = $tFiscalizacao ?? $tVisualizacao ?? $tEnvio;
+    $inicio = $tFiscalizacao ?? $tPendente ?? $tVisualizacao ?? $tEnvio;
     if ($tSecretario >= $inicio) $tempoFiscalizacaoSecretario = $tSecretario - $inicio;
 }
 
@@ -1711,7 +1715,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                 <div class="card-body">
                     <div class="row g-2">
                         <!-- Etapa 1: Envio → 1ª Visualização -->
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <i class="fas fa-eye text-muted" style="font-size:.8rem;width:14px"></i>
@@ -1722,20 +1726,32 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         </div>
 
-                        <!-- Etapa 2: Visualização → Fiscalização -->
-                        <div class="col-6 col-md-3">
+                        <!-- Etapa 2: Em análise → Pendente -->
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded bg-light">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="fas fa-inbox text-muted" style="font-size:.8rem;width:14px"></i>
+                                    <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Triagem</span>
+                                </div>
+                                <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoAnalisePendente); ?></div>
+                                <div class="text-muted" style="font-size:.75rem">em análise → pendente</div>
+                            </div>
+                        </div>
+
+                        <!-- Etapa 3: Pendente → Fiscalização -->
+                        <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <i class="fas fa-hard-hat text-muted" style="font-size:.8rem;width:14px"></i>
                                     <span class="text-muted fw-semibold" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em">Análise</span>
                                 </div>
                                 <div class="fw-semibold text-dark"><?php echo formatarTempoEstatisticas($tempoAnaliseFiscalizacao); ?></div>
-                                <div class="text-muted" style="font-size:.75rem">análise → fiscalização</div>
+                                <div class="text-muted" style="font-size:.75rem">pendente → fiscalização</div>
                             </div>
                         </div>
 
-                        <!-- Etapa 3: Fiscalização → Secretário -->
-                        <div class="col-6 col-md-3">
+                        <!-- Etapa 4: Fiscalização → Secretário -->
+                        <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <i class="fas fa-file-signature text-muted" style="font-size:.8rem;width:14px"></i>
@@ -1747,7 +1763,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         </div>
 
                         <!-- Tempo Total / Em Aberto -->
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
                                 <?php if ($tempoTotalProcesso !== null): ?>
                                     <div class="d-flex align-items-center gap-2 mb-1">

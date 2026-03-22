@@ -29,6 +29,7 @@ if (!function_exists('formatarTempoEstatisticas')) {
  *
  * Mapeamento de ações reais gravadas em historico_acoes:
  *   tVisualizacao → "Visualizou o requerimento pela primeira vez"
+ *   tPendente     → "Alterou status para 'Pendente'"
  *   tFiscalizacao → "Enviou processo para Fiscalização de Obras"
  *   tSecretario   → "Concluiu a vistoria técnica e enviou para o Secretário"
  *   tConclusao    → "Aprovou e Assinou o Alvará" | "Finalizado" | "Indeferido"
@@ -41,6 +42,7 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
 {
     $tEnvio        = strtotime($data_envio);
     $tVisualizacao = null;
+    $tPendente     = null;
     $tFiscalizacao = null;
     $tSecretario   = null;
     $tConclusao    = null;
@@ -52,6 +54,11 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
         // Primeira visualização
         if (stripos($aco, 'primeira vez') !== false) {
             if ($tVisualizacao === null || $t < $tVisualizacao) $tVisualizacao = $t;
+        }
+
+        // Mudança para Pendente (triagem: Em análise → Pendente)
+        if (preg_match("/status para ['\"]?Pendente['\"]?/i", $aco)) {
+            if ($tPendente === null || $t < $tPendente) $tPendente = $t;
         }
 
         // Enviado para fiscalização
@@ -74,5 +81,5 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
         }
     }
 
-    return compact('tEnvio', 'tVisualizacao', 'tFiscalizacao', 'tSecretario', 'tConclusao');
+    return compact('tEnvio', 'tVisualizacao', 'tPendente', 'tFiscalizacao', 'tSecretario', 'tConclusao');
 }

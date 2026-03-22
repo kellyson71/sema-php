@@ -61,6 +61,7 @@ $stmt = $pdo->query("
         r.data_envio,
         r.status as status_atual,
         MIN(CASE WHEN ha.acao LIKE '%primeira vez%' THEN ha.data_acao END) as data_visualizacao,
+        MIN(CASE WHEN ha.acao LIKE "%status para 'Pendente'%" OR ha.acao LIKE '%status para "Pendente"%' THEN ha.data_acao END) as data_pendente,
         MIN(CASE WHEN ha.acao LIKE '%Fiscalização%' THEN ha.data_acao END) as data_fiscalizacao,
         MIN(CASE WHEN ha.acao LIKE '%Secretário%' OR ha.acao LIKE '%vistoria técnica%' THEN ha.data_acao END) as data_secretario,
         MIN(CASE WHEN ha.acao LIKE '%Assinou o Alvará%' OR ha.acao LIKE '%Finalizado%' OR ha.acao LIKE '%Indeferido%' THEN ha.data_acao END) as data_conclusao
@@ -71,6 +72,7 @@ $stmt = $pdo->query("
 $temposRequerimentos = $stmt->fetchAll();
 
 $somaResposta = 0; $qtdResposta = 0;
+$somaTriagem = 0; $qtdTriagem = 0;
 $somaAnaliseFiscal = 0; $qtdAnaliseFiscal = 0;
 $somaFiscalSecretario = 0; $qtdFiscalSecretario = 0;
 $somaTempoTotal = 0; $qtdTempoTotal = 0;
@@ -81,6 +83,7 @@ foreach ($temposRequerimentos as $req) {
     if (!$req['data_envio']) continue;
     $tEnvio        = strtotime($req['data_envio']);
     $tVisualizacao = $req['data_visualizacao'] ? strtotime($req['data_visualizacao']) : null;
+    $tPendente     = $req['data_pendente']     ? strtotime($req['data_pendente'])     : null;
     $tFiscalizacao = $req['data_fiscalizacao'] ? strtotime($req['data_fiscalizacao']) : null;
     $tSecretario   = $req['data_secretario']   ? strtotime($req['data_secretario'])   : null;
     $tConclusao    = $req['data_conclusao']     ? strtotime($req['data_conclusao'])    : null;
@@ -91,18 +94,24 @@ foreach ($temposRequerimentos as $req) {
         $qtdResposta++;
     }
 
-    // Etapa 2: 1ª Visualização → Fiscalização
+    // Etapa 2: Em análise → Pendente (triagem)
+    if ($tPendente && $tPendente >= $tEnvio) {
+        $somaTriagem += ($tPendente - $tEnvio);
+        $qtdTriagem++;
+    }
+
+    // Etapa 3: Pendente → Fiscalização
     if ($tFiscalizacao) {
-        $inicio = $tVisualizacao ?? $tEnvio;
+        $inicio = $tPendente ?? $tVisualizacao ?? $tEnvio;
         if ($tFiscalizacao >= $inicio) {
             $somaAnaliseFiscal += ($tFiscalizacao - $inicio);
             $qtdAnaliseFiscal++;
         }
     }
 
-    // Etapa 3: Fiscalização → Secretário
+    // Etapa 4: Fiscalização → Secretário
     if ($tSecretario) {
-        $inicio = $tFiscalizacao ?? $tVisualizacao ?? $tEnvio;
+        $inicio = $tFiscalizacao ?? $tPendente ?? $tVisualizacao ?? $tEnvio;
         if ($tSecretario >= $inicio) {
             $somaFiscalSecretario += ($tSecretario - $inicio);
             $qtdFiscalSecretario++;
@@ -124,10 +133,11 @@ $topLentos = array_slice(array_reverse($processosTempoTotal), 0, 5);
 
 // formatarTempoEstatisticas() definida em helpers.php
 
-$mediaResposta        = $qtdResposta        > 0 ? $somaResposta / $qtdResposta               : 0;
-$mediaAnaliseFiscal   = $qtdAnaliseFiscal   > 0 ? $somaAnaliseFiscal / $qtdAnaliseFiscal     : 0;
-$mediaFiscalSecretario = $qtdFiscalSecretario > 0 ? $somaFiscalSecretario / $qtdFiscalSecretario : 0;
-$mediaTempoTotal      = $qtdTempoTotal      > 0 ? $somaTempoTotal / $qtdTempoTotal           : 0;
+$mediaResposta         = $qtdResposta         > 0 ? $somaResposta / $qtdResposta                   : 0;
+$mediaTriagem          = $qtdTriagem          > 0 ? $somaTriagem / $qtdTriagem                     : 0;
+$mediaAnaliseFiscal    = $qtdAnaliseFiscal    > 0 ? $somaAnaliseFiscal / $qtdAnaliseFiscal         : 0;
+$mediaFiscalSecretario = $qtdFiscalSecretario > 0 ? $somaFiscalSecretario / $qtdFiscalSecretario   : 0;
+$mediaTempoTotal       = $qtdTempoTotal       > 0 ? $somaTempoTotal / $qtdTempoTotal               : 0;
 
 // Gráfico de Médias de Tempo por Mês
 $tempoAnalisadoPorMes = [];
@@ -238,7 +248,7 @@ include 'header.php';
 <h3 class="section-title mt-5 mb-4">Métricas de Tempo (Média de Fluxo)</h3>
 
 <div class="row mb-4">
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 col-xl mb-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -251,7 +261,20 @@ include 'header.php';
         </div>
     </div>
 
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 col-xl mb-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-inbox text-muted" style="font-size:.85rem;width:16px"></i>
+                    <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Triagem</span>
+                </div>
+                <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaTriagem); ?></h3>
+                <div class="text-muted small mt-1">em análise → pendente</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-xl mb-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -259,12 +282,12 @@ include 'header.php';
                     <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em">Análise</span>
                 </div>
                 <h3 class="mb-0 fw-semibold text-dark"><?php echo formatarTempoEstatisticas($mediaAnaliseFiscal); ?></h3>
-                <div class="text-muted small mt-1">análise → fiscalização</div>
+                <div class="text-muted small mt-1">pendente → fiscalização</div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3 mb-4">
+    <div class="col-md-6 col-xl mb-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -277,7 +300,7 @@ include 'header.php';
         </div>
     </div>
 
-    <div class="col-md-3 mb-4">
+    <div class="col-md-6 col-xl mb-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-2">
