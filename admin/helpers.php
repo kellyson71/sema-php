@@ -24,8 +24,14 @@ if (!function_exists('formatarTempoEstatisticas')) {
  * Calcula os timestamps de cada etapa a partir do histórico de ações de um requerimento.
  *
  * Retorna um array com as chaves:
- *   t_envio, t_analise, t_aprovado, t_conclusao
+ *   tEnvio, tAnalise, tFiscalizacao, tSecretario, tConclusao
  * onde cada valor é um Unix timestamp ou null se não ocorreu.
+ *
+ * Mapeamento de ações reais gravadas em historico_acoes:
+ *   tAnalise      → "Alterou status para 'Em análise'" ou "Em análise"
+ *   tFiscalizacao → "Enviou processo para Fiscalização de Obras"
+ *   tSecretario   → "Concluiu a vistoria técnica e enviou para o Secretário"
+ *   tConclusao    → "Aprovou e Assinou o Alvará" | "Finalizado" | "Indeferido"
  *
  * @param array  $historico  Resultado de fetchAll() da tabela historico_acoes.
  * @param string $data_envio Data de envio do requerimento (campo data_envio).
@@ -33,29 +39,41 @@ if (!function_exists('formatarTempoEstatisticas')) {
  */
 function calcularTemposEtapas(array $historico, string $data_envio): array
 {
-    $tEnvio     = strtotime($data_envio);
-    $tAnalise   = null;
-    $tAprovado  = null;
-    $tConclusao = null;
+    $tEnvio        = strtotime($data_envio);
+    $tAnalise      = null;
+    $tFiscalizacao = null;
+    $tSecretario   = null;
+    $tConclusao    = null;
 
     foreach ($historico as $h) {
-        $t = strtotime($h['data_acao']);
+        $t   = strtotime($h['data_acao']);
+        $aco = $h['acao'];
 
-        // Primeira ocorrência de entrada em análise
-        if (stripos($h['acao'], 'Em análise') !== false) {
+        // Entrada em análise
+        if (stripos($aco, 'Em análise') !== false) {
             if ($tAnalise === null || $t < $tAnalise) $tAnalise = $t;
         }
 
-        // Primeira ocorrência de aprovação (evita pegar "Reprovado")
-        if (preg_match('/\bAprovado\b/i', $h['acao'])) {
-            if ($tAprovado === null || $t < $tAprovado) $tAprovado = $t;
+        // Enviado para fiscalização
+        if (stripos($aco, 'Fiscalização') !== false) {
+            if ($tFiscalizacao === null || $t < $tFiscalizacao) $tFiscalizacao = $t;
         }
 
-        // Primeira ocorrência de conclusão (Finalizado ou Indeferido)
-        if (stripos($h['acao'], 'Finalizado') !== false || stripos($h['acao'], 'Indeferido') !== false) {
+        // Enviado para o secretário (fiscal concluiu vistoria)
+        if (stripos($aco, 'Secretário') !== false || stripos($aco, 'vistoria técnica') !== false) {
+            if ($tSecretario === null || $t < $tSecretario) $tSecretario = $t;
+        }
+
+        // Conclusão: alvará assinado, finalizado ou indeferido
+        if (
+            stripos($aco, 'Assinou o Alvará') !== false ||
+            stripos($aco, 'Alvará Emitido')   !== false ||
+            stripos($aco, 'Finalizado')        !== false ||
+            stripos($aco, 'Indeferido')        !== false
+        ) {
             if ($tConclusao === null || $t < $tConclusao) $tConclusao = $t;
         }
     }
 
-    return compact('tEnvio', 'tAnalise', 'tAprovado', 'tConclusao');
+    return compact('tEnvio', 'tAnalise', 'tFiscalizacao', 'tSecretario', 'tConclusao');
 }

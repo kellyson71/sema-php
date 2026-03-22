@@ -390,20 +390,38 @@ $stmt->execute([$id]);
 $historico = $stmt->fetchAll();
 
 // Calcular tempo por etapa usando o histórico já buscado
-$etapas = calcularTemposEtapas($historico, $requerimento['data_envio']);
-$tEnvio     = $etapas['tEnvio'];
-$tAnalise   = $etapas['tAnalise'];
-$tAprovado  = $etapas['tAprovado'];
-$tConclusao = $etapas['tConclusao'];
+$etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
+$tEnvio        = $etapas['tEnvio'];
+$tAnalise      = $etapas['tAnalise'];
+$tFiscalizacao = $etapas['tFiscalizacao'];
+$tSecretario   = $etapas['tSecretario'];
+$tConclusao    = $etapas['tConclusao'];
 
-$tempoEsperaAnalise       = ($tAnalise && $tAnalise >= $tEnvio)    ? ($tAnalise - $tEnvio)       : null;
-$tempoAnaliseAprovacao    = null;
-if ($tAprovado) {
+// Etapa 1: Envio → Análise (triagem)
+$tempoEsperaAnalise = ($tAnalise && $tAnalise >= $tEnvio) ? ($tAnalise - $tEnvio) : null;
+
+// Etapa 2: Análise → Fiscalização
+$tempoAnaliseFiscalizacao = null;
+if ($tFiscalizacao) {
     $inicio = $tAnalise ?? $tEnvio;
-    if ($tAprovado >= $inicio) $tempoAnaliseAprovacao = $tAprovado - $inicio;
+    if ($tFiscalizacao >= $inicio) $tempoAnaliseFiscalizacao = $tFiscalizacao - $inicio;
 }
-$tempoAprovacaoConclusao  = ($tConclusao && $tAprovado && $tConclusao >= $tAprovado) ? ($tConclusao - $tAprovado) : null;
-$tempoTotalProcesso       = ($tConclusao && $tConclusao >= $tEnvio) ? ($tConclusao - $tEnvio) : null;
+
+// Etapa 3: Fiscalização → Secretário
+$tempoFiscalizacaoSecretario = null;
+if ($tSecretario) {
+    $inicio = $tFiscalizacao ?? $tAnalise ?? $tEnvio;
+    if ($tSecretario >= $inicio) $tempoFiscalizacaoSecretario = $tSecretario - $inicio;
+}
+
+// Etapa 4: Secretário → Conclusão
+$tempoSecretarioConclusao = null;
+if ($tConclusao) {
+    $inicio = $tSecretario ?? $tFiscalizacao ?? $tAnalise ?? $tEnvio;
+    if ($tConclusao >= $inicio) $tempoSecretarioConclusao = $tConclusao - $inicio;
+}
+
+$tempoTotalProcesso = ($tConclusao && $tConclusao >= $tEnvio) ? ($tConclusao - $tEnvio) : null;
 
 // Tempo em aberto (processo ainda não concluído)
 $tempoEmAberto = ($tConclusao === null) ? (time() - $tEnvio) : null;
@@ -1690,12 +1708,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <!-- Pendente → Análise -->
+                        <!-- Pendente → Análise (triagem) -->
                         <div class="col-6 col-md-3">
                             <div class="border-start border-4 border-info ps-3 py-2">
                                 <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Pendente <i class="fas fa-arrow-right mx-1"></i> Análise
+                                    Triagem
                                 </div>
+                                <div class="small text-muted mb-1">Pendente <i class="fas fa-arrow-right mx-1"></i> Análise</div>
                                 <div class="h5 mb-0 text-info fw-bold">
                                     <i class="fas fa-search me-1"></i>
                                     <?php echo formatarTempoEstatisticas($tempoEsperaAnalise); ?>
@@ -1703,28 +1722,30 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         </div>
 
-                        <!-- Análise → Aprovação -->
+                        <!-- Análise → Fiscalização -->
                         <div class="col-6 col-md-3">
                             <div class="border-start border-4 border-warning ps-3 py-2">
                                 <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Análise <i class="fas fa-arrow-right mx-1"></i> Aprovação
+                                    Análise Técnica
                                 </div>
+                                <div class="small text-muted mb-1">Análise <i class="fas fa-arrow-right mx-1"></i> Fiscalização</div>
                                 <div class="h5 mb-0 text-warning fw-bold">
-                                    <i class="fas fa-file-signature me-1"></i>
-                                    <?php echo formatarTempoEstatisticas($tempoAnaliseAprovacao); ?>
+                                    <i class="fas fa-hard-hat me-1"></i>
+                                    <?php echo formatarTempoEstatisticas($tempoAnaliseFiscalizacao); ?>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Aprovação → Conclusão -->
+                        <!-- Fiscalização → Secretário -->
                         <div class="col-6 col-md-3">
                             <div class="border-start border-4 border-success ps-3 py-2">
                                 <div class="text-muted small fw-bold text-uppercase mb-1">
-                                    Aprovação <i class="fas fa-arrow-right mx-1"></i> Conclusão
+                                    Fiscalização
                                 </div>
+                                <div class="small text-muted mb-1">Fiscal <i class="fas fa-arrow-right mx-1"></i> Secretário</div>
                                 <div class="h5 mb-0 text-success fw-bold">
-                                    <i class="fas fa-check-circle me-1"></i>
-                                    <?php echo formatarTempoEstatisticas($tempoAprovacaoConclusao); ?>
+                                    <i class="fas fa-file-signature me-1"></i>
+                                    <?php echo formatarTempoEstatisticas($tempoFiscalizacaoSecretario); ?>
                                 </div>
                             </div>
                         </div>
@@ -1734,6 +1755,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <?php if ($tempoTotalProcesso !== null): ?>
                                 <div class="border-start border-4 border-secondary ps-3 py-2">
                                     <div class="text-muted small fw-bold text-uppercase mb-1">Tempo Total</div>
+                                    <div class="small text-muted mb-1">Envio <i class="fas fa-arrow-right mx-1"></i> Conclusão</div>
                                     <div class="h5 mb-0 text-secondary fw-bold">
                                         <i class="fas fa-clock me-1"></i>
                                         <?php echo formatarTempoEstatisticas($tempoTotalProcesso); ?>
@@ -1742,6 +1764,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <?php else: ?>
                                 <div class="border-start border-4 border-primary ps-3 py-2">
                                     <div class="text-muted small fw-bold text-uppercase mb-1">Em Aberto</div>
+                                    <div class="small text-muted mb-1">Desde o envio</div>
                                     <div class="h5 mb-0 text-primary fw-bold">
                                         <i class="fas fa-hourglass-half me-1"></i>
                                         <?php echo formatarTempoEstatisticas($tempoEmAberto); ?>
@@ -1751,7 +1774,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         </div>
                     </div>
 
-                    <?php if ($tAnalise === null && $tAprovado === null && $tConclusao === null): ?>
+                    <?php if ($tAnalise === null && $tFiscalizacao === null && $tConclusao === null): ?>
                         <div class="text-muted small mt-3">
                             <i class="fas fa-info-circle me-1"></i>
                             As etapas serão calculadas conforme o processo avança.
