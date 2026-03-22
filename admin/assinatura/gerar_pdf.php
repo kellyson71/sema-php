@@ -130,16 +130,6 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
     ));
     
     $pdf->AddPage();
-    
-    // Conteúdo (Título do Documento)
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->SetTextColor(40, 40, 40);
-    $pdf->Cell(0, 7, 'PARECER TÉCNICO', 0, 1, 'C', 0, '', 0);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->SetTextColor(100, 100, 100);
-    $pdf->Cell(0, 5, 'Processo N.º ' . $numero_processo, 0, 1, 'C', 0, '', 0);
-    $pdf->Ln(2);
 
     $pdf->SetFont('helvetica', '', 11);
     $pdf->SetTextColor(50, 50, 50);
