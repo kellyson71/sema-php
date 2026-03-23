@@ -61,7 +61,7 @@ $stmt = $pdo->query("
         r.data_envio,
         r.status as status_atual,
         MIN(CASE WHEN ha.acao LIKE '%primeira vez%' THEN ha.data_acao END) as data_visualizacao,
-        MIN(CASE WHEN ha.acao LIKE "%status para 'Pendente'%" OR ha.acao LIKE '%status para "Pendente"%' THEN ha.data_acao END) as data_pendente,
+        MIN(CASE WHEN ha.acao LIKE '%status para%Pendente%' THEN ha.data_acao END) as data_pendente,
         MIN(CASE WHEN ha.acao LIKE '%Fiscalização%' THEN ha.data_acao END) as data_fiscalizacao,
         MIN(CASE WHEN ha.acao LIKE '%Secretário%' OR ha.acao LIKE '%vistoria técnica%' THEN ha.data_acao END) as data_secretario,
         MIN(CASE WHEN ha.acao LIKE '%Assinou o Alvará%' OR ha.acao LIKE '%Finalizado%' OR ha.acao LIKE '%Indeferido%' THEN ha.data_acao END) as data_conclusao
