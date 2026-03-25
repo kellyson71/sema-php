@@ -264,7 +264,18 @@ include_once 'tipos_alvara.php';
                 <div class="form-section">
                     <div class="form-part-2">
                         <input required name="endereco_objetivo"
-                            placeholder="Endereço Completo (Rua, número, bairro, CEP) *" autocomplete="street-address">
+                            placeholder="Localização de Obras (Rua, número, bairro, CEP) *" autocomplete="street-address">
+                    </div>
+                    <div style="margin-top: 24px;">
+                        <div class="form-section-label">Notificado pelo Fiscal de Obras? *</div>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                                <input type="radio" name="notificado_fiscal_obras" value="1" required style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Sim
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                                <input type="radio" name="notificado_fiscal_obras" value="0" required style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Não
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -434,6 +445,88 @@ include_once 'tipos_alvara.php';
         </section>
     </main>
 
+    <!-- Modal de Legislação Municipal -->
+    <div id="modal-legislacao" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto;">
+        <div style="background:#fff; max-width:700px; margin:40px auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+            <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-book-open" style="margin-right:10px;"></i>Legislação Municipal</h2>
+                    <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Pau dos Ferros / RN — leis vigentes relacionadas ao licenciamento ambiental</p>
+                </div>
+                <button onclick="document.getElementById('modal-legislacao').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div style="padding:24px 28px;">
+                <?php
+                $leis = [
+                    [
+                        'titulo'    => 'Código de Obras — Lei nº 2.117/2025',
+                        'descricao' => 'Regula as obras e edificações no município, incluindo licenças de construção e habite-se.',
+                        'icone'     => 'fa-hard-hat',
+                        'cor'       => '#e67e22',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/4632/LEIS_2117_2025_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Código de Meio Ambiente — Lei nº 2.116/2025',
+                        'descricao' => 'Estabelece normas de proteção ambiental e regula o licenciamento ambiental municipal.',
+                        'icone'     => 'fa-leaf',
+                        'cor'       => '#27ae60',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/4631/LEIS_2116_2025_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Código de Posturas — Lei nº 2.118/2025',
+                        'descricao' => 'Define as normas de postura municipal sobre uso do solo, higiene e funcionamento de atividades.',
+                        'icone'     => 'fa-city',
+                        'cor'       => '#2980b9',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/4633/LEIS_2118_2025_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Emenda ao Código de Posturas — Lei nº 2.120/2025',
+                        'descricao' => 'Altera e complementa disposições do Código de Posturas Municipal.',
+                        'icone'     => 'fa-file-contract',
+                        'cor'       => '#8e44ad',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/4635/LEIS_2120_2025_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Emenda ao Código de Meio Ambiente — Lei nº 2.119/2025',
+                        'descricao' => 'Altera e complementa disposições do Código de Meio Ambiente Municipal.',
+                        'icone'     => 'fa-seedling',
+                        'cor'       => '#16a085',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/4634/LEIS_2119_2025_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Política Municipal de Resíduos Sólidos — LC nº 020/2023',
+                        'descricao' => 'Institui a política de gestão de resíduos sólidos no município de Pau dos Ferros.',
+                        'icone'     => 'fa-recycle',
+                        'cor'       => '#d35400',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/3414/LC%20%20LEI%20COMPLEMENTAR_020_2023_0000001.pdf',
+                    ],
+                    [
+                        'titulo'    => 'Plano Diretor — LC nº 017/2022',
+                        'descricao' => 'Define o planejamento urbano e ambiental do município, incluindo zoneamento e uso do solo.',
+                        'icone'     => 'fa-map',
+                        'cor'       => '#c0392b',
+                        'url'       => 'https://paudosferros.rn.gov.br/arquivos/2678/LC%20%20LEI%20COMPLEMENTAR_017_2022_0000001.pdf',
+                    ],
+                ];
+                foreach ($leis as $lei): ?>
+                <a href="<?= $lei['url'] ?>" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:16px; padding:14px 16px; margin-bottom:10px; border-radius:8px; border:1px solid #e9ecef; text-decoration:none; color:#333; transition:background .15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
+                    <div style="width:44px; height:44px; border-radius:50%; background:<?= $lei['cor'] ?>1a; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas <?= $lei['icone'] ?>" style="color:<?= $lei['cor'] ?>; font-size:1.1rem;"></i>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <p style="font-weight:600; margin:0; font-size:0.95rem; color:#212529;"><?= $lei['titulo'] ?></p>
+                        <p style="margin:2px 0 0; font-size:0.82rem; color:#6c757d;"><?= $lei['descricao'] ?></p>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color:#adb5bd; font-size:0.85rem; flex-shrink:0;"></i>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <div style="padding:14px 28px; background:#f8f9fa; border-top:1px solid #e9ecef; text-align:center;">
+                <a href="https://www.paudosferros.rn.gov.br/" target="_blank" rel="noopener" style="color:#009640; font-size:0.88rem; text-decoration:none;"><i class="fas fa-globe" style="margin-right:6px;"></i>Portal da Prefeitura de Pau dos Ferros</a>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div>
             <div>
@@ -441,6 +534,12 @@ include_once 'tipos_alvara.php';
                     <i class="fas fa-search"></i>
                     <span>Consulte seu Alvará</span>
                 </a>
+            </div>
+            <div>
+                <button onclick="document.getElementById('modal-legislacao').style.display='flex'" class="consulta-btn" style="border:none; cursor:pointer;">
+                    <i class="fas fa-book-open"></i>
+                    <span>Legislação Municipal</span>
+                </button>
             </div>
             <div>
                 <img src="./assets/img/phone.png" alt="Telefone">
