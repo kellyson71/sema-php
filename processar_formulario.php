@@ -135,8 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
     $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
     $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
-    $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? '');
-    $descricao_atividade = trim($_POST['descricao_atividade'] ?? '');
+    $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? $_POST['responsavel_tecnico_numero'] ?? '');
+    $descricao_atividade = trim($_POST['especificacao'] ?? $_POST['descricao_atividade'] ?? '');
     
     $observacoes = '';
 
@@ -162,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'responsavel_tecnico_tipo_documento' => $responsavel_tecnico_tipo_documento ?: null,
         'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
         'especificacao' => $descricao_atividade ?: null,
+        'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
         'status' => 'Em análise'
     ];
 
