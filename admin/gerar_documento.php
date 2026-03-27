@@ -508,9 +508,10 @@ include 'header.php';
 
         return `
         <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-            <div class="card template-card border-0 shadow-sm ${cardDestaque}"
-                 onclick="selecionarTemplate('${escaparAttr(nome)}', '${escaparAttr(label)}')"
-                 title="${escaparAttr(desc)}">
+            <a href="templates/${escaparAttr(nome)}.html" target="_blank" rel="noopener"
+               class="card template-card border-0 shadow-sm text-decoration-none ${cardDestaque}"
+               onclick="event.preventDefault(); selecionarTemplate('${escaparAttr(nome)}', '${escaparAttr(label)}')"
+               title="${escaparAttr(desc)}">
                 <div class="card-body text-center p-4">
                     <div class="icon-wrap mb-1">
                         <i class="fas ${icone} ${cor} fs-2"></i>
@@ -521,7 +522,7 @@ include 'header.php';
                         ${escapeHtml(preview)}
                     </div>
                 </div>
-            </div>
+            </a>
         </div>`;
     }
 
