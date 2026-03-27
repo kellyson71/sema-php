@@ -371,7 +371,7 @@ include '../header.php';
                 }).then(() => {
                     if (fazDownload && ret.url_pdf) {
                         const a = document.createElement('a');
-                        a.href = ret.url_pdf;
+                        a.href = '../' + ret.url_pdf;
                         a.download = ret.nome_arquivo || 'Documento_Assinado.pdf';
                         document.body.appendChild(a);
                         a.click();
