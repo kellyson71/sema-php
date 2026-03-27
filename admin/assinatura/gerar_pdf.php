@@ -121,21 +121,75 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
     $pdf->SetFooterMargin(25);
     $pdf->SetAutoPageBreak(TRUE, 28); 
     
-    // Suavizando o VSpace para evitar "espaço duplo" mantendo as propriedades de quebra de bloco
-    // Arrays para UL e LI foram removidos para evitar quebra em listas (ficando no padrão do TCPDF)
-    // Para P e DIV, usar uma fração minúscula de margin vertical (0.01) ao invés do 0 absoluto
-    $pdf->setHtmlVSpace(array(
-        'p' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1)),
-        'div' => array(0 => array('h' => 0.01, 'n' => 1), 1 => array('h' => 0.01, 'n' => 1))
-    ));
-    
     $pdf->AddPage();
 
-    $pdf->SetFont('helvetica', '', 11);
-    $pdf->SetTextColor(50, 50, 50);
+    $pdf->SetFont('times', '', 12);
+    $pdf->SetTextColor(30, 30, 30);
 
-    // HTML Rendering com line-height compacto
-    $html_corpo = '<div style="text-align: justify; line-height: 1.2;">' . $conteudo_html . '</div>';
+    // CSS compatível com TCPDF que recria o visual dos templates (o Summernote strip o <style> original)
+    $css_base = '<style>
+        body { font-family: "times"; font-size: 12pt; line-height: 1.4; }
+        p { margin-top: 0pt; margin-bottom: 4pt; line-height: 1.4; }
+
+        /* Títulos */
+        .titulo, .titulo-licenca { font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 6pt; text-transform: uppercase; }
+        h1 { font-size: 13pt; font-weight: bold; margin-top: 6pt; margin-bottom: 4pt; }
+        h2 { font-size: 12pt; font-weight: bold; margin-top: 5pt; margin-bottom: 3pt; }
+        h3 { font-size: 12pt; font-weight: bold; margin-top: 4pt; margin-bottom: 2pt; }
+
+        /* Cabeçalhos de seção */
+        .secao-titulo {
+            font-weight: bold;
+            text-transform: uppercase;
+            background-color: #e8e8e8;
+            padding: 5pt 6pt;
+            margin-top: 10pt;
+            margin-bottom: 4pt;
+            font-size: 10pt;
+            border: 1px solid #aaa;
+        }
+
+        /* Tabelas de dados — TCPDF-compatible */
+        table {
+            width: 100%;
+            margin-top: 2pt;
+            margin-bottom: 6pt;
+            border-collapse: collapse;
+        }
+        .tabela-dados {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6pt;
+        }
+        .tabela-dados td, table td, table th {
+            padding: 6pt 8pt;
+            border: 1px solid #aaa;
+            vertical-align: middle;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+        .tabela-dados .label, td.label {
+            font-weight: bold;
+            background-color: #f0f0f0;
+            width: 30%;
+        }
+
+        /* Texto e parágrafos */
+        .texto-parecer { margin-bottom: 4pt; }
+        .texto-parecer p { margin-bottom: 4pt; text-indent: 25pt; line-height: 1.45; }
+        .especificacao { margin-top: 6pt; margin-bottom: 6pt; line-height: 1.45; }
+        .data-local { margin-top: 8pt; margin-bottom: 8pt; text-align: right; }
+        .linha-assinatura { text-align: center; margin-top: 8pt; padding-top: 3pt; }
+
+        /* Condicionantes */
+        .condicionantes { font-size: 9pt; margin-top: 6pt; border: 1px solid #000; padding: 6pt 8pt; }
+
+        /* Listas */
+        ul, ol { margin-top: 2pt; margin-bottom: 5pt; }
+        li { margin-bottom: 2pt; line-height: 1.35; }
+    </style>';
+
+    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
 
