@@ -11,15 +11,25 @@
         require_once 'conexao.php';
         require_once '../includes/email_service.php';
 
+// Valida que o redirect é relativo (sem protocolo/domínio externo)
+function sanitizarRedirect($url, $fallback = 'index.php') {
+    $url = trim($url ?? '');
+    // Rejeita qualquer URL com protocolo ou que comece com //
+    if (preg_match('#^(https?:)?//#i', $url) || strpos($url, ':') !== false) {
+        return $fallback;
+    }
+    return $url ?: $fallback;
+}
+
 // Verificar se já está logado
 if (isset($_SESSION['admin_id'])) {
-    $redirect = $_GET['redirect'] ?? 'index.php';
-    header("Location: " . filter_var($redirect, FILTER_SANITIZE_URL));
+    $redirect = sanitizarRedirect($_GET['redirect'] ?? '', 'index.php');
+    header("Location: " . $redirect);
     exit;
 }
 
 if (isset($_GET['redirect'])) {
-    $_SESSION['login_redirect_url'] = $_GET['redirect'];
+    $_SESSION['login_redirect_url'] = sanitizarRedirect($_GET['redirect']);
 }
 
 $erro = '';
@@ -156,6 +166,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         }
 
         if ($codigoValido) {
+            // Regenera o ID da sessão para prevenir session fixation
+            session_regenerate_id(true);
+
             $_SESSION['login_attempts'] = 0;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_nome'] = $admin['nome'];
@@ -165,13 +178,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
             $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
             $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
-            
+
             // Segurança da Sessão
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
             $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
 
             // Cookie Extra (Fallback opcional)
-            setcookie('sema_auth_persist', hash('sha256', $admin['id'] . $_SERVER['HTTP_USER_AGENT']), time() + 43200, '/');
+            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+            setcookie('sema_auth_persist', hash('sha256', $admin['id'] . $_SERVER['HTTP_USER_AGENT']), [
+                'expires'  => time() + 43200,
+                'path'     => '/',
+                'secure'   => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Strict',
+            ]);
 
             // Sessão para assinaturas liberada indefinidamente via login
             $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);

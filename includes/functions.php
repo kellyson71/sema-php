@@ -32,9 +32,13 @@ function salvarArquivo($arquivo, $diretorio, $prefixo = '')
     // Verifica se é um arquivo PDF
     $nome_original = $arquivo['name'];
     $extensao = strtolower(pathinfo($nome_original, PATHINFO_EXTENSION));
-    $tipo = $arquivo['type'];
 
-    if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
+    // Valida o MIME type real pelo conteúdo do arquivo (não pelo cabeçalho enviado pelo cliente)
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_real = finfo_file($finfo, $arquivo['tmp_name']);
+    finfo_close($finfo);
+
+    if ($extensao !== 'pdf' || $mime_real !== 'application/pdf') {
         return false;
     }
 

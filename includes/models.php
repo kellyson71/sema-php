@@ -152,8 +152,12 @@ class Requerimento extends Model
      */
     public function listar($limite = null, $ordem = 'data_envio', $direcao = 'DESC')
     {
+        $colunas_permitidas = ['id', 'data_envio', 'status', 'tipo_alvara', 'protocolo'];
+        $ordem = in_array($ordem, $colunas_permitidas, true) ? $ordem : 'data_envio';
+        $direcao = strtoupper($direcao) === 'ASC' ? 'ASC' : 'DESC';
+
         if ($limite) {
-            $sql = "SELECT * FROM {$this->table} ORDER BY {$ordem} {$direcao} LIMIT {$limite}";
+            $sql = "SELECT * FROM {$this->table} ORDER BY {$ordem} {$direcao} LIMIT " . (int)$limite;
             return $this->db->query($sql)->fetchAll();
         } else {
             $sql = "SELECT * FROM {$this->table} ORDER BY {$ordem} {$direcao}";
