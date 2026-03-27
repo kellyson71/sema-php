@@ -332,7 +332,7 @@ try {
 
             // B. Verificar se é um draft (rascunho/documento anterior)
             if (strpos($template, 'draft:') === 0) {
-                $nomeArquivoDraft = substr($template, 6); // Remove 'draft:'
+                $nomeArquivoDraft = basename(substr($template, 6)); // Remove 'draft:' e previne path traversal
                 $pastaRequerimento = dirname(__DIR__) . '/uploads/pareceres/' . $requerimento_id . '/';
                 $caminhoDraft = $pastaRequerimento . $nomeArquivoDraft;
 
@@ -369,16 +369,7 @@ try {
                 break; // Sai do switch/case
             }
 
-            // C. Verificar se é Template Padrão (.html em admin/templates)
-            // Se o arquivo existir, deixamos fluir para o preenchimento de dados
-            $templatesDiretorio = __DIR__ . '/templates/';
-            $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
-            
-            // Se não existir e não for DOCX, vai dar erro no ParecerService.
-            // Mas vamos deixar o fluxo seguir para buscar os dados do requerimento.
-
-            // --- Lógica original para templates padrão abaixo ---
-
+            // C. Buscar dados do requerimento (necessário para qualquer template)
             $stmt = $pdo->prepare("
                 SELECT r.*,
                        req.nome as requerente_nome,
@@ -399,25 +390,47 @@ try {
                 throw new Exception('Requerimento não encontrado');
             }
 
-            // Tentar carregar template
-            $templatePath = '';
-            if (file_exists($caminhoArquivoHtml)) {
-                $templatePath = $caminhoArquivoHtml;
-            } else {
-                // Tenta via serviço (pode ser DOCX)
-                try {
-                    $templatePath = $parecerService->carregarTemplate($template);
-                } catch(Exception $e) {
-                     // Se falhou e era para ser um arquivo fixo, lança erro claro
-                     throw new Exception("Template não encontrado: $template");
-                }
-            }
-
             $stmtAdmin = $pdo->prepare("SELECT nome, nome_completo, email, cpf, cargo, matricula_portaria FROM administradores WHERE id = ?");
             $stmtAdmin->execute([$_SESSION['admin_id']]);
             $adminData = $stmtAdmin->fetch(PDO::FETCH_ASSOC);
 
             $dados = $parecerService->preencherDados($requerimento, $adminData);
+
+            // D. Tentar carregar via DocumentBuilder (definições modulares em definitions/)
+            require_once __DIR__ . '/templates/engine/DocumentBuilder.php';
+            $builder = new DocumentBuilder();
+
+            if ($builder->existeDefinicao($template)) {
+                $html = $builder->render($template);
+
+                // Preencher variáveis {{campo}} no HTML gerado
+                foreach ($dados as $variavel => $valor) {
+                    $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'html' => $html,
+                    'dados' => $dados
+                ]);
+                break;
+            }
+
+            // E. Fallback: Template HTML legado ou DOCX
+            $templatesDiretorio = __DIR__ . '/templates/';
+            $caminhoArquivoHtml = $templatesDiretorio . $template . '.html';
+
+            $templatePath = '';
+            if (file_exists($caminhoArquivoHtml)) {
+                $templatePath = $caminhoArquivoHtml;
+            } else {
+                try {
+                    $templatePath = $parecerService->carregarTemplate($template);
+                } catch(Exception $e) {
+                     throw new Exception("Template não encontrado: $template");
+                }
+            }
+
             $html = $parecerService->substituirVariaveisDocx($templatePath, $dados);
 
             echo json_encode([
@@ -508,11 +521,6 @@ try {
     error_log("Trace completo: " . $e->getTraceAsString());
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
-        'debug' => [
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => explode("\n", $e->getTraceAsString())
-        ]
+        'error' => $e->getMessage()
     ]);
 }
