@@ -1479,6 +1479,59 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </button>
                         </div>
                     </div>
+                    <?php if (isset($requerimento['notificado_fiscal_obras'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Notificado pelo Fiscal de Obras:</div>
+                            <div class="data-value">
+                                <?php if ($requerimento['notificado_fiscal_obras']): ?>
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-hard-hat me-1"></i>Sim</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Não</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <?php
+                    $tiposComCamposTecnicos = ['construcao', 'habite_se', 'habite_se_simples', 'desmembramento', 'licenca_previa_obras'];
+                    $tipoAtual = $requerimento['tipo_alvara'] ?? '';
+                    $exibirTecnicos = in_array($tipoAtual, $tiposComCamposTecnicos);
+                    $naoinformado = '<span class="text-muted fst-italic">Não informado</span>';
+                    ?>
+                    <?php if ($exibirTecnicos): ?>
+                        <?php if ($tipoAtual === 'desmembramento'): ?>
+                            <div class="data-row">
+                                <div class="data-label">Área do Lote:</div>
+                                <div class="data-value"><?php echo !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $naoinformado; ?></div>
+                            </div>
+                        <?php else: ?>
+                            <div class="data-row">
+                                <div class="data-label">Área Construída:</div>
+                                <div class="data-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a) . ' m²' : $naoinformado; ?></div>
+                            </div>
+                            <div class="data-row">
+                                <div class="data-label">Número de Pavimentos:</div>
+                                <div class="data-value"><?php echo !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $naoinformado; ?></div>
+                            </div>
+                        <?php endif; ?>
+                        <div class="data-row">
+                            <div class="data-label">Responsável Técnico:</div>
+                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_nome']) ? htmlspecialchars($requerimento['responsavel_tecnico_nome']) : $naoinformado; ?></div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Registro (CREA/CAU):</div>
+                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $naoinformado; ?></div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label"><?php echo htmlspecialchars($requerimento['responsavel_tecnico_tipo_documento'] ?? 'ART/RRT'); ?> Nº:</div>
+                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $naoinformado; ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['especificacao'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Composição do Imóvel:</div>
+                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['especificacao'])); ?></div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($requerimento['ctf_numero'])): ?>
                         <div class="data-row">
                             <div class="data-label">Cadastro Técnico Federal:</div>
@@ -1983,7 +2036,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                       <i class="fas fa-archive me-2"></i>Arquivar
                                   </button>
 
-                                  <a href="gerar_documento.php?requerimento_id=<?= $id ?>"
+                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
                                       class="btn fw-medium text-white"
                                       style="background: var(--primary-600);">
                                       <i class="fas fa-file-signature me-2"></i>Gerar Documento

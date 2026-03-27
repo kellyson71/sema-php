@@ -211,7 +211,7 @@ include 'header.php';
                                         </span>
                                     </td>
                                     <td class="text-end pe-4">
-                                        <a href="gerar_documento.php?requerimento_id=<?php echo $req['id']; ?>" class="btn btn-sm px-3 rounded-pill shadow-sm text-white" style="background:#10b981;">
+                                        <a href="documentos/selecionar.php?requerimento_id=<?php echo $req['id']; ?>" class="btn btn-sm px-3 rounded-pill shadow-sm text-white" style="background:#10b981;">
                                             <i class="fas fa-file-signature me-1"></i> Analisar e Assinar
                                         </a>
                                     </td>
