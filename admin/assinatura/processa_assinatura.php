@@ -58,9 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
-    // Requerer a classe TCPDF estendida
+    // Requerer a classe TCPDF estendida (fallback)
     require_once __DIR__ . '/gerar_pdf.php';
-    
+    // Requerer PdfService (Puppeteer)
+    require_once $rootDir . '/includes/pdf_service.php';
+
     if ($salvar_banco && $requerimento_id) {
         try {
             // Diretório de Salvamento
@@ -68,14 +70,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!is_dir($dirDestino)) {
                 mkdir($dirDestino, 0755, true);
             }
-            
+
             $nomeArquivoBase = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '_' . date('His') . '.pdf';
             $caminhoFisico = $dirDestino . '/' . $nomeArquivoBase;
             $caminhoRelativo = 'pareceres/' . $requerimento_id . '/' . $nomeArquivoBase;
-            
-            // 1. Gerar e salvar fisicamente o PDF no disco "F"
-            emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
-            
+
+            // 1. Gerar PDF — tenta Puppeteer primeiro, depois TCPDF
+            $pdfGerado = false;
+            if (defined('PDF_USE_PUPPETEER') && PDF_USE_PUPPETEER) {
+                try {
+                    $pdfService = new PdfService();
+                    // Anexar carimbo de assinatura ao HTML
+                    $htmlComCarimbo = $conteudo . PdfService::buildCarimboAssinatura($assinante);
+                    $pdfGerado = $pdfService->generateToFile($htmlComCarimbo, $caminhoFisico);
+                } catch (\Throwable $e) {
+                    error_log("PdfService falhou, usando TCPDF: " . $e->getMessage());
+                    $pdfGerado = false;
+                }
+            }
+
+            // Fallback: TCPDF
+            if (!$pdfGerado) {
+                emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
+            }
+
             if (!file_exists($caminhoFisico)) {
                 echo json_encode(['success' => false, 'error' => 'A biblioteca PDF falhou ao gravar o arquivo físico.']); exit;
             }
@@ -136,6 +154,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } else {
         // Fluxo Antigo Direto (Força Download no Navegador)
+        if (defined('PDF_USE_PUPPETEER') && PDF_USE_PUPPETEER) {
+            try {
+                $pdfService = new PdfService();
+                $htmlComCarimbo = $conteudo . PdfService::buildCarimboAssinatura($assinante);
+                $pdfBinary = $pdfService->generate($htmlComCarimbo);
+                $nomeDownload = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '.pdf';
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: attachment; filename="' . $nomeDownload . '"');
+                header('Content-Length: ' . strlen($pdfBinary));
+                echo $pdfBinary;
+                exit;
+            } catch (\Throwable $e) {
+                error_log("PdfService download falhou, usando TCPDF: " . $e->getMessage());
+            }
+        }
         emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'D');
         exit;
     }

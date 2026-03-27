@@ -62,6 +62,83 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
+           PREVIEW A4 — simula página real no editor
+        ═══════════════════════════════════════════════ */
+        .note-editing-area .note-editable {
+            background: #e8e8e8 !important;
+            padding: 0 !important;
+        }
+        .note-editable .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            padding: 28mm 15mm;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            font-family: "Times New Roman", Times, serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            color: #1e1e1e;
+            text-align: justify;
+            box-sizing: border-box;
+        }
+        /* Indicador de quebra de página */
+        .note-editable .page-break {
+            border: none;
+            border-top: 2px dashed #c00;
+            margin: 10px auto;
+            position: relative;
+            width: 210mm;
+        }
+        .note-editable .page-break::after {
+            content: "— quebra de página —";
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #e8e8e8;
+            padding: 0 10px;
+            font-size: 10px;
+            color: #c00;
+            font-family: sans-serif;
+        }
+        /* Estilos dos elementos dentro do editor (espelham o PDF) */
+        .note-editable .titulo, .note-editable .titulo-licenca {
+            font-size: 14pt; font-weight: bold; text-align: center;
+            text-transform: uppercase; border-bottom: 2px solid #000;
+            padding-bottom: 10px; margin-bottom: 20px;
+        }
+        .note-editable .subtitulo {
+            font-size: 10pt; text-align: center; margin-bottom: 20px; font-style: italic;
+        }
+        .note-editable .secao-titulo {
+            font-weight: bold; text-transform: uppercase; background-color: #e8e8e8;
+            padding: 5px 6px; margin-top: 15px; margin-bottom: 4px;
+            font-size: 10pt; border: 1px solid #aaa;
+        }
+        .note-editable table, .note-editable .tabela-dados {
+            width: 100%; border-collapse: collapse; margin-bottom: 10px;
+        }
+        .note-editable .tabela-dados td, .note-editable table td, .note-editable table th {
+            padding: 6px 8px; border: 1px solid #aaa; vertical-align: middle;
+            font-size: 11pt; line-height: 1.4;
+        }
+        .note-editable .tabela-dados .label, .note-editable td.label {
+            font-weight: bold; background-color: #f0f0f0; width: 30%;
+        }
+        .note-editable .texto-parecer p {
+            margin-bottom: 12px; text-indent: 50px; line-height: 1.7;
+        }
+        .note-editable .condicionantes {
+            font-size: 9pt; margin-top: 10px; border: 1px solid #000; padding: 8px 10px;
+        }
+        .note-editable .carimbo-assinatura {
+            margin-top: 20px; float: right; width: 240px; border: 1px solid #ddd;
+            border-radius: 4px; padding: 8px 12px; background: #fdfffe;
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        /* ═══════════════════════════════════════════════
            MODAL
         ═══════════════════════════════════════════════ */
         .modal-header-sema { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
@@ -271,16 +348,19 @@ include '../header.php';
         document.getElementById('editor-title').innerHTML =
             '<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + escapeHtml(title) + '</b>';
 
+        // Envolver conteúdo em div A4 para preview realista
+        var wrappedHtml = '<div class="a4-page">' + html + '</div>';
+
         waitForSummernote(function() {
             var $editor = $('#editor-conteudo');
 
             if ($editor.data('summernote')) {
                 $editor.summernote('destroy');
             }
-            $editor.val(html);
+            $editor.val(wrappedHtml);
 
             $editor.summernote({
-                height: 480,
+                height: 600,
                 focus: true,
                 toolbar: [
                     ['style',    ['style']],
@@ -296,7 +376,7 @@ include '../header.php';
                     onInit: function() {
                         var editable = document.querySelector('.note-editable');
                         if (editable) {
-                            editable.style.minHeight = '440px';
+                            editable.style.minHeight = '600px';
                             editable.style.overflowY = 'auto';
                         }
                     }
@@ -313,6 +393,11 @@ include '../header.php';
         } else {
             htmlContent = document.getElementById('editor-conteudo').value;
         }
+        // Extrair conteúdo real de dentro do wrapper .a4-page
+        var tmpChk = document.createElement('div');
+        tmpChk.innerHTML = htmlContent;
+        var a4 = tmpChk.querySelector('.a4-page');
+        if (a4) htmlContent = a4.innerHTML;
 
         if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>') {
             Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
@@ -346,12 +431,18 @@ include '../header.php';
         } else {
             conteudoHtml = document.getElementById('editor-conteudo').value;
         }
+        // Extrair conteúdo de dentro da div .a4-page (wrapper de preview)
+        var tmpDiv = document.createElement('div');
+        tmpDiv.innerHTML = conteudoHtml;
+        var a4page = tmpDiv.querySelector('.a4-page');
+        if (a4page) conteudoHtml = a4page.innerHTML;
 
         const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
         fd.append('conteudo_parecer', conteudoHtml);
         fd.append('requerimento_id',  reqId);
         fd.append('salvar_banco',     'true');
+        fd.append('template_salvo',  templateNome);
         fd.append('download',         fazDownload);
 
         fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd })
