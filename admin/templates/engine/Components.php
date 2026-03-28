@@ -2,8 +2,14 @@
 /**
  * Components.php — Componentes HTML reutilizáveis para documentos
  *
- * Cada método retorna um bloco de HTML com estilos inline,
- * compatível com TCPDF e com o editor Summernote.
+ * Cada método retorna um bloco de HTML com estilos inline + atributos HTML,
+ * otimizado para TCPDF e compatível com o editor Summernote.
+ *
+ * REGRAS TCPDF:
+ *   - Usar atributos HTML (width, border, cellpadding, cellspacing, bgcolor)
+ *   - Usar <br> para espaçamento em vez de margin
+ *   - Usar strtoupper() em vez de text-transform:uppercase
+ *   - Evitar CSS moderno (flex, grid, table-layout, box-sizing)
  *
  * Uso:
  *   echo Components::titulo('ALVARÁ DE CONSTRUÇÃO', 'Nº 001/2026');
@@ -19,16 +25,18 @@ require_once __DIR__ . '/Styles.php';
 class Components
 {
     /**
-     * Título principal do documento
+     * Título principal do documento (table wrapper para largura 100% no TCPDF)
      */
     public static function titulo(string $texto, string $subtexto = ''): string
     {
         $s = DocumentStyles::TITULO;
-        $html = '<div style="' . $s . '">' . $texto;
+        $html = '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="' . $s . '">';
+        $html .= strtoupper($texto);
         if ($subtexto) {
             $html .= '<br><span style="font-size:12pt; font-weight:normal;">' . $subtexto . '</span>';
         }
-        $html .= '</div>';
+        $html .= '</td></tr></table>';
+        $html .= '<br>';
         return $html;
     }
 
@@ -37,19 +45,31 @@ class Components
      */
     public static function subtitulo(string $texto): string
     {
-        return '<div style="' . DocumentStyles::SUBTITULO . '">' . $texto . '</div>';
+        $html = '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="' . DocumentStyles::SUBTITULO . '">';
+        $html .= $texto;
+        $html .= '</td></tr></table>';
+        $html .= '<br>';
+        return $html;
     }
 
     /**
-     * Cabeçalho de seção numerada
+     * Cabeçalho de seção numerada (table com bgcolor para TCPDF)
      */
     public static function secao(string $texto): string
     {
-        return '<div class="secao-titulo" style="' . DocumentStyles::SECAO_TITULO . '">' . $texto . '</div>';
+        $s = DocumentStyles::SECAO_TITULO;
+        $html = '<br>';
+        $html .= '<table width="100%" cellpadding="4" cellspacing="0" border="1" style="border-color:#aaa;">';
+        $html .= '<tr><td bgcolor="#e8e8e8" style="' . $s . '">' . strtoupper($texto) . '</td></tr>';
+        $html .= '</table>';
+        return $html;
     }
 
     /**
      * Tabela de dados label/valor
+     *
+     * Usa atributos HTML (width, border, bgcolor, cellpadding) para máxima
+     * compatibilidade com TCPDF. CSS inline apenas para font e padding.
      *
      * @param array $linhas Array de pares [label, valor] ou [label, valor, opções]
      *                      Opções suportadas: 'colspan' => true (valor ocupa toda a largura)
@@ -57,11 +77,11 @@ class Components
      */
     public static function tabela(array $linhas, int $labelWidth = 30): string
     {
-        $s = DocumentStyles::TABELA;
+        $valorWidth = 100 - $labelWidth;
         $sl = DocumentStyles::TD_LABEL;
         $sv = DocumentStyles::TD_VALOR;
 
-        $html = '<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="' . $s . '">';
+        $html = '<table width="100%" border="1" cellpadding="5" cellspacing="0" style="' . DocumentStyles::TABELA . ' border-color:#aaa;">';
 
         foreach ($linhas as $linha) {
             $label = $linha[0];
@@ -69,15 +89,14 @@ class Components
             $opts  = $linha[2] ?? [];
 
             if (!empty($opts['colspan'])) {
-                // Linha com valor ocupando toda a largura
                 $html .= '<tr>';
                 $html .= '<td colspan="2" style="' . DocumentStyles::TD_FULL . '">';
                 $html .= '<strong>' . $label . '</strong>' . ($valor ? ' ' . $valor : '');
                 $html .= '</td></tr>';
             } else {
                 $html .= '<tr>';
-                $html .= '<td class="label" width="' . $labelWidth . '%" style="' . $sl . ' width:' . $labelWidth . '%;">' . $label . '</td>';
-                $html .= '<td style="' . $sv . '">' . $valor . '</td>';
+                $html .= '<td width="' . $labelWidth . '%" bgcolor="#f0f0f0" style="' . $sl . '">' . $label . '</td>';
+                $html .= '<td width="' . $valorWidth . '%" style="' . $sv . '">' . $valor . '</td>';
                 $html .= '</tr>';
             }
         }
@@ -120,10 +139,11 @@ class Components
      */
     public static function condicionantes(array $itens, string $titulo = 'CONDICIONANTES:'): string
     {
-        $html = '<div class="condicionantes" style="' . DocumentStyles::CONDICIONANTES . '">';
-        $html .= '<strong>' . $titulo . '</strong><ul style="margin:5px 0; padding-left:20px;">';
+        $html = '<br>';
+        $html .= '<div class="condicionantes" style="' . DocumentStyles::CONDICIONANTES . '">';
+        $html .= '<strong>' . $titulo . '</strong><ul style="padding-left:20px;">';
         foreach ($itens as $item) {
-            $html .= '<li style="margin-bottom:3px; line-height:1.4;">' . $item . '</li>';
+            $html .= '<li style="line-height:1.4;">' . $item . '</li>';
         }
         $html .= '</ul></div>';
         return $html;
@@ -134,7 +154,7 @@ class Components
      */
     public static function dataLocal(string $data = '{{data_atual}}'): string
     {
-        return '<div class="data-local" style="' . DocumentStyles::DATA_LOCAL . '">Pau dos Ferros/RN, ' . $data . '.</div>';
+        return '<br><br><div style="' . DocumentStyles::DATA_LOCAL . '">Pau dos Ferros/RN, ' . $data . '.</div>';
     }
 
     /**
@@ -142,9 +162,10 @@ class Components
      */
     public static function assinatura(string $nome = 'VICENTE DE PAULA FERNANDES', string $cargo = 'SECRETÁRIO MUNICIPAL DE MEIO AMBIENTE – SEMA.<br>PORTARIA 010/2025'): string
     {
-        $html  = '<div class="linha-assinatura" style="' . DocumentStyles::ASSINATURA . '">';
-        $html .= '<p class="nome-assinante" style="' . DocumentStyles::ASSINATURA_NOME . '">' . $nome . '</p>';
-        $html .= '<p class="cargo-assinante" style="' . DocumentStyles::ASSINATURA_CARGO . '">' . $cargo . '</p>';
+        $html  = '<br><br><br>';
+        $html .= '<div style="' . DocumentStyles::ASSINATURA . '">';
+        $html .= '<p style="' . DocumentStyles::ASSINATURA_NOME . '">' . strtoupper($nome) . '</p>';
+        $html .= '<p style="' . DocumentStyles::ASSINATURA_CARGO . '">' . $cargo . '</p>';
         $html .= '</div>';
         return $html;
     }
@@ -154,11 +175,11 @@ class Components
      */
     public static function dadosInline(array $dados): string
     {
-        $html = '<div style="margin-bottom:20px; line-height:1.8;">';
+        $html = '<div style="line-height:1.8;">';
         foreach ($dados as [$label, $valor]) {
-            $html .= '<div style="margin-bottom:4px;"><span style="font-weight:bold;">' . $label . ':</span> ' . $valor . '</div>';
+            $html .= '<div><span style="font-weight:bold;">' . $label . ':</span> ' . $valor . '</div>';
         }
-        $html .= '</div>';
+        $html .= '</div><br>';
         return $html;
     }
 }
