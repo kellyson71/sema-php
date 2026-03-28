@@ -103,6 +103,22 @@ ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
   "cd ~/domains/sema.protocolosead.com/public_html && git pull"
 ```
 
+## Deploy
+
+Ao concluir alterações, **sempre fazer commit e push automaticamente** (sem perguntar). O servidor de produção faz `git pull` via SSH:
+
+```bash
+ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+  "cd ~/domains/sema.protocolosead.com/public_html && git pull"
+```
+
+**Arquivos no `.gitignore`** (como `includes/config.php` e `admin/conexao.php`) não vão pelo git. Se forem modificados, atualizar via FTP:
+
+```bash
+lftp -u "u492577848.semapmpfestagio,Pmpfestagio2021" ftp://46.202.145.215 -e \
+  "set ftp:ssl-allow no; put arquivo_local -o public_html/caminho/arquivo; quit"
+```
+
 ## Branches
 
 - `main` — produção
