@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
 // Verificar se o ID foi fornecido
@@ -270,7 +271,7 @@ function formatarData($data)
 
                 <br>
 
-                <div><span class="negrito">ASSUNTO:</span> <?php echo htmlspecialchars($requerimento['tipo_alvara']); ?></div>
+                <div><span class="negrito">ASSUNTO:</span> <?php echo htmlspecialchars(nomeAlvara($requerimento['tipo_alvara'])); ?></div>
                 <div><span class="negrito">INTERESSADO:</span> <?php echo htmlspecialchars($requerimento['requerente_nome']); ?></div>
                 <div><span class="negrito">E-MAIL REMETENTE:</span> <?php echo htmlspecialchars($requerimento['requerente_email']); ?></div>
                 <div><span class="negrito">DATA DE ENTRADA:</span> <?php echo formatarData($requerimento['data_envio']); ?></div>

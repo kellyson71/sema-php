@@ -37,7 +37,7 @@ function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $f
                     <option value="">Todos os Tipos</option>
                     <?php foreach ($tiposAlvara as $tipo): ?>
                         <option value="<?php echo $tipo['tipo_alvara']; ?>" <?php echo $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : ''; ?>>
-                            <?php echo ucfirst(str_replace('_', ' ', $tipo['tipo_alvara'])); ?>
+                            <?php echo htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

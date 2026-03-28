@@ -3,6 +3,9 @@
 $tipos_alvara = [
     'construcao' => [
         'nome' => 'ALVARÁ DE CONSTRUÇÃO, REFORMA E/OU AMPLIAÇÃO',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -36,6 +39,9 @@ $tipos_alvara = [
     ],
     'habite_se' => [
         'nome' => 'ALVARÁ DE HABITE-SE E LEGALIZAÇÃO',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -62,6 +68,9 @@ $tipos_alvara = [
     ],
     'habite_se_simples' => [
         'nome' => 'ALVARÁ DE HABITE-SE',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -89,6 +98,9 @@ $tipos_alvara = [
     ],
     'funcionamento' => [
         'nome' => 'ALVARÁ DE FUNCIONAMENTO',
+        'categoria' => 'outro',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'pessoa_fisica' => [
             '1. RG e CPF/CNPJ do solicitante e do responsável pelo empreendimento;',
             '2. Comprovante de endereço pessoal;',
@@ -117,6 +129,9 @@ $tipos_alvara = [
     ],
     'desmembramento' => [
         'nome' => 'ALVARÁ DE DESMEMBRAMENTO E REMEMBRAMENTO',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -138,6 +153,9 @@ $tipos_alvara = [
     ],
     'demolicao' => [
         'nome' => 'ALVARÁ DE DEMOLIÇÃO',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. ART ou RRT da demolição (assinada pelo responsável técnico e contratante);',
             '2. Projetos arquitetônicos:
@@ -158,6 +176,9 @@ $tipos_alvara = [
     ],
     'transporte' => [
         'nome' => 'RELAÇÃO DE DOCUMENTOS PARA LICENCIAMENTO DE TRANSPORTE ALTERNATIVO E TRANSPORTE ESCOLAR',
+        'categoria' => 'outro',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado pelo interessado;',
             '2. Certidão negativa de débitos municipais;',
@@ -183,6 +204,9 @@ $tipos_alvara = [
     ],
     'loteamento' => [
         'nome' => 'ALVARÁ DE LOTEAMENTO',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Planta geral atual indicando:
                - terreno (s) a ser (em) submetido (s) ao loteamento, indicando área (s), limites, ângulos e dimensões;
@@ -217,6 +241,9 @@ $tipos_alvara = [
     ],
     'uso_solo' => [
         'nome' => 'CERTIDÃO DE USO E OCUPAÇÃO DO SOLO PARA FINS DE LICENCIAMENTO NO IDEMA',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. ART ou RRT do projeto e execução (assinada pelo responsável técnico e contratante);',
             '2. Projetos arquitetônicos:(assinada pelo responsável técnico e contratante);',
@@ -238,6 +265,9 @@ $tipos_alvara = [
     ],
     'parques_circos' => [
         'nome' => 'ALVARÁ PROVISÓRIO PARA PARQUES DE DIVERSÕES E CIRCOS',
+        'categoria' => 'outro',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '2. Comprovante de residência do proprietário;',
@@ -262,6 +292,9 @@ $tipos_alvara = [
     ],
     'licenca_previa_obras' => [
         'nome' => 'LICENÇA PRÉVIA DE OBRAS (NÃO AMBIENTAL)',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
@@ -286,6 +319,9 @@ $tipos_alvara = [
     ],
     'licenca_previa_ambiental' => [
         'nome' => 'LP — LICENÇA PRÉVIA AMBIENTAL',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -308,6 +344,9 @@ $tipos_alvara = [
     ],
     'licenca_previa_instalacao' => [
         'nome' => 'LP/LI — LICENÇA PRÉVIA + INSTALAÇÃO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -332,6 +371,9 @@ $tipos_alvara = [
     ],
     'licenca_instalacao_operacao' => [
         'nome' => 'LI/LO — LICENÇA DE INSTALAÇÃO + OPERAÇÃO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => true,
+        'exige_licenca_anterior' => true,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -358,6 +400,9 @@ $tipos_alvara = [
     ],
     'licenca_operacao' => [
         'nome' => 'LO — LICENÇA DE OPERAÇÃO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => true,
+        'exige_licenca_anterior' => true,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -376,6 +421,9 @@ $tipos_alvara = [
     ],
     'licenca_ambiental_unica' => [
         'nome' => 'LAU — LICENÇA AMBIENTAL ÚNICA',
+        'categoria' => 'ambiental',
+        'exige_ctf' => true,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -401,6 +449,9 @@ $tipos_alvara = [
     ],
     'licenca_ampliacao' => [
         'nome' => 'LA — LICENÇA DE AMPLIAÇÃO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => true,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -425,6 +476,9 @@ $tipos_alvara = [
     ],
     'licenca_operacional_corretiva' => [
         'nome' => 'LOC — LICENÇA OPERACIONAL CORRETIVA',
+        'categoria' => 'ambiental',
+        'exige_ctf' => true,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -449,6 +503,9 @@ $tipos_alvara = [
     ],
     'autorizacao_supressao' => [
         'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
@@ -469,6 +526,9 @@ $tipos_alvara = [
     ],
     'outros' => [
         'nome' => 'OUTROS ALVARÁS',
+        'categoria' => 'outro',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [
             'Entre em contato com a Secretaria de Meio Ambiente para obter informações sobre a documentação necessária para o alvará desejado.'
         ],

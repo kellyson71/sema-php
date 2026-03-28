@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
 // Verificar permissão
@@ -198,7 +199,7 @@ include 'header.php';
                                     </td>
                                     <td>
                                         <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3">
-                                            <?php echo htmlspecialchars($req['tipo_alvara']); ?>
+                                            <?php echo htmlspecialchars(nomeAlvara($req['tipo_alvara'])); ?>
                                         </span>
                                     </td>
                                     <td class="text-muted">

@@ -3,6 +3,28 @@ require_once 'config.php';
 require_once 'database.php';
 
 /**
+ * Retorna o nome legível de um tipo de alvará a partir do slug.
+ * Carrega tipos_alvara.php sob demanda.
+ *
+ * @param string $slug Slug do tipo (ex: 'construcao', 'habite_se')
+ * @return string Nome legível (ex: 'ALVARÁ DE CONSTRUÇÃO, REFORMA E/OU AMPLIAÇÃO')
+ */
+function nomeAlvara(string $slug): string
+{
+    static $tipos = null;
+    if ($tipos === null) {
+        $arquivo = dirname(__DIR__) . '/tipos_alvara.php';
+        if (file_exists($arquivo)) {
+            include $arquivo;
+            $tipos = $tipos_alvara ?? [];
+        } else {
+            $tipos = [];
+        }
+    }
+    return $tipos[$slug]['nome'] ?? ucwords(str_replace('_', ' ', $slug));
+}
+
+/**
  * Gera um número de protocolo único
  * @return string Número de protocolo
  */

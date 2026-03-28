@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
 // Verificar se houve ação de sucesso
@@ -150,7 +151,7 @@ include 'header.php';
                     <option value="">Todos</option>
                     <?php foreach ($tiposAlvara as $tipo): ?>
                         <option value="<?php echo $tipo['tipo_alvara']; ?>" <?php echo $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : ''; ?>>
-                            <?php echo $tipo['tipo_alvara']; ?>
+                            <?php echo nomeAlvara($tipo['tipo_alvara']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -234,7 +235,7 @@ include 'header.php';
                             <td><?php echo $req['requerente']; ?></td>
                             <td>
                                 <span class="badge bg-light text-dark border">
-                                    <?php echo $req['tipo_alvara']; ?>
+                                    <?php echo nomeAlvara($req['tipo_alvara']); ?>
                                 </span>
                             </td>
                             <td>

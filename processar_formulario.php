@@ -35,25 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
 
-    // Tipos ambientais e regras auxiliares
-    $tiposAmbientais = [
-        'licenca_previa_ambiental',
-        'licenca_previa_instalacao',
-        'licenca_instalacao_operacao',
-        'licenca_operacao',
-        'licenca_ambiental_unica',
-        'licenca_ampliacao',
-        'licenca_operacional_corretiva',
-        'autorizacao_supressao'
-    ];
-    $tiposExigemCTF = [
-        'licenca_operacao',
-        'licenca_instalacao_operacao',
-        'licenca_ambiental_unica',
-        'licenca_ampliacao',
-        'licenca_operacional_corretiva'
-    ];
-    $tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
+    // Regras de negócio derivadas da fonte de verdade (tipos_alvara.php)
+    $tipoInfo = $tipos_alvara[$_POST['tipo_alvara'] ?? ''] ?? null;
+    $isAmbiental = ($tipoInfo['categoria'] ?? '') === 'ambiental';
+    $exigeCTF = $tipoInfo['exige_ctf'] ?? false;
+    $exigeLicencaAnterior = $tipoInfo['exige_licenca_anterior'] ?? false;
 
     // Dados do requerente
     $requerente = [
@@ -174,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validações específicas para tipologias ambientais
-    if (in_array($tipoAlvara, $tiposAmbientais)) {
+    if ($isAmbiental) {
         if (empty($publicacao_diario_oficial)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
@@ -187,13 +173,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php');
         }
 
-        if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) {
+        if ($exigeCTF && empty($ctf_numero)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o número do Cadastro Técnico Federal (CTF).');
             redirect('index.php');
         }
 
-        if (in_array($tipoAlvara, $tiposExigemLicencaAnterior) && empty($licenca_anterior_numero)) {
+        if ($exigeLicencaAnterior && empty($licenca_anterior_numero)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o número da licença anterior.');
             redirect('index.php');

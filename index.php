@@ -290,26 +290,22 @@ include_once 'tipos_alvara.php';
                             <div class="tipo-alvara-left">
                                 <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Alvará">
                                     <option value="" hidden>Selecione um tipo de alvará...</option>
-                                    <option value="construcao">Alvará de Construção</option>
-                                    <option value="habite_se">Alvará de Habite-se e Legalização</option>
-                                    <option value="habite_se_simples">Alvará de Habite-se Simples</option>
-                                    <option value="funcionamento">Alvará de Funcionamento</option>
-                                    <option value="desmembramento">Alvará de Desmembramento e Remembramento</option>
-                                    <option value="demolicao">Alvará de Demolição</option>
-                                    <option value="loteamento">Alvará de Loteamento</option>
-                                    <option value="transporte">Licenciamento de Transporte</option>
-                                    <option value="uso_solo">Certidão de Uso e Ocupação do Solo</option>
-                                    <option value="parques_circos">Alvará para Parques e Circos</option>
-                                    <option value="licenca_previa_obras">Licença Prévia de Obras</option>
-                                    <option value="licenca_previa_ambiental">LP — Licença Prévia Ambiental</option>
-                                    <option value="licenca_previa_instalacao">LP/LI — Licença Prévia + Instalação</option>
-                                    <option value="licenca_instalacao_operacao">LI/LO — Instalação + Operação</option>
-                                    <option value="licenca_operacao">LO — Licença de Operação</option>
-                                    <option value="licenca_ambiental_unica">LAU — Licença Ambiental Única</option>
-                                    <option value="licenca_ampliacao">LA — Licença de Ampliação</option>
-                                    <option value="licenca_operacional_corretiva">LOC — Licença Operacional Corretiva</option>
-                                    <option value="autorizacao_supressao">Autorização de Supressão Vegetal</option>
-                                    <option value="outros">Outros</option>
+                                    <?php
+                                    $categorias = [
+                                        'obras' => 'Obras e Construção',
+                                        'ambiental' => 'Licenças Ambientais',
+                                        'outro' => 'Outros Serviços',
+                                    ];
+                                    foreach ($categorias as $catSlug => $catNome):
+                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug);
+                                        if (empty($tiposDaCategoria)) continue;
+                                    ?>
+                                    <optgroup label="<?= htmlspecialchars($catNome) ?>">
+                                        <?php foreach ($tiposDaCategoria as $slug => $tipo): ?>
+                                        <option value="<?= $slug ?>"><?= htmlspecialchars($tipo['nome']) ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                    <?php endforeach; ?>
                                 </select>
 
                                 <div id="campos_dinamicos">

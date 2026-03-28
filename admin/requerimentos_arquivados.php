@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
 // Configurações
@@ -138,7 +139,7 @@ include 'header.php';
                         $stmtTipos = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos_arquivados ORDER BY tipo_alvara");
                         while ($tipo = $stmtTipos->fetch()) {
                             $selected = $filtroTipo == $tipo['tipo_alvara'] ? 'selected' : '';
-                            echo "<option value='" . htmlspecialchars($tipo['tipo_alvara']) . "' $selected>" . htmlspecialchars($tipo['tipo_alvara']) . "</option>";
+                            echo "<option value='" . htmlspecialchars($tipo['tipo_alvara']) . "' $selected>" . htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) . "</option>";
                         }
                         ?>
                     </select>
@@ -218,7 +219,7 @@ include 'header.php';
                                         </div>
                                     </td>
                                     <td>
-                                        <small class="text-muted"><?php echo htmlspecialchars($req['tipo_alvara']); ?></small>
+                                        <small class="text-muted"><?php echo htmlspecialchars(nomeAlvara($req['tipo_alvara'])); ?></small>
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary"><?php echo $req['status']; ?></span>

@@ -138,7 +138,7 @@ function renderTabela($requerimentos)
 
                     <td class="cursor-pointer" onclick="abrirRequerimento(<?php echo $req['id']; ?>)">
                         <span class="type-badge">
-                            <?php echo ucfirst(str_replace('_', ' ', $req['tipo_alvara'])); ?>
+                            <?php echo htmlspecialchars(nomeAlvara($req['tipo_alvara'])); ?>
                         </span>
                     </td>
 
