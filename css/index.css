@@ -289,12 +289,32 @@ div.form-files img {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin-top: 40px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
 }
 
-.form-part-4 input {
+.form-part-4 div {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.form-part-4 label {
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.form-part-4 input[type="checkbox"] {
   width: auto;
+  min-width: 20px;
+  height: 20px;
   border-radius: 5px;
   display: inline;
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 div.captcha {
@@ -461,8 +481,9 @@ footer > div:nth-child(2) img {
   }
 
   div.form-header img {
-    aspect-ratio: auto;
-    height: 300px;
+    height: auto;
+    max-width: 250px;
+    width: 100%;
   }
 
   div.form-files {
@@ -624,7 +645,9 @@ footer > div:nth-child(2) img {
 
 .form-header img {
   max-width: 200px;
+  width: 100%;
   height: auto;
+  object-fit: contain;
   margin-bottom: 25px;
   transition: all 0.3s ease;
 }
@@ -872,6 +895,10 @@ footer > div:nth-child(2) img {
 }
 
 /* Label de título de seção do formulário */
+.form-section {
+  margin-top: 28px;
+}
+
 .form-section-label {
   font-size: 0.75rem;
   font-weight: 700;
