@@ -19,18 +19,51 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+            '9. Projeto de Calçada;',
         ],
         'documentos_opcionais' => [
-            '9. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
-            '10. Licenciamento ambiental junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA);',
+            '10. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
+            '11. Licenciamento ambiental junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA);',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
             'O arquivo enviado não pode ultrapassar 10MB.',
         ],
-        'obras_publicas' => [
-            'ART ou RRT do projeto, execução e fiscalização (assinada pelo responsável técnico e contratante);',
-            'Ordem de serviço e contrato.',
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'construcao_obras_publicas' => [
+        'nome' => 'ALVARÁ DE CONSTRUÇÃO, REFORMA E/OU AMPLIAÇÃO – OBRAS PÚBLICAS',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
+            '3. Comprovante de residência do proprietário e do requerente;',
+            '4. Documento do terreno;',
+            '5. Cadastro imobiliário;',
+            '6. ART ou RRT do projeto e execução (assinada pelo responsável técnico e contratante);',
+            '7. Projetos arquitetônicos: (assinados pelo responsável técnico e proprietário)
+               - Planta de situação com coordenada geográfica indicando os nomes das ruas e distância das esquinas mais próximas;
+               - Planta de locação da construção no terreno e coberta;
+               - Planta baixa e cortes.',
+            '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+            '9. Projeto de Calçada;',
+            '10. Contrato;',
+            '11. Ordem de Serviço;',
+            '12. ART ou RRT de Fiscalização;',
+        ],
+        'documentos_opcionais' => [
+            '13. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
+            '14. Licenciamento ambiental junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA);',
+        ],
+        'observacoes' => [
+            'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
+            'O arquivo enviado não pode ultrapassar 10MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -56,6 +89,40 @@ $tipos_alvara = [
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
+            '10. Projeto de Calçada;',
+        ],
+        'observacoes' => [
+            'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
+            'O arquivo enviado não pode ultrapassar 10MB.',
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'habite_se_obras_publicas' => [
+        'nome' => 'ALVARÁ DE HABITE-SE E LEGALIZAÇÃO – OBRAS PÚBLICAS',
+        'categoria' => 'obras',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
+            '3. Comprovante de residência do proprietário e do requerente;',
+            '4. Documento do terreno e Cadastro imobiliário;',
+            '5. ART ou RRT do projetos e execução (assinada pelo responsável técnico e contratante);',
+            '6. Projetos arquitetônicos: (assinados pelo responsável técnico e proprietário)
+               - Planta de situação com coordenada geográfica indicando os nomes das ruas e distância das esquinas mais próximas;
+               - Planta de locação da construção no terreno e coberta;
+               - Planta baixa e cortes.',
+            '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+            '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
+            '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
+            '10. Projeto de Calçada;',
+            '11. Contrato;',
+            '12. Ordem de Serviço;',
+            '13. ART ou RRT de Fiscalização;',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
@@ -307,6 +374,7 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+            '8. Projeto de Calçada;',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
