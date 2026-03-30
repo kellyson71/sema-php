@@ -227,14 +227,20 @@ include '../header.php';
     <ul class="nav nav-tabs mb-4" id="tabsTemplates" role="tablist">
         <?php
         $isFiscalPhp = in_array($_SESSION['admin_nivel'] ?? '', ['fiscal', 'admin', 'admin_geral']);
-        $tabObrasActive  = $isFiscalPhp ? 'active' : '';
         $tabTodosActive  = $isFiscalPhp ? '' : 'active';
         $paneObrasActive = $isFiscalPhp ? 'show active' : '';
         $paneTodosActive = $isFiscalPhp ? '' : 'show active';
         ?>
+        <!-- Meus Templates — sempre primeiro -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="tab-meus" data-bs-toggle="tab"
+                    data-bs-target="#pane-meus" type="button" role="tab">
+                <i class="fas fa-bookmark me-2 text-success"></i> Meus Templates
+            </button>
+        </li>
         <?php if ($isFiscalPhp): ?>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold <?= $tabObrasActive ?>" id="tab-obras" data-bs-toggle="tab"
+            <button class="nav-link fw-semibold active" id="tab-obras" data-bs-toggle="tab"
                     data-bs-target="#pane-obras" type="button" role="tab">
                 <i class="fas fa-hard-hat me-2 text-warning"></i> Fiscalização de Obras
             </button>
@@ -255,6 +261,18 @@ include '../header.php';
     </ul>
 
     <div class="tab-content" id="tabsTemplatesContent">
+
+        <!-- Aba: Meus Templates -->
+        <div class="tab-pane fade" id="pane-meus" role="tabpanel">
+            <div class="row g-4 mb-4" id="lista-meus-templates">
+                <div class="col-12">
+                    <div class="text-center text-muted py-3">
+                        <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
+                        <small>Carregando seus templates...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <?php if ($isFiscalPhp): ?>
         <!-- Aba: Fiscalização de Obras -->
@@ -405,6 +423,71 @@ include '../header.php';
         </div>`;
     }
 
+    /* ─── Card de template personalizado do usuário ─────────── */
+    function buildUserTemplateCard(t, idx) {
+        const delay = (idx * 0.06).toFixed(2);
+        const label = escapeHtml(t.nome);
+        const desc  = escapeHtml(t.descricao || 'Template personalizado.');
+        const base  = t.template_base ? ` | Base: ${escapeHtml(t.template_base)}` : '';
+        const tplId = encodeURIComponent('user_tpl:' + t.id);
+        const labelEnc = encodeURIComponent(t.nome);
+
+        return `
+        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="user-tpl-${t.id}" style="animation-delay:${delay}s">
+            <div class="card template-card border-0 shadow-sm h-100 position-relative" style="border-bottom:3px solid #1c4b36 !important;">
+                <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle p-0 d-flex align-items-center justify-content-center"
+                        style="width:22px;height:22px;font-size:.7rem;z-index:2"
+                        title="Excluir template"
+                        onclick="excluirTemplateUsuario(${t.id}, event)">
+                    <i class="fas fa-times"></i>
+                </button>
+                <a href="editor.php?requerimento_id=${reqId}&template=${tplId}&label=${labelEnc}"
+                   class="card-body text-center p-4 text-decoration-none d-block">
+                    <div class="icon-wrap mb-1" style="background:#d1fae5;">
+                        <i class="fas fa-bookmark text-success fs-2"></i>
+                    </div>
+                    <span class="tpl-badge mb-2 d-inline-block" style="background:#d1fae5;color:#065f46;">Personalizado</span>
+                    <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
+                    <div class="preview-miniature">${desc}${base}</div>
+                    <small class="text-muted d-block mt-1" style="font-size:.7rem">${t.data}</small>
+                </a>
+            </div>
+        </div>`;
+    }
+
+    /* ─── Excluir template do usuário ────────────────────────── */
+    function excluirTemplateUsuario(id, evt) {
+        evt.preventDefault(); evt.stopPropagation();
+        if (!confirm('Excluir este template? Esta ação não pode ser desfeita.')) return;
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'excluir_template_usuario', id: id })
+        })
+        .then(r => r.json())
+        .then(ret => {
+            if (ret.success) {
+                const card = document.getElementById('user-tpl-' + id);
+                if (card) card.remove();
+                // Se ficou vazio, exibir estado vazio
+                const lista = document.getElementById('lista-meus-templates');
+                if (lista && lista.children.length === 0) {
+                    lista.innerHTML = emptyStateMeusTemplates();
+                }
+            }
+        });
+    }
+
+    function emptyStateMeusTemplates() {
+        return `<div class="col-12">
+            <div class="text-center py-5" style="color:#94a3b8">
+                <i class="fas fa-bookmark fa-3x mb-3 d-block" style="opacity:.3"></i>
+                <p class="fw-semibold mb-1">Você ainda não tem templates personalizados.</p>
+                <small>Abra um template, edite-o e clique em <strong>"Salvar Template"</strong> no editor para criá-los.</small>
+            </div>
+        </div>`;
+    }
+
     /* ─── Carregar templates via AJAX ──────────────────────── */
     function carregarTemplates() {
         fetch('../parecer_handler.php', {
@@ -420,6 +503,18 @@ include '../header.php';
             const listTpl   = document.getElementById('lista-templates');
             const listObras = document.getElementById('lista-obras');
             const listHist  = document.getElementById('lista-historico');
+            const listMeus  = document.getElementById('lista-meus-templates');
+
+            // ── Meus Templates ──────────────────────────────
+            if (ret.success && ret.user_templates && ret.user_templates.length > 0) {
+                let htmlMeus = '';
+                ret.user_templates.forEach((t, idx) => { htmlMeus += buildUserTemplateCard(t, idx); });
+                listMeus.innerHTML = htmlMeus;
+                // Ativar a aba "Meus Templates" como padrão se houver templates
+                document.getElementById('tab-meus').click();
+            } else {
+                listMeus.innerHTML = emptyStateMeusTemplates();
+            }
 
             if (ret.success && ret.templates && ret.templates.length > 0) {
                 let htmlTodos = '';

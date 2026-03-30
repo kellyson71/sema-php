@@ -803,4 +803,58 @@ class ParecerService
 
         return false;
     }
+
+    /**
+     * Carrega um template HTML processando imagens para data URI, mas SEM substituir variáveis.
+     * Usado para carregar o template no editor com highlight de variáveis.
+     */
+    public function prepararTemplateParaEditor(string $templatePath): string
+    {
+        $html = file_get_contents($templatePath);
+        $html = $this->processarImagensRelativas($html, dirname($templatePath));
+        return self::extrairConteudoTemplate($html);
+    }
+
+    /**
+     * Substitui variáveis {{var}} no HTML envolvendo-as em spans destacados.
+     * Usado no editor para indicar visualmente os campos preenchidos automaticamente.
+     */
+    public static function aplicarHighlights(string $html, array $dados): string
+    {
+        foreach ($dados as $variavel => $valor) {
+            $valorSeguro = htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
+            $varSegura   = htmlspecialchars($variavel, ENT_QUOTES, 'UTF-8');
+            $html = str_replace(
+                '{{' . $variavel . '}}',
+                '<span class="var-field" data-var="' . $varSegura . '">' . $valorSeguro . '</span>',
+                $html
+            );
+        }
+        return $html;
+    }
+
+    /**
+     * Converte spans var-field de volta para {{variavel}}.
+     * Usado ao salvar como template — preserva apenas as variáveis que o usuário manteve.
+     */
+    public static function converterSpansParaVariaveis(string $html): string
+    {
+        return preg_replace(
+            '/<span[^>]+class=["\']var-field["\'][^>]+data-var=["\']([^"\']+)["\'][^>]*>(?:(?!<\/span>)[\s\S])*<\/span>/U',
+            '{{$1}}',
+            $html
+        );
+    }
+
+    /**
+     * Remove spans var-field, mantendo apenas o valor de texto (para geração de PDF).
+     */
+    public static function stripVarSpans(string $html): string
+    {
+        return preg_replace(
+            '/<span[^>]+class=["\']var-field["\'][^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/U',
+            '$1',
+            $html
+        );
+    }
 }

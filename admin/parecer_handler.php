@@ -278,10 +278,30 @@ try {
                 return strcmp($a['nome'], $b['nome']);
             });
 
+            // 5. Templates do usuário (personalizados)
+            $userTemplates = [];
+            $stmtUt = $pdo->prepare("
+                SELECT id, nome, descricao, template_base, data_atualizacao
+                FROM user_templates
+                WHERE usuario_id = ?
+                ORDER BY data_atualizacao DESC
+            ");
+            $stmtUt->execute([$_SESSION['admin_id']]);
+            foreach ($stmtUt->fetchAll(PDO::FETCH_ASSOC) as $ut) {
+                $userTemplates[] = [
+                    'id'          => $ut['id'],
+                    'nome'        => $ut['nome'],
+                    'descricao'   => $ut['descricao'] ?: 'Template personalizado.',
+                    'template_base' => $ut['template_base'],
+                    'data'        => date('d/m/Y H:i', strtotime($ut['data_atualizacao'])),
+                ];
+            }
+
             echo json_encode([
-                'success'         => true,
+                'success'           => true,
                 'historico_recente' => $historicoRecente,
-                'templates'       => $templates
+                'templates'         => $templates,
+                'user_templates'    => $userTemplates,
             ]);
             break;
 
@@ -294,15 +314,55 @@ try {
             if (empty($template) || $requerimento_id <= 0) {
                 throw new Exception('Parâmetros inválidos');
             }
-            
+
             // A. Template em Branco
             if ($template === 'em_branco') {
                  echo json_encode([
                     'success' => true,
-                    'html' => '', 
+                    'html' => '',
                     'is_draft' => false,
                     'nome_rascunho' => 'Novo Parecer',
-                    'dados' => [] 
+                    'dados' => []
+                ]);
+                break;
+            }
+
+            // A2. Template personalizado do usuário (user_tpl:{id})
+            if (strpos($template, 'user_tpl:') === 0) {
+                $utId = (int)substr($template, 9);
+                $stmtUt = $pdo->prepare("SELECT nome, conteudo_html FROM user_templates WHERE id = ? AND usuario_id = ?");
+                $stmtUt->execute([$utId, $_SESSION['admin_id']]);
+                $utRow = $stmtUt->fetch(PDO::FETCH_ASSOC);
+                if (!$utRow) throw new Exception('Template não encontrado ou sem permissão');
+
+                // Buscar dados do requerimento para preencher highlights
+                $stmtR = $pdo->prepare("
+                    SELECT r.*,
+                           req.nome as requerente_nome, req.cpf_cnpj as requerente_cpf_cnpj,
+                           req.telefone as requerente_telefone, req.email as requerente_email,
+                           p.nome as proprietario_nome, p.cpf_cnpj as proprietario_cpf_cnpj
+                    FROM requerimentos r
+                    JOIN requerentes req ON r.requerente_id = req.id
+                    LEFT JOIN proprietarios p ON r.proprietario_id = p.id
+                    WHERE r.id = ?
+                ");
+                $stmtR->execute([$requerimento_id]);
+                $requerimentoUt = $stmtR->fetch();
+                if (!$requerimentoUt) throw new Exception('Requerimento não encontrado');
+
+                $stmtAdmUt = $pdo->prepare("SELECT nome, nome_completo, email, cpf, cargo, matricula_portaria FROM administradores WHERE id = ?");
+                $stmtAdmUt->execute([$_SESSION['admin_id']]);
+                $adminDataUt = $stmtAdmUt->fetch(PDO::FETCH_ASSOC);
+
+                $dadosUt = $parecerService->preencherDados($requerimentoUt, $adminDataUt);
+                $htmlUt  = ParecerService::aplicarHighlights($utRow['conteudo_html'], $dadosUt);
+
+                echo json_encode([
+                    'success'       => true,
+                    'html'          => $htmlUt,
+                    'is_draft'      => false,
+                    'nome_rascunho' => $utRow['nome'],
+                    'dados'         => $dadosUt,
                 ]);
                 break;
             }
@@ -401,17 +461,13 @@ try {
             $builder = new DocumentBuilder();
 
             if ($builder->existeDefinicao($template)) {
-                $html = $builder->render($template);
-
-                // Preencher variáveis {{campo}} no HTML gerado
-                foreach ($dados as $variavel => $valor) {
-                    $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
-                }
+                $rawHtml = $builder->render($template);
+                $html    = ParecerService::aplicarHighlights($rawHtml, $dados);
 
                 echo json_encode([
                     'success' => true,
-                    'html' => $html,
-                    'dados' => $dados
+                    'html'    => $html,
+                    'dados'   => $dados,
                 ]);
                 break;
             }
@@ -427,16 +483,23 @@ try {
                 try {
                     $templatePath = $parecerService->carregarTemplate($template);
                 } catch(Exception $e) {
-                     throw new Exception("Template não encontrado: $template");
+                    throw new Exception("Template não encontrado: $template");
                 }
             }
 
-            $html = $parecerService->substituirVariaveisDocx($templatePath, $dados);
+            // Verificar se é DOCX — DOCX não suporta highlights, usa substituição direta
+            $extTpl = strtolower(pathinfo($templatePath, PATHINFO_EXTENSION));
+            if ($extTpl === 'docx') {
+                $html = $parecerService->substituirVariaveisDocx($templatePath, $dados);
+            } else {
+                $rawHtml = $parecerService->prepararTemplateParaEditor($templatePath);
+                $html    = ParecerService::aplicarHighlights($rawHtml, $dados);
+            }
 
             echo json_encode([
                 'success' => true,
-                'html' => $html,
-                'dados' => $dados
+                'html'    => $html,
+                'dados'   => $dados,
             ]);
             break;
 
@@ -510,6 +573,67 @@ try {
                 'success' => $success,
                 'mensagem' => $success ? 'Excluído com sucesso!' : 'Erro ao realizar a exclusão'
             ]);
+            break;
+
+        case 'listar_templates_usuario':
+            $stmtUt2 = $pdo->prepare("
+                SELECT id, nome, descricao, template_base, data_atualizacao
+                FROM user_templates
+                WHERE usuario_id = ?
+                ORDER BY data_atualizacao DESC
+            ");
+            $stmtUt2->execute([$_SESSION['admin_id']]);
+            $listaUt = [];
+            foreach ($stmtUt2->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $listaUt[] = [
+                    'id'           => $row['id'],
+                    'nome'         => $row['nome'],
+                    'descricao'    => $row['descricao'],
+                    'template_base'=> $row['template_base'],
+                    'data'         => date('d/m/Y H:i', strtotime($row['data_atualizacao'])),
+                ];
+            }
+            echo json_encode(['success' => true, 'templates' => $listaUt]);
+            break;
+
+        case 'salvar_template_usuario':
+            $utNome      = trim($input['nome'] ?? '');
+            $utDesc      = trim($input['descricao'] ?? '');
+            $utBase      = trim($input['template_base'] ?? '');
+            $utHtmlBruto = $input['conteudo_html'] ?? '';
+            $utIdUpdate  = (int)($input['id'] ?? 0);
+
+            if (empty($utHtmlBruto)) throw new Exception('Conteúdo do template não pode ser vazio');
+
+            // Converter spans var-field de volta para {{variavel}}
+            $utHtmlTemplate = ParecerService::converterSpansParaVariaveis($utHtmlBruto);
+
+            if ($utIdUpdate > 0) {
+                // UPDATE — garante que só o dono edita
+                $stmtSave = $pdo->prepare("
+                    UPDATE user_templates SET conteudo_html = ?, template_base = ?, data_atualizacao = NOW()
+                    WHERE id = ? AND usuario_id = ?
+                ");
+                $stmtSave->execute([$utHtmlTemplate, $utBase, $utIdUpdate, $_SESSION['admin_id']]);
+                if ($stmtSave->rowCount() === 0) throw new Exception('Template não encontrado ou sem permissão');
+                echo json_encode(['success' => true, 'id' => $utIdUpdate, 'nome' => '']);
+            } else {
+                if (empty($utNome)) throw new Exception('Informe um nome para o template');
+                $stmtSave = $pdo->prepare("
+                    INSERT INTO user_templates (usuario_id, nome, descricao, template_base, conteudo_html)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmtSave->execute([$_SESSION['admin_id'], $utNome, $utDesc, $utBase, $utHtmlTemplate]);
+                echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'nome' => $utNome]);
+            }
+            break;
+
+        case 'excluir_template_usuario':
+            $utIdDel = (int)($input['id'] ?? 0);
+            if ($utIdDel <= 0) throw new Exception('ID inválido');
+            $stmtDel = $pdo->prepare("DELETE FROM user_templates WHERE id = ? AND usuario_id = ?");
+            $stmtDel->execute([$utIdDel, $_SESSION['admin_id']]);
+            echo json_encode(['success' => $stmtDel->rowCount() > 0]);
             break;
 
         default:

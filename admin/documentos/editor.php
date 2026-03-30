@@ -50,26 +50,85 @@ include '../header.php';
         /* Editor fullscreen */
         #secao-editor {
             min-height: calc(100vh - var(--topbar-height, 60px) - 70px);
-            background: #f8f9fa;
-        }
-        .editor-container-wrapper {
-            min-height: 540px;
-            background: white;
-            border-radius: 10px;
-            border: 1px solid #e0e4e8;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-            overflow: hidden;
+            background: #e8ecf0;
         }
 
         /* ═══════════════════════════════════════════════
-           ESTILOS DO EDITOR (espelham o TCPDF)
+           PREVIEW A4 — HEADER SEMA MOCKADO
         ═══════════════════════════════════════════════ */
+        .a4-sema-header {
+            background: #fff;
+            padding: 7px 15mm 0;
+            border-bottom: 2px solid #2d8661;
+            margin-bottom: 3mm;
+        }
+        .a4-sema-header img {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .a4-sema-header .sema-prefeitura {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            font-size: 10pt;
+            color: #282828;
+            line-height: 1.2;
+        }
+        .a4-sema-header .sema-secretaria {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 600;
+            font-size: 8pt;
+            color: #646464;
+            line-height: 1.2;
+        }
+
+        /* ═══════════════════════════════════════════════
+           VARIÁVEIS DESTACADAS (campos auto-preenchidos)
+        ═══════════════════════════════════════════════ */
+        .note-editable .var-field,
+        .var-field {
+            text-decoration: underline;
+            text-decoration-color: #1a5276;
+            color: #1a5276 !important;
+            font-weight: 600;
+            background: rgba(26, 82, 118, 0.07);
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        /* ═══════════════════════════════════════════════
+           ESTRUTURA DO EDITOR — APARÊNCIA DE PÁGINA A4
+        ═══════════════════════════════════════════════ */
+        .note-editor.note-frame {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent;
+        }
+        .note-toolbar {
+            background: #f1f4f8 !important;
+            border: none !important;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 8px 12px !important;
+        }
+        /* Container que envolve header + editable — simula a página A4 */
+        .note-editing-area {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+            border-radius: 0 0 4px 4px;
+            min-height: 260mm;
+        }
+        /* Área editável: margens laterais e inferior como o TCPDF */
         .note-editable {
-            font-family: "Times New Roman", Times, serif;
-            font-size: 12pt;
-            line-height: 1.4;
-            color: #1e1e1e;
-            text-align: justify;
+            font-family: "Times New Roman", Times, serif !important;
+            font-size: 12pt !important;
+            line-height: 1.4 !important;
+            color: #1e1e1e !important;
+            text-align: justify !important;
+            padding: 5mm 15mm 25mm !important;
+            min-height: 200mm !important;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -83,6 +142,12 @@ include '../header.php';
         }
         .note-editable .condicionantes {
             font-size: 9pt; border: 1px solid #000; padding: 8px 10px;
+        }
+        /* Área externa ao editor — fundo cinza como "mesa" de trabalho */
+        .a4-outer-wrapper {
+            background: #e8ecf0;
+            padding: 16px;
+            border-radius: 0 0 10px 10px;
         }
 
         /* ═══════════════════════════════════════════════
@@ -137,21 +202,31 @@ include '../header.php';
     <!-- Seção do editor (oculta até carregar) -->
     <div class="py-0 d-none" id="secao-editor">
 
-        <div class="d-flex justify-content-between align-items-center bg-white px-4 py-3 border-bottom shadow-sm mb-3 rounded-3">
-            <h5 class="mb-0 fw-bold text-dark" id="editor-title">
-                <i class="fas fa-edit me-2 text-success"></i> Editando Documento
-            </h5>
+        <div class="d-flex justify-content-between align-items-center bg-white px-4 py-3 border-bottom shadow-sm mb-0 rounded-top-3">
+            <div>
+                <h5 class="mb-0 fw-bold text-dark" id="editor-title">
+                    <i class="fas fa-edit me-2 text-success"></i> Editando Documento
+                </h5>
+                <small class="text-muted" id="editor-subtitle" style="font-size:.78rem">
+                    <i class="fas fa-circle-info me-1 text-primary"></i>
+                    Campos <span style="text-decoration:underline;color:#1a5276;font-weight:700">sublinhados em azul</span> são preenchidos automaticamente pelo protocolo.
+                </small>
+            </div>
             <div class="d-flex gap-2">
-                <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-4 border">
+                <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-3 border">
                     <i class="fas fa-times me-1"></i> Cancelar
                 </a>
+                <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
+                    <i class="fas fa-bookmark me-1"></i> Salvar Template
+                </button>
                 <button class="btn btn-sema fw-medium px-4 shadow-sm" onclick="abrirModalAssinatura()">
                     Assinar e Finalizar <i class="fas fa-arrow-right ms-2"></i>
                 </button>
             </div>
         </div>
 
-        <div class="editor-container-wrapper">
+        <!-- Wrapper que simula a "mesa" de trabalho com a página A4 -->
+        <div class="a4-outer-wrapper">
             <textarea id="editor-conteudo"></textarea>
         </div>
 
@@ -217,6 +292,71 @@ include '../header.php';
       </div>
     </div>
 
+    <!-- Modal Salvar Template -->
+    <div class="modal fade" id="modalSalvarTemplate" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header modal-header-sema px-4 py-3">
+            <h5 class="modal-title fw-bold text-sema">
+              <i class="fas fa-bookmark me-2"></i> Salvar como Template
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <ul class="nav nav-tabs mb-3" id="tabsSalvarTemplate">
+              <li class="nav-item">
+                <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#pane-novo-tpl" type="button">
+                  <i class="fas fa-plus me-1"></i> Novo Template
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link fw-semibold" id="tab-substituir-tpl" data-bs-toggle="tab" data-bs-target="#pane-subst-tpl" type="button">
+                  <i class="fas fa-arrows-rotate me-1"></i> Substituir Existente
+                </button>
+              </li>
+            </ul>
+            <div class="tab-content">
+              <!-- Salvar como Novo -->
+              <div class="tab-pane fade show active" id="pane-novo-tpl">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small">Nome do Template <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="novoTemplateNome" placeholder="Ex: Parecer Padrão Construção">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small text-muted">Descrição <small>(opcional)</small></label>
+                  <textarea class="form-control form-control-sm" id="novoTemplateDesc" rows="2"
+                            placeholder="Breve descrição do uso deste template..."></textarea>
+                </div>
+                <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
+                  <i class="fas fa-circle-info mt-1 flex-shrink-0"></i>
+                  <span>Os campos <strong>sublinhados em azul</strong> serão preservados como variáveis automáticas para futuros protocolos.</span>
+                </div>
+                <button class="btn btn-sema w-100 fw-bold" onclick="salvarTemplate('novo')">
+                  <i class="fas fa-save me-2"></i> Salvar Novo Template
+                </button>
+              </div>
+              <!-- Substituir Existente -->
+              <div class="tab-pane fade" id="pane-subst-tpl">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small">Selecionar Template para Substituir</label>
+                  <select class="form-select" id="selectTemplateExistente">
+                    <option value="">Carregando seus templates...</option>
+                  </select>
+                </div>
+                <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
+                  <i class="fas fa-triangle-exclamation mt-1 flex-shrink-0"></i>
+                  <span>O template selecionado será permanentemente substituído pelo conteúdo atual do editor.</span>
+                </div>
+                <button class="btn btn-warning w-100 fw-bold text-dark" onclick="salvarTemplate('substituir')">
+                  <i class="fas fa-arrows-rotate me-2"></i> Substituir Template
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- SweetAlert2 pode ser carregado de forma independente do jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
@@ -237,9 +377,10 @@ include '../header.php';
     </script>
 
     <script>
-    const reqId        = <?= $requerimento_id ?>;
-    const templateNome = <?= json_encode($template) ?>;
+    const reqId         = <?= $requerimento_id ?>;
+    const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
+    const logoSemaUrl   = <?= json_encode(BASE_URL . 'assets/SEMA/PNG/Azul/Logo%20SEMA%20Vertical.png') ?>;
     let currentTemplate = templateNome;
 
     /* ─── Aguardar Summernote estar pronto ─────────────────── */
@@ -249,6 +390,25 @@ include '../header.php';
         } else {
             setTimeout(function() { waitForSummernote(cb); }, 80);
         }
+    }
+
+    /* ─── Injeta o header SEMA acima da área editável ─────── */
+    function injetarHeaderSEMA() {
+        if (document.querySelector('.a4-sema-header')) return; // evita duplicação
+        const editingArea = document.querySelector('.note-editing-area');
+        if (!editingArea) return;
+
+        const header = document.createElement('div');
+        header.className = 'a4-sema-header';
+        header.innerHTML = `
+            <div class="d-flex align-items-center pb-2 gap-3">
+                <img src="${logoSemaUrl}" alt="Logo SEMA">
+                <div>
+                    <div class="sema-prefeitura">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</div>
+                    <div class="sema-secretaria">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</div>
+                </div>
+            </div>`;
+        editingArea.parentNode.insertBefore(header, editingArea);
     }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
@@ -306,10 +466,13 @@ include '../header.php';
             $editor.summernote({
                 height: 600,
                 focus: true,
+                codeviewFilter: false,
+                codeviewIframeFilter: false,
                 toolbar: [
                     ['style',    ['style']],
-                    ['font',     ['bold', 'underline', 'clear']],
+                    ['font',     ['bold', 'italic', 'underline', 'clear']],
                     ['fontname', ['fontname']],
+                    ['fontsize', ['fontsize']],
                     ['color',    ['color']],
                     ['para',     ['ul', 'ol', 'paragraph']],
                     ['table',    ['table']],
@@ -318,11 +481,7 @@ include '../header.php';
                 ],
                 callbacks: {
                     onInit: function() {
-                        var editable = document.querySelector('.note-editable');
-                        if (editable) {
-                            editable.style.minHeight = '600px';
-                            editable.style.overflowY = 'auto';
-                        }
+                        injetarHeaderSEMA();
                     }
                 }
             });
@@ -369,12 +528,19 @@ include '../header.php';
         } else {
             conteudoHtml = document.getElementById('editor-conteudo').value;
         }
+
+        // Remover spans var-field antes de enviar para PDF (mantém apenas o valor de texto)
+        conteudoHtml = conteudoHtml.replace(
+            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
+            '$1'
+        );
+
         const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
         fd.append('conteudo_parecer', conteudoHtml);
         fd.append('requerimento_id',  reqId);
         fd.append('salvar_banco',     'true');
-        fd.append('template_salvo',  templateNome);
+        fd.append('template_salvo',   templateNome);
         fd.append('download',         fazDownload);
 
         fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd })
@@ -408,10 +574,99 @@ include '../header.php';
                 Swal.fire('Erro Interno', ret.error || 'Não foi possível registrar o documento.', 'error');
             }
         })
-        .catch(err => {
+        .catch(() => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
             Swal.fire('Falha Crítica', 'Falha estrutural ao registrar no Endpoint de Assinaturas.', 'error');
+        });
+    }
+
+    /* ─── Abrir modal Salvar Template ─────────────────────── */
+    function abrirModalSalvarTemplate() {
+        document.getElementById('novoTemplateNome').value = '';
+        document.getElementById('novoTemplateDesc').value = '';
+        carregarTemplatesParaModal();
+        new bootstrap.Modal(document.getElementById('modalSalvarTemplate')).show();
+    }
+
+    /* ─── Carregar templates do usuário no dropdown ────────── */
+    function carregarTemplatesParaModal() {
+        const sel = document.getElementById('selectTemplateExistente');
+        sel.innerHTML = '<option value="">Carregando...</option>';
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'listar_templates_usuario' })
+        })
+        .then(r => r.json())
+        .then(ret => {
+            if (ret.success && ret.templates && ret.templates.length > 0) {
+                sel.innerHTML = ret.templates.map(t =>
+                    `<option value="${t.id}">${escapeHtml(t.nome)}</option>`
+                ).join('');
+            } else {
+                sel.innerHTML = '<option value="">Nenhum template personalizado ainda</option>';
+            }
+        })
+        .catch(() => {
+            sel.innerHTML = '<option value="">Erro ao carregar templates</option>';
+        });
+    }
+
+    /* ─── Salvar template (novo ou substituindo) ──────────── */
+    function salvarTemplate(modo) {
+        const rawHtml = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
+            ? $('#editor-conteudo').summernote('code')
+            : document.getElementById('editor-conteudo').value;
+
+        if (!rawHtml || rawHtml.trim() === '' || rawHtml === '<p><br></p>') {
+            Swal.fire('Atenção', 'O editor está vazio.', 'warning'); return;
+        }
+
+        // Converter spans de volta para {{variavel}} para preservar o template
+        const templateHtml = rawHtml.replace(
+            /<span[^>]+class="var-field"[^>]+data-var="([^"]+)"[^>]*>(?:(?!<\/span>)[\s\S])*?<\/span>/g,
+            '{{$1}}'
+        );
+
+        const nome  = document.getElementById('novoTemplateNome').value.trim();
+        const desc  = document.getElementById('novoTemplateDesc').value.trim();
+        const utId  = document.getElementById('selectTemplateExistente').value;
+
+        if (modo === 'novo' && !nome) {
+            Swal.fire('Atenção', 'Informe um nome para o template.', 'warning'); return;
+        }
+        if (modo === 'substituir' && !utId) {
+            Swal.fire('Atenção', 'Selecione um template para substituir.', 'warning'); return;
+        }
+
+        const body = new URLSearchParams({
+            action:        'salvar_template_usuario',
+            conteudo_html: templateHtml,
+            template_base: templateNome,
+        });
+        if (modo === 'novo')       { body.append('nome', nome); body.append('descricao', desc); }
+        if (modo === 'substituir') { body.append('id', utId); }
+
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        })
+        .then(r => r.json())
+        .then(ret => {
+            if (ret.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalSalvarTemplate')).hide();
+                const msg = modo === 'novo'
+                    ? `Template "<strong>${escapeHtml(ret.nome)}</strong>" salvo com sucesso.`
+                    : 'Template atualizado com sucesso.';
+                Swal.fire({ title: 'Template Salvo!', html: msg, icon: 'success', timer: 2200, showConfirmButton: false });
+            } else {
+                Swal.fire('Erro', ret.error || 'Não foi possível salvar o template.', 'error');
+            }
+        })
+        .catch(() => {
+            Swal.fire('Erro', 'Falha na conexão ao salvar template.', 'error');
         });
     }
 
