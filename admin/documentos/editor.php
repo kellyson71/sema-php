@@ -54,12 +54,25 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
+           WRAPPER A4 — contém header + editor + footer
+        ═══════════════════════════════════════════════ */
+        .a4-page-wrapper {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.15);
+            border-radius: 3px;
+            min-height: 297mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ═══════════════════════════════════════════════
            PREVIEW A4 — HEADER SEMA (fiel ao PDF)
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
-            background: #fff;
             padding: 6mm 15mm 0 15mm;
-            margin-bottom: 0;
+            flex-shrink: 0;
         }
         .a4-sema-header .header-content {
             display: flex;
@@ -91,17 +104,16 @@ include '../header.php';
         .a4-sema-header .header-line {
             height: 1.2px;
             background: #2d8661;
-            margin: 0 0 0 0;
         }
 
         /* ═══════════════════════════════════════════════
            PREVIEW A4 — FOOTER (carimbo + paginação)
         ═══════════════════════════════════════════════ */
         .a4-sema-footer {
-            background: #fff;
             padding: 0 15mm 8mm;
             border-top: 0.8px solid #c8cdd2;
             margin-top: auto;
+            flex-shrink: 0;
         }
         .a4-footer-stamp {
             width: 90mm;
@@ -176,27 +188,22 @@ include '../header.php';
             box-shadow: none !important;
             background: transparent;
         }
-        /* Toolbar do Summernote: fica como barra separada acima da página */
+        /* Toolbar do Summernote: barra separada acima da página, mesma largura A4 */
         .note-toolbar {
             background: #fff !important;
             border: 1px solid #dee2e6 !important;
             border-radius: 8px !important;
             padding: 6px 10px !important;
-            margin-bottom: 12px !important;
+            margin: 0 auto 12px !important;
+            max-width: 210mm !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
         }
-        /* Container que envolve header + editable + footer — simula a página A4 */
+        /* Editing area — herda largura do wrapper A4, sem estilos próprios de página */
         .note-editing-area {
-            max-width: 210mm;
-            margin: 0 auto;
-            background: #fff;
-            box-shadow: 0 6px 32px rgba(0,0,0,0.15);
-            border-radius: 3px;
-            min-height: 297mm;
-            display: flex;
-            flex-direction: column;
+            background: transparent;
+            flex: 1;
         }
-        /* Área editável: margens laterais como o TCPDF (15mm), topo menor pois header está acima */
+        /* Área editável: margens laterais como o TCPDF (15mm) */
         .note-editable {
             font-family: "Times New Roman", Times, serif !important;
             font-size: 12pt !important;
@@ -205,7 +212,6 @@ include '../header.php';
             text-align: justify !important;
             padding: 2mm 15mm 10mm !important;
             min-height: 180mm !important;
-            flex: 1;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -471,32 +477,35 @@ include '../header.php';
         }
     }
 
-    /* ─── Injeta header SEMA fiel ao PDF (logo + textos + linha verde) */
-    function injetarHeaderSEMA() {
-        if (document.querySelector('.a4-sema-header')) return;
+    /* ─── Monta o wrapper A4 com header + editing-area + footer ── */
+    function montarPaginaA4() {
+        if (document.querySelector('.a4-page-wrapper')) return;
         const editingArea = document.querySelector('.note-editing-area');
         if (!editingArea) return;
+        const parent = editingArea.parentNode;
 
-        const header = document.createElement('div');
-        header.className = 'a4-sema-header';
-        header.innerHTML = `
-            <div class="header-content">
-                <img src="${logoSemaUrl}" alt="Logo SEMA">
-                <div>
-                    <div class="sema-prefeitura">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</div>
-                    <div class="sema-secretaria">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</div>
+        // Criar wrapper A4
+        const wrapper = document.createElement('div');
+        wrapper.className = 'a4-page-wrapper';
+
+        // Header
+        wrapper.innerHTML = `
+            <div class="a4-sema-header">
+                <div class="header-content">
+                    <img src="${logoSemaUrl}" alt="Logo SEMA">
+                    <div>
+                        <div class="sema-prefeitura">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</div>
+                        <div class="sema-secretaria">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</div>
+                    </div>
                 </div>
-            </div>
-            <div class="header-line"></div>`;
-        editingArea.parentNode.insertBefore(header, editingArea);
-    }
+                <div class="header-line"></div>
+            </div>`;
 
-    /* ─── Injeta footer SEMA fiel ao PDF (carimbo + paginação) */
-    function injetarFooterSEMA() {
-        if (document.querySelector('.a4-sema-footer')) return;
-        const editingArea = document.querySelector('.note-editing-area');
-        if (!editingArea) return;
+        // Mover editing-area para dentro do wrapper
+        parent.insertBefore(wrapper, editingArea);
+        wrapper.appendChild(editingArea);
 
+        // Footer
         const footer = document.createElement('div');
         footer.className = 'a4-sema-footer';
         footer.innerHTML = `
@@ -509,10 +518,38 @@ include '../header.php';
                     <div class="stamp-data">Autenticado em dd/mm/aaaa hh:mm:ss</div>
                 </div>
             </div>
-            <div class="a4-footer-page">&mdash;  Página 1 de 1  &mdash;</div>`;
+            <div class="a4-footer-page" id="page-counter">&mdash;  Página 1 de 1  &mdash;</div>`;
+        wrapper.appendChild(footer);
 
-        // Inserir depois da editing-area (dentro do mesmo container)
-        editingArea.parentNode.insertBefore(footer, editingArea.nextSibling);
+        // Iniciar contador de páginas dinâmico
+        iniciarContadorPaginas();
+    }
+
+    /* ─── Contador de páginas dinâmico baseado na altura do conteúdo ── */
+    function iniciarContadorPaginas() {
+        const editable = document.querySelector('.note-editable');
+        if (!editable) return;
+
+        function atualizarPaginas() {
+            const counter = document.getElementById('page-counter');
+            if (!counter) return;
+            // Área útil por página A4: 297mm - 27mm(header) - 35mm(footer) ≈ 235mm
+            // Convertendo mm para px: 1mm ≈ 3.7795px (96dpi)
+            const alturaPaginaPx = 235 * 3.7795;
+            const alturaConteudo = editable.scrollHeight;
+            const paginas = Math.max(1, Math.ceil(alturaConteudo / alturaPaginaPx));
+            counter.innerHTML = '&mdash;  Página 1 de ' + paginas + '  &mdash;';
+        }
+
+        // Atualizar ao digitar e ao mudar conteúdo
+        editable.addEventListener('input', atualizarPaginas);
+        new MutationObserver(atualizarPaginas).observe(editable, {
+            childList: true, subtree: true, characterData: true
+        });
+
+        // Atualizar após carregamento inicial (com delay para renderizar)
+        setTimeout(atualizarPaginas, 500);
+        setTimeout(atualizarPaginas, 2000);
     }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
@@ -585,8 +622,7 @@ include '../header.php';
                 ],
                 callbacks: {
                     onInit: function() {
-                        injetarHeaderSEMA();
-                        injetarFooterSEMA();
+                        montarPaginaA4();
                     }
                 }
             });
