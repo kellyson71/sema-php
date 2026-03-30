@@ -2,6 +2,9 @@
 require_once 'conexao.php';
 verificaLogin();
 
+// Prefixo para links do menu lateral — funciona tanto em admin/ quanto em admin/documentos/ (subdiretórios)
+$adminBase = (basename(dirname($_SERVER['SCRIPT_NAME'] ?? '')) !== 'admin') ? '../' : '';
+
 // Obter dados do administrador logado
 $adminData = getDadosAdmin($pdo, $_SESSION['admin_id']);
 
@@ -548,21 +551,21 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <a href="index.php" class="sidebar-brand">
-                <img src="../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
+            <a href="<?= $adminBase ?>index.php" class="sidebar-brand">
+                <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
             </a>
         </div>
         <div class="sidebar-menu">
             <div class="menu-header">Principal</div>
             <ul>
                 <li>
-                    <a href="index.php" class="<?php echo $currentPage === 'index.php' ? 'active' : ''; ?>">
+                    <a href="<?= $adminBase ?>index.php" class="<?php echo $currentPage === 'index.php' ? 'active' : ''; ?>">
                         <i class="fas fa-tachometer-alt"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
                 <li>
-                    <a href="requerimentos.php" class="<?php echo $currentPage === 'requerimentos.php' ? 'active' : ''; ?>">
+                    <a href="<?= $adminBase ?>requerimentos.php" class="<?php echo $currentPage === 'requerimentos.php' ? 'active' : ''; ?>">
                         <i class="fas fa-clipboard-list"></i>
                         <span>Requerimentos</span>
                         <?php if ($totalNaoVisualizados > 0): ?>
@@ -571,7 +574,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
-                    <a href="denuncias.php" class="<?php echo ($currentPage === 'denuncias.php' || $currentPage === 'nova_denuncia.php' || $currentPage === 'visualizar_denuncia.php') ? 'active' : ''; ?>">
+                    <a href="<?= $adminBase ?>denuncias.php" class="<?php echo ($currentPage === 'denuncias.php' || $currentPage === 'nova_denuncia.php' || $currentPage === 'visualizar_denuncia.php') ? 'active' : ''; ?>">
                         <i class="fas fa-bullhorn"></i>
                         <span>Denúncias</span>
                     </a>
@@ -589,25 +592,25 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <div class="collapse <?php echo in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php']) ? 'show' : ''; ?>" id="submenuRelatorios">
                         <ul class="nav flex-column ms-3 mt-1" style="border-left: 1px solid rgba(255,255,255,0.2);">
                             <li>
-                                <a href="requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                <a href="<?= $adminBase ?>requerimentos_arquivados.php" class="<?php echo $currentPage === 'requerimentos_arquivados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
                                     <i class="fas fa-archive" style="width: 15px; font-size: 0.8rem;"></i>
                                     <span>Arquivados</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="documentos_assinados.php" class="<?php echo $currentPage === 'documentos_assinados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                <a href="<?= $adminBase ?>documentos_assinados.php" class="<?php echo $currentPage === 'documentos_assinados.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
                                     <i class="fas fa-file-signature" style="width: 15px; font-size: 0.8rem;"></i>
                                     <span>Doc. Assinados</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                <a href="<?= $adminBase ?>estatisticas.php" class="<?php echo $currentPage === 'estatisticas.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
                                     <i class="fas fa-chart-bar" style="width: 15px; font-size: 0.8rem;"></i>
                                     <span>Estatísticas</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="logs_email.php" class="<?php echo $currentPage === 'logs_email.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
+                                <a href="<?= $adminBase ?>logs_email.php" class="<?php echo $currentPage === 'logs_email.php' ? 'active' : ''; ?>" style="padding: 8px 15px; font-size: 0.9rem;">
                                     <i class="fas fa-history" style="width: 15px; font-size: 0.8rem;"></i>
                                     <span>Hist. Envios</span>
                                 </a>
@@ -621,7 +624,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <ul>
                 <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral'): ?>
                     <li>
-                        <a href="administradores.php" class="<?php echo $currentPage === 'administradores.php' ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?>administradores.php" class="<?php echo $currentPage === 'administradores.php' ? 'active' : ''; ?>">
                             <i class="fas fa-users-cog"></i>
                             <span>Gerenciar Usuários</span>
                         </a>
@@ -634,7 +637,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 if ($isSecretario): 
                 ?>
                     <li>
-                        <a href="secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?>secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
                             <i class="fas fa-signature" style="color:#8b5cf6;"></i>
                             <span>Aprovação de Alvarás</span>
                         </a>
@@ -647,7 +650,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 if ($isAnalista): 
                 ?>
                     <li>
-                        <a href="requerimentos.php?status=Pendente" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?>requerimentos.php?status=Pendente" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
                             <i class="fas fa-search" style="color:#0284c7;"></i>
                             <span>Triagem de Protocolos</span>
                         </a>
@@ -660,7 +663,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 if ($isFiscal): 
                 ?>
                     <li>
-                        <a href="fiscal_dashboard.php" class="<?php echo ($currentPage === 'fiscal_dashboard.php') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?>fiscal_dashboard.php" class="<?php echo ($currentPage === 'fiscal_dashboard.php') ? 'active' : ''; ?>">
                             <i class="fas fa-hard-hat" style="color:#10b981;"></i>
                             <span>Fiscalização de Obras</span>
                             <?php if ($totalAguardandoFiscal > 0): ?>
@@ -672,7 +675,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
 
                 <li>
-                    <a href="logout.php">
+                    <a href="<?= $adminBase ?>logout.php">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Sair</span>
                     </a>
@@ -771,11 +774,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <div class="dropdown-header">
                         <strong>Conta</strong>
                     </div>
-                    <a class="dropdown-item" href="perfil.php">
+                    <a class="dropdown-item" href="<?= $adminBase ?>perfil.php">
                         <i class="fas fa-user me-2"></i> Meu Perfil
                     </a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="logout.php">
+                    <a class="dropdown-item" href="<?= $adminBase ?>logout.php">
                         <i class="fas fa-sign-out-alt me-2"></i> Sair
                     </a>
                 </div>
@@ -797,7 +800,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <?php if ($totalNaoVisualizados > 0): ?>
                     <div class="alert alert-info mb-3">
                         <i class="fas fa-info-circle me-2"></i> Você tem <?php echo $totalNaoVisualizados; ?> requerimentos não visualizados
-                        <a href="requerimentos.php?nao_visualizados=1" class="alert-link d-block mt-2">Ver requerimentos não visualizados</a>
+                        <a href="<?= $adminBase ?>requerimentos.php?nao_visualizados=1" class="alert-link d-block mt-2">Ver requerimentos não visualizados</a>
                     </div>
                 <?php endif; ?>
 
@@ -820,7 +823,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <?php if (count($todasNotificacoes) > 0): ?>
                         <?php foreach ($todasNotificacoes as $notif): ?>
                             <li class="notification-item-sidebar <?php echo $notif['visualizado'] ? '' : 'notification-unread'; ?>">
-                                <a href="visualizar_requerimento.php?id=<?php echo $notif['id']; ?>">
+                                <a href="<?= $adminBase ?>visualizar_requerimento.php?id=<?php echo $notif['id']; ?>">
                                     <div class="notification-title">
                                         <?php if (!$notif['visualizado']): ?>
                                             <i class="fas fa-circle text-primary me-1" style="font-size: 0.6rem;"></i>
