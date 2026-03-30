@@ -74,6 +74,5 @@ return [
         ],
 
         ['tipo' => 'data_local'],
-        ['tipo' => 'assinatura'],
     ],
 ];

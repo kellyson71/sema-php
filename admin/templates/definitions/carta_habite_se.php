@@ -65,6 +65,5 @@ return [
         ],
 
         ['tipo' => 'data_local', 'data' => '{{data_atual}}'],
-        ['tipo' => 'assinatura'],
     ],
 ];

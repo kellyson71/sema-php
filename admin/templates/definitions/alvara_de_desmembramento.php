@@ -45,6 +45,5 @@ return [
         ],
 
         ['tipo' => 'data_local'],
-        ['tipo' => 'assinatura', 'cargo' => 'SECRETÁRIO MUNICIPAL DE MEIO AMBIENTE – SEMA.<br>PORTARIA 10/2025'],
     ],
 ];

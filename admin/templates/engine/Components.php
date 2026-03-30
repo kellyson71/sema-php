@@ -160,7 +160,7 @@ class Components
     /**
      * Bloco de assinatura
      */
-    public static function assinatura(string $nome = 'VICENTE DE PAULA FERNANDES', string $cargo = 'SECRETÁRIO MUNICIPAL DE MEIO AMBIENTE – SEMA.<br>PORTARIA 010/2025'): string
+    public static function assinatura(string $nome = '', string $cargo = ''): string
     {
         $html  = '<br><br><br>';
         $html .= '<div style="' . DocumentStyles::ASSINATURA . '">';

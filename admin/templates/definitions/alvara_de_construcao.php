@@ -87,6 +87,5 @@ return [
 
         // ── Fechamento ───────────────────────────────────────
         ['tipo' => 'data_local'],
-        ['tipo' => 'assinatura'],
     ],
 ];

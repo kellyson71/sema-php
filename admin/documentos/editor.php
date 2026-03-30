@@ -54,16 +54,21 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           PREVIEW A4 — HEADER SEMA MOCKADO
+           PREVIEW A4 — HEADER SEMA (fiel ao PDF)
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
             background: #fff;
-            padding: 8px 15mm 6px;
-            border-bottom: 1.5px solid #2d8661;
+            padding: 6mm 15mm 0 15mm;
             margin-bottom: 0;
         }
+        .a4-sema-header .header-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 5mm;
+        }
         .a4-sema-header img {
-            height: 36px;
+            height: 17mm;
             width: auto;
             object-fit: contain;
             flex-shrink: 0;
@@ -71,16 +76,82 @@ include '../header.php';
         .a4-sema-header .sema-prefeitura {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-weight: 700;
-            font-size: 9.5pt;
+            font-size: 10pt;
             color: #282828;
-            line-height: 1.25;
+            line-height: 1.3;
         }
         .a4-sema-header .sema-secretaria {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-weight: 600;
-            font-size: 7.5pt;
+            font-weight: 700;
+            font-size: 8pt;
             color: #646464;
-            line-height: 1.25;
+            line-height: 1.3;
+            margin-top: 1px;
+        }
+        .a4-sema-header .header-line {
+            height: 1.2px;
+            background: #2d8661;
+            margin: 0 0 0 0;
+        }
+
+        /* ═══════════════════════════════════════════════
+           PREVIEW A4 — FOOTER (carimbo + paginação)
+        ═══════════════════════════════════════════════ */
+        .a4-sema-footer {
+            background: #fff;
+            padding: 0 15mm 8mm;
+            border-top: 0.8px solid #c8cdd2;
+            margin-top: auto;
+        }
+        .a4-footer-stamp {
+            width: 90mm;
+            margin: 5mm auto 0;
+            border: 1.2px solid #2d8661;
+            border-radius: 5px;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        .a4-footer-stamp .stamp-bar {
+            background: #2d8661;
+            color: #fff;
+            text-align: center;
+            font-size: 6.5pt;
+            font-weight: 700;
+            padding: 2px 0;
+            letter-spacing: 0.5px;
+        }
+        .a4-footer-stamp .stamp-body {
+            background: #f8fcf9;
+            text-align: center;
+            padding: 3mm 4mm 2.5mm;
+        }
+        .a4-footer-stamp .stamp-nome {
+            font-size: 8.5pt;
+            font-weight: 700;
+            color: #1e2328;
+            margin-bottom: 1px;
+        }
+        .a4-footer-stamp .stamp-cargo {
+            font-size: 6pt;
+            color: #505560;
+        }
+        .a4-footer-stamp .stamp-info {
+            font-size: 5.5pt;
+            color: #6e7378;
+            margin-top: 2px;
+        }
+        .a4-footer-stamp .stamp-data {
+            font-size: 5.5pt;
+            color: #82878c;
+            font-style: italic;
+            margin-top: 2px;
+        }
+        .a4-footer-page {
+            text-align: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 7pt;
+            color: #a0a5aa;
+            margin-top: 3mm;
         }
 
         /* ═══════════════════════════════════════════════
@@ -114,24 +185,27 @@ include '../header.php';
             margin-bottom: 12px !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
         }
-        /* Container que envolve header + editable — simula a página A4 */
+        /* Container que envolve header + editable + footer — simula a página A4 */
         .note-editing-area {
             max-width: 210mm;
             margin: 0 auto;
             background: #fff;
             box-shadow: 0 6px 32px rgba(0,0,0,0.15);
             border-radius: 3px;
-            min-height: 270mm;
+            min-height: 297mm;
+            display: flex;
+            flex-direction: column;
         }
-        /* Área editável: margens laterais e inferior como o TCPDF */
+        /* Área editável: margens laterais como o TCPDF (15mm), topo menor pois header está acima */
         .note-editable {
             font-family: "Times New Roman", Times, serif !important;
             font-size: 12pt !important;
             line-height: 1.4 !important;
             color: #1e1e1e !important;
             text-align: justify !important;
-            padding: 5mm 15mm 25mm !important;
-            min-height: 210mm !important;
+            padding: 2mm 15mm 10mm !important;
+            min-height: 180mm !important;
+            flex: 1;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -397,23 +471,48 @@ include '../header.php';
         }
     }
 
-    /* ─── Injeta o header SEMA acima da área editável ─────── */
+    /* ─── Injeta header SEMA fiel ao PDF (logo + textos + linha verde) */
     function injetarHeaderSEMA() {
-        if (document.querySelector('.a4-sema-header')) return; // evita duplicação
+        if (document.querySelector('.a4-sema-header')) return;
         const editingArea = document.querySelector('.note-editing-area');
         if (!editingArea) return;
 
         const header = document.createElement('div');
         header.className = 'a4-sema-header';
         header.innerHTML = `
-            <div class="d-flex align-items-center pb-2 gap-3">
+            <div class="header-content">
                 <img src="${logoSemaUrl}" alt="Logo SEMA">
                 <div>
                     <div class="sema-prefeitura">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</div>
                     <div class="sema-secretaria">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</div>
                 </div>
-            </div>`;
+            </div>
+            <div class="header-line"></div>`;
         editingArea.parentNode.insertBefore(header, editingArea);
+    }
+
+    /* ─── Injeta footer SEMA fiel ao PDF (carimbo + paginação) */
+    function injetarFooterSEMA() {
+        if (document.querySelector('.a4-sema-footer')) return;
+        const editingArea = document.querySelector('.note-editing-area');
+        if (!editingArea) return;
+
+        const footer = document.createElement('div');
+        footer.className = 'a4-sema-footer';
+        footer.innerHTML = `
+            <div class="a4-footer-stamp">
+                <div class="stamp-bar">&#10003;  DOCUMENTO ASSINADO DIGITALMENTE  &#10003;</div>
+                <div class="stamp-body">
+                    <div class="stamp-nome">NOME DO ASSINANTE</div>
+                    <div class="stamp-cargo">Cargo do assinante</div>
+                    <div class="stamp-info">CPF: ***.***.**-**  |  Mat: ******</div>
+                    <div class="stamp-data">Autenticado em dd/mm/aaaa hh:mm:ss</div>
+                </div>
+            </div>
+            <div class="a4-footer-page">&mdash;  Página 1 de 1  &mdash;</div>`;
+
+        // Inserir depois da editing-area (dentro do mesmo container)
+        editingArea.parentNode.insertBefore(footer, editingArea.nextSibling);
     }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
@@ -487,6 +586,7 @@ include '../header.php';
                 callbacks: {
                     onInit: function() {
                         injetarHeaderSEMA();
+                        injetarFooterSEMA();
                     }
                 }
             });

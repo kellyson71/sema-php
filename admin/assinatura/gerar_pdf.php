@@ -44,57 +44,71 @@ class SEMA_PDF extends TCPDF {
         $this->Line(15, 23, 195, 23);
     }
 
-    // Footer Premium com Carimbo Ultramoderno e Pequeno
+    // Footer — Carimbo de Assinatura Digital Profissional
     public function Footer() {
-        $this->SetY(-25); // Posição do rodapé (25mm do fundo)
-
-        // Bloco de Assinatura Desenhado (Canto inferior direito)
-        $w = 60;  // Largura do carimbo
-        $x = 210 - 15 - $w; 
+        $this->SetY(-32);
         $y = $this->GetY();
-        
-        // Borda do Carimbo ultra fina e cinza suave
-        $this->SetLineStyle(array('width' => 0.1, 'color' => array(200, 200, 200))); 
-        $this->SetFillColor(253, 255, 253); 
-        $this->RoundedRect($x, $y, $w, 15, 1, '1111', 'DF'); 
 
-        // Título do Carimbo
-        $this->SetFont('helvetica', 'B', 5);
-        $this->SetTextColor(45, 134, 97);
-        $this->SetXY($x, $y + 0.5);
-        $this->Cell($w, 3, 'ASSINATURA ELETRÔNICA SEMA', 0, 1, 'C');
+        // ── Linha separadora fina ──────────────────────────────
+        $this->SetLineStyle(array('width' => 0.15, 'color' => array(200, 205, 210)));
+        $this->Line(15, $y, 195, $y);
 
-        // Nome do Assinante
-        $this->SetFont('helvetica', 'B', 7);
-        $this->SetTextColor(30, 30, 30);
-        $this->SetXY($x + 1, $y + 3);
-        $nome = (strlen($this->assinante_nome) > 35) ? substr($this->assinante_nome, 0, 32) . '...' : $this->assinante_nome;
-        $this->Cell($w - 2, 3, $nome, 0, 1, 'C', 0, '', 1); 
+        // ── Carimbo de Assinatura (centralizado, largura 90mm) ─
+        $w = 90;
+        $x = (210 - $w) / 2;
+        $yc = $y + 2;
 
-        // Cargo e Matrícula/CPF
-        $this->SetFont('helvetica', '', 5);
-        $this->SetTextColor(100, 100, 100);
-        $this->SetXY($x + 1, $y + 6);
-        $this->Cell($w - 2, 2.5, $this->assinante_cargo, 0, 1, 'C', 0, '', 1);
-        
+        // Fundo e borda do carimbo
+        $this->SetLineStyle(array('width' => 0.3, 'color' => array(45, 134, 97)));
+        $this->SetFillColor(248, 252, 249);
+        $this->RoundedRect($x, $yc, $w, 20, 1.5, '1111', 'DF');
+
+        // Barra verde no topo do carimbo
+        $this->SetFillColor(45, 134, 97);
+        $this->RoundedRect($x, $yc, $w, 4, 1.5, '1100', 'F');
+
+        // Título na barra verde
+        $this->SetFont('helvetica', 'B', 6.5);
+        $this->SetTextColor(255, 255, 255);
+        $this->SetXY($x, $yc + 0.3);
+        $this->Cell($w, 3.5, chr(0xE2).chr(0x9C).chr(0x93) . '  DOCUMENTO ASSINADO DIGITALMENTE  ' . chr(0xE2).chr(0x9C).chr(0x93), 0, 1, 'C');
+
+        // Nome do assinante
+        $this->SetFont('helvetica', 'B', 8.5);
+        $this->SetTextColor(30, 35, 40);
+        $this->SetXY($x + 2, $yc + 5);
+        $nome = mb_strimwidth($this->assinante_nome, 0, 45, '...');
+        $this->Cell($w - 4, 4, $nome, 0, 1, 'C', 0, '', 1);
+
+        // Cargo
+        $this->SetFont('helvetica', '', 6);
+        $this->SetTextColor(80, 85, 90);
+        $this->SetXY($x + 2, $yc + 9);
+        $this->Cell($w - 4, 3, $this->assinante_cargo, 0, 1, 'C', 0, '', 1);
+
+        // CPF | Matrícula
         $cpfMatTxt = '';
         if (!empty($this->assinante_cpf)) $cpfMatTxt .= 'CPF: ' . $this->assinante_cpf;
-        if (!empty($this->assinante_matricula)) $cpfMatTxt .= ($cpfMatTxt ? ' | ' : '') . 'Mat: ' . $this->assinante_matricula;
-        
-        $this->SetXY($x + 1, $y + 8.5);
-        $this->Cell($w - 2, 2.5, $cpfMatTxt, 0, 1, 'C', 0, '', 1);
+        if (!empty($this->assinante_matricula)) $cpfMatTxt .= ($cpfMatTxt ? '  |  ' : '') . 'Mat: ' . $this->assinante_matricula;
 
-        // Data da Assinatura
-        $this->SetFont('helvetica', 'I', 5);
-        $this->SetTextColor(150, 150, 150);
-        $this->SetXY($x + 1, $y + 11);
-        $this->Cell($w - 2, 3, 'Autenticado em: ' . $this->assinante_data, 0, 1, 'C');
+        if ($cpfMatTxt) {
+            $this->SetFont('helvetica', '', 5.5);
+            $this->SetTextColor(110, 115, 120);
+            $this->SetXY($x + 2, $yc + 12);
+            $this->Cell($w - 4, 3, $cpfMatTxt, 0, 1, 'C', 0, '', 1);
+        }
 
-        // Paginação
+        // Data/hora da assinatura
+        $this->SetFont('helvetica', 'I', 5.5);
+        $this->SetTextColor(130, 135, 140);
+        $this->SetXY($x + 2, $yc + 15.5);
+        $this->Cell($w - 4, 3, 'Autenticado em ' . $this->assinante_data, 0, 1, 'C');
+
+        // ── Paginação (abaixo do carimbo) ──────────────────────
         $this->SetY(-10);
-        $this->SetFont('helvetica', 'I', 6);
-        $this->SetTextColor(180, 180, 180);
-        $this->Cell(0, 10, 'Página ' . $this->getAliasNumPage() . ' de ' . $this->getAliasNbPages(), 0, false, 'C', 0, '', 0, false, 'T', 'M');
+        $this->SetFont('helvetica', '', 7);
+        $this->SetTextColor(160, 165, 170);
+        $this->Cell(0, 10, chr(0xE2).chr(0x80).chr(0x94) . '  Página ' . $this->getAliasNumPage() . ' de ' . $this->getAliasNbPages() . '  ' . chr(0xE2).chr(0x80).chr(0x94), 0, false, 'C', 0, '', 0, false, 'T', 'M');
     }
 }
 
@@ -116,10 +130,10 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
     $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
     
     // Margens super otimizadas
-    $pdf->SetMargins(15, 27, 15); 
-    // É obrigatório SetFooterMargin para o TCPDF saber o espaço inferior reservado ao rodapé, senão ele esmaga o rodapé.
-    $pdf->SetFooterMargin(25);
-    $pdf->SetAutoPageBreak(TRUE, 28); 
+    $pdf->SetMargins(15, 27, 15);
+    // Footer maior (carimbo profissional) — reservar 32mm
+    $pdf->SetFooterMargin(32);
+    $pdf->SetAutoPageBreak(TRUE, 35); 
     
     $pdf->AddPage();
 

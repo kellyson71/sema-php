@@ -137,8 +137,8 @@ class DocumentBuilder
 
                 case 'assinatura':
                     $html .= Components::assinatura(
-                        $bloco['nome'] ?? 'VICENTE DE PAULA FERNANDES',
-                        $bloco['cargo'] ?? 'SECRETÁRIO MUNICIPAL DE MEIO AMBIENTE – SEMA.<br>PORTARIA 010/2025'
+                        $bloco['nome'] ?? '',
+                        $bloco['cargo'] ?? ''
                     );
                     break;
 
