@@ -147,7 +147,7 @@ include 'header.php';
                         
                         <div class="space-y-8">
                             <?php 
-                                $stmtHist = $pdo->prepare("SELECT h.*, a.nome as admin_nome FROM denuncia_historico h LEFT JOIN administradores a ON h.admin_id = a.id WHERE h.denuncia_id = ? ORDER BY h.data_acao DESC");
+                                $stmtHist = $pdo->prepare("SELECT h.*, a.nome as admin_nome FROM denuncia_historico h LEFT JOIN administradores a ON h.admin_id = a.id WHERE h.denuncia_id = ? ORDER BY h.data_registro DESC");
                                 $stmtHist->execute([$id]);
                                 $historico = $stmtHist->fetchAll();
                                 
@@ -158,7 +158,7 @@ include 'header.php';
                                     <div class="absolute left-2.5 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
                                     <div class="flex flex-col md:flex-row md:justify-between mb-1">
                                         <span class="text-sm font-bold text-gray-900"><?php echo htmlspecialchars($item['acao']); ?></span>
-                                        <span class="text-xs text-gray-500"><?php echo date('d/m/Y H:i', strtotime($item['data_acao'])); ?></span>
+                                        <span class="text-xs text-gray-500"><?php echo date('d/m/Y H:i', strtotime($item['data_registro'])); ?></span>
                                     </div>
                                     <div class="text-sm text-gray-600"><?php echo htmlspecialchars($item['detalhes'] ?: 'Nenhum detalhe adicional.'); ?></div>
                                     <div class="text-xs text-blue-600 font-medium mt-1">Por: <?php echo htmlspecialchars($item['admin_nome'] ?: 'Sistema'); ?></div>
