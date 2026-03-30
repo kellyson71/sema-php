@@ -58,12 +58,12 @@ include '../header.php';
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
             background: #fff;
-            padding: 7px 15mm 0;
-            border-bottom: 2px solid #2d8661;
-            margin-bottom: 3mm;
+            padding: 8px 15mm 6px;
+            border-bottom: 1.5px solid #2d8661;
+            margin-bottom: 0;
         }
         .a4-sema-header img {
-            height: 38px;
+            height: 36px;
             width: auto;
             object-fit: contain;
             flex-shrink: 0;
@@ -71,16 +71,16 @@ include '../header.php';
         .a4-sema-header .sema-prefeitura {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-weight: 700;
-            font-size: 10pt;
+            font-size: 9.5pt;
             color: #282828;
-            line-height: 1.2;
+            line-height: 1.25;
         }
         .a4-sema-header .sema-secretaria {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-weight: 600;
-            font-size: 8pt;
+            font-size: 7.5pt;
             color: #646464;
-            line-height: 1.2;
+            line-height: 1.25;
         }
 
         /* ═══════════════════════════════════════════════
@@ -105,20 +105,23 @@ include '../header.php';
             box-shadow: none !important;
             background: transparent;
         }
+        /* Toolbar do Summernote: fica como barra separada acima da página */
         .note-toolbar {
-            background: #f1f4f8 !important;
-            border: none !important;
-            border-radius: 10px 10px 0 0 !important;
-            padding: 8px 12px !important;
+            background: #fff !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+            padding: 6px 10px !important;
+            margin-bottom: 12px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
         }
         /* Container que envolve header + editable — simula a página A4 */
         .note-editing-area {
             max-width: 210mm;
             margin: 0 auto;
             background: #fff;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.13);
-            border-radius: 0 0 4px 4px;
-            min-height: 260mm;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.15);
+            border-radius: 3px;
+            min-height: 270mm;
         }
         /* Área editável: margens laterais e inferior como o TCPDF */
         .note-editable {
@@ -128,7 +131,7 @@ include '../header.php';
             color: #1e1e1e !important;
             text-align: justify !important;
             padding: 5mm 15mm 25mm !important;
-            min-height: 200mm !important;
+            min-height: 210mm !important;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -145,9 +148,8 @@ include '../header.php';
         }
         /* Área externa ao editor — fundo cinza como "mesa" de trabalho */
         .a4-outer-wrapper {
-            background: #e8ecf0;
-            padding: 16px;
-            border-radius: 0 0 10px 10px;
+            background: #dde1e7;
+            padding: 20px 16px 24px;
         }
 
         /* ═══════════════════════════════════════════════
@@ -202,31 +204,34 @@ include '../header.php';
     <!-- Seção do editor (oculta até carregar) -->
     <div class="py-0 d-none" id="secao-editor">
 
-        <div class="d-flex justify-content-between align-items-center bg-white px-4 py-3 border-bottom shadow-sm mb-0 rounded-top-3">
-            <div>
-                <h5 class="mb-0 fw-bold text-dark" id="editor-title">
-                    <i class="fas fa-edit me-2 text-success"></i> Editando Documento
-                </h5>
-                <small class="text-muted" id="editor-subtitle" style="font-size:.78rem">
-                    <i class="fas fa-circle-info me-1 text-primary"></i>
-                    Campos <span style="text-decoration:underline;color:#1a5276;font-weight:700">sublinhados em azul</span> são preenchidos automaticamente pelo protocolo.
-                </small>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-3 border">
-                    <i class="fas fa-times me-1"></i> Cancelar
-                </a>
-                <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
-                    <i class="fas fa-bookmark me-1"></i> Salvar Template
-                </button>
-                <button class="btn btn-sema fw-medium px-4 shadow-sm" onclick="abrirModalAssinatura()">
-                    Assinar e Finalizar <i class="fas fa-arrow-right ms-2"></i>
-                </button>
+        <!-- Barra de ações do editor -->
+        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark" id="editor-title">
+                        <i class="fas fa-edit me-2 text-success"></i> Editando Documento
+                    </h5>
+                    <small class="text-muted" style="font-size:.78rem">
+                        Campos <span style="text-decoration:underline;color:#1a5276;font-weight:600">sublinhados em azul</span>
+                        são preenchidos automaticamente pelo protocolo.
+                    </small>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-3">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                    </a>
+                    <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
+                        <i class="fas fa-bookmark me-1"></i> Salvar Template
+                    </button>
+                    <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
+                        <i class="fas fa-signature me-2"></i> Assinar e Finalizar
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- Wrapper que simula a "mesa" de trabalho com a página A4 -->
-        <div class="a4-outer-wrapper">
+        <div class="a4-outer-wrapper rounded-3">
             <textarea id="editor-conteudo"></textarea>
         </div>
 
@@ -380,7 +385,7 @@ include '../header.php';
     const reqId         = <?= $requerimento_id ?>;
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
-    const logoSemaUrl   = <?= json_encode(BASE_URL . 'assets/SEMA/PNG/Azul/Logo%20SEMA%20Vertical.png') ?>;
+    const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
     let currentTemplate = templateNome;
 
     /* ─── Aguardar Summernote estar pronto ─────────────────── */
