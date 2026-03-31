@@ -631,39 +631,35 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </li>
                 <?php endif; ?>
                 
-                <?php 
-                // Menu específico para o Secretário
-                $isSecretario = ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
-                if ($isSecretario): 
+                <?php
+                $nivelAtual = $_SESSION['admin_nivel'] ?? 'operador';
+                $isAdmin = in_array($nivelAtual, ['admin', 'admin_geral']);
+                $isSecretario = ($nivelAtual === 'secretario' || $isAdmin);
+                $isAnalista   = ($nivelAtual === 'analista'   || $isAdmin);
+                $isFiscal     = ($nivelAtual === 'fiscal'     || $isAdmin);
                 ?>
+
+                <?php if ($isSecretario): ?>
                     <li>
-                        <a href="<?= $adminBase ?>secretario_dashboard.php" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=secretario' : 'secretario_dashboard.php' ?>" class="<?php echo ($currentPage === 'secretario_dashboard.php' || $currentPage === 'revisao_secretario.php') ? 'active' : ''; ?>">
                             <i class="fas fa-signature" style="color:#8b5cf6;"></i>
                             <span>Aprovação de Alvarás</span>
                         </a>
                     </li>
                 <?php endif; ?>
 
-                <?php 
-                // Menu específico para o Analista
-                $isAnalista = ($_SESSION['admin_nivel'] === 'analista' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
-                if ($isAnalista): 
-                ?>
+                <?php if ($isAnalista): ?>
                     <li>
-                        <a href="<?= $adminBase ?>requerimentos.php?status=Pendente" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="<?php echo ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : ''; ?>">
                             <i class="fas fa-search" style="color:#0284c7;"></i>
                             <span>Triagem de Protocolos</span>
                         </a>
                     </li>
                 <?php endif; ?>
 
-                <?php 
-                // Menu específico para a Fiscalização
-                $isFiscal = ($_SESSION['admin_nivel'] === 'fiscal' || $_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral');
-                if ($isFiscal): 
-                ?>
+                <?php if ($isFiscal): ?>
                     <li>
-                        <a href="<?= $adminBase ?>fiscal_dashboard.php" class="<?php echo ($currentPage === 'fiscal_dashboard.php') ? 'active' : ''; ?>">
+                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="<?php echo ($currentPage === 'fiscal_dashboard.php') ? 'active' : ''; ?>">
                             <i class="fas fa-hard-hat" style="color:#10b981;"></i>
                             <span>Fiscalização de Obras</span>
                             <?php if ($totalAguardandoFiscal > 0): ?>
@@ -674,12 +670,21 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <?php endif; ?>
 
 
+                <?php if (isset($_SESSION['admin_nivel_original'])): ?>
+                <li>
+                    <a href="<?= $adminBase ?>simular_perfil.php?sair=1" style="color:#fbbf24!important;">
+                        <i class="fas fa-undo"></i>
+                        <span>Voltar ao meu perfil</span>
+                    </a>
+                </li>
+                <?php else: ?>
                 <li>
                     <a href="<?= $adminBase ?>logout.php">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Sair</span>
                     </a>
                 </li>
+                <?php endif; ?>
             </ul>
         </div>
 

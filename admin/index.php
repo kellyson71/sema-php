@@ -72,17 +72,6 @@ include 'header.php';
 ?>
 
 <style>
-.simulate-card {
-    border: 2px dashed #dee2e6;
-    background: #fffbeb;
-    border-radius: 12px;
-    transition: all 0.2s;
-}
-.simulate-card:hover {
-    border-color: #adb5bd;
-    background: #fff9e6;
-}
-</style>
     .timeline-activity,
     .email-activity {
         max-height: 300px;
@@ -114,40 +103,6 @@ include 'header.php';
 </style>
 
 <h2 class="section-title">Dashboard</h2>
-
-<?php if (in_array($_SESSION['admin_nivel'], ['admin', 'admin_geral'])): ?>
-<!-- Área de Simulação de Perfis -->
-<div class="simulate-card p-4 mb-4">
-    <div class="d-flex align-items-center mb-3">
-        <span class="badge bg-warning text-dark me-2"><i class="fas fa-flask me-1"></i>TESTE</span>
-        <h6 class="mb-0 fw-bold text-muted">Simular Setor</h6>
-        <small class="ms-2 text-muted">— clique para navegar como se fosse daquele setor</small>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="simular_perfil.php?role=secretario" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2">
-            <i class="fas fa-signature" style="color:#8b5cf6;"></i>
-            <div class="text-start">
-                <div class="fw-semibold" style="font-size:0.85rem;">Aprovação de Alvarás</div>
-                <div class="text-muted" style="font-size:0.7rem;">Secretário(a)</div>
-            </div>
-        </a>
-        <a href="simular_perfil.php?role=analista" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2">
-            <i class="fas fa-search" style="color:#0284c7;"></i>
-            <div class="text-start">
-                <div class="fw-semibold" style="font-size:0.85rem;">Triagem de Protocolos</div>
-                <div class="text-muted" style="font-size:0.7rem;">Analista</div>
-            </div>
-        </a>
-        <a href="simular_perfil.php?role=fiscal" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2">
-            <i class="fas fa-hard-hat" style="color:#10b981;"></i>
-            <div class="text-start">
-                <div class="fw-semibold" style="font-size:0.85rem;">Fiscalização de Obras</div>
-                <div class="text-muted" style="font-size:0.7rem;">Fiscal</div>
-            </div>
-        </a>
-    </div>
-</div>
-<?php endif; ?>
 
 <div class="row">
     <!-- Cards de estatísticas resumidas -->
