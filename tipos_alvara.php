@@ -19,7 +19,7 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
-            '9. Projeto de Calçada;',
+            '9. Projeto de Calçada com Detalhamento;',
         ],
         'documentos_opcionais' => [
             '10. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
@@ -52,7 +52,7 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
-            '9. Projeto de Calçada;',
+            '9. Projeto de Calçada com Detalhamento;',
             '10. Contrato;',
             '11. Ordem de Serviço;',
             '12. ART ou RRT de Fiscalização;',
@@ -89,7 +89,7 @@ $tipos_alvara = [
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
-            '10. Projeto de Calçada;',
+            '10. Projeto de Calçada com Detalhamento;',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
@@ -119,7 +119,7 @@ $tipos_alvara = [
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
-            '10. Projeto de Calçada;',
+            '10. Projeto de Calçada com Detalhamento;',
             '11. Contrato;',
             '12. Ordem de Serviço;',
             '13. ART ou RRT de Fiscalização;',
@@ -374,7 +374,7 @@ $tipos_alvara = [
                - Planta baixa e cortes.',
             '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
-            '8. Projeto de Calçada;',
+            '8. Projeto de Calçada com Detalhamento;',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
