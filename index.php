@@ -643,45 +643,44 @@ include_once 'tipos_alvara.php';
         </svg>
     </div>
 
-    <footer style="background:#0a1a2e; padding:12px 24px 28px; text-align:center;">
+    <footer style="background:#0a1a2e; padding:48px 24px 32px; text-align:center;">
         
-        <!-- Ações rápidas — integradas ao topo do rodapé -->
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:32px;">
-            <a href="./consultar/index.php"
-               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
-            </a>
-            <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
-                    style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; font-size:0.88rem; font-weight:500; cursor:pointer; font-family:inherit; transition:background 0.2s;"
-                    onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
-            </button>
-            <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
-               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                <i class="fab fa-whatsapp" style="color:#4ade80;"></i> (84) 99668-6413
-            </a>
-            <a href="mailto:fiscalizacaosemapdf@gmail.com"
-               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                <i class="fas fa-envelope" style="color:#f9a8d4;"></i> fiscalizacaosemapdf@gmail.com
-            </a>
-        </div>
-
-        <!-- Divisor sutil -->
-        <div style="border-top:1px solid rgba(255,255,255,0.08); margin:0 auto 24px; max-width:600px;"></div>
-
         <!-- Logo SEMA branca -->
         <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
              alt="SEMA — Secretaria Municipal de Meio Ambiente"
-             style="max-width:220px; height:auto; margin-bottom:16px; opacity:0.92; display:block; margin-left:auto; margin-right:auto;">
+             style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
 
-        <!-- Copyright -->
-        <p style="font-size:0.8rem; color:rgba(255,255,255,0.35); margin:0;">
-            &copy; <?= date('Y') ?> Prefeitura Municipal de Pau dos Ferros &mdash; Todos os direitos reservados.<br>
-            Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener"
-                style="color:rgba(255,255,255,0.45); text-decoration:none;">Kellyson Raphael</a>
+        <!-- Ações rápidas — movidas para baixo da logo -->
+        <nav style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:36px;">
+            <a href="./consultar/index.php"
+               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
+            </a>
+            <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
+                    style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+            </button>
+            <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
+               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                <i class="fab fa-whatsapp" style="color:#4ade80;"></i> (84) 99668-6413
+            </a>
+            <a href="mailto:fiscalizacaosemapdf@gmail.com"
+               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                <i class="fas fa-envelope" style="color:#f9a8d4;"></i> fiscalizacaosemapdf@gmail.com
+            </a>
+        </nav>
+
+        <!-- Divisor sutil -->
+        <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:0 auto 28px; max-width:600px;">
+
+        <!-- Copyright com maior destaque -->
+        <p style="font-size:0.95rem; color:rgba(255,255,255,0.85); margin:0; line-height:1.6; letter-spacing:0.3px;">
+            &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
+            <span style="font-size:0.8rem; color:rgba(255,255,255,0.5); display:block; margin-top:8px;">Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.65); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.4);">Kellyson Raphael</a></span>
         </p>
     </footer>
 
