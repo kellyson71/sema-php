@@ -393,9 +393,10 @@ include '../header.php';
        CANVAS-EDITOR — Instância e Configuração A4
     ═══════════════════════════════════════════════════════════ */
     function criarInstancia() {
-        const CE = window.CanvasEditor;
+        // O bundle UMD registra o namespace como window["canvas-editor"]
+        const CE = window["canvas-editor"];
         if (!CE || !CE.Editor) {
-            console.error('Canvas-Editor UMD não carregado.');
+            console.error('Canvas-Editor UMD não carregado. Global disponível:', Object.keys(window).filter(k => k.includes('canvas') || k.includes('Editor')));
             return false;
         }
         canvasInstance = new CE.Editor(
@@ -462,7 +463,7 @@ include '../header.php';
         if (!canvasInstance) return;
         try {
             // Tenta usar o enum exposto no UMD; cai no valor string caso não exista
-            const RF = (window.CanvasEditor && window.CanvasEditor.RowFlex) || {};
+            const RF = (window["canvas-editor"] && window["canvas-editor"].RowFlex) || {};
             const val = RF[align.toUpperCase()] || align;
             canvasInstance.command.executeRowFlex(val);
         } catch(e) {
