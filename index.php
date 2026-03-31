@@ -326,9 +326,14 @@ include_once 'tipos_alvara.php';
                     <div>
                         <input required type="checkbox" id="declaracao_veracidade" name="declaracao_veracidade"
                             value="1">
-                        <label for="declaracao_veracidade">Declaro, sob as penas da lei, que as informações aqui
-                            prestadas são verdadeiras e assumo total responsabilidade pela veracidade das mesmas,
-                            estando ciente das sanções previstas na legislação.</label>
+                        <label for="declaracao_veracidade">
+                            Li e aceito o
+                            <a href="#" onclick="event.preventDefault(); document.getElementById('modal-termo').style.display='flex';"
+                               style="color:#009640; font-weight:600; text-decoration:underline;">
+                                Termo de Ciência e Responsabilidade
+                            </a>
+                            — declaro que todas as informações e documentos são verdadeiros, estando ciente das sanções previstas na legislação.
+                        </label>
                     </div>
                 </div>
 
@@ -440,6 +445,114 @@ include_once 'tipos_alvara.php';
             </script>
         </section>
     </main>
+
+    <!-- Modal — Termo de Ciência e Responsabilidade -->
+    <div id="modal-termo" onclick="if(event.target===this)this.style.display='none'"
+         style="display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,0.65); overflow-y:auto; align-items:flex-start; justify-content:center;">
+        <div style="background:#fff; max-width:720px; width:95%; margin:40px auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.45);">
+
+            <!-- Cabeçalho -->
+            <div style="background:#1a472a; padding:22px 28px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h2 style="color:#fff; margin:0; font-size:1.15rem; letter-spacing:0.3px;">
+                        <i class="fas fa-file-contract" style="margin-right:10px; opacity:0.9;"></i>
+                        Termo de Ciência e Responsabilidade
+                    </h2>
+                    <p style="color:rgba(255,255,255,0.75); margin:4px 0 0; font-size:0.82rem;">
+                        Licenciamento Ambiental — Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN
+                    </p>
+                </div>
+                <button onclick="document.getElementById('modal-termo').style.display='none'"
+                        style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1; opacity:0.8;">&times;</button>
+            </div>
+
+            <!-- Corpo -->
+            <div style="padding:28px 32px; font-size:0.92rem; line-height:1.75; color:#222;">
+
+                <p style="margin:0 0 18px;">
+                    Ao marcar a caixa de declaração neste formulário, o requerente <strong>declara, sob as penas da lei</strong>, que:
+                </p>
+
+                <!-- Item 1 -->
+                <div style="display:flex; gap:14px; margin-bottom:16px; padding:14px 16px; background:#f8fdf9; border-left:4px solid #009640; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#009640; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">I</div>
+                    <div>
+                        <strong>Veracidade das Informações</strong><br>
+                        Todas as informações prestadas neste sistema, bem como os documentos anexados, são verdadeiras, completas e fiéis à realidade, assumindo total responsabilidade por sua veracidade.
+                    </div>
+                </div>
+
+                <!-- Item 2 -->
+                <div style="display:flex; gap:14px; margin-bottom:16px; padding:14px 16px; background:#fff8f8; border-left:4px solid #c0392b; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#c0392b; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">II</div>
+                    <div>
+                        <strong>Penalidades por Falsidade ou Omissão</strong><br>
+                        Está ciente de que a falsidade ou omissão de informações configura <strong>crime de falsidade ideológica (art. 299 do Código Penal Brasileiro)</strong> e <strong>infração ambiental (Lei Federal nº 9.605/1998 — Lei de Crimes Ambientais)</strong>, sujeitando-se às sanções administrativas, civis e penais cabíveis, inclusive cassação da licença, multa e responsabilização por eventuais danos ao meio ambiente.
+                    </div>
+                </div>
+
+                <!-- Item 3 -->
+                <div style="display:flex; gap:14px; margin-bottom:16px; padding:14px 16px; background:#f8fdf9; border-left:4px solid #009640; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#009640; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">III</div>
+                    <div>
+                        <strong>Autorização para Fiscalização</strong><br>
+                        Autoriza a Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN a realizar, a qualquer tempo, vistorias, fiscalizações e solicitações de documentos comprobatórios relacionados ao empreendimento ou atividade requerida.
+                    </div>
+                </div>
+
+                <!-- Item 4 -->
+                <div style="display:flex; gap:14px; margin-bottom:16px; padding:14px 16px; background:#f8fdf9; border-left:4px solid #009640; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#009640; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">IV</div>
+                    <div>
+                        <strong>Comunicação de Alterações</strong><br>
+                        Compromete-se a comunicar imediatamente à SEMA qualquer alteração nas informações prestadas ou nos dados do empreendimento, sob pena de cassação da licença concedida.
+                    </div>
+                </div>
+
+                <!-- Item 5 -->
+                <div style="display:flex; gap:14px; margin-bottom:16px; padding:14px 16px; background:#f8fdf9; border-left:4px solid #009640; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#009640; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">V</div>
+                    <div>
+                        <strong>Responsabilidade por Danos Ambientais</strong><br>
+                        Assume a responsabilidade objetiva — independentemente de culpa — por eventuais danos ambientais decorrentes da atividade, obrigando-se a adotar todas as medidas de prevenção, mitigação e reparação necessárias, nos termos da legislação ambiental vigente.
+                    </div>
+                </div>
+
+                <!-- Item 6 -->
+                <div style="display:flex; gap:14px; margin-bottom:24px; padding:14px 16px; background:#fffbf0; border-left:4px solid #e67e22; border-radius:0 6px 6px 0;">
+                    <div style="flex-shrink:0; width:28px; height:28px; background:#e67e22; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">VI</div>
+                    <div>
+                        <strong>Licença Não Substitui Outras Obrigações</strong><br>
+                        A concessão da licença ambiental pela SEMA não isenta o requerente de obter outras autorizações, alvarás ou licenças exigidas por órgãos federais, estaduais ou municipais, tais como IBAMA, IDEMA-RN, Vigilância Sanitária, Corpo de Bombeiros, entre outros.
+                    </div>
+                </div>
+
+                <!-- Referências legais -->
+                <div style="background:#f5f5f5; border-radius:8px; padding:14px 16px; font-size:0.82rem; color:#555;">
+                    <strong style="display:block; margin-bottom:6px; color:#333;">Base Legal:</strong>
+                    Art. 299 do Código Penal Brasileiro &nbsp;·&nbsp;
+                    Lei Federal nº 9.605/1998 (Crimes Ambientais) &nbsp;·&nbsp;
+                    Lei Federal nº 6.938/1981 (Política Nacional do Meio Ambiente) &nbsp;·&nbsp;
+                    Lei Municipal nº 017/2022 (Plano Diretor)
+                </div>
+            </div>
+
+            <!-- Rodapé -->
+            <div style="padding:16px 32px 24px; text-align:center;">
+                <button onclick="
+                    document.getElementById('modal-termo').style.display='none';
+                    document.getElementById('declaracao_veracidade').checked=true;"
+                    style="background:#009640; color:#fff; border:none; border-radius:8px; padding:12px 32px; font-size:0.95rem; font-weight:600; cursor:pointer; letter-spacing:0.3px;">
+                    <i class="fas fa-check" style="margin-right:8px;"></i>Li e aceito os termos
+                </button>
+                <button onclick="document.getElementById('modal-termo').style.display='none'"
+                        style="background:none; border:none; color:#888; font-size:0.85rem; cursor:pointer; margin-left:16px;">
+                    Fechar
+                </button>
+            </div>
+
+        </div>
+    </div>
 
     <!-- Modal de Legislação Municipal -->
     <div id="modal-legislacao" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto;">
