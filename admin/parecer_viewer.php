@@ -101,6 +101,15 @@ $nomeArquivo = $doc ? $doc['nome_arquivo'] : 'Documento';
             background: #047857;
         }
 
+        .btn-print {
+            background: #1d4ed8;
+            color: #ffffff;
+        }
+
+        .btn-print:hover {
+            background: #1e40af;
+        }
+
         .viewer-container {
             flex: 1;
             width: 100%;
@@ -131,6 +140,11 @@ $nomeArquivo = $doc ? $doc['nome_arquivo'] : 'Documento';
                 <i class="fas fa-arrow-left"></i> Voltar
             </button>
             
+            <!-- Botão Imprimir -->
+            <button onclick="document.querySelector('iframe').contentWindow.print()" class="btn btn-print">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+
             <!-- Botão Download -->
             <a href="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>" class="btn btn-download">
                 <i class="fas fa-download"></i> Baixar PDF
