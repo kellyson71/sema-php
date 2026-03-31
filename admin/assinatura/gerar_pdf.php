@@ -93,7 +93,16 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
     $pdf->SetCreator('SEMA Documentos Digitais');
     $pdf->SetAuthor($pdf->assinante_nome);
     $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
-    
+
+    // Proteger documento — somente leitura e impressão permitidas
+    $pdf->SetProtection(
+        array('print'),          // permissões: apenas impressão
+        '',                      // senha de usuário (sem senha para abrir)
+        hash('sha256', $numero_processo . $assinante['nome'] . date('Y')), // senha de proprietário aleatória
+        2,                       // força de criptografia: RC4 128-bit
+        null
+    );
+
     // Margens super otimizadas
     $pdf->SetMargins(15, 27, 15);
     $pdf->SetFooterMargin(18);
