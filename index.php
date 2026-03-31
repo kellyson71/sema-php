@@ -637,16 +637,16 @@ include_once 'tipos_alvara.php';
     </div>
 
     <!-- Onda de transição para o rodapé -->
-    <div style="display:block; width:100%; line-height:0; margin-bottom:-2px; transform:rotate(180deg);">
+    <div style="display:block; width:100%; line-height:0; font-size:0;">
         <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style="display:block; width:100%; height:70px;">
-            <path d="M0,35 C360,80 1080,-10 1440,35 L1440,0 L0,0 Z" fill="#0a1a2e"/>
+            <path d="M0,35 C360,80 1080,-10 1440,35 L1440,70 L0,70 Z" fill="#0a1a2e"/>
         </svg>
     </div>
 
-    <footer style="background:#0a1a2e; padding:48px 24px 32px; text-align:center;">
-
-        <!-- Ações rápidas -->
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:36px;">
+    <footer style="background:#0a1a2e; padding:12px 24px 28px; text-align:center;">
+        
+        <!-- Ações rápidas — integradas ao topo do rodapé -->
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:32px;">
             <a href="./consultar/index.php"
                style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
                onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
@@ -669,13 +669,13 @@ include_once 'tipos_alvara.php';
             </a>
         </div>
 
-        <!-- Divisor -->
-        <div style="border-top:1px solid rgba(255,255,255,0.08); margin:0 auto 28px; max-width:600px;"></div>
+        <!-- Divisor sutil -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08); margin:0 auto 24px; max-width:600px;"></div>
 
         <!-- Logo SEMA branca -->
         <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
              alt="SEMA — Secretaria Municipal de Meio Ambiente"
-             style="max-width:220px; height:auto; margin-bottom:18px; opacity:0.92;">
+             style="max-width:220px; height:auto; margin-bottom:16px; opacity:0.92; display:block; margin-left:auto; margin-right:auto;">
 
         <!-- Copyright -->
         <p style="font-size:0.8rem; color:rgba(255,255,255,0.35); margin:0;">
@@ -686,7 +686,7 @@ include_once 'tipos_alvara.php';
     </footer>
 
     <!-- Faixa gráfica institucional -->
-    <div style="width:100%; height:8px; background:linear-gradient(90deg, #009640, #00c853, #4ade80, #009640);"></div>
+    <div style="width:100%; height:50px; background:url('./assets/img/faixa.png') repeat-x center / auto 100%; line-height:0; font-size:0;"></div>
 
     <!-- Loading Spinner -->
     <div id="loading" class="loading" style="display: none;">
