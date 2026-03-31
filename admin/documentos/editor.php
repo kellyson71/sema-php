@@ -107,63 +107,31 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           PREVIEW A4 — FOOTER (carimbo + paginação)
+           PREVIEW A4 — FOOTER discreto (fiel ao PDF)
         ═══════════════════════════════════════════════ */
         .a4-sema-footer {
-            padding: 0 15mm 8mm;
-            border-top: 0.8px solid #c8cdd2;
+            padding: 0 15mm 6mm;
+            border-top: 0.5px solid #d2d2d2;
             margin-top: auto;
             flex-shrink: 0;
-        }
-        .a4-footer-stamp {
-            width: 90mm;
-            margin: 5mm auto 0;
-            border: 1.2px solid #2d8661;
-            border-radius: 5px;
-            overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        }
-        .a4-footer-stamp .stamp-bar {
-            background: #2d8661;
-            color: #fff;
             text-align: center;
-            font-size: 6.5pt;
-            font-weight: 700;
-            padding: 2px 0;
-            letter-spacing: 0.5px;
         }
-        .a4-footer-stamp .stamp-body {
-            background: #f8fcf9;
-            text-align: center;
-            padding: 3mm 4mm 2.5mm;
-        }
-        .a4-footer-stamp .stamp-nome {
-            font-size: 8.5pt;
-            font-weight: 700;
-            color: #1e2328;
-            margin-bottom: 1px;
-        }
-        .a4-footer-stamp .stamp-cargo {
-            font-size: 6pt;
-            color: #505560;
-        }
-        .a4-footer-stamp .stamp-info {
+        .a4-footer-sign {
             font-size: 5.5pt;
-            color: #6e7378;
-            margin-top: 2px;
+            color: #8c8c8c;
+            margin-top: 2.5mm;
+            line-height: 1.6;
         }
-        .a4-footer-stamp .stamp-data {
-            font-size: 5.5pt;
-            color: #82878c;
+        .a4-footer-date {
+            font-size: 5pt;
+            color: #aaa;
             font-style: italic;
-            margin-top: 2px;
         }
         .a4-footer-page {
-            text-align: center;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 7pt;
-            color: #a0a5aa;
-            margin-top: 3mm;
+            font-size: 6pt;
+            color: #b4b4b4;
+            margin-top: 2mm;
         }
 
         /* ═══════════════════════════════════════════════
@@ -509,16 +477,9 @@ include '../header.php';
         const footer = document.createElement('div');
         footer.className = 'a4-sema-footer';
         footer.innerHTML = `
-            <div class="a4-footer-stamp">
-                <div class="stamp-bar">&#10003;  DOCUMENTO ASSINADO DIGITALMENTE  &#10003;</div>
-                <div class="stamp-body">
-                    <div class="stamp-nome">NOME DO ASSINANTE</div>
-                    <div class="stamp-cargo">Cargo do assinante</div>
-                    <div class="stamp-info">CPF: ***.***.**-**  |  Mat: ******</div>
-                    <div class="stamp-data">Autenticado em dd/mm/aaaa hh:mm:ss</div>
-                </div>
-            </div>
-            <div class="a4-footer-page" id="page-counter">&mdash;  Página 1 de 1  &mdash;</div>`;
+            <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
+            <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
+            <div class="a4-footer-page" id="page-counter">Pagina 1 de 1</div>`;
         wrapper.appendChild(footer);
 
         // Iniciar contador de páginas dinâmico
