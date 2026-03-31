@@ -208,6 +208,20 @@ include '../header.php';
         .btn-sema   { background: var(--sema-green); border-color: var(--sema-green); color: #fff; }
         .btn-sema:hover { background: var(--sema-green-lt); border-color: var(--sema-green-lt); color: #fff; }
 
+        /* ─── Icon Picker ─── */
+        .icon-option {
+            aspect-ratio: 1;
+            display: flex; align-items: center; justify-content: center;
+            border: 1.5px solid #e5e9f2;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #64748b;
+            transition: border-color .15s, background .15s, color .15s;
+        }
+        .icon-option:hover { border-color: var(--sema-green); color: var(--sema-green); background: #f0fdf4; }
+        .icon-option.selected { border-color: var(--sema-green); background: #d1fae5; color: var(--sema-green); }
+
         /* ═══════════════════════════════════════════════
            HEADER DA SEÇÃO
         ═══════════════════════════════════════════════ */
@@ -380,9 +394,16 @@ include '../header.php';
                   <textarea class="form-control form-control-sm" id="novoTemplateDesc" rows="2"
                             placeholder="Breve descrição do uso deste template..."></textarea>
                 </div>
+                <!-- Seletor de Ícone -->
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small">Ícone</label>
+                  <input type="hidden" id="novoTemplateIcone" value="fa-bookmark">
+                  <div id="iconPickerGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;">
+                  </div>
+                </div>
                 <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
                   <i class="fas fa-circle-info mt-1 flex-shrink-0"></i>
-                  <span>Os campos <strong>sublinhados em azul</strong> serão preservados como variáveis automáticas para futuros protocolos.</span>
+                  <span>Os campos <strong>sublinhados em azul</strong> serão preservados como variáveis automáticas.</span>
                 </div>
                 <button class="btn btn-sema w-100 fw-bold" onclick="salvarTemplate('novo')">
                   <i class="fas fa-save me-2"></i> Salvar Novo Template
@@ -435,6 +456,33 @@ include '../header.php';
     const templateLabel = <?= json_encode($label) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
     let currentTemplate = templateNome;
+
+    /* ─── Icon Picker ────────────────────────────────────────── */
+    const ICONES_DISPONIVEIS = [
+        'fa-bookmark','fa-file-alt','fa-file-signature','fa-clipboard-list',
+        'fa-leaf','fa-tree','fa-seedling','fa-globe',
+        'fa-hard-hat','fa-building','fa-home','fa-city',
+        'fa-gavel','fa-stamp','fa-certificate','fa-scroll',
+        'fa-microscope','fa-search','fa-clipboard-check','fa-tasks',
+        'fa-bullhorn','fa-flag','fa-star','fa-map-marked-alt',
+    ];
+
+    function iniciarIconPicker() {
+        const grid  = document.getElementById('iconPickerGrid');
+        const input = document.getElementById('novoTemplateIcone');
+        if (!grid) return;
+        grid.innerHTML = ICONES_DISPONIVEIS.map(ic => `
+            <div class="icon-option${ic === input.value ? ' selected' : ''}" data-icon="${ic}" title="${ic.replace('fa-','')}">
+                <i class="fas ${ic}"></i>
+            </div>`).join('');
+        grid.querySelectorAll('.icon-option').forEach(el => {
+            el.addEventListener('click', function() {
+                grid.querySelectorAll('.icon-option').forEach(x => x.classList.remove('selected'));
+                this.classList.add('selected');
+                input.value = this.dataset.icon;
+            });
+        });
+    }
 
     /* ─── Aguardar Summernote estar pronto ─────────────────── */
     function waitForSummernote(cb) {
@@ -687,6 +735,8 @@ include '../header.php';
     function abrirModalSalvarTemplate() {
         document.getElementById('novoTemplateNome').value = '';
         document.getElementById('novoTemplateDesc').value = '';
+        document.getElementById('novoTemplateIcone').value = 'fa-bookmark';
+        iniciarIconPicker();
         carregarTemplatesParaModal();
         new bootstrap.Modal(document.getElementById('modalSalvarTemplate')).show();
     }
@@ -742,10 +792,12 @@ include '../header.php';
             Swal.fire('Atenção', 'Selecione um template para substituir.', 'warning'); return;
         }
 
+        const icone = document.getElementById('novoTemplateIcone')?.value || 'fa-bookmark';
         const body = new URLSearchParams({
             action:        'salvar_template_usuario',
             conteudo_html: templateHtml,
             template_base: templateNome,
+            icone:         icone,
         });
         if (modo === 'novo')       { body.append('nome', nome); body.append('descricao', desc); }
         if (modo === 'substituir') { body.append('id', utId); }

@@ -225,29 +225,14 @@ include '../header.php';
 
     <!-- Abas de navegação -->
     <ul class="nav nav-tabs mb-4" id="tabsTemplates" role="tablist">
-        <?php
-        $isFiscalPhp = in_array($_SESSION['admin_nivel'] ?? '', ['fiscal', 'admin', 'admin_geral']);
-        $tabTodosActive  = $isFiscalPhp ? '' : 'active';
-        $paneObrasActive = $isFiscalPhp ? 'show active' : '';
-        $paneTodosActive = $isFiscalPhp ? '' : 'show active';
-        ?>
-        <!-- Meus Templates — sempre primeiro -->
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold" id="tab-meus" data-bs-toggle="tab"
                     data-bs-target="#pane-meus" type="button" role="tab">
-                <i class="fas fa-bookmark me-2 text-success"></i> Meus Templates
+                <i class="fas fa-bookmark me-2 text-success"></i> Meus Modelos
             </button>
         </li>
-        <?php if ($isFiscalPhp): ?>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold active" id="tab-obras" data-bs-toggle="tab"
-                    data-bs-target="#pane-obras" type="button" role="tab">
-                <i class="fas fa-hard-hat me-2 text-warning"></i> Fiscalização de Obras
-            </button>
-        </li>
-        <?php endif; ?>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold <?= $tabTodosActive ?>" id="tab-todos" data-bs-toggle="tab"
+            <button class="nav-link fw-semibold active" id="tab-todos" data-bs-toggle="tab"
                     data-bs-target="#pane-todos" type="button" role="tab">
                 <i class="fas fa-layer-group me-2 text-success"></i> Todos os Modelos
             </button>
@@ -255,40 +240,27 @@ include '../header.php';
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold" id="tab-historico" data-bs-toggle="tab"
                     data-bs-target="#pane-historico" type="button" role="tab">
-                <i class="fas fa-history me-2 text-warning"></i> Documentos Anteriores
+                <i class="fas fa-history me-2 text-warning"></i> Histórico
             </button>
         </li>
     </ul>
 
     <div class="tab-content" id="tabsTemplatesContent">
 
-        <!-- Aba: Meus Templates -->
+        <!-- Aba: Meus Modelos -->
         <div class="tab-pane fade" id="pane-meus" role="tabpanel">
             <div class="row g-4 mb-4" id="lista-meus-templates">
                 <div class="col-12">
                     <div class="text-center text-muted py-3">
                         <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
-                        <small>Carregando seus templates...</small>
+                        <small>Carregando seus modelos...</small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <?php if ($isFiscalPhp): ?>
-        <!-- Aba: Fiscalização de Obras -->
-        <div class="tab-pane fade <?= $paneObrasActive ?>" id="pane-obras" role="tabpanel">
-            <div class="row g-4 mb-4" id="lista-obras">
-                <?php for($i=0;$i<3;$i++): ?>
-                <div class="col-xl-3 col-md-4 col-sm-6">
-                    <div class="skeleton skeleton-card"></div>
-                </div>
-                <?php endfor; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <!-- Aba: Todos os Modelos -->
-        <div class="tab-pane fade <?= $paneTodosActive ?>" id="pane-todos" role="tabpanel">
+        <div class="tab-pane fade show active" id="pane-todos" role="tabpanel">
             <div class="row g-4 mb-4" id="lista-templates">
                 <?php for($i=0;$i<6;$i++): ?>
                 <div class="col-xl-3 col-md-4 col-sm-6">
@@ -298,7 +270,7 @@ include '../header.php';
             </div>
         </div>
 
-        <!-- Aba: Documentos Anteriores -->
+        <!-- Aba: Histórico -->
         <div class="tab-pane fade" id="pane-historico" role="tabpanel">
             <div class="row g-3 mb-4" id="lista-historico">
                 <div class="col-12">
@@ -317,7 +289,7 @@ include '../header.php';
     <script>
     const reqId = <?= $requerimento_id ?>;
     const adminNivel = <?= json_encode($_SESSION['admin_nivel'] ?? '') ?>;
-    const isFiscal = ['fiscal', 'admin', 'admin_geral'].includes(adminNivel);
+    let favoritosSet = new Set(); // nomes dos templates favoritados
 
     /* ─── Helpers de badge ─────────────────────────────────── */
     function badgeClass(badge) {
@@ -365,27 +337,61 @@ include '../header.php';
         const cor     = t.icone_cor  || 'text-secondary';
         const badge   = t.badge      || 'Parecer';
         const preview = t.preview    || desc;
-        const ehFisc  = t.fiscalizacao === true;
         const delay   = (idx * 0.06).toFixed(2);
-        const cardDestaque = ehFisc ? 'border-warning' : '';
+        const isFav   = favoritosSet.has(nome);
+        const favIcon = isFav ? 'fas fa-star text-warning' : 'far fa-star text-muted';
+        const favTitle= isFav ? 'Remover dos Meus Modelos' : 'Adicionar aos Meus Modelos';
 
         return `
-        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-            <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(nome)}"
-               class="card template-card border-0 shadow-sm text-decoration-none ${cardDestaque}"
-               title="${escaparAttr(desc)}">
-                <div class="card-body text-center p-4">
+        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="tpl-card-${escapeHtml(nome)}" style="animation-delay:${delay}s">
+            <div class="card template-card border-0 shadow-sm h-100 position-relative">
+                <button class="btn btn-sm position-absolute top-0 end-0 m-2 p-1 border-0 bg-transparent"
+                        style="z-index:2;line-height:1" title="${favTitle}"
+                        onclick="toggleFavorito('${escaparAttr(nome)}', this)">
+                    <i class="${favIcon}" style="font-size:1rem"></i>
+                </button>
+                <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(nome)}"
+                   class="card-body text-center p-4 text-decoration-none d-block"
+                   title="${escaparAttr(desc)}">
                     <div class="icon-wrap mb-1">
                         <i class="fas ${icone} ${cor} fs-2"></i>
                     </div>
                     <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
                     <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature">
-                        ${escapeHtml(preview)}
-                    </div>
-                </div>
-            </a>
+                    <div class="preview-miniature">${escapeHtml(preview)}</div>
+                </a>
+            </div>
         </div>`;
+    }
+
+    /* ─── Toggle favorito ──────────────────────────────────── */
+    function toggleFavorito(nome, btn) {
+        btn.disabled = true;
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'favoritar_template', template_nome: nome })
+        })
+        .then(r => r.json())
+        .then(ret => {
+            if (!ret.success) { btn.disabled = false; return; }
+            const icon = btn.querySelector('i');
+            if (ret.favoritado) {
+                favoritosSet.add(nome);
+                icon.className = 'fas fa-star text-warning';
+                btn.title = 'Remover dos Meus Modelos';
+            } else {
+                favoritosSet.delete(nome);
+                icon.className = 'far fa-star text-muted';
+                btn.title = 'Adicionar aos Meus Modelos';
+            }
+            btn.disabled = false;
+            // Recarregar aba "Meus Modelos" se estiver visível
+            if (document.getElementById('tab-meus').classList.contains('active')) {
+                carregarTemplates();
+            }
+        })
+        .catch(() => { btn.disabled = false; });
     }
 
     /* ─── Montar HTML de um card de histórico ───────────────── */
@@ -423,33 +429,61 @@ include '../header.php';
         </div>`;
     }
 
-    /* ─── Card de template personalizado do usuário ─────────── */
+    /* ─── Card de template do usuário (personalizado ou favorito) */
     function buildUserTemplateCard(t, idx) {
         const delay = (idx * 0.06).toFixed(2);
         const label = escapeHtml(t.nome);
-        const desc  = escapeHtml(t.descricao || 'Template personalizado.');
-        const base  = t.template_base ? ` | Base: ${escapeHtml(t.template_base)}` : '';
-        const tplId = encodeURIComponent('user_tpl:' + t.id);
-        const labelEnc = encodeURIComponent(t.nome);
+        const desc  = escapeHtml(t.descricao || '');
+        const isFav = t.tipo === 'favorito';
 
+        if (isFav) {
+            // Card de favorito — igual ao card padrão mas com estrela preenchida e sem botão excluir
+            const icone = t.icone || 'fa-file-signature';
+            const cor   = t.icone_cor || 'text-secondary';
+            const badge = t.badge || 'Parecer';
+            const preview = escapeHtml(t.preview || t.descricao || '');
+            return `
+            <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
+                <div class="card template-card border-0 shadow-sm h-100 position-relative" style="border-bottom:3px solid #f59e0b !important;">
+                    <button class="btn btn-sm position-absolute top-0 end-0 m-2 p-1 border-0 bg-transparent"
+                            style="z-index:2;line-height:1" title="Remover dos Meus Modelos"
+                            onclick="toggleFavorito('${escaparAttr(t.nome)}', this)">
+                        <i class="fas fa-star text-warning" style="font-size:1rem"></i>
+                    </button>
+                    <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(t.nome)}"
+                       class="card-body text-center p-4 text-decoration-none d-block">
+                        <div class="icon-wrap mb-1" style="background:#fef3c7;">
+                            <i class="fas ${icone} ${cor} fs-2"></i>
+                        </div>
+                        <span class="tpl-badge construcao mb-2 d-inline-block" style="background:#fef3c7;color:#92400e;">Favorito</span>
+                        <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
+                        <div class="preview-miniature">${preview}</div>
+                    </a>
+                </div>
+            </div>`;
+        }
+
+        // Card personalizado
+        const icone    = t.icone || 'fa-bookmark';
+        const tplId    = encodeURIComponent('user_tpl:' + t.id);
+        const labelEnc = encodeURIComponent(t.nome);
         return `
         <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="user-tpl-${t.id}" style="animation-delay:${delay}s">
             <div class="card template-card border-0 shadow-sm h-100 position-relative" style="border-bottom:3px solid #1c4b36 !important;">
                 <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle p-0 d-flex align-items-center justify-content-center"
                         style="width:22px;height:22px;font-size:.7rem;z-index:2"
-                        title="Excluir template"
-                        onclick="excluirTemplateUsuario(${t.id}, event)">
+                        title="Excluir modelo" onclick="excluirTemplateUsuario(${t.id}, event)">
                     <i class="fas fa-times"></i>
                 </button>
                 <a href="editor.php?requerimento_id=${reqId}&template=${tplId}&label=${labelEnc}"
                    class="card-body text-center p-4 text-decoration-none d-block">
                     <div class="icon-wrap mb-1" style="background:#d1fae5;">
-                        <i class="fas fa-bookmark text-success fs-2"></i>
+                        <i class="fas ${icone} text-success fs-2"></i>
                     </div>
                     <span class="tpl-badge mb-2 d-inline-block" style="background:#d1fae5;color:#065f46;">Personalizado</span>
                     <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature">${desc}${base}</div>
-                    <small class="text-muted d-block mt-1" style="font-size:.7rem">${t.data}</small>
+                    <div class="preview-miniature">${desc}</div>
+                    <small class="text-muted d-block mt-1" style="font-size:.7rem">${t.data || ''}</small>
                 </a>
             </div>
         </div>`;
@@ -493,91 +527,54 @@ include '../header.php';
         fetch('../parecer_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                'action': 'listar_templates',
-                'requerimento_id': reqId
-            })
+            body: new URLSearchParams({ 'action': 'listar_templates', 'requerimento_id': reqId })
         })
         .then(res => res.json())
         .then(ret => {
-            const listTpl   = document.getElementById('lista-templates');
-            const listObras = document.getElementById('lista-obras');
-            const listHist  = document.getElementById('lista-historico');
-            const listMeus  = document.getElementById('lista-meus-templates');
+            const listTpl  = document.getElementById('lista-templates');
+            const listHist = document.getElementById('lista-historico');
+            const listMeus = document.getElementById('lista-meus-templates');
 
-            // ── Meus Templates ──────────────────────────────
-            if (ret.success && ret.user_templates && ret.user_templates.length > 0) {
-                let htmlMeus = '';
-                ret.user_templates.forEach((t, idx) => { htmlMeus += buildUserTemplateCard(t, idx); });
-                listMeus.innerHTML = htmlMeus;
-                // Ativar a aba "Meus Templates" como padrão se houver templates
+            // ── Carregar favoritos no Set ────────────────────
+            if (ret.favoritos) favoritosSet = new Set(ret.favoritos);
+
+            // ── Todos os Modelos ─────────────────────────────
+            if (ret.success && ret.templates && ret.templates.length > 0) {
+                listTpl.innerHTML = ret.templates.map((t, i) => buildCardTemplate(t, i)).join('');
+            } else {
+                listTpl.innerHTML = `<div class="col-12"><div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
+                    <i class="fas fa-triangle-exclamation fs-4"></i>
+                    <div><strong>Falha ao carregar os modelos.</strong><br>
+                    <small class="text-muted">${ret.error || 'Nenhum template encontrado.'}</small></div>
+                </div></div>`;
+            }
+
+            // ── Meus Modelos (favoritos + personalizados) ───
+            if (ret.user_templates && ret.user_templates.length > 0) {
+                listMeus.innerHTML = ret.user_templates.map((t, i) => buildUserTemplateCard(t, i)).join('');
+                // Ativar a aba "Meus Modelos" como padrão se houver algo
                 document.getElementById('tab-meus').click();
             } else {
                 listMeus.innerHTML = emptyStateMeusTemplates();
             }
 
-            if (ret.success && ret.templates && ret.templates.length > 0) {
-                let htmlTodos = '';
-                let htmlObras = '';
-
-                ret.templates.forEach((t, idx) => {
-                    const card = buildCardTemplate(t, idx);
-                    htmlTodos += card;
-                    if (t.fiscalizacao === true) htmlObras += card;
-                });
-
-                listTpl.innerHTML = htmlTodos;
-
-                if (listObras) {
-                    listObras.innerHTML = htmlObras || `
-                    <div class="col-12">
-                        <div class="text-muted py-2 d-flex align-items-center gap-2">
-                            <i class="fas fa-inbox text-secondary"></i>
-                            <small>Nenhum template de fiscalização encontrado.</small>
-                        </div>
-                    </div>`;
-                }
+            // ── Histórico ────────────────────────────────────
+            if (ret.historico_recente && ret.historico_recente.length > 0) {
+                listHist.innerHTML = ret.historico_recente.map((h, i) => buildHistCard(h, i)).join('');
             } else {
-                const errHtml = `
-                <div class="col-12">
-                    <div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
-                        <i class="fas fa-triangle-exclamation fs-4"></i>
-                        <div>
-                            <strong>Falha ao carregar os modelos.</strong>
-                            <br><small class="text-muted">${ret.error || 'Nenhum template encontrado no sistema.'}</small>
-                        </div>
-                    </div>
-                </div>`;
-                listTpl.innerHTML = errHtml;
-                if (listObras) listObras.innerHTML = errHtml;
-            }
-
-            // ── Histórico ──────────────────────────────────
-            if (ret.success && ret.historico_recente && ret.historico_recente.length > 0) {
-                let htmlHist = '';
-                ret.historico_recente.forEach((h, idx) => {
-                    htmlHist += buildHistCard(h, idx);
-                });
-                listHist.innerHTML = htmlHist;
-            } else {
-                listHist.innerHTML = `
-                <div class="col-12">
-                    <div class="text-muted py-2 d-flex align-items-center gap-2">
-                        <i class="fas fa-inbox text-secondary"></i>
-                        <small>Nenhum documento anterior encontrado neste processo.</small>
-                    </div>
-                </div>`;
+                listHist.innerHTML = `<div class="col-12"><div class="text-muted py-2 d-flex align-items-center gap-2">
+                    <i class="fas fa-inbox text-secondary"></i>
+                    <small>Nenhum documento anterior encontrado neste processo.</small>
+                </div></div>`;
             }
         })
         .catch(err => {
             document.getElementById('lista-templates').innerHTML = `
-            <div class="col-12">
-                <div class="alert alert-danger rounded-3">
-                    <i class="fas fa-wifi-slash me-2"></i>
-                    <strong>Falha na conexão com o servidor.</strong>
-                    <br><small class="text-muted">${err.message || 'Verifique sua conexão e recarregue a página.'}</small>
-                </div>
-            </div>`;
+            <div class="col-12"><div class="alert alert-danger rounded-3">
+                <i class="fas fa-wifi-slash me-2"></i>
+                <strong>Falha na conexão.</strong>
+                <br><small class="text-muted">${err.message || ''}</small>
+            </div></div>`;
         });
     }
 

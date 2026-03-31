@@ -281,7 +281,7 @@ try {
             // 5. Templates do usuário (personalizados)
             $userTemplates = [];
             $stmtUt = $pdo->prepare("
-                SELECT id, nome, descricao, template_base, data_atualizacao
+                SELECT id, nome, descricao, icone, template_base, data_atualizacao
                 FROM user_templates
                 WHERE usuario_id = ?
                 ORDER BY data_atualizacao DESC
@@ -289,19 +289,43 @@ try {
             $stmtUt->execute([$_SESSION['admin_id']]);
             foreach ($stmtUt->fetchAll(PDO::FETCH_ASSOC) as $ut) {
                 $userTemplates[] = [
-                    'id'          => $ut['id'],
-                    'nome'        => $ut['nome'],
-                    'descricao'   => $ut['descricao'] ?: 'Template personalizado.',
+                    'id'            => $ut['id'],
+                    'nome'          => $ut['nome'],
+                    'descricao'     => $ut['descricao'] ?: 'Template personalizado.',
+                    'icone'         => $ut['icone'] ?: 'fa-bookmark',
                     'template_base' => $ut['template_base'],
-                    'data'        => date('d/m/Y H:i', strtotime($ut['data_atualizacao'])),
+                    'data'          => date('d/m/Y H:i', strtotime($ut['data_atualizacao'])),
+                    'tipo'          => 'personalizado',
                 ];
             }
+
+            // 6. Favoritos do usuário — templates padrão favoritados
+            $stmtFav = $pdo->prepare("SELECT template_nome FROM user_favorites WHERE usuario_id = ?");
+            $stmtFav->execute([$_SESSION['admin_id']]);
+            $favNomes = array_column($stmtFav->fetchAll(PDO::FETCH_ASSOC), 'template_nome');
+
+            // Adicionar favoritos ao início da lista (com flag para o frontend)
+            foreach ($templates as &$t) {
+                $t['favoritado'] = in_array($t['nome'], $favNomes);
+            }
+            unset($t);
+
+            // Montar lista de cards de favoritos para "Meus Modelos"
+            $favTemplates = [];
+            foreach ($templates as $t) {
+                if ($t['favoritado']) {
+                    $favTemplates[] = array_merge($t, ['tipo' => 'favorito']);
+                }
+            }
+            // Favoritos primeiro, personalizados depois
+            $userTemplates = array_merge($favTemplates, $userTemplates);
 
             echo json_encode([
                 'success'           => true,
                 'historico_recente' => $historicoRecente,
                 'templates'         => $templates,
                 'user_templates'    => $userTemplates,
+                'favoritos'         => $favNomes,
             ]);
             break;
 
@@ -612,7 +636,7 @@ try {
 
         case 'listar_templates_usuario':
             $stmtUt2 = $pdo->prepare("
-                SELECT id, nome, descricao, template_base, data_atualizacao
+                SELECT id, nome, descricao, icone, template_base, data_atualizacao
                 FROM user_templates
                 WHERE usuario_id = ?
                 ORDER BY data_atualizacao DESC
@@ -624,6 +648,7 @@ try {
                     'id'           => $row['id'],
                     'nome'         => $row['nome'],
                     'descricao'    => $row['descricao'],
+                    'icone'        => $row['icone'] ?: 'fa-bookmark',
                     'template_base'=> $row['template_base'],
                     'data'         => date('d/m/Y H:i', strtotime($row['data_atualizacao'])),
                 ];
@@ -635,30 +660,29 @@ try {
             $utNome      = trim($input['nome'] ?? '');
             $utDesc      = trim($input['descricao'] ?? '');
             $utBase      = trim($input['template_base'] ?? '');
+            $utIcone     = trim($input['icone'] ?? 'fa-bookmark');
             $utHtmlBruto = $input['conteudo_html'] ?? '';
             $utIdUpdate  = (int)($input['id'] ?? 0);
 
             if (empty($utHtmlBruto)) throw new Exception('Conteúdo do template não pode ser vazio');
 
-            // Converter spans var-field de volta para {{variavel}}
             $utHtmlTemplate = ParecerService::converterSpansParaVariaveis($utHtmlBruto);
 
             if ($utIdUpdate > 0) {
-                // UPDATE — garante que só o dono edita
                 $stmtSave = $pdo->prepare("
-                    UPDATE user_templates SET conteudo_html = ?, template_base = ?, data_atualizacao = NOW()
+                    UPDATE user_templates SET conteudo_html = ?, template_base = ?, icone = ?, data_atualizacao = NOW()
                     WHERE id = ? AND usuario_id = ?
                 ");
-                $stmtSave->execute([$utHtmlTemplate, $utBase, $utIdUpdate, $_SESSION['admin_id']]);
+                $stmtSave->execute([$utHtmlTemplate, $utBase, $utIcone, $utIdUpdate, $_SESSION['admin_id']]);
                 if ($stmtSave->rowCount() === 0) throw new Exception('Template não encontrado ou sem permissão');
                 echo json_encode(['success' => true, 'id' => $utIdUpdate, 'nome' => '']);
             } else {
                 if (empty($utNome)) throw new Exception('Informe um nome para o template');
                 $stmtSave = $pdo->prepare("
-                    INSERT INTO user_templates (usuario_id, nome, descricao, template_base, conteudo_html)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO user_templates (usuario_id, nome, descricao, icone, template_base, conteudo_html)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
-                $stmtSave->execute([$_SESSION['admin_id'], $utNome, $utDesc, $utBase, $utHtmlTemplate]);
+                $stmtSave->execute([$_SESSION['admin_id'], $utNome, $utDesc, $utIcone, $utBase, $utHtmlTemplate]);
                 echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'nome' => $utNome]);
             }
             break;
@@ -669,6 +693,24 @@ try {
             $stmtDel = $pdo->prepare("DELETE FROM user_templates WHERE id = ? AND usuario_id = ?");
             $stmtDel->execute([$utIdDel, $_SESSION['admin_id']]);
             echo json_encode(['success' => $stmtDel->rowCount() > 0]);
+            break;
+
+        case 'favoritar_template':
+            $tplNome = trim($input['template_nome'] ?? '');
+            if (empty($tplNome)) throw new Exception('template_nome obrigatório');
+
+            // Toggle: se já existe, remove; senão, insere
+            $stmtChk = $pdo->prepare("SELECT id FROM user_favorites WHERE usuario_id = ? AND template_nome = ?");
+            $stmtChk->execute([$_SESSION['admin_id'], $tplNome]);
+            if ($stmtChk->fetch()) {
+                $pdo->prepare("DELETE FROM user_favorites WHERE usuario_id = ? AND template_nome = ?")
+                    ->execute([$_SESSION['admin_id'], $tplNome]);
+                echo json_encode(['success' => true, 'favoritado' => false]);
+            } else {
+                $pdo->prepare("INSERT INTO user_favorites (usuario_id, template_nome) VALUES (?, ?)")
+                    ->execute([$_SESSION['admin_id'], $tplNome]);
+                echo json_encode(['success' => true, 'favoritado' => true]);
+            }
             break;
 
         default:
