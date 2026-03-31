@@ -61,7 +61,7 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           CANVAS MULTI-PÁGINA — "mesa de trabalho"
+           CANVAS CONTÍNUO — "Folha Infinita"
         ═══════════════════════════════════════════════ */
         .a4-outer-wrapper {
             background: #d0d4da;
@@ -69,35 +69,27 @@ include '../header.php';
             min-height: 100%;
         }
 
-        /* Container das páginas empilhadas */
-        .a4-pages-container {
-            max-width: var(--a4-width);
-            margin: 0 auto;
-        }
-
-        /* Cada folha A4 individual */
+        /* Um único papel que cresce, mas marca quebras visualmente */
         .a4-page-sheet {
-            width: var(--a4-width);
+            max-width: var(--a4-width);
             min-height: var(--a4-height);
+            margin: 0 auto;
             background: #fff;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.12);
             border-radius: 2px;
-            margin-bottom: var(--page-gap);
             position: relative;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-        }
-        .a4-page-sheet:last-child {
-            margin-bottom: 0;
         }
 
         /* ═══════════════════════════════════════════════
-           HEADER SEMA (cada página)
+           HEADER SEMA (topo da primeira folha)
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
             padding: 6mm var(--a4-margin-lr) 0 var(--a4-margin-lr);
             flex-shrink: 0;
+            background: #fff;
+            z-index: 5;
         }
         .a4-sema-header .header-content {
             display: flex;
@@ -132,7 +124,7 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           FOOTER (cada página)
+           FOOTER (base da última folha)
         ═══════════════════════════════════════════════ */
         .a4-sema-footer {
             padding: 0 var(--a4-margin-lr) 6mm;
@@ -141,6 +133,8 @@ include '../header.php';
             flex-shrink: 0;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             text-align: center;
+            background: #fff;
+            z-index: 5;
         }
         .a4-footer-sign {
             font-size: 5.5pt;
@@ -173,7 +167,7 @@ include '../header.php';
             padding: 2mm 3mm;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             pointer-events: none;
-            z-index: 5;
+            z-index: 10;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
         .a4-signature-badge .sig-header {
@@ -252,6 +246,7 @@ include '../header.php';
             padding: 2mm var(--a4-margin-lr) 10mm !important;
             min-height: var(--a4-usable-h) !important;
             box-sizing: border-box !important;
+            position: relative;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -268,13 +263,11 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           SEPARADOR VISUAL DE PÁGINAS
-           Linha de corte + espaço entre páginas
+           SEPARADOR VISUAL DE PÁGINAS (Dentro do canvas)
         ═══════════════════════════════════════════════ */
         .page-break-indicator {
             position: absolute;
-            left: 0;
-            right: 0;
+            left: -15mm; right: -15mm;
             height: 0;
             pointer-events: none;
             z-index: 10;
@@ -282,21 +275,23 @@ include '../header.php';
         .page-break-indicator::before {
             content: '';
             position: absolute;
-            left: 10mm;
-            right: 10mm;
+            left: 0; right: 0;
             top: 0;
-            border-top: 1.5px dashed #b0b8c4;
+            border-top: 2px dashed #ffb0b0;
         }
         .page-break-indicator::after {
             content: attr(data-page-label);
             position: absolute;
-            right: 12mm;
-            top: -8px;
-            font-size: 7pt;
-            color: #8c96a6;
+            right: 0;
+            top: -9px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #bd4848;
             font-family: 'Helvetica Neue', sans-serif;
             background: #fff;
             padding: 0 6px;
+            border: 1px solid #ffb0b0;
+            border-radius: 10px;
         }
 
         /* ═══════════════════════════════════════════════
@@ -593,12 +588,13 @@ include '../header.php';
     }
 
     /* ═══════════════════════════════════════════════════════════
-       CANVAS MULTI-PÁGINA — simula folhas A4 empilhadas
-       (estilo Google Docs) dentro de um único editor editável.
+       CANVAS MULTI-PÁGINA (Página Contínua)
+       Evita bugs de seleção e digitação mantendo o texto em um 
+       bloco único, mas indica visualmente onde o PDF irá cortar.
     ═══════════════════════════════════════════════════════════ */
-    const PAGE_USABLE_PX = 256 * 3.7795; // 256mm em px (96dpi)
-    let _pagesContainer = null;
-    let _currentPageCount = 0;
+    // 297mm(total) - 27mm(header) - 14mm(footer) = 256mm
+    // TCPDF corta as páginas exatamente nesse limite.
+    const PAGE_USABLE_PX = 256 * 3.7795; 
 
     function gerarHeaderHtml() {
         return `
@@ -614,12 +610,12 @@ include '../header.php';
             </div>`;
     }
 
-    function gerarFooterHtml(pageNum, totalPages) {
+    function gerarFooterHtml(totalPages) {
         return `
             <div class="a4-sema-footer">
                 <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
                 <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
-                <div class="a4-footer-page">&mdash; Página ${pageNum} de ${totalPages} &mdash;</div>
+                <div class="a4-footer-page" id="visual-page-counter">&mdash; Página 1 de ${totalPages} &mdash;</div>
             </div>`;
     }
 
@@ -634,119 +630,69 @@ include '../header.php';
     }
 
     /**
-     * Monta o canvas multi-página envolvendo a área de edição.
-     * Cria a primeira "folha" e inicia o monitoramento de páginas.
+     * Monta o canvas contínuo
      */
     function montarCanvasMultiPagina() {
-        if (document.querySelector('.a4-pages-container')) return;
+        if (document.querySelector('.a4-page-sheet')) return;
         const editingArea = document.querySelector('.note-editing-area');
         if (!editingArea) return;
         const parent = editingArea.parentNode;
 
-        // Container geral de páginas
-        _pagesContainer = document.createElement('div');
-        _pagesContainer.className = 'a4-pages-container';
-
-        // Primeira folha
+        // Container geral de página (folha contínua)
         const sheet = document.createElement('div');
         sheet.className = 'a4-page-sheet';
+        
+        // Inserir Header
         sheet.innerHTML = gerarHeaderHtml();
 
-        // Mover editing-area para dentro da primeira folha
-        parent.insertBefore(_pagesContainer, editingArea);
-        _pagesContainer.appendChild(sheet);
+        // Mover editing-area para dentro da folha
+        parent.insertBefore(sheet, editingArea);
         sheet.appendChild(editingArea);
 
-        // Footer da primeira folha
+        // Inserir Footer
         const footerEl = document.createElement('div');
-        footerEl.className = 'a4-sema-footer';
-        footerEl.innerHTML = `
-            <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
-            <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
-            <div class="a4-footer-page" data-page-num="1">&mdash; Página 1 de 1 &mdash;</div>`;
-        sheet.appendChild(footerEl);
+        footerEl.innerHTML = gerarFooterHtml(1);
+        sheet.appendChild(footerEl.firstElementChild);
 
-        // Badge de assinatura na última folha (absolute)
+        // Inserir Badge de Assinatura (absolute sempre presa ao fundo da folha)
         sheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
 
-        _currentPageCount = 1;
         iniciarMonitorPaginas();
     }
 
     /**
-     * Monitora a altura do conteúdo e cria/remove folhas visuais adicionais.
-     * Cada folha adicional é um div decorativo (header + footer)
-     * empilhado após a folha do editor.
+     * Aplica as linhas tracejadas de corte no editor e atualiza contador
      */
+    let _lastTotalPages = 1;
     function iniciarMonitorPaginas() {
         const editable = document.querySelector('.note-editable');
-        if (!editable || !_pagesContainer) return;
+        if (!editable) return;
 
         function recalcularPaginas() {
             const alturaConteudo = editable.scrollHeight;
-            // O scrollHeight conta com o padding (aprox 45px) e a conversão de float para int do DOM.
-            // Para não quebrar página só por margem estática vazia, abatemos uma tolerância de 50px.
             const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
 
-            if (paginasNecessarias === _currentPageCount) return;
-
-            // Atualizar min-height do editável para preencher todas as páginas
-            editable.style.minHeight = (paginasNecessarias * PAGE_USABLE_PX) + 'px';
-
-            // Remover folhas extras antigas (tudo exceto a primeira folha)
-            const sheetsExtras = _pagesContainer.querySelectorAll('.a4-page-sheet-extra');
-            sheetsExtras.forEach(s => s.remove());
-
-            // Remover indicadores de quebra antigos
+            // Remove todos os indicadores atuais
             editable.querySelectorAll('.page-break-indicator').forEach(i => i.remove());
 
-            // Adicionar indicadores de quebra de página dentro do editor
+            // Redesenha os indicadores
             for (let p = 1; p < paginasNecessarias; p++) {
                 const indicator = document.createElement('div');
                 indicator.className = 'page-break-indicator';
-                indicator.setAttribute('data-page-label', 'Página ' + (p + 1));
+                indicator.setAttribute('data-page-label', 'Corte da Página ' + p + ' / ' + (p + 1));
+                // Posiciona a linha exatamente na quebra de 256mm
                 indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
                 editable.appendChild(indicator);
             }
 
-            // Criar folhas visuais extras empilhadas abaixo
-            for (let p = 2; p <= paginasNecessarias; p++) {
-                const extraSheet = document.createElement('div');
-                extraSheet.className = 'a4-page-sheet a4-page-sheet-extra';
-                extraSheet.style.minHeight = 'var(--a4-height)';
-                extraSheet.style.pointerEvents = 'none';
-                extraSheet.innerHTML = gerarHeaderHtml() +
-                    '<div style="flex:1"></div>' +
-                    '<div class="a4-sema-footer">' +
-                    '  <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>' +
-                    '  <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>' +
-                    '  <div class="a4-footer-page">&mdash; Página ' + p + ' de ' + paginasNecessarias + ' &mdash;</div>' +
-                    '</div>';
-
-                // Badge de assinatura apenas na última folha
-                if (p === paginasNecessarias) {
-                    extraSheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
+            // Atualiza footer se a página mudou
+            if (paginasNecessarias !== _lastTotalPages) {
+                const counter = document.getElementById('visual-page-counter');
+                if (counter) {
+                    counter.innerHTML = '&mdash; Página 1 a ' + paginasNecessarias + ' &mdash;';
                 }
-
-                _pagesContainer.appendChild(extraSheet);
+                _lastTotalPages = paginasNecessarias;
             }
-
-            // Mover badge de assinatura da primeira folha se não for a última
-            const firstSheet = _pagesContainer.querySelector('.a4-page-sheet:not(.a4-page-sheet-extra)');
-            const firstBadge = firstSheet ? firstSheet.querySelector('.a4-signature-badge') : null;
-            if (paginasNecessarias > 1 && firstBadge) {
-                firstBadge.style.display = 'none';
-            } else if (paginasNecessarias === 1 && firstBadge) {
-                firstBadge.style.display = '';
-            }
-
-            // Atualizar numeração na primeira folha
-            const firstFooterPage = firstSheet ? firstSheet.querySelector('.a4-footer-page') : null;
-            if (firstFooterPage) {
-                firstFooterPage.innerHTML = '&mdash; Página 1 de ' + paginasNecessarias + ' &mdash;';
-            }
-
-            _currentPageCount = paginasNecessarias;
         }
 
         editable.addEventListener('input', recalcularPaginas);
@@ -755,7 +701,6 @@ include '../header.php';
         });
 
         setTimeout(recalcularPaginas, 300);
-        setTimeout(recalcularPaginas, 1500);
     }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
