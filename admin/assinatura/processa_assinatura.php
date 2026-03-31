@@ -13,9 +13,44 @@ if (function_exists('verificaLogin')) {
     verificaLogin();
 }
 
+/**
+ * Remove CSS que causa overlays visuais (tarjas) no TCPDF:
+ *  - position:absolute/fixed/relative → TCPDF renderiza como bloco sobreposto
+ *  - background-color em <span> → TCPDF preenche retângulo azul/colorido sobre o texto
+ *  - z-index, overflow → sem efeito no TCPDF mas podem confundir o parser
+ */
+function sanitizarHtmlParaPdf(string $html): string {
+    // 1. Strip spans var-field (highlight do editor)
+    $html = ParecerService::stripVarSpans($html);
+
+    // 2. Remove position absolute/fixed/relative de qualquer style inline
+    $html = preg_replace('/\bposition\s*:\s*(absolute|fixed|relative|sticky)\b\s*[;]?/i', '', $html);
+
+    // 3. Remove z-index e overflow
+    $html = preg_replace('/\b(z-index|overflow(-[xy])?)\s*:\s*[^;\"]+[;]?/i', '', $html);
+
+    // 4. Remove background-color de <span> (Summernote adiciona isso ao selecionar texto)
+    //    Mantém background em <td>, <th>, <table> pois são usados para layout das tabelas
+    $html = preg_replace_callback(
+        '/<span(\s[^>]*)>/i',
+        function ($m) {
+            $attrs = preg_replace('/\bbackground(-color)?\s*:\s*[^;\"]+[;]?/i', '', $m[1]);
+            $attrs = preg_replace('/\bcolor\s*:\s*(#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\)|[a-z]+)\s*[;]?/i', '', $attrs);
+            // Limpa style="" vazio resultante
+            $attrs = preg_replace('/\bstyle\s*=\s*["\'][\s;]*["\']/', '', $attrs);
+            return '<span' . $attrs . '>';
+        },
+        $html
+    );
+
+    // 5. Remove divs/elementos com display:none (evita blocos invisíveis que TCPDF renderiza)
+    $html = preg_replace('/\bdisplay\s*:\s*none\b\s*[;]?/i', '', $html);
+
+    return $html;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Garante que spans var-field (highlight do editor) não cheguem ao PDF
-    $conteudo = ParecerService::stripVarSpans(trim($_POST['conteudo_parecer'] ?? ''));
+    $conteudo = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
     $requerimento_id = trim($_POST['requerimento_id'] ?? '');
     $salvar_banco = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
     $template_salvo = $_POST['template_salvo'] ?? 'Documento Eletrônico';

@@ -74,14 +74,7 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
     $pdf->SetAuthor($pdf->assinante_nome);
     $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
 
-    // Proteger documento — leitura, impressão e cópia de texto permitidas; edição bloqueada
-    $pdf->SetProtection(
-        array('print', 'print-high', 'copy'), // impressão em alta qualidade + cópia de texto
-        '',                                   // sem senha para abrir
-        hash('sha256', $numero_processo . $assinante['nome'] . date('Y')),
-        1,                                    // RC4 40-bit — mais compatível com leitores variados
-        null
-    );
+    // Sem criptografia — ela bloqueava impressão em leitores não-Adobe
 
     // Margens super otimizadas
     $pdf->SetMargins(15, 27, 15);
@@ -128,51 +121,56 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
 
-    // Bloco de assinatura digital — desenhado com TCPDF nativo (não afeta paginação)
+    // Bloco de assinatura digital — absolutamente posicionado, sem afetar paginação
     $pdf->lastPage();
-    $pw     = $pdf->getPageWidth();   // 210
-    $bW     = 65;
-    $bH     = 15;
-    $bX     = $pw - 15 - $bW;        // alinhado à direita, margem 15mm
-    $bY     = $pdf->getPageHeight() - 12 - $bH - 2;  // acima do footer
+    $pdf->SetAutoPageBreak(FALSE); // impede que Cell() crie nova página
 
-    // Borda externa
+    $pw = $pdf->getPageWidth();   // 210mm
+    $ph = $pdf->getPageHeight();  // 297mm
+    $bW = 62;
+    $bH = 13;
+    $bX = $pw - 15 - $bW;        // X = 133, margem direita 15mm
+    $bY = $ph - 14 - $bH;        // Y = 270, fica acima do footer (footer em -12)
+
+    // Fundo branco para cobrir qualquer conteúdo abaixo (transparência visual)
+    $pdf->SetFillColor(255, 255, 255);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'F');
+
+    // Borda externa fina cinza
     $pdf->SetDrawColor(160, 160, 160);
     $pdf->SetLineWidth(0.25);
     $pdf->Rect($bX, $bY, $bW, $bH, 'D');
 
-    // Faixa de cabeçalho cinza claro
-    $pdf->SetFillColor(225, 225, 225);
-    $pdf->SetDrawColor(160, 160, 160);
-    $pdf->Rect($bX, $bY, $bW, 4.5, 'FD');
+    // Faixa cabeçalho cinza claro
+    $pdf->SetFillColor(220, 220, 220);
+    $pdf->Rect($bX, $bY, $bW, 4, 'F');
 
-    // Marcador quadrado preenchido (substitui ícone unicode)
+    // Marcador quadrado
     $pdf->SetFillColor(50, 50, 50);
-    $pdf->Rect($bX + 2, $bY + 1.3, 2, 2, 'F');
+    $pdf->Rect($bX + 2, $bY + 1.2, 1.8, 1.8, 'F');
 
-    // Texto do cabeçalho
-    $pdf->SetFont('helvetica', 'B', 5.5);
+    // Título
+    $pdf->SetFont('helvetica', 'B', 5);
     $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetXY($bX + 5.5, $bY + 0.8);
-    $pdf->Cell($bW - 7, 3, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
+    $pdf->SetXY($bX + 5, $bY + 0.7);
+    $pdf->Cell($bW - 6, 2.8, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
 
     // Nome
-    $pdf->SetFont('helvetica', 'B', 6);
-    $pdf->SetXY($bX + 2, $bY + 5.2);
-    $pdf->Cell($bW - 4, 3.5, $pdf->assinante_nome, 0, 0);
+    $pdf->SetFont('helvetica', 'B', 5.5);
+    $pdf->SetXY($bX + 2, $bY + 4.5);
+    $pdf->Cell($bW - 4, 2.8, $pdf->assinante_nome, 0, 0);
 
     // Cargo + CPF
-    $pdf->SetFont('helvetica', '', 5.5);
+    $pdf->SetFont('helvetica', '', 5);
     $linha2 = $pdf->assinante_cargo;
     if (!empty($pdf->assinante_cpf)) $linha2 .= '  |  CPF: ' . $pdf->assinante_cpf;
-    $pdf->SetXY($bX + 2, $bY + 8.8);
-    $pdf->Cell($bW - 4, 3, $linha2, 0, 0);
+    $pdf->SetXY($bX + 2, $bY + 7.3);
+    $pdf->Cell($bW - 4, 2.5, $linha2, 0, 0);
 
     // Data
-    $pdf->SetFont('helvetica', '', 5);
     $pdf->SetTextColor(80, 80, 80);
-    $pdf->SetXY($bX + 2, $bY + 11.8);
-    $pdf->Cell($bW - 4, 3, $pdf->assinante_data, 0, 0);
+    $pdf->SetXY($bX + 2, $bY + 10);
+    $pdf->Cell($bW - 4, 2.5, $pdf->assinante_data, 0, 0);
 
     if (ob_get_length()) {
        ob_clean();
