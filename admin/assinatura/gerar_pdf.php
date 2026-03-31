@@ -124,31 +124,26 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
                      font-weight: inherit !important; text-decoration: none !important; }
     </style>';
 
-    // Bloco de assinatura digital — canto inferior direito do documento
-    $cpf_linha  = !empty($assinante['cpf'])       ? '<br><span style="font-size:6.5pt; color:#555; font-family:helvetica;">CPF: ' . $assinante['cpf'] . '</span>' : '';
-    $mat_linha  = !empty($assinante['matricula'])  ? '<br><span style="font-size:6pt; color:#777; font-family:helvetica;">Mat: ' . $assinante['matricula'] . '</span>' : '';
+    // Bloco de assinatura digital — discreto, canto inferior direito
+    $cpf_linha = !empty($assinante['cpf']) ? ' | CPF: ' . $assinante['cpf'] : '';
 
     $bloco_assinatura = '
-    <br><br>
+    <br>
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr>
-        <td width="50%"></td>
-        <td width="50%">
-          <table width="100%" cellpadding="0" cellspacing="0" border="1" style="border-color:#2D8661;">
+        <td width="60%"></td>
+        <td width="40%">
+          <table width="100%" cellpadding="3" cellspacing="0" border="1" style="border-color:#999;">
             <tr>
-              <td bgcolor="#2D8661" cellpadding="5" style="padding:5pt 8pt; text-align:center;">
-                <span style="font-family:helvetica; font-size:8pt; font-weight:bold; color:#ffffff; letter-spacing:0.5pt;">
-                  &#10003; ASSINADO DIGITALMENTE
-                </span>
+              <td style="padding:2pt 4pt; text-align:center; font-family:helvetica; font-size:6pt; font-weight:bold; color:#000;">
+                &#10003; Assinado digitalmente
               </td>
             </tr>
             <tr>
-              <td bgcolor="#f0faf5" cellpadding="7" style="padding:7pt 8pt; text-align:center;">
-                <span style="font-family:helvetica; font-size:9pt; font-weight:bold; color:#1a1a1a;">' . $assinante['nome'] . '</span>
-                <br><span style="font-family:helvetica; font-size:7.5pt; color:#444;">' . $assinante['cargo'] . '</span>
-                ' . $cpf_linha . $mat_linha . '
-                <br><br><span style="font-family:helvetica; font-size:6.5pt; color:#666;">Autenticado em: ' . $assinante['data_hora'] . '</span>
-                <br><span style="font-family:helvetica; font-size:5.5pt; color:#999;">Secretaria Municipal de Meio Ambiente — SEMA</span>
+              <td style="padding:3pt 4pt; font-family:helvetica; font-size:6pt; color:#000;">
+                <strong>' . $assinante['nome'] . '</strong><br>
+                ' . $assinante['cargo'] . $cpf_linha . '<br>
+                ' . $assinante['data_hora'] . '
               </td>
             </tr>
           </table>
