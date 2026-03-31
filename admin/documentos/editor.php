@@ -674,19 +674,40 @@ include '../header.php';
         const editable = document.querySelector('.note-editable');
         if (!editable) return;
 
+        let _debounceTimer = null;
+        let _updating = false;
+
+        const observer = new MutationObserver(function(mutations) {
+            // Ignorar mutações causadas pelos próprios indicadores
+            if (_updating) return;
+            // Ignorar se só mudou page-break-indicator
+            const isOnlyIndicators = mutations.every(function(m) {
+                return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).every(function(n) {
+                    return n.nodeType === 1 && n.classList && n.classList.contains('page-break-indicator');
+                });
+            });
+            if (isOnlyIndicators) return;
+
+            clearTimeout(_debounceTimer);
+            _debounceTimer = setTimeout(recalcularPaginas, 150);
+        });
+
         function recalcularPaginas() {
+            if (_updating) return;
+            _updating = true;
+            observer.disconnect();
+
             const alturaConteudo = editable.scrollHeight;
             const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
 
             // Remove todos os indicadores atuais
-            editable.querySelectorAll('.page-break-indicator').forEach(i => i.remove());
+            editable.querySelectorAll('.page-break-indicator').forEach(function(i) { i.remove(); });
 
             // Redesenha os indicadores
             for (let p = 1; p < paginasNecessarias; p++) {
                 const indicator = document.createElement('div');
                 indicator.className = 'page-break-indicator';
                 indicator.setAttribute('data-page-label', 'Corte da Página ' + p + ' / ' + (p + 1));
-                // Posiciona a linha exatamente na quebra de 256mm
                 indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
                 editable.appendChild(indicator);
             }
@@ -699,12 +720,17 @@ include '../header.php';
                 }
                 _lastTotalPages = paginasNecessarias;
             }
+
+            _updating = false;
+            observer.observe(editable, { childList: true, subtree: true, characterData: true });
         }
 
-        editable.addEventListener('input', recalcularPaginas);
-        new MutationObserver(recalcularPaginas).observe(editable, {
-            childList: true, subtree: true, characterData: true
+        editable.addEventListener('input', function() {
+            clearTimeout(_debounceTimer);
+            _debounceTimer = setTimeout(recalcularPaginas, 150);
         });
+
+        observer.observe(editable, { childList: true, subtree: true, characterData: true });
 
         setTimeout(recalcularPaginas, 300);
     }
