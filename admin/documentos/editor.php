@@ -34,6 +34,13 @@ include '../header.php';
             --sema-green-lt: #2a6b50;
             --sema-teal:     #0d7f5f;
             --card-radius:   14px;
+            --a4-width:      210mm;
+            --a4-height:     297mm;
+            --a4-header-h:   27mm;
+            --a4-footer-h:   14mm;
+            --a4-margin-lr:  15mm;
+            --a4-usable-h:   256mm; /* 297 - 27 - 14 */
+            --page-gap:      28px;
         }
 
         @keyframes shimmer {
@@ -50,28 +57,46 @@ include '../header.php';
         /* Editor fullscreen */
         #secao-editor {
             min-height: calc(100vh - var(--topbar-height, 60px) - 70px);
-            background: #e8ecf0;
+            background: #d0d4da;
         }
 
         /* ═══════════════════════════════════════════════
-           WRAPPER A4 — contém header + editor + footer
+           CANVAS MULTI-PÁGINA — "mesa de trabalho"
         ═══════════════════════════════════════════════ */
-        .a4-page-wrapper {
-            max-width: 210mm;
+        .a4-outer-wrapper {
+            background: #d0d4da;
+            padding: 24px 16px 32px;
+            min-height: 100%;
+        }
+
+        /* Container das páginas empilhadas */
+        .a4-pages-container {
+            max-width: var(--a4-width);
             margin: 0 auto;
+        }
+
+        /* Cada folha A4 individual */
+        .a4-page-sheet {
+            width: var(--a4-width);
+            min-height: var(--a4-height);
             background: #fff;
-            box-shadow: 0 6px 32px rgba(0,0,0,0.15);
-            border-radius: 3px;
-            min-height: 297mm;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.12);
+            border-radius: 2px;
+            margin-bottom: var(--page-gap);
+            position: relative;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        .a4-page-sheet:last-child {
+            margin-bottom: 0;
         }
 
         /* ═══════════════════════════════════════════════
-           PREVIEW A4 — HEADER SEMA (fiel ao PDF)
+           HEADER SEMA (cada página)
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
-            padding: 6mm 15mm 0 15mm;
+            padding: 6mm var(--a4-margin-lr) 0 var(--a4-margin-lr);
             flex-shrink: 0;
         }
         .a4-sema-header .header-content {
@@ -107,10 +132,10 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           PREVIEW A4 — FOOTER discreto (fiel ao PDF)
+           FOOTER (cada página)
         ═══════════════════════════════════════════════ */
         .a4-sema-footer {
-            padding: 0 15mm 6mm;
+            padding: 0 var(--a4-margin-lr) 6mm;
             border-top: 0.5px solid #d2d2d2;
             margin-top: auto;
             flex-shrink: 0;
@@ -135,15 +160,61 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           VARIÁVEIS DESTACADAS (campos auto-preenchidos)
+           ASSINATURA DIGITAL (preview no editor)
+        ═══════════════════════════════════════════════ */
+        .a4-signature-badge {
+            position: absolute;
+            bottom: 18mm;
+            right: var(--a4-margin-lr);
+            width: 62mm;
+            background: #fff;
+            border: 0.5px solid #a0a0a0;
+            border-radius: 2px;
+            padding: 2mm 3mm;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            pointer-events: none;
+            z-index: 5;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .a4-signature-badge .sig-header {
+            background: #dcdcdc;
+            margin: -2mm -3mm 1.5mm;
+            padding: 1mm 3mm;
+            border-radius: 2px 2px 0 0;
+            font-size: 5pt;
+            font-weight: 700;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 2mm;
+        }
+        .a4-signature-badge .sig-header::before {
+            content: '';
+            display: inline-block;
+            width: 1.8mm; height: 1.8mm;
+            background: #333;
+        }
+        .a4-signature-badge .sig-name {
+            font-size: 5.5pt; font-weight: 700; color: #1e1e1e;
+        }
+        .a4-signature-badge .sig-detail {
+            font-size: 5pt; color: #555; margin-top: 0.5mm;
+        }
+        .a4-signature-badge .sig-date {
+            font-size: 5pt; color: #808080; margin-top: 0.5mm;
+        }
+
+        /* ═══════════════════════════════════════════════
+           VARIÁVEIS DESTACADAS — NEGRITO (sem cor)
+           Campos auto-preenchidos pelo protocolo.
+           Estilo neutro para não gerar artefatos no PDF.
         ═══════════════════════════════════════════════ */
         .note-editable .var-field,
         .var-field {
-            text-decoration: underline;
-            text-decoration-color: #1a5276;
-            color: #1a5276 !important;
-            font-weight: 600;
-            background: rgba(26, 82, 118, 0.07);
+            font-weight: 700 !important;
+            color: inherit !important;
+            text-decoration: none !important;
+            background: rgba(0, 0, 0, 0.045);
             border-radius: 2px;
             padding: 0 2px;
         }
@@ -156,30 +227,30 @@ include '../header.php';
             box-shadow: none !important;
             background: transparent;
         }
-        /* Toolbar do Summernote: barra separada acima da página, mesma largura A4 */
         .note-toolbar {
             background: #fff !important;
             border: 1px solid #dee2e6 !important;
             border-radius: 8px !important;
             padding: 6px 10px !important;
             margin: 0 auto 12px !important;
-            max-width: 210mm !important;
+            max-width: var(--a4-width) !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+            position: sticky;
+            top: 0;
+            z-index: 20;
         }
-        /* Editing area — herda largura do wrapper A4, sem estilos próprios de página */
         .note-editing-area {
             background: transparent;
             flex: 1;
         }
-        /* Área editável: margens laterais como o TCPDF (15mm) */
         .note-editable {
             font-family: "Times New Roman", Times, serif !important;
             font-size: 12pt !important;
             line-height: 1.4 !important;
             color: #1e1e1e !important;
             text-align: justify !important;
-            padding: 2mm 15mm 10mm !important;
-            min-height: 180mm !important;
+            padding: 2mm var(--a4-margin-lr) 10mm !important;
+            min-height: var(--a4-usable-h) !important;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -194,10 +265,37 @@ include '../header.php';
         .note-editable .condicionantes {
             font-size: 9pt; border: 1px solid #000; padding: 8px 10px;
         }
-        /* Área externa ao editor — fundo cinza como "mesa" de trabalho */
-        .a4-outer-wrapper {
-            background: #dde1e7;
-            padding: 20px 16px 24px;
+
+        /* ═══════════════════════════════════════════════
+           SEPARADOR VISUAL DE PÁGINAS
+           Linha de corte + espaço entre páginas
+        ═══════════════════════════════════════════════ */
+        .page-break-indicator {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .page-break-indicator::before {
+            content: '';
+            position: absolute;
+            left: 10mm;
+            right: 10mm;
+            top: 0;
+            border-top: 1.5px dashed #b0b8c4;
+        }
+        .page-break-indicator::after {
+            content: attr(data-page-label);
+            position: absolute;
+            right: 12mm;
+            top: -8px;
+            font-size: 7pt;
+            color: #8c96a6;
+            font-family: 'Helvetica Neue', sans-serif;
+            background: #fff;
+            padding: 0 6px;
         }
 
         /* ═══════════════════════════════════════════════
@@ -274,7 +372,7 @@ include '../header.php';
                         <i class="fas fa-edit me-2 text-success"></i> Editando Documento
                     </h5>
                     <small class="text-muted" style="font-size:.78rem">
-                        Campos <span style="text-decoration:underline;color:#1a5276;font-weight:600">sublinhados em azul</span>
+                        Campos <span style="font-weight:700">em negrito</span>
                         são preenchidos automaticamente pelo protocolo.
                     </small>
                 </div>
@@ -403,7 +501,7 @@ include '../header.php';
                 </div>
                 <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
                   <i class="fas fa-circle-info mt-1 flex-shrink-0"></i>
-                  <span>Os campos <strong>sublinhados em azul</strong> serão preservados como variáveis automáticas.</span>
+                  <span>Os campos <strong>em negrito</strong> serão preservados como variáveis automáticas.</span>
                 </div>
                 <button class="btn btn-sema w-100 fw-bold" onclick="salvarTemplate('novo')">
                   <i class="fas fa-save me-2"></i> Salvar Novo Template
@@ -493,19 +591,16 @@ include '../header.php';
         }
     }
 
-    /* ─── Monta o wrapper A4 com header + editing-area + footer ── */
-    function montarPaginaA4() {
-        if (document.querySelector('.a4-page-wrapper')) return;
-        const editingArea = document.querySelector('.note-editing-area');
-        if (!editingArea) return;
-        const parent = editingArea.parentNode;
+    /* ═══════════════════════════════════════════════════════════
+       CANVAS MULTI-PÁGINA — simula folhas A4 empilhadas
+       (estilo Google Docs) dentro de um único editor editável.
+    ═══════════════════════════════════════════════════════════ */
+    const PAGE_USABLE_PX = 256 * 3.7795; // 256mm em px (96dpi)
+    let _pagesContainer = null;
+    let _currentPageCount = 0;
 
-        // Criar wrapper A4
-        const wrapper = document.createElement('div');
-        wrapper.className = 'a4-page-wrapper';
-
-        // Header
-        wrapper.innerHTML = `
+    function gerarHeaderHtml() {
+        return `
             <div class="a4-sema-header">
                 <div class="header-content">
                     <img src="${logoSemaUrl}" alt="Logo SEMA">
@@ -516,49 +611,148 @@ include '../header.php';
                 </div>
                 <div class="header-line"></div>
             </div>`;
-
-        // Mover editing-area para dentro do wrapper
-        parent.insertBefore(wrapper, editingArea);
-        wrapper.appendChild(editingArea);
-
-        // Footer
-        const footer = document.createElement('div');
-        footer.className = 'a4-sema-footer';
-        footer.innerHTML = `
-            <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
-            <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
-            <div class="a4-footer-page" id="page-counter">Pagina 1 de 1</div>`;
-        wrapper.appendChild(footer);
-
-        // Iniciar contador de páginas dinâmico
-        iniciarContadorPaginas();
     }
 
-    /* ─── Contador de páginas dinâmico baseado na altura do conteúdo ── */
-    function iniciarContadorPaginas() {
-        const editable = document.querySelector('.note-editable');
-        if (!editable) return;
+    function gerarFooterHtml(pageNum, totalPages) {
+        return `
+            <div class="a4-sema-footer">
+                <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
+                <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
+                <div class="a4-footer-page">&mdash; Página ${pageNum} de ${totalPages} &mdash;</div>
+            </div>`;
+    }
 
-        function atualizarPaginas() {
-            const counter = document.getElementById('page-counter');
-            if (!counter) return;
-            // Área útil por página A4: 297mm - 27mm(header) - 35mm(footer) ≈ 235mm
-            // Convertendo mm para px: 1mm ≈ 3.7795px (96dpi)
-            const alturaPaginaPx = 235 * 3.7795;
+    function gerarSignatureBadgeHtml() {
+        return `
+            <div class="a4-signature-badge">
+                <div class="sig-header">ASSINADO DIGITALMENTE</div>
+                <div class="sig-name">NOME DO ASSINANTE</div>
+                <div class="sig-detail">Cargo  |  CPF: ***.***.**-**</div>
+                <div class="sig-date">dd/mm/aaaa hh:mm:ss</div>
+            </div>`;
+    }
+
+    /**
+     * Monta o canvas multi-página envolvendo a área de edição.
+     * Cria a primeira "folha" e inicia o monitoramento de páginas.
+     */
+    function montarCanvasMultiPagina() {
+        if (document.querySelector('.a4-pages-container')) return;
+        const editingArea = document.querySelector('.note-editing-area');
+        if (!editingArea) return;
+        const parent = editingArea.parentNode;
+
+        // Container geral de páginas
+        _pagesContainer = document.createElement('div');
+        _pagesContainer.className = 'a4-pages-container';
+
+        // Primeira folha
+        const sheet = document.createElement('div');
+        sheet.className = 'a4-page-sheet';
+        sheet.innerHTML = gerarHeaderHtml();
+
+        // Mover editing-area para dentro da primeira folha
+        parent.insertBefore(_pagesContainer, editingArea);
+        _pagesContainer.appendChild(sheet);
+        sheet.appendChild(editingArea);
+
+        // Footer da primeira folha
+        const footerEl = document.createElement('div');
+        footerEl.className = 'a4-sema-footer';
+        footerEl.innerHTML = `
+            <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
+            <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
+            <div class="a4-footer-page" data-page-num="1">&mdash; Página 1 de 1 &mdash;</div>`;
+        sheet.appendChild(footerEl);
+
+        // Badge de assinatura na última folha (absolute)
+        sheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
+
+        _currentPageCount = 1;
+        iniciarMonitorPaginas();
+    }
+
+    /**
+     * Monitora a altura do conteúdo e cria/remove folhas visuais adicionais.
+     * Cada folha adicional é um div decorativo (header + footer)
+     * empilhado após a folha do editor.
+     */
+    function iniciarMonitorPaginas() {
+        const editable = document.querySelector('.note-editable');
+        if (!editable || !_pagesContainer) return;
+
+        function recalcularPaginas() {
             const alturaConteudo = editable.scrollHeight;
-            const paginas = Math.max(1, Math.ceil(alturaConteudo / alturaPaginaPx));
-            counter.innerHTML = '&mdash;  Página 1 de ' + paginas + '  &mdash;';
+            const paginasNecessarias = Math.max(1, Math.ceil(alturaConteudo / PAGE_USABLE_PX));
+
+            if (paginasNecessarias === _currentPageCount) return;
+
+            // Atualizar min-height do editável para preencher todas as páginas
+            editable.style.minHeight = (paginasNecessarias * PAGE_USABLE_PX) + 'px';
+
+            // Remover folhas extras antigas (tudo exceto a primeira folha)
+            const sheetsExtras = _pagesContainer.querySelectorAll('.a4-page-sheet-extra');
+            sheetsExtras.forEach(s => s.remove());
+
+            // Remover indicadores de quebra antigos
+            editable.querySelectorAll('.page-break-indicator').forEach(i => i.remove());
+
+            // Adicionar indicadores de quebra de página dentro do editor
+            for (let p = 1; p < paginasNecessarias; p++) {
+                const indicator = document.createElement('div');
+                indicator.className = 'page-break-indicator';
+                indicator.setAttribute('data-page-label', 'Página ' + (p + 1));
+                indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
+                editable.appendChild(indicator);
+            }
+
+            // Criar folhas visuais extras empilhadas abaixo
+            for (let p = 2; p <= paginasNecessarias; p++) {
+                const extraSheet = document.createElement('div');
+                extraSheet.className = 'a4-page-sheet a4-page-sheet-extra';
+                extraSheet.style.minHeight = 'var(--a4-height)';
+                extraSheet.style.pointerEvents = 'none';
+                extraSheet.innerHTML = gerarHeaderHtml() +
+                    '<div style="flex:1"></div>' +
+                    '<div class="a4-sema-footer">' +
+                    '  <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>' +
+                    '  <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>' +
+                    '  <div class="a4-footer-page">&mdash; Página ' + p + ' de ' + paginasNecessarias + ' &mdash;</div>' +
+                    '</div>';
+
+                // Badge de assinatura apenas na última folha
+                if (p === paginasNecessarias) {
+                    extraSheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
+                }
+
+                _pagesContainer.appendChild(extraSheet);
+            }
+
+            // Mover badge de assinatura da primeira folha se não for a última
+            const firstSheet = _pagesContainer.querySelector('.a4-page-sheet:not(.a4-page-sheet-extra)');
+            const firstBadge = firstSheet ? firstSheet.querySelector('.a4-signature-badge') : null;
+            if (paginasNecessarias > 1 && firstBadge) {
+                firstBadge.style.display = 'none';
+            } else if (paginasNecessarias === 1 && firstBadge) {
+                firstBadge.style.display = '';
+            }
+
+            // Atualizar numeração na primeira folha
+            const firstFooterPage = firstSheet ? firstSheet.querySelector('.a4-footer-page') : null;
+            if (firstFooterPage) {
+                firstFooterPage.innerHTML = '&mdash; Página 1 de ' + paginasNecessarias + ' &mdash;';
+            }
+
+            _currentPageCount = paginasNecessarias;
         }
 
-        // Atualizar ao digitar e ao mudar conteúdo
-        editable.addEventListener('input', atualizarPaginas);
-        new MutationObserver(atualizarPaginas).observe(editable, {
+        editable.addEventListener('input', recalcularPaginas);
+        new MutationObserver(recalcularPaginas).observe(editable, {
             childList: true, subtree: true, characterData: true
         });
 
-        // Atualizar após carregamento inicial (com delay para renderizar)
-        setTimeout(atualizarPaginas, 500);
-        setTimeout(atualizarPaginas, 2000);
+        setTimeout(recalcularPaginas, 300);
+        setTimeout(recalcularPaginas, 1500);
     }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
@@ -631,7 +825,7 @@ include '../header.php';
                 ],
                 callbacks: {
                     onInit: function() {
-                        montarPaginaA4();
+                        montarCanvasMultiPagina();
                     }
                 }
             });
@@ -679,9 +873,19 @@ include '../header.php';
             conteudoHtml = document.getElementById('editor-conteudo').value;
         }
 
+        // Remover indicadores de quebra de página (elementos visuais do editor)
+        conteudoHtml = conteudoHtml.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
+
         // Remover spans var-field antes de enviar para PDF (mantém apenas o valor de texto)
         conteudoHtml = conteudoHtml.replace(
             /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
+            '$1'
+        );
+
+        // Limpeza de cores inline residuais que o Summernote injeta ao quebrar spans
+        // Remove color:#1a5276 e variantes (hex azul do antigo var-field)
+        conteudoHtml = conteudoHtml.replace(
+            /(<span[^>]*style="[^"]*)color\s*:\s*(?:rgb\(26\s*,\s*82\s*,\s*118\)|#1a5276)\s*;?/gi,
             '$1'
         );
 

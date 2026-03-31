@@ -29,7 +29,8 @@ function sanitizarHtmlParaPdf(string $html): string {
     // 3. Remove z-index e overflow
     $html = preg_replace('/\b(z-index|overflow(-[xy])?)\s*:\s*[^;\"]+[;]?/i', '', $html);
 
-    // 4. Remove background-color de <span> (Summernote adiciona isso ao selecionar texto)
+    // 4. Remove background-color e color de <span> (Summernote adiciona isso ao selecionar texto)
+    //    Também remove a cor azul #1a5276 (antiga cor do var-field) que pode persistir em spans quebrados
     //    Mantém background em <td>, <th>, <table> pois são usados para layout das tabelas
     $html = preg_replace_callback(
         '/<span(\s[^>]*)>/i',

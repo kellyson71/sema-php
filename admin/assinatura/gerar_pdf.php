@@ -113,8 +113,10 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
         li { margin-bottom: 2pt; line-height: 1.35; }
 
         /* Segurança: anula highlight de var-field caso chegue aqui */
-        .var-field { color: inherit !important; background: transparent !important;
-                     font-weight: inherit !important; text-decoration: none !important; }
+        .var-field { color: #1e1e1e !important; background: transparent !important;
+                     font-weight: bold !important; text-decoration: none !important; }
+        /* Remove cor azul residual de spans quebrados pelo Summernote */
+        span[style*=\"1a5276\"] { color: #1e1e1e !important; }
     </style>';
 
     $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
