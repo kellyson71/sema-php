@@ -251,6 +251,7 @@ include '../header.php';
             text-align: justify !important;
             padding: 2mm var(--a4-margin-lr) 10mm !important;
             min-height: var(--a4-usable-h) !important;
+            box-sizing: border-box !important;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -683,7 +684,9 @@ include '../header.php';
 
         function recalcularPaginas() {
             const alturaConteudo = editable.scrollHeight;
-            const paginasNecessarias = Math.max(1, Math.ceil(alturaConteudo / PAGE_USABLE_PX));
+            // O scrollHeight conta com o padding (aprox 45px) e a conversão de float para int do DOM.
+            // Para não quebrar página só por margem estática vazia, abatemos uma tolerância de 50px.
+            const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
 
             if (paginasNecessarias === _currentPageCount) return;
 
