@@ -644,60 +644,64 @@ include_once 'tipos_alvara.php';
     </div>
 
     <footer style="background:#0a1a2e; padding:48px 24px 32px; text-align:center;">
-        
-        <!-- Logo SEMA branca -->
-        <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
-             alt="SEMA — Secretaria Municipal de Meio Ambiente"
-             style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
+        <!-- wrapper único para isolar do CSS legado footer > div:nth-child -->
+        <section style="max-width:900px; margin:0 auto;">
 
-        <!-- Botões de ação -->
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
-            <a href="./consultar/index.php"
-               style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
-            </a>
-            <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
-                    style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-                    onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
-            </button>
-        </div>
+            <!-- Logo SEMA branca -->
+            <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
+                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
+                 style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
 
-        <!-- Contatos como texto -->
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:28px; margin-bottom:36px;">
-            <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
-               style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
-               onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
-                <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(74,222,128,0.15); flex-shrink:0;">
-                    <i class="fab fa-whatsapp" style="color:#4ade80; font-size:1.1rem;"></i>
-                </span>
-                <span>
-                    <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">WhatsApp</span>
-                    <span style="font-weight:500;">(84) 99668-6413</span>
-                </span>
-            </a>
-            <a href="mailto:fiscalizacaosemapdf@gmail.com"
-               style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
-               onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
-                <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(249,168,212,0.15); flex-shrink:0;">
-                    <i class="fas fa-envelope" style="color:#f9a8d4; font-size:1rem;"></i>
-                </span>
-                <span>
-                    <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">E-mail</span>
-                    <span style="font-weight:500;">fiscalizacaosemapdf@gmail.com</span>
-                </span>
-            </a>
-        </div>
+            <!-- Botões de ação -->
+            <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
+                <a href="./consultar/index.php"
+                   style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                   onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
+                </a>
+                <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
+                        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+                </button>
+            </section>
 
-        <!-- Divisor sutil -->
-        <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:0 auto 28px; max-width:600px;">
+            <!-- Contatos como texto -->
+            <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:28px; margin-bottom:36px;">
+                <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
+                   style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
+                   onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
+                    <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(74,222,128,0.15); flex-shrink:0;">
+                        <i class="fab fa-whatsapp" style="color:#4ade80; font-size:1.1rem;"></i>
+                    </span>
+                    <span>
+                        <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">WhatsApp</span>
+                        <span style="font-weight:500;">(84) 99668-6413</span>
+                    </span>
+                </a>
+                <a href="mailto:fiscalizacaosemapdf@gmail.com"
+                   style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
+                   onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
+                    <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(249,168,212,0.15); flex-shrink:0;">
+                        <i class="fas fa-envelope" style="color:#f9a8d4; font-size:1rem;"></i>
+                    </span>
+                    <span>
+                        <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">E-mail</span>
+                        <span style="font-weight:500;">fiscalizacaosemapdf@gmail.com</span>
+                    </span>
+                </a>
+            </section>
 
-        <!-- Copyright com maior destaque -->
-        <p style="font-size:0.95rem; color:rgba(255,255,255,0.85); margin:0; line-height:1.6; letter-spacing:0.3px;">
-            &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
-            <span style="font-size:0.8rem; color:rgba(255,255,255,0.5); display:block; margin-top:8px;">Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.65); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.4);">Kellyson Raphael</a></span>
-        </p>
+            <!-- Divisor sutil -->
+            <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:0 auto 28px; max-width:600px;">
+
+            <!-- Copyright -->
+            <p style="font-size:0.95rem; color:rgba(255,255,255,0.85); margin:0; line-height:1.6; letter-spacing:0.3px;">
+                &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
+                <span style="font-size:0.8rem; color:rgba(255,255,255,0.5); display:block; margin-top:8px;">Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.65); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.4);">Kellyson Raphael</a></span>
+            </p>
+
+        </section>
     </footer>
 
     <!-- Faixa gráfica institucional -->
