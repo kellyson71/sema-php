@@ -49,7 +49,7 @@ $aguardandoAnalise = $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE statu
 
 $stmtAnalisados = $pdo->prepare("
     SELECT COUNT(DISTINCT requerimento_id) FROM historico_acoes
-    WHERE admin_id = ? AND acao LIKE '%assinou%'
+    WHERE admin_id = ? AND acao LIKE '%assinou%' AND DATE(data_acao) = CURDATE()
 ");
 $stmtAnalisados->execute([$_SESSION['admin_id']]);
 $analisadosPorMim = $stmtAnalisados->fetchColumn();
@@ -101,14 +101,14 @@ include 'header.php';
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <div class="text-muted small text-uppercase fw-bold">Analisados por Mim</div>
+                            <div class="text-muted small text-uppercase fw-bold">Concluídos Hoje</div>
                             <div class="h2 mb-0 text-success"><?php echo $analisadosPorMim; ?></div>
                         </div>
                         <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
                             <i class="fas fa-check-double text-success"></i>
                         </div>
                     </div>
-                    <div class="small text-muted mt-2">Pareceres assinados nesta sessão</div>
+                    <div class="small text-muted mt-2">Pareceres assinados por mim hoje</div>
                 </div>
             </div>
         </div>

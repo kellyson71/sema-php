@@ -197,9 +197,19 @@ include 'header.php';
                             </td>
                             <td><?php echo htmlspecialchars($admin['email']); ?></td>
                             <td>
-                                <span class="badge <?php echo $admin['nivel'] === 'admin' ? 'bg-danger' : 'bg-info'; ?>">
-                                    <?php echo $admin['nivel'] === 'admin' ? 'Administrador' : 'Operador'; ?>
-                                </span>
+                                <?php
+                                $nivelConfig = [
+                                    'admin'       => ['Administrador',       'bg-danger'],
+                                    'admin_geral' => ['Admin Geral',         'bg-dark'],
+                                    'secretario'  => ['Secretário(a)',       ''],
+                                    'analista'    => ['Analista — Triagem',  'bg-primary'],
+                                    'fiscal'      => ['Fiscal de Obras',     'bg-success'],
+                                    'operador'    => ['Operador',            'bg-secondary'],
+                                ];
+                                $cfg = $nivelConfig[$admin['nivel']] ?? [ucfirst($admin['nivel']), 'bg-secondary'];
+                                $extraStyle = ($admin['nivel'] === 'secretario') ? 'background:#8b5cf6;' : '';
+                                ?>
+                                <span class="badge <?php echo $cfg[1]; ?>" style="<?php echo $extraStyle; ?>"><?php echo $cfg[0]; ?></span>
                             </td>
                             <td>
                                 <span class="badge <?php echo $admin['ativo'] ? 'bg-success' : 'bg-secondary'; ?>">
@@ -275,10 +285,18 @@ include 'header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="nivel" class="form-label">Nível</label>
+                        <label for="nivel" class="form-label">Nível / Setor</label>
                         <select class="form-select" id="admin_nivel" name="nivel">
-                            <option value="operador">Operador</option>
-                            <option value="admin">Administrador</option>
+                            <optgroup label="Operacionais">
+                                <option value="operador">Operador (acesso geral)</option>
+                                <option value="analista">Analista — Triagem de Protocolos</option>
+                                <option value="fiscal">Fiscal de Obras</option>
+                                <option value="secretario">Secretário(a) — Aprovação de Alvarás</option>
+                            </optgroup>
+                            <optgroup label="Administração">
+                                <option value="admin_geral">Admin Geral</option>
+                                <option value="admin">Administrador (acesso total)</option>
+                            </optgroup>
                         </select>
                     </div>
 

@@ -761,10 +761,17 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <div class="user-info d-none d-md-flex">
                             <span class="user-name"><?php echo $_SESSION['admin_nome']; ?></span>
                             <span class="user-role">
-                                <?php 
-                                if ($_SESSION['admin_nivel'] === 'admin') echo 'Administrador';
-                                elseif ($_SESSION['admin_nivel'] === 'secretario' || $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br') echo 'Secretário(a)';
-                                else echo 'Operador'; 
+                                <?php
+                                $labelSetor = [
+                                    'admin'       => 'Administrador',
+                                    'admin_geral' => 'Admin Geral',
+                                    'secretario'  => 'Secretário(a)',
+                                    'analista'    => 'Analista — Triagem',
+                                    'fiscal'      => 'Fiscal de Obras',
+                                    'operador'    => 'Operador',
+                                ];
+                                $nivelAtual = $_SESSION['admin_nivel'] ?? 'operador';
+                                echo $labelSetor[$nivelAtual] ?? ucfirst($nivelAtual);
                                 ?>
                             </span>
                         </div>
@@ -855,5 +862,26 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <!-- Overlay para fechar a sidebar -->
         <div class="content-overlay" id="contentOverlay"></div>
+
+        <?php if (isset($_SESSION['admin_nivel_original'])): ?>
+        <div class="alert alert-warning border-0 rounded-0 mb-0 py-2 px-4 d-flex align-items-center justify-content-between" style="background:#fef3c7; border-bottom: 2px solid #f59e0b !important; border-radius: 0 !important;">
+            <div>
+                <i class="fas fa-flask me-2 text-warning"></i>
+                <strong>Modo simulação ativo:</strong>
+                <?php
+                $labelSetor = [
+                    'secretario' => 'Secretário(a) — Aprovação de Alvarás',
+                    'analista'   => 'Analista — Triagem de Protocolos',
+                    'fiscal'     => 'Fiscal de Obras',
+                ];
+                echo $labelSetor[$_SESSION['admin_nivel']] ?? ucfirst($_SESSION['admin_nivel']);
+                ?>
+                <small class="text-muted ms-2">Você está navegando como este setor</small>
+            </div>
+            <a href="<?= $adminBase ?>simular_perfil.php?sair=1" class="btn btn-sm btn-warning fw-semibold">
+                <i class="fas fa-times me-1"></i> Sair da simulação
+            </a>
+        </div>
+        <?php endif; ?>
 
         <div class="main-content">
