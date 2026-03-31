@@ -169,6 +169,13 @@ class ParecerService
             $dados['admin_matricula_portaria'] = $adminData['matricula_portaria'] ?? '';
         }
 
+        // Substituir campos vazios por "Não informado"
+        foreach ($dados as $k => $v) {
+            if (is_string($v) && trim($v) === '') {
+                $dados[$k] = 'Não informado';
+            }
+        }
+
         // Calcular número sequencial do documento no ano
         try {
             $db = new Database();
@@ -227,6 +234,9 @@ class ParecerService
                 $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
             }
 
+            // Variáveis não mapeadas
+            $html = preg_replace('/\{\{[^}]+\}\}/', 'Não informado', $html);
+
             return $html;
 
         } catch (Exception $e) {
@@ -245,6 +255,9 @@ class ParecerService
             $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
         }
 
+        // Variáveis não mapeadas
+        $html = preg_replace('/\{\{[^}]+\}\}/', 'Não informado', $html);
+
         return self::extrairConteudoTemplate($html);
     }
 
@@ -255,6 +268,9 @@ class ParecerService
         foreach ($dados as $variavel => $valor) {
             $html = str_replace('{{' . $variavel . '}}', htmlspecialchars($valor), $html);
         }
+
+        // Variáveis não mapeadas
+        $html = preg_replace('/\{\{[^}]+\}\}/', 'Não informado', $html);
 
         $html = $this->processarImagensRelativas($html, dirname($templatePath));
 
