@@ -519,6 +519,41 @@ try {
             ]);
             break;
 
+        case 'listar_pareceres':
+            $requerimento_id = (int)($input['requerimento_id'] ?? 0);
+            if (!$requerimento_id) throw new Exception('requerimento_id obrigatório');
+
+            $stmtAd = $pdo->prepare("
+                SELECT documento_id, nome_arquivo, tipo_documento, assinante_nome,
+                       assinante_cargo, assinante_cpf, caminho_arquivo,
+                       timestamp_assinatura
+                FROM assinaturas_digitais
+                WHERE requerimento_id = ?
+                ORDER BY timestamp_assinatura DESC
+            ");
+            $stmtAd->execute([$requerimento_id]);
+            $rows = $stmtAd->fetchAll(PDO::FETCH_ASSOC);
+
+            $pareceres = array_map(function($r) {
+                $existe = !empty($r['caminho_arquivo']) && file_exists($r['caminho_arquivo']);
+                $tamanho = $existe ? filesize($r['caminho_arquivo']) : 0;
+                return [
+                    'documento_id' => $r['documento_id'],
+                    'arquivo'      => $r['nome_arquivo'],
+                    'tipo'         => $r['tipo_documento'] ?? 'parecer',
+                    'nome'         => $r['nome_arquivo'],
+                    'assinante'    => $r['assinante_nome'],
+                    'cargo'        => $r['assinante_cargo'],
+                    'cpf'          => $r['assinante_cpf'],
+                    'data'         => date('d/m/Y H:i', strtotime($r['timestamp_assinatura'])),
+                    'tamanho'      => $tamanho,
+                    'apagado'      => !$existe,
+                ];
+            }, $rows);
+
+            echo json_encode(['success' => true, 'pareceres' => $pareceres]);
+            break;
+
         case 'excluir_documento_assinado':
             $documento_id = $input['documento_id'] ?? '';
             $permanente = (bool)($input['permanente'] ?? false);

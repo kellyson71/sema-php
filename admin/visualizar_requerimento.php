@@ -2051,6 +2051,23 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
         </div>
     </div>
+
+    <!-- Documentos Assinados -->
+    <div class="row mt-4" id="secao-docs-assinados" style="display:none">
+        <div class="col-12">
+            <div class="modern-card">
+                <div class="modern-card-header">
+                    <i class="fas fa-file-signature icon"></i>
+                    <h6>Documentos Assinados Digitalmente</h6>
+                    <span class="badge ms-auto" id="badge-docs-count"
+                          style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="docs-assinados-grid" class="p-3" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════
@@ -2708,53 +2725,98 @@ $isBlocked = $isFinalized || $isIndeferido;
          .then(res => res.json())
          .then(data => {
              const lista = document.getElementById('pareceres-existentes-list');
-             if (data.pareceres.length === 0) {
-                 lista.innerHTML = '<p class="text-muted small">Nenhum parecer gerado ainda.</p>';
-             } else {
-                 lista.innerHTML = '';
-                 data.pareceres.forEach(p => {
-                     const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                     const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                    const { iconClass, iconColor } = obterIconeParecer(p.tipo);
-                    const nomeLimpo = formatarNomeParecer(p.nome);
-                    const seloTipo = gerarSeloTipoParecer(p.tipo);
+             const secao = document.getElementById('secao-docs-assinados');
+             const grid  = document.getElementById('docs-assinados-grid');
+             const badge = document.getElementById('badge-docs-count');
 
-                     lista.innerHTML += `
-                        <div class="data-row">
-                            <div class="data-label" style="min-width: 40px;">
-                                <i class="fas ${iconClass}" style="color: ${iconColor}; font-size: 20px;"></i>
+             if (!data.pareceres || data.pareceres.length === 0) {
+                 lista.innerHTML = '<p class="text-muted small px-1 mb-0">Nenhum documento assinado ainda.</p>';
+                 secao.style.display = 'none';
+                 return;
+             }
+
+             // ── Mini-lista na seção de ações (compacta) ──────────
+             lista.innerHTML = '';
+             data.pareceres.forEach(p => {
+                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const { iconClass, iconColor } = obterIconeParecer(p.tipo);
+                 const nomeLimpo = formatarNomeParecer(p.nome);
+                 const seloTipo  = gerarSeloTipoParecer(p.tipo);
+
+                 lista.innerHTML += `
+                    <div class="data-row">
+                        <div class="data-label" style="min-width:40px">
+                            <i class="fas ${iconClass}" style="color:${iconColor};font-size:20px"></i>
+                        </div>
+                        <div class="data-value">
+                            <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                                <span>${nomeLimpo}</span>${seloTipo}
                             </div>
-                            <div class="data-value">
-                                <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
-                                    <span>${nomeLimpo}</span>
-                                    ${seloTipo}
-                                </div>
-                                <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : "" }</div>
-                            </div>
-                            <div class="data-actions">
-                                <a href="${viewerUrl}"
-                                   class="copy-btn me-1"
-                                   target="_blank"
-                                   title="Visualizar">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="${downloadUrl}" 
-                                   class="copy-btn me-1" 
-                                   title="Baixar PDF">
-                                    <i class="fas fa-download"></i>
-                                </a>
-                                <button onclick="excluirParecer('${p.arquivo}')" class="copy-btn" title="Excluir" style="color: #dc2626;">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                            <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}
+                                ${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : ''}
                             </div>
                         </div>
-                     `;
-                 });
-             }
+                        <div class="data-actions">
+                            ${!p.apagado ? `<a href="${viewerUrl}" class="copy-btn me-1" target="_blank" title="Visualizar"><i class="fas fa-eye"></i></a>
+                            <a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
+                            <button onclick="excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+             });
+
+             // ── Cards na seção de documentos assinados ───────────
+             secao.style.display = '';
+             badge.textContent = data.pareceres.length + ' documento(s)';
+             grid.innerHTML = '';
+             data.pareceres.forEach(p => {
+                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : null;
+                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : null;
+                 const iniciais    = (p.assinante || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+                 const nomeLimpo   = formatarNomeParecer(p.nome);
+
+                 grid.innerHTML += `
+                    <div style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;gap:8px;">
+                            <span style="font-family:monospace;font-size:.68rem;color:#888;background:#f5f5f5;padding:3px 7px;border-radius:4px;">
+                                <i class="fas fa-fingerprint me-1"></i>${p.documento_id ? p.documento_id.substring(0,12) + '…' : '—'}
+                            </span>
+                            ${p.apagado ? '<span class="badge bg-danger" style="font-size:.65rem"><i class="fas fa-trash me-1"></i>Apagado</span>' :
+                                          '<span class="badge" style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.65rem"><i class="fas fa-check-circle me-1"></i>Assinado</span>'}
+                        </div>
+                        <div style="font-size:.78rem;font-weight:600;color:#333;margin-bottom:8px;word-break:break-word;">${nomeLimpo}</div>
+                        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fafafa;border-radius:6px;margin-bottom:10px;border:1px solid #f0f0f0;">
+                            <div style="width:32px;height:32px;border-radius:50%;background:#1c4b36;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0;">${iniciais}</div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;color:#333;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.assinante || '—')}</div>
+                                <div style="font-size:.7rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.cargo || '')} • ${p.data}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
+                            ${!p.apagado && viewerUrl ? `<a href="${viewerUrl}" target="_blank" class="btn btn-sm btn-primary flex-fill" style="font-size:.75rem"><i class="fas fa-eye me-1"></i>Ver</a>` :
+                              '<button class="btn btn-sm btn-secondary flex-fill" disabled style="font-size:.75rem"><i class="fas fa-eye-slash me-1"></i>Indisponível</button>'}
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
+                            <button onclick="excluirDocAssinado('${p.documento_id}')" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+             });
          })
-         .catch(error => {
-             console.error('Erro ao carregar pareceres:', error);
-         });
+         .catch(error => console.error('Erro ao carregar pareceres:', error));
+     }
+
+     function excluirDocAssinado(docId) {
+         if (!confirm('Remover este documento da listagem?')) return;
+         fetch('parecer_handler.php', {
+             method: 'POST',
+             headers: {'Content-Type': 'application/json'},
+             body: JSON.stringify({ action: 'excluir_documento_assinado', documento_id: docId, permanente: false })
+         })
+         .then(r => r.json())
+         .then(d => { if (d.success) carregarPareceresExistentes(); else alert(d.error || 'Erro ao excluir'); });
+     }
+
+     function escHtml(str) {
+         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
      }
 
      function _REMOVIDO_carregarPareceresDocumentos_OLD(pareceres) {
