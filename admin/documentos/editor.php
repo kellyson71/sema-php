@@ -236,6 +236,10 @@ include '../header.php';
         .note-editing-area {
             background: transparent;
             flex: 1;
+            overflow: visible !important;
+        }
+        .note-editor.note-frame .note-editing-area {
+            overflow: visible !important;
         }
         .note-editable {
             font-family: "Times New Roman", Times, serif !important;
@@ -245,6 +249,8 @@ include '../header.php';
             text-align: justify !important;
             padding: 2mm var(--a4-margin-lr) 10mm !important;
             min-height: var(--a4-usable-h) !important;
+            height: auto !important;
+            overflow: visible !important;
             box-sizing: border-box !important;
             position: relative;
         }
@@ -756,7 +762,6 @@ include '../header.php';
             $editor.val(html);
 
             $editor.summernote({
-                height: 600,
                 focus: true,
                 codeviewFilter: false,
                 codeviewIframeFilter: false,
