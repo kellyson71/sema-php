@@ -35,12 +35,6 @@ if (!$requerimento) {
 
 // Obter ano atual
 $anoAtual = date('Y');
-
-// Formatações
-function formatarData($data)
-{
-    return date('d/m/Y', strtotime($data));
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
