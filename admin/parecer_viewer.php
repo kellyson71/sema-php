@@ -152,10 +152,19 @@ $nomeArquivo = $doc ? $doc['nome_arquivo'] : 'Documento';
         </div>
     </div>
 
-    <!-- O iframe carrega o PDF nativamente aproveitando o redownload_pdf.php (que configuramos para suportar o flag inline=1) -->
     <div class="viewer-container">
-        <iframe src="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>&inline=1" title="Visualizador de PDF"></iframe>
+        <iframe id="pdfFrame" src="assinatura/redownload_pdf.php?id=<?php echo urlencode($documentoId); ?>&inline=1" title="Visualizador de PDF"></iframe>
     </div>
+
+<?php if (!empty($_GET['autoprint'])): ?>
+<script>
+    document.getElementById('pdfFrame').addEventListener('load', function() {
+        setTimeout(function() {
+            document.getElementById('pdfFrame').contentWindow.print();
+        }, 800);
+    });
+</script>
+<?php endif; ?>
 
 </body>
 </html>

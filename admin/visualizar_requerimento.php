@@ -2759,6 +2759,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         </div>
                         <div class="data-actions">
                             ${!p.apagado ? `<a href="${viewerUrl}" class="copy-btn me-1" target="_blank" title="Visualizar"><i class="fas fa-eye"></i></a>
+                            ${p.documento_id ? `<a href="parecer_viewer.php?id=${p.documento_id}&autoprint=1" class="copy-btn me-1" target="_blank" title="Imprimir"><i class="fas fa-print"></i></a>` : ''}
                             <a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
                             <button onclick="excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
                         </div>
@@ -2795,6 +2796,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <div style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
                             ${!p.apagado && viewerUrl ? `<a href="${viewerUrl}" target="_blank" class="btn btn-sm btn-primary flex-fill" style="font-size:.75rem"><i class="fas fa-eye me-1"></i>Ver</a>` :
                               '<button class="btn btn-sm btn-secondary flex-fill" disabled style="font-size:.75rem"><i class="fas fa-eye-slash me-1"></i>Indisponível</button>'}
+                            ${!p.apagado && p.documento_id ? `<a href="parecer_viewer.php?id=${p.documento_id}&autoprint=1" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Imprimir"><i class="fas fa-print"></i></a>` : ''}
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
                             <button onclick="excluirDocAssinado('${p.documento_id}')" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
                         </div>

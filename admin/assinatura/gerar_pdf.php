@@ -124,36 +124,55 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
                      font-weight: inherit !important; text-decoration: none !important; }
     </style>';
 
-    // Bloco de assinatura digital — discreto, canto inferior direito
-    $cpf_linha = !empty($assinante['cpf']) ? ' | CPF: ' . $assinante['cpf'] : '';
-
-    $bloco_assinatura = '
-    <br>
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <td width="60%"></td>
-        <td width="40%">
-          <table width="100%" cellpadding="3" cellspacing="0" border="1" style="border-color:#999;">
-            <tr>
-              <td style="padding:2pt 4pt; text-align:center; font-family:helvetica; font-size:6pt; font-weight:bold; color:#000;">
-                &#10003; Assinado digitalmente
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:3pt 4pt; font-family:helvetica; font-size:6pt; color:#000;">
-                <strong>' . $assinante['nome'] . '</strong><br>
-                ' . $assinante['cargo'] . $cpf_linha . '<br>
-                ' . $assinante['data_hora'] . '
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>';
-
-    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . $bloco_assinatura . '</div>';
+    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
+
+    // Bloco de assinatura digital — desenhado com TCPDF nativo (não afeta paginação)
+    $pdf->lastPage();
+    $pw     = $pdf->getPageWidth();   // 210
+    $bW     = 65;
+    $bH     = 15;
+    $bX     = $pw - 15 - $bW;        // alinhado à direita, margem 15mm
+    $bY     = $pdf->getPageHeight() - 12 - $bH - 2;  // acima do footer
+
+    // Borda externa
+    $pdf->SetDrawColor(160, 160, 160);
+    $pdf->SetLineWidth(0.25);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'D');
+
+    // Faixa de cabeçalho cinza claro
+    $pdf->SetFillColor(225, 225, 225);
+    $pdf->SetDrawColor(160, 160, 160);
+    $pdf->Rect($bX, $bY, $bW, 4.5, 'FD');
+
+    // Marcador quadrado preenchido (substitui ícone unicode)
+    $pdf->SetFillColor(50, 50, 50);
+    $pdf->Rect($bX + 2, $bY + 1.3, 2, 2, 'F');
+
+    // Texto do cabeçalho
+    $pdf->SetFont('helvetica', 'B', 5.5);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetXY($bX + 5.5, $bY + 0.8);
+    $pdf->Cell($bW - 7, 3, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
+
+    // Nome
+    $pdf->SetFont('helvetica', 'B', 6);
+    $pdf->SetXY($bX + 2, $bY + 5.2);
+    $pdf->Cell($bW - 4, 3.5, $pdf->assinante_nome, 0, 0);
+
+    // Cargo + CPF
+    $pdf->SetFont('helvetica', '', 5.5);
+    $linha2 = $pdf->assinante_cargo;
+    if (!empty($pdf->assinante_cpf)) $linha2 .= '  |  CPF: ' . $pdf->assinante_cpf;
+    $pdf->SetXY($bX + 2, $bY + 8.8);
+    $pdf->Cell($bW - 4, 3, $linha2, 0, 0);
+
+    // Data
+    $pdf->SetFont('helvetica', '', 5);
+    $pdf->SetTextColor(80, 80, 80);
+    $pdf->SetXY($bX + 2, $bY + 11.8);
+    $pdf->Cell($bW - 4, 3, $pdf->assinante_data, 0, 0);
 
     if (ob_get_length()) {
        ob_clean();
