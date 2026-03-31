@@ -636,41 +636,57 @@ include_once 'tipos_alvara.php';
         </div>
     </div>
 
-    <footer>
-        <div>
-            <div>
-                <a href="./consultar/index.php" class="consulta-btn">
-                    <i class="fas fa-search"></i>
-                    <span>Consulte seu Alvará</span>
-                </a>
-            </div>
-            <div>
-                <button onclick="document.getElementById('modal-legislacao').style.display='flex'" class="consulta-btn" style="border:none; cursor:pointer;">
-                    <i class="fas fa-book-open"></i>
-                    <span>Legislação Municipal</span>
-                </button>
-            </div>
-            <div>
-                <img src="./assets/img/phone.png" alt="Telefone">
-                WhatsApp (84) 99668-6413
-            </div>
-            <div>
-                <img src="./assets/img/email.png" alt="Email">
-                fiscalizacaosemapdf@gmail.com
-            </div>
+    <!-- Onda de transição para o rodapé -->
+    <div style="display:block; width:100%; line-height:0; margin-bottom:-2px; transform:rotate(180deg);">
+        <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style="display:block; width:100%; height:70px;">
+            <path d="M0,35 C360,80 1080,-10 1440,35 L1440,0 L0,0 Z" fill="#0a1a2e"/>
+        </svg>
+    </div>
+
+    <footer style="background:#0a1a2e; padding:48px 24px 32px; text-align:center;">
+
+        <!-- Ações rápidas -->
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:36px;">
+            <a href="./consultar/index.php"
+               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+                <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
+            </a>
+            <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
+                    style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; font-size:0.88rem; font-weight:500; cursor:pointer; font-family:inherit; transition:background 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+                <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+            </button>
+            <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
+               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+                <i class="fab fa-whatsapp" style="color:#4ade80;"></i> (84) 99668-6413
+            </a>
+            <a href="mailto:fiscalizacaosemapdf@gmail.com"
+               style="display:inline-flex; align-items:center; gap:8px; padding:11px 22px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; text-decoration:none; font-size:0.88rem; font-weight:500; transition:background 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+                <i class="fas fa-envelope" style="color:#f9a8d4;"></i> fiscalizacaosemapdf@gmail.com
+            </a>
         </div>
-        <div>
-            <span>
-                © 2023 - Todos os direitos reservados. Programa da&ensp;<a
-                    href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
-                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71"
-                        style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
-            </span>
-            <div>
-                <img src="./assets/img/Logo.png" alt="SEAD">
-            </div>
-        </div>
+
+        <!-- Divisor -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08); margin:0 auto 28px; max-width:600px;"></div>
+
+        <!-- Logo SEMA branca -->
+        <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
+             alt="SEMA — Secretaria Municipal de Meio Ambiente"
+             style="max-width:220px; height:auto; margin-bottom:18px; opacity:0.92;">
+
+        <!-- Copyright -->
+        <p style="font-size:0.8rem; color:rgba(255,255,255,0.35); margin:0;">
+            &copy; <?= date('Y') ?> Prefeitura Municipal de Pau dos Ferros &mdash; Todos os direitos reservados.<br>
+            Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener"
+                style="color:rgba(255,255,255,0.45); text-decoration:none;">Kellyson Raphael</a>
+        </p>
     </footer>
+
+    <!-- Faixa gráfica institucional -->
+    <div style="width:100%; height:8px; background:linear-gradient(90deg, #009640, #00c853, #4ade80, #009640);"></div>
 
     <!-- Loading Spinner -->
     <div id="loading" class="loading" style="display: none;">
