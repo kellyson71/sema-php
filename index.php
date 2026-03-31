@@ -650,29 +650,45 @@ include_once 'tipos_alvara.php';
              alt="SEMA — Secretaria Municipal de Meio Ambiente"
              style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
 
-        <!-- Ações rápidas — movidas para baixo da logo -->
-        <nav style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:36px;">
+        <!-- Botões de ação -->
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
             <a href="./consultar/index.php"
-               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+               style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                 <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
             </a>
             <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
-                    style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
-                    onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                 <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
             </button>
+        </div>
+
+        <!-- Contatos como texto -->
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:28px; margin-bottom:36px;">
             <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
-               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                <i class="fab fa-whatsapp" style="color:#4ade80;"></i> (84) 99668-6413
+               style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
+               onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
+                <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(74,222,128,0.15); flex-shrink:0;">
+                    <i class="fab fa-whatsapp" style="color:#4ade80; font-size:1.1rem;"></i>
+                </span>
+                <span>
+                    <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">WhatsApp</span>
+                    <span style="font-weight:500;">(84) 99668-6413</span>
+                </span>
             </a>
             <a href="mailto:fiscalizacaosemapdf@gmail.com"
-               style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:all 0.2s;"
-               onmouseover="this.style.background='rgba(255,255,255,0.16)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                <i class="fas fa-envelope" style="color:#f9a8d4;"></i> fiscalizacaosemapdf@gmail.com
+               style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
+               onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
+                <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(249,168,212,0.15); flex-shrink:0;">
+                    <i class="fas fa-envelope" style="color:#f9a8d4; font-size:1rem;"></i>
+                </span>
+                <span>
+                    <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">E-mail</span>
+                    <span style="font-weight:500;">fiscalizacaosemapdf@gmail.com</span>
+                </span>
             </a>
-        </nav>
+        </div>
 
         <!-- Divisor sutil -->
         <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:0 auto 28px; max-width:600px;">
