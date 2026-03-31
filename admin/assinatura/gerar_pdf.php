@@ -44,36 +44,16 @@ class SEMA_PDF extends TCPDF {
         $this->Line(15, 23, 195, 23);
     }
 
-    // Footer — Assinatura digital discreta
+    // Footer — linha discreta + numeração de página
     public function Footer() {
-        // Linha fina separadora
-        $this->SetY(-18);
+        $this->SetY(-12);
         $this->SetLineStyle(array('width' => 0.1, 'color' => array(210, 210, 210)));
         $this->Line(15, $this->GetY(), 195, $this->GetY());
 
-        // Texto compacto de assinatura — uma linha
-        $this->SetY(-17);
-        $this->SetFont('helvetica', '', 5.5);
-        $this->SetTextColor(140, 140, 140);
-
-        $partes = array();
-        $partes[] = 'Assinado digitalmente por ' . $this->assinante_nome;
-        if (!empty($this->assinante_cargo)) $partes[] = $this->assinante_cargo;
-        if (!empty($this->assinante_cpf)) $partes[] = 'CPF: ' . $this->assinante_cpf;
-        if (!empty($this->assinante_matricula)) $partes[] = 'Mat: ' . $this->assinante_matricula;
-
-        $this->Cell(0, 3, implode('  |  ', $partes), 0, 1, 'C', 0, '', 1);
-
-        // Data
-        $this->SetFont('helvetica', 'I', 5);
-        $this->SetTextColor(170, 170, 170);
-        $this->Cell(0, 3, 'Autenticado em ' . $this->assinante_data, 0, 1, 'C');
-
-        // Paginação
         $this->SetY(-10);
         $this->SetFont('helvetica', '', 6);
         $this->SetTextColor(180, 180, 180);
-        $this->Cell(0, 10, 'Pagina ' . $this->getAliasNumPage() . ' de ' . $this->getAliasNbPages(), 0, false, 'C', 0, '', 0, false, 'T', 'M');
+        $this->Cell(0, 10, 'Pag. ' . $this->getAliasNumPage() . ' / ' . $this->getAliasNbPages() . '   —   Prefeitura Municipal de Pau dos Ferros/RN — SEMA', 0, false, 'C', 0, '', 0, false, 'T', 'M');
     }
 }
 
@@ -105,8 +85,8 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
 
     // Margens super otimizadas
     $pdf->SetMargins(15, 27, 15);
-    $pdf->SetFooterMargin(18);
-    $pdf->SetAutoPageBreak(TRUE, 22); 
+    $pdf->SetFooterMargin(12);
+    $pdf->SetAutoPageBreak(TRUE, 15);
     
     $pdf->AddPage();
 
@@ -138,9 +118,45 @@ function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $mo
         /* Listas */
         ul, ol { margin-top: 2pt; margin-bottom: 5pt; }
         li { margin-bottom: 2pt; line-height: 1.35; }
+
+        /* Segurança: anula highlight de var-field caso chegue aqui */
+        .var-field { color: inherit !important; background: transparent !important;
+                     font-weight: inherit !important; text-decoration: none !important; }
     </style>';
 
-    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
+    // Bloco de assinatura digital — canto inferior direito do documento
+    $cpf_linha  = !empty($assinante['cpf'])       ? '<br><span style="font-size:6.5pt; color:#555; font-family:helvetica;">CPF: ' . $assinante['cpf'] . '</span>' : '';
+    $mat_linha  = !empty($assinante['matricula'])  ? '<br><span style="font-size:6pt; color:#777; font-family:helvetica;">Mat: ' . $assinante['matricula'] . '</span>' : '';
+
+    $bloco_assinatura = '
+    <br><br>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="50%"></td>
+        <td width="50%">
+          <table width="100%" cellpadding="0" cellspacing="0" border="1" style="border-color:#2D8661;">
+            <tr>
+              <td bgcolor="#2D8661" cellpadding="5" style="padding:5pt 8pt; text-align:center;">
+                <span style="font-family:helvetica; font-size:8pt; font-weight:bold; color:#ffffff; letter-spacing:0.5pt;">
+                  &#10003; ASSINADO DIGITALMENTE
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td bgcolor="#f0faf5" cellpadding="7" style="padding:7pt 8pt; text-align:center;">
+                <span style="font-family:helvetica; font-size:9pt; font-weight:bold; color:#1a1a1a;">' . $assinante['nome'] . '</span>
+                <br><span style="font-family:helvetica; font-size:7.5pt; color:#444;">' . $assinante['cargo'] . '</span>
+                ' . $cpf_linha . $mat_linha . '
+                <br><br><span style="font-family:helvetica; font-size:6.5pt; color:#666;">Autenticado em: ' . $assinante['data_hora'] . '</span>
+                <br><span style="font-family:helvetica; font-size:5.5pt; color:#999;">Secretaria Municipal de Meio Ambiente — SEMA</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>';
+
+    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . $bloco_assinatura . '</div>';
 
     $pdf->writeHTML($html_corpo, true, false, true, false, '');
 
