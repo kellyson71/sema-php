@@ -21,8 +21,7 @@ if (!$req) die("Erro: Requerimento não encontrado.");
 $titulo_pagina = 'Editor de Documento';
 include '../header.php';
 ?>
-    <!-- Assets Extras Específicos do Editor -->
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <style>
@@ -34,176 +33,9 @@ include '../header.php';
             --sema-green-lt: #2a6b50;
             --sema-teal:     #0d7f5f;
             --card-radius:   14px;
-            --a4-width:      210mm;
-            --a4-height:     297mm;
-            --a4-header-h:   27mm;
-            --a4-footer-h:   14mm;
-            --a4-margin-lr:  15mm;
-            --a4-usable-h:   256mm; /* 297 - 27 - 14 */
-            --page-gap:      28px;
         }
 
-        @keyframes shimmer {
-            0%   { background-position: -800px 0; }
-            100% { background-position: 800px 0; }
-        }
-
-        /* Ocultar imagem de fundo do template no editor — só usada na geração do PDF */
-        .note-editable #fundo-imagem,
-        .note-editable img[alt="Fundo A4"] {
-            display: none !important;
-        }
-
-        /* Editor fullscreen */
-        #secao-editor {
-            min-height: calc(100vh - var(--topbar-height, 60px) - 70px);
-            background: #d0d4da;
-        }
-
-        /* ═══════════════════════════════════════════════
-           CANVAS CONTÍNUO — "Folha Infinita"
-        ═══════════════════════════════════════════════ */
-        .a4-outer-wrapper {
-            background: #d0d4da;
-            padding: 24px 16px 32px;
-            min-height: 100%;
-        }
-
-        /* Um único papel que cresce, mas marca quebras visualmente */
-        .a4-page-sheet {
-            max-width: var(--a4-width);
-            min-height: var(--a4-height);
-            margin: 0 auto;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.12);
-            border-radius: 2px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ═══════════════════════════════════════════════
-           HEADER SEMA (topo da primeira folha)
-        ═══════════════════════════════════════════════ */
-        .a4-sema-header {
-            padding: 6mm var(--a4-margin-lr) 0 var(--a4-margin-lr);
-            flex-shrink: 0;
-            background: #fff;
-            z-index: 5;
-        }
-        .a4-sema-header .header-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-bottom: 5mm;
-        }
-        .a4-sema-header img {
-            height: 17mm;
-            width: auto;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-        .a4-sema-header .sema-prefeitura {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-weight: 700;
-            font-size: 10pt;
-            color: #282828;
-            line-height: 1.3;
-        }
-        .a4-sema-header .sema-secretaria {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-weight: 700;
-            font-size: 8pt;
-            color: #646464;
-            line-height: 1.3;
-            margin-top: 1px;
-        }
-        .a4-sema-header .header-line {
-            height: 1.2px;
-            background: #2d8661;
-        }
-
-        /* ═══════════════════════════════════════════════
-           FOOTER (base da última folha)
-        ═══════════════════════════════════════════════ */
-        .a4-sema-footer {
-            padding: 0 var(--a4-margin-lr) 6mm;
-            border-top: 0.5px solid #d2d2d2;
-            margin-top: auto;
-            flex-shrink: 0;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            text-align: center;
-            background: #fff;
-            z-index: 5;
-        }
-        .a4-footer-sign {
-            font-size: 5.5pt;
-            color: #8c8c8c;
-            margin-top: 2.5mm;
-            line-height: 1.6;
-        }
-        .a4-footer-date {
-            font-size: 5pt;
-            color: #aaa;
-            font-style: italic;
-        }
-        .a4-footer-page {
-            font-size: 6pt;
-            color: #b4b4b4;
-            margin-top: 2mm;
-        }
-
-        /* ═══════════════════════════════════════════════
-           ASSINATURA DIGITAL (preview no editor)
-        ═══════════════════════════════════════════════ */
-        .a4-signature-badge {
-            position: absolute;
-            bottom: 18mm;
-            right: var(--a4-margin-lr);
-            width: 62mm;
-            background: #fff;
-            border: 0.5px solid #a0a0a0;
-            border-radius: 2px;
-            padding: 2mm 3mm;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            pointer-events: none;
-            z-index: 10;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        }
-        .a4-signature-badge .sig-header {
-            background: #dcdcdc;
-            margin: -2mm -3mm 1.5mm;
-            padding: 1mm 3mm;
-            border-radius: 2px 2px 0 0;
-            font-size: 5pt;
-            font-weight: 700;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 2mm;
-        }
-        .a4-signature-badge .sig-header::before {
-            content: '';
-            display: inline-block;
-            width: 1.8mm; height: 1.8mm;
-            background: #333;
-        }
-        .a4-signature-badge .sig-name {
-            font-size: 5.5pt; font-weight: 700; color: #1e1e1e;
-        }
-        .a4-signature-badge .sig-detail {
-            font-size: 5pt; color: #555; margin-top: 0.5mm;
-        }
-        .a4-signature-badge .sig-date {
-            font-size: 5pt; color: #808080; margin-top: 0.5mm;
-        }
-
-        /* ═══════════════════════════════════════════════
-           VARIÁVEIS DESTACADAS — NEGRITO (sem cor)
-           Campos auto-preenchidos pelo protocolo.
-           Estilo neutro para não gerar artefatos no PDF.
-        ═══════════════════════════════════════════════ */
-        .note-editable .var-field,
+        /* ─── Variáveis de template destacadas ─── */
         .var-field {
             font-weight: 700 !important;
             color: inherit !important;
@@ -214,84 +46,75 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           ESTRUTURA DO EDITOR — APARÊNCIA DE PÁGINA A4
+           TOOLBAR DO EDITOR
         ═══════════════════════════════════════════════ */
-        .note-editor.note-frame {
-            border: none !important;
-            box-shadow: none !important;
-            background: transparent;
-        }
-        .note-toolbar {
-            background: #fff !important;
-            border: 1px solid #dee2e6 !important;
-            border-radius: 8px !important;
-            padding: 6px 10px !important;
-            margin: 0 auto 12px !important;
-            max-width: var(--a4-width) !important;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+        #editor-toolbar {
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+            border-top: 1px solid #dee2e6;
+            padding: 5px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            align-items: center;
             position: sticky;
             top: 0;
             z-index: 20;
         }
-        .note-editing-area {
+        #editor-toolbar .toolbar-sep {
+            width: 1px; height: 22px;
+            background: #dee2e6;
+            margin: 0 3px;
+            flex-shrink: 0;
+        }
+        #editor-toolbar .btn-tool {
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
             background: transparent;
-            flex: 1;
+            color: #444;
+            cursor: pointer;
+            line-height: 1.5;
+            transition: background .12s, border-color .12s, color .12s;
+            white-space: nowrap;
         }
-        .note-editable {
-            font-family: "Times New Roman", Times, serif !important;
-            font-size: 12pt !important;
-            line-height: 1.4 !important;
-            color: #1e1e1e !important;
-            text-align: justify !important;
-            padding: 2mm var(--a4-margin-lr) 10mm !important;
-            min-height: var(--a4-usable-h) !important;
-            box-sizing: border-box !important;
-            position: relative;
+        #editor-toolbar .btn-tool:hover {
+            background: #f0fdf4;
+            border-color: var(--sema-green);
+            color: var(--sema-green);
         }
-        .note-editable table {
-            width: 100%; border-collapse: collapse;
+        #editor-toolbar select.tool-select {
+            padding: 3px 5px;
+            font-size: 0.78rem;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background: transparent;
+            color: #444;
+            cursor: pointer;
+            height: 28px;
         }
-        .note-editable td, .note-editable th {
-            padding: 5px 8px; border: 1px solid #aaa; vertical-align: middle;
-            font-size: 11pt; line-height: 1.4;
-        }
-        .note-editable .texto-parecer p {
-            margin-bottom: 12px; text-indent: 50px; line-height: 1.7;
-        }
-        .note-editable .condicionantes {
-            font-size: 9pt; border: 1px solid #000; padding: 8px 10px;
+        #editor-toolbar select.tool-select:hover {
+            border-color: var(--sema-green);
+            color: var(--sema-green);
         }
 
         /* ═══════════════════════════════════════════════
-           SEPARADOR VISUAL DE PÁGINAS (Dentro do canvas)
+           ÁREA DO CANVAS-EDITOR
         ═══════════════════════════════════════════════ */
-        .page-break-indicator {
-            position: absolute;
-            left: -15mm; right: -15mm;
-            height: 0;
-            pointer-events: none;
-            z-index: 10;
+        #secao-editor {
+            min-height: calc(100vh - 60px - 70px);
+            display: flex;
+            flex-direction: column;
         }
-        .page-break-indicator::before {
-            content: '';
-            position: absolute;
-            left: 0; right: 0;
-            top: 0;
-            border-top: 2px dashed #ffb0b0;
+        #canvas-editor-wrap {
+            flex: 1;
+            overflow: hidden;
+            background: #d0d4da;
         }
-        .page-break-indicator::after {
-            content: attr(data-page-label);
-            position: absolute;
-            right: 0;
-            top: -9px;
-            font-size: 7.5pt;
-            font-weight: 700;
-            color: #bd4848;
-            font-family: 'Helvetica Neue', sans-serif;
-            background: #fff;
-            padding: 0 6px;
-            border: 1px solid #ffb0b0;
-            border-radius: 10px;
+        #canvas-editor-container {
+            height: calc(100vh - 230px);
+            min-height: 500px;
         }
 
         /* ═══════════════════════════════════════════════
@@ -316,18 +139,12 @@ include '../header.php';
         .icon-option:hover { border-color: var(--sema-green); color: var(--sema-green); background: #f0fdf4; }
         .icon-option.selected { border-color: var(--sema-green); background: #d1fae5; color: var(--sema-green); }
 
-        /* ═══════════════════════════════════════════════
-           HEADER DA SEÇÃO
-        ═══════════════════════════════════════════════ */
+        /* ─── Section header ─── */
         .section-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 1.2rem;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem;
         }
         .section-header .section-icon {
-            width: 36px; height: 36px;
-            border-radius: 10px;
+            width: 36px; height: 36px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
         }
         .section-header h5 { margin: 0; font-weight: 700; color: #1e293b; }
@@ -361,11 +178,11 @@ include '../header.php';
     <div class="py-0 d-none" id="secao-editor">
 
         <!-- Barra de ações do editor -->
-        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3">
+        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-0">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0 fw-bold text-dark" id="editor-title">
-                        <i class="fas fa-edit me-2 text-success"></i> Editando Documento
+                        <i class="fas fa-edit text-success me-2"></i> Editando Documento
                     </h5>
                     <small class="text-muted" style="font-size:.78rem">
                         Campos <span style="font-weight:700">em negrito</span>
@@ -386,14 +203,52 @@ include '../header.php';
             </div>
         </div>
 
-        <!-- Wrapper que simula a "mesa" de trabalho com a página A4 -->
-        <div class="a4-outer-wrapper rounded-3">
-            <textarea id="editor-conteudo"></textarea>
+        <!-- Toolbar de formatação (Canvas-Editor commands) -->
+        <div id="editor-toolbar">
+            <!-- Histórico -->
+            <button class="btn-tool" onclick="cmd('executeUndo')" title="Desfazer"><i class="fas fa-undo"></i></button>
+            <button class="btn-tool" onclick="cmd('executeRedo')" title="Refazer"><i class="fas fa-redo"></i></button>
+            <div class="toolbar-sep"></div>
+            <!-- Formatação de texto -->
+            <button class="btn-tool" onclick="cmd('executeBold')"      title="Negrito"><b>N</b></button>
+            <button class="btn-tool" onclick="cmd('executeItalic')"    title="Itálico"><i>I</i></button>
+            <button class="btn-tool" onclick="cmd('executeUnderline')" title="Sublinhado"><u>S</u></button>
+            <button class="btn-tool" onclick="cmd('executeStrikeout')" title="Tachado"><s>T</s></button>
+            <div class="toolbar-sep"></div>
+            <!-- Tamanho da fonte -->
+            <select class="tool-select" title="Tamanho da fonte"
+                    onchange="cmd('executeFontSize', parseInt(this.value)); this.value = ''">
+                <option value="">Tam.</option>
+                <option>10</option><option>11</option><option>12</option>
+                <option>14</option><option>16</option><option>18</option>
+                <option>20</option><option>24</option><option>28</option><option>36</option>
+            </select>
+            <div class="toolbar-sep"></div>
+            <!-- Alinhamento -->
+            <button class="btn-tool" onclick="cmdFlex('left')"      title="Alinhar à esquerda"><i class="fas fa-align-left"></i></button>
+            <button class="btn-tool" onclick="cmdFlex('center')"    title="Centralizar"><i class="fas fa-align-center"></i></button>
+            <button class="btn-tool" onclick="cmdFlex('right')"     title="Alinhar à direita"><i class="fas fa-align-right"></i></button>
+            <button class="btn-tool" onclick="cmdFlex('alignment')" title="Justificar"><i class="fas fa-align-justify"></i></button>
+            <div class="toolbar-sep"></div>
+            <!-- Listas -->
+            <button class="btn-tool" onclick="inserirLista('ol')" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+            <button class="btn-tool" onclick="inserirLista('ul')" title="Lista com marcadores"><i class="fas fa-list-ul"></i></button>
+            <div class="toolbar-sep"></div>
+            <!-- Tabela -->
+            <button class="btn-tool" onclick="inserirTabela()" title="Inserir tabela 3×3"><i class="fas fa-table"></i></button>
+            <div class="toolbar-sep"></div>
+            <!-- Impressão -->
+            <button class="btn-tool" onclick="cmd('executePrint')" title="Imprimir documento"><i class="fas fa-print"></i></button>
+        </div>
+
+        <!-- Container do Canvas-Editor (A4 paginado nativo) -->
+        <div id="canvas-editor-wrap">
+            <div id="canvas-editor-container"></div>
         </div>
 
     </div><!-- /secao-editor -->
 
-    <!-- Modal de Confirmação -->
+    <!-- Modal de Confirmação (Assinatura) -->
     <div class="modal fade" id="modalConfirmacao" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -492,8 +347,7 @@ include '../header.php';
                 <div class="mb-3">
                   <label class="form-label fw-semibold small">Ícone</label>
                   <input type="hidden" id="novoTemplateIcone" value="fa-bookmark">
-                  <div id="iconPickerGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;">
-                  </div>
+                  <div id="iconPickerGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;"></div>
                 </div>
                 <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
                   <i class="fas fa-circle-info mt-1 flex-shrink-0"></i>
@@ -525,194 +379,151 @@ include '../header.php';
       </div>
     </div>
 
-    <!-- SweetAlert2 pode ser carregado de forma independente do jQuery -->
+    <!-- SweetAlert2 e Canvas-Editor UMD (sem dependência de jQuery) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
-         Usamos um carregador dinâmico que aguarda o jQuery estar pronto. -->
-    <script>
-    (function waitForJQuery() {
-        if (typeof window.jQuery === 'undefined') {
-            setTimeout(waitForJQuery, 50);
-            return;
-        }
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js';
-        s.onload = function() {
-            window._summernoteReady = true;
-        };
-        document.head.appendChild(s);
-    })();
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@hufe921/canvas-editor@0.9.130/dist/canvas-editor.umd.js"></script>
 
     <script>
     const reqId         = <?= $requerimento_id ?>;
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
-    const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
-    let currentTemplate = templateNome;
+    let canvasInstance  = null;
 
-    /* ─── Icon Picker ────────────────────────────────────────── */
-    const ICONES_DISPONIVEIS = [
-        'fa-bookmark','fa-file-alt','fa-file-signature','fa-clipboard-list',
-        'fa-leaf','fa-tree','fa-seedling','fa-globe',
-        'fa-hard-hat','fa-building','fa-home','fa-city',
-        'fa-gavel','fa-stamp','fa-certificate','fa-scroll',
-        'fa-microscope','fa-search','fa-clipboard-check','fa-tasks',
-        'fa-bullhorn','fa-flag','fa-star','fa-map-marked-alt',
-    ];
-
-    function iniciarIconPicker() {
-        const grid  = document.getElementById('iconPickerGrid');
-        const input = document.getElementById('novoTemplateIcone');
-        if (!grid) return;
-        grid.innerHTML = ICONES_DISPONIVEIS.map(ic => `
-            <div class="icon-option${ic === input.value ? ' selected' : ''}" data-icon="${ic}" title="${ic.replace('fa-','')}">
-                <i class="fas ${ic}"></i>
-            </div>`).join('');
-        grid.querySelectorAll('.icon-option').forEach(el => {
-            el.addEventListener('click', function() {
-                grid.querySelectorAll('.icon-option').forEach(x => x.classList.remove('selected'));
-                this.classList.add('selected');
-                input.value = this.dataset.icon;
-            });
-        });
+    /* ═══════════════════════════════════════════════════════════
+       CANVAS-EDITOR — Instância e Configuração A4
+    ═══════════════════════════════════════════════════════════ */
+    function criarInstancia() {
+        const CE = window.CanvasEditor;
+        if (!CE || !CE.Editor) {
+            console.error('Canvas-Editor UMD não carregado.');
+            return false;
+        }
+        canvasInstance = new CE.Editor(
+            document.getElementById('canvas-editor-container'),
+            { header: [], main: [{ value: '' }], footer: [] },
+            {
+                // A4 a 96dpi: 210mm × 297mm ≈ 794px × 1123px
+                width:       794,
+                height:      1123,
+                pageGap:     20,
+                // margens: topo, direita, base, esquerda (px)
+                margins:     [100, 120, 100, 120],
+                defaultFont: 'Arial',
+                defaultSize: 14,
+            }
+        );
+        return true;
     }
 
-    /* ─── Aguardar Summernote estar pronto ─────────────────── */
-    function waitForSummernote(cb) {
-        if (typeof window.jQuery !== 'undefined' && typeof jQuery.fn.summernote !== 'undefined') {
-            cb();
-        } else {
-            setTimeout(function() { waitForSummernote(cb); }, 80);
+    /* ─── Carrega HTML do template na instância ─── */
+    function carregarHtmlNoEditor(html) {
+        if (!canvasInstance) return;
+        try {
+            // executeSetHTML aceita { header?, main, footer? } com strings HTML
+            canvasInstance.command.executeSetHTML({ main: html });
+        } catch (e) {
+            console.warn('executeSetHTML falhou, tentando setValue:', e);
+            try {
+                // Fallback: reconstruir instância com texto puro extraído do HTML
+                const tmp = document.createElement('div');
+                tmp.innerHTML = html;
+                const texto = tmp.textContent || tmp.innerText || '';
+                canvasInstance.command.executeSetValue({
+                    header: [],
+                    main: [{ value: texto }],
+                    footer: []
+                });
+            } catch (e2) {
+                console.error('Falha ao carregar conteúdo no editor:', e2);
+            }
         }
     }
 
     /* ═══════════════════════════════════════════════════════════
-       CANVAS MULTI-PÁGINA (Página Contínua)
-       Evita bugs de seleção e digitação mantendo o texto em um 
-       bloco único, mas indica visualmente onde o PDF irá cortar.
+       TOOLBAR — Comandos da instância
     ═══════════════════════════════════════════════════════════ */
-    // 297mm(total) - 27mm(header) - 14mm(footer) = 256mm
-    // TCPDF corta as páginas exatamente nesse limite.
-    const PAGE_USABLE_PX = 256 * 3.7795; 
 
-    function gerarHeaderHtml() {
-        return `
-            <div class="a4-sema-header">
-                <div class="header-content">
-                    <img src="${logoSemaUrl}" alt="Logo SEMA">
-                    <div>
-                        <div class="sema-prefeitura">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</div>
-                        <div class="sema-secretaria">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</div>
-                    </div>
-                </div>
-                <div class="header-line"></div>
-            </div>`;
-    }
-
-    function gerarFooterHtml(totalPages) {
-        return `
-            <div class="a4-sema-footer">
-                <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
-                <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
-                <div class="a4-footer-page" id="visual-page-counter">&mdash; Página 1 de ${totalPages} &mdash;</div>
-            </div>`;
-    }
-
-    function gerarSignatureBadgeHtml() {
-        return `
-            <div class="a4-signature-badge">
-                <div class="sig-header">ASSINADO DIGITALMENTE</div>
-                <div class="sig-name">NOME DO ASSINANTE</div>
-                <div class="sig-detail">Cargo  |  CPF: ***.***.**-**</div>
-                <div class="sig-date">dd/mm/aaaa hh:mm:ss</div>
-            </div>`;
-    }
-
-    /**
-     * Monta o canvas contínuo
-     */
-    function montarCanvasMultiPagina() {
-        if (document.querySelector('.a4-page-sheet')) return;
-        const editingArea = document.querySelector('.note-editing-area');
-        if (!editingArea) return;
-        const parent = editingArea.parentNode;
-
-        // Container geral de página (folha contínua)
-        const sheet = document.createElement('div');
-        sheet.className = 'a4-page-sheet';
-        
-        // Inserir Header
-        sheet.innerHTML = gerarHeaderHtml();
-
-        // Mover editing-area para dentro da folha
-        parent.insertBefore(sheet, editingArea);
-        sheet.appendChild(editingArea);
-
-        // Inserir Footer
-        const footerEl = document.createElement('div');
-        footerEl.innerHTML = gerarFooterHtml(1);
-        sheet.appendChild(footerEl.firstElementChild);
-
-        // Inserir Badge de Assinatura (absolute sempre presa ao fundo da folha)
-        sheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
-
-        iniciarMonitorPaginas();
-    }
-
-    /**
-     * Aplica as linhas tracejadas de corte no editor e atualiza contador
-     */
-    let _lastTotalPages = 1;
-    function iniciarMonitorPaginas() {
-        const editable = document.querySelector('.note-editable');
-        if (!editable) return;
-
-        function recalcularPaginas() {
-            const alturaConteudo = editable.scrollHeight;
-            const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
-
-            // Remove todos os indicadores atuais
-            editable.querySelectorAll('.page-break-indicator').forEach(i => i.remove());
-
-            // Redesenha os indicadores
-            for (let p = 1; p < paginasNecessarias; p++) {
-                const indicator = document.createElement('div');
-                indicator.className = 'page-break-indicator';
-                indicator.setAttribute('data-page-label', 'Corte da Página ' + p + ' / ' + (p + 1));
-                // Posiciona a linha exatamente na quebra de 256mm
-                indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
-                editable.appendChild(indicator);
+    /** Executa um comando sem argumento ou com argumento simples */
+    function cmd(name, arg) {
+        if (!canvasInstance) return;
+        try {
+            if (arg !== undefined) {
+                canvasInstance.command[name](arg);
+            } else {
+                canvasInstance.command[name]();
             }
-
-            // Atualiza footer se a página mudou
-            if (paginasNecessarias !== _lastTotalPages) {
-                const counter = document.getElementById('visual-page-counter');
-                if (counter) {
-                    counter.innerHTML = '&mdash; Página 1 a ' + paginasNecessarias + ' &mdash;';
-                }
-                _lastTotalPages = paginasNecessarias;
-            }
+        } catch(e) {
+            console.warn('Comando não disponível:', name, e);
         }
-
-        editable.addEventListener('input', recalcularPaginas);
-        new MutationObserver(recalcularPaginas).observe(editable, {
-            childList: true, subtree: true, characterData: true
-        });
-
-        setTimeout(recalcularPaginas, 300);
     }
 
-    /* ─── Carregar template ao abrir a página ───────────────── */
+    /** Alinhamento via RowFlex (valores em minúsculas conforme a lib) */
+    function cmdFlex(align) {
+        if (!canvasInstance) return;
+        try {
+            // Tenta usar o enum exposto no UMD; cai no valor string caso não exista
+            const RF = (window.CanvasEditor && window.CanvasEditor.RowFlex) || {};
+            const val = RF[align.toUpperCase()] || align;
+            canvasInstance.command.executeRowFlex(val);
+        } catch(e) {
+            console.warn('executeRowFlex falhou:', e);
+        }
+    }
+
+    /** Inserir lista numerada (ol) ou com marcadores (ul) */
+    function inserirLista(tipo) {
+        if (!canvasInstance) return;
+        try {
+            canvasInstance.command.executeList({ listType: tipo });
+        } catch(e) {
+            console.warn('executeList falhou:', e);
+        }
+    }
+
+    /** Inserir tabela 3×3 */
+    function inserirTabela() {
+        if (!canvasInstance) return;
+        try {
+            canvasInstance.command.executeInsertTable(3, 3);
+        } catch(e) {
+            console.warn('executeInsertTable falhou:', e);
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       EXTRAÇÃO DE CONTEÚDO PARA O BACKEND
+    ═══════════════════════════════════════════════════════════ */
+    function getEditorHtml() {
+        if (!canvasInstance) return '';
+        let html = '';
+        try {
+            html = canvasInstance.command.executeHTML() || '';
+        } catch(e) {
+            console.error('executeHTML falhou:', e);
+            return '';
+        }
+        // Remover possíveis indicadores visuais residuais
+        html = html.replace(/<div[^>]+class="page-break-indicator"[^>]*>[\s\S]*?<\/div>/g, '');
+        // Remover spans var-field (mantém apenas o texto do valor preenchido)
+        html = html.replace(
+            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
+            '$1'
+        );
+        return html;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CARREGAMENTO DO TEMPLATE
+    ═══════════════════════════════════════════════════════════ */
     function carregarTemplate() {
         fetch('../parecer_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                'action': 'carregar_template',
-                'template': templateNome,
+                'action':          'carregar_template',
+                'template':        templateNome,
                 'requerimento_id': reqId,
-                'origem': 'tecnico'
+                'origem':          'tecnico'
             })
         })
         .then(res => res.json())
@@ -725,7 +536,7 @@ include '../header.php';
                     <i class="fas fa-triangle-exclamation fs-4"></i>
                     <div>
                         <strong>Erro ao carregar template</strong>
-                        <br><small class="text-muted">${ret.error || 'Erro ao carregar os metadados do processo.'}</small>
+                        <br><small class="text-muted">${escapeHtml(ret.error || 'Erro ao carregar os metadados do processo.')}</small>
                     </div>
                 </div>`;
             }
@@ -735,77 +546,48 @@ include '../header.php';
             <div class="alert alert-danger rounded-3 mx-auto" style="max-width:500px">
                 <i class="fas fa-wifi-slash me-2"></i>
                 <strong>Falha na conexão com o servidor.</strong>
-                <br><small class="text-muted">${err.message || 'Verifique sua conexão e recarregue a página.'}</small>
+                <br><small class="text-muted">${escapeHtml(err.message || 'Verifique sua conexão e recarregue a página.')}</small>
             </div>`;
         });
     }
 
-    /* ─── Inicializar editor Summernote ────────────────────── */
+    /** Exibe a seção do editor e inicializa o Canvas-Editor com o HTML do template */
     function initEditor(html, title) {
         document.getElementById('editor-loading').remove();
         document.getElementById('secao-editor').classList.remove('d-none');
         document.getElementById('editor-title').innerHTML =
             '<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + escapeHtml(title) + '</b>';
 
-        waitForSummernote(function() {
-            var $editor = $('#editor-conteudo');
-
-            if ($editor.data('summernote')) {
-                $editor.summernote('destroy');
-            }
-            $editor.val(html);
-
-            $editor.summernote({
-                height: 600,
-                focus: true,
-                codeviewFilter: false,
-                codeviewIframeFilter: false,
-                toolbar: [
-                    ['style',    ['style']],
-                    ['font',     ['bold', 'italic', 'underline', 'clear']],
-                    ['fontname', ['fontname']],
-                    ['fontsize', ['fontsize']],
-                    ['color',    ['color']],
-                    ['para',     ['ul', 'ol', 'paragraph']],
-                    ['table',    ['table']],
-                    ['insert',   ['link']],
-                    ['view',     ['codeview', 'fullscreen']]
-                ],
-                callbacks: {
-                    onInit: function() {
-                        montarCanvasMultiPagina();
-                    }
-                }
-            });
-        });
+        if (criarInstancia()) {
+            carregarHtmlNoEditor(html);
+        } else {
+            document.getElementById('secao-editor').insertAdjacentHTML('afterbegin', `
+            <div class="alert alert-danger mx-3 mt-2">
+                <i class="fas fa-triangle-exclamation me-2"></i>
+                <strong>Erro:</strong> O editor Canvas não pôde ser carregado. Verifique a conexão com o CDN.
+            </div>`);
+        }
     }
 
-    /* ─── Abrir modal de assinatura ────────────────────────── */
+    /* ═══════════════════════════════════════════════════════════
+       MODAL DE ASSINATURA
+    ═══════════════════════════════════════════════════════════ */
     function abrirModalAssinatura() {
-        let htmlContent = '';
-        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
-            htmlContent = $('#editor-conteudo').summernote('code');
-        } else {
-            htmlContent = document.getElementById('editor-conteudo').value;
-        }
-        if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>') {
+        const html = getEditorHtml();
+        if (!html || html.trim() === '') {
             Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
             return;
         }
-
         const chk = document.getElementById('checkDiretrizes');
         chk.checked = false;
         chk.setCustomValidity('O aceite nas diretrizes é um bloco obrigatório legal.');
-
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
     }
 
-    /* ─── Listener do checkbox de diretrizes ─────────────── */
     document.getElementById('checkDiretrizes').addEventListener('change', function() {
         this.setCustomValidity(this.checked ? '' : 'O aceite nas diretrizes é obrigatório.');
     });
 
-    /* ─── Finalizar assinatura ─────────────────────────────── */
     function finalizarAssinatura() {
         const form = document.getElementById('formCheckout');
         if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -814,30 +596,9 @@ include '../header.php';
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Autenticando...';
 
-        let conteudoHtml = '';
-        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
-            conteudoHtml = $('#editor-conteudo').summernote('code');
-        } else {
-            conteudoHtml = document.getElementById('editor-conteudo').value;
-        }
+        const conteudoHtml = getEditorHtml();
+        const fazDownload  = document.getElementById('checkDownload').checked;
 
-        // Remover indicadores de quebra de página (elementos visuais do editor)
-        conteudoHtml = conteudoHtml.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
-
-        // Remover spans var-field antes de enviar para PDF (mantém apenas o valor de texto)
-        conteudoHtml = conteudoHtml.replace(
-            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
-            '$1'
-        );
-
-        // Limpeza de cores inline residuais que o Summernote injeta ao quebrar spans
-        // Remove color:#1a5276 e variantes (hex azul do antigo var-field)
-        conteudoHtml = conteudoHtml.replace(
-            /(<span[^>]*style="[^"]*)color\s*:\s*(?:rgb\(26\s*,\s*82\s*,\s*118\)|#1a5276)\s*;?/gi,
-            '$1'
-        );
-
-        const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
         fd.append('conteudo_parecer', conteudoHtml);
         fd.append('requerimento_id',  reqId);
@@ -883,7 +644,9 @@ include '../header.php';
         });
     }
 
-    /* ─── Abrir modal Salvar Template ─────────────────────── */
+    /* ═══════════════════════════════════════════════════════════
+       MODAL SALVAR TEMPLATE
+    ═══════════════════════════════════════════════════════════ */
     function abrirModalSalvarTemplate() {
         document.getElementById('novoTemplateNome').value = '';
         document.getElementById('novoTemplateDesc').value = '';
@@ -893,7 +656,6 @@ include '../header.php';
         new bootstrap.Modal(document.getElementById('modalSalvarTemplate')).show();
     }
 
-    /* ─── Carregar templates do usuário no dropdown ────────── */
     function carregarTemplatesParaModal() {
         const sel = document.getElementById('selectTemplateExistente');
         sel.innerHTML = '<option value="">Carregando...</option>';
@@ -917,25 +679,21 @@ include '../header.php';
         });
     }
 
-    /* ─── Salvar template (novo ou substituindo) ──────────── */
     function salvarTemplate(modo) {
-        const rawHtml = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
-            ? $('#editor-conteudo').summernote('code')
-            : document.getElementById('editor-conteudo').value;
-
-        if (!rawHtml || rawHtml.trim() === '' || rawHtml === '<p><br></p>') {
+        const rawHtml = getEditorHtml();
+        if (!rawHtml || rawHtml.trim() === '') {
             Swal.fire('Atenção', 'O editor está vazio.', 'warning'); return;
         }
 
-        // Converter spans de volta para {{variavel}} para preservar o template
+        // Converter spans var-field de volta para {{variavel}} no template salvo
         const templateHtml = rawHtml.replace(
             /<span[^>]+class="var-field"[^>]+data-var="([^"]+)"[^>]*>(?:(?!<\/span>)[\s\S])*?<\/span>/g,
             '{{$1}}'
         );
 
-        const nome  = document.getElementById('novoTemplateNome').value.trim();
-        const desc  = document.getElementById('novoTemplateDesc').value.trim();
-        const utId  = document.getElementById('selectTemplateExistente').value;
+        const nome = document.getElementById('novoTemplateNome').value.trim();
+        const desc = document.getElementById('novoTemplateDesc').value.trim();
+        const utId = document.getElementById('selectTemplateExistente').value;
 
         if (modo === 'novo' && !nome) {
             Swal.fire('Atenção', 'Informe um nome para o template.', 'warning'); return;
@@ -976,7 +734,36 @@ include '../header.php';
         });
     }
 
-    /* ─── Utilitários ──────────────────────────────────────── */
+    /* ═══════════════════════════════════════════════════════════
+       ICON PICKER
+    ═══════════════════════════════════════════════════════════ */
+    const ICONES_DISPONIVEIS = [
+        'fa-bookmark','fa-file-alt','fa-file-signature','fa-clipboard-list',
+        'fa-leaf','fa-tree','fa-seedling','fa-globe',
+        'fa-hard-hat','fa-building','fa-home','fa-city',
+        'fa-gavel','fa-stamp','fa-certificate','fa-scroll',
+        'fa-microscope','fa-search','fa-clipboard-check','fa-tasks',
+        'fa-bullhorn','fa-flag','fa-star','fa-map-marked-alt',
+    ];
+
+    function iniciarIconPicker() {
+        const grid  = document.getElementById('iconPickerGrid');
+        const input = document.getElementById('novoTemplateIcone');
+        if (!grid) return;
+        grid.innerHTML = ICONES_DISPONIVEIS.map(ic => `
+            <div class="icon-option${ic === input.value ? ' selected' : ''}" data-icon="${ic}" title="${ic.replace('fa-','')}">
+                <i class="fas ${ic}"></i>
+            </div>`).join('');
+        grid.querySelectorAll('.icon-option').forEach(el => {
+            el.addEventListener('click', function() {
+                grid.querySelectorAll('.icon-option').forEach(x => x.classList.remove('selected'));
+                this.classList.add('selected');
+                input.value = this.dataset.icon;
+            });
+        });
+    }
+
+    /* ─── Utilitários ─── */
     function escapeHtml(str) {
         const d = document.createElement('div');
         d.appendChild(document.createTextNode(String(str)));
