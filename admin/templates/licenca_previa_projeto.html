@@ -2,41 +2,41 @@
     body {
         font-family: "Times New Roman", Times, serif;
         font-size: 11pt;
-        line-height: 1.4;
+        line-height: 1.25;
         color: #000;
     }
     .titulo-licenca {
         font-size: 14pt;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         text-transform: uppercase;
         border-bottom: 2px solid #000;
-        padding-bottom: 10px;
+        padding-bottom: 6px;
     }
     .subtitulo {
         font-size: 10pt;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         font-style: italic;
     }
     .secao-titulo {
         font-weight: bold;
         text-transform: uppercase;
         background-color: #f0f0f0;
-        padding: 5px;
-        margin-top: 15px;
-        margin-bottom: 10px;
+        padding: 3px 5px;
+        margin-top: 8px;
+        margin-bottom: 4px;
         font-size: 10pt;
         border: 1px solid #ccc;
     }
     .tabela-dados {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
     .tabela-dados td {
-        padding: 4px;
+        padding: 3px;
         border: 1px solid #ccc;
         vertical-align: top;
     }
@@ -46,31 +46,31 @@
         width: 30%;
     }
     .especificacao {
-        margin-top: 15px;
-        margin-bottom: 15px;
+        margin-top: 8px;
+        margin-bottom: 8px;
         text-align: justify;
         font-size: 10.5pt;
-        line-height: 1.5;
+        line-height: 1.3;
     }
     .condicionantes {
         font-size: 9pt;
-        margin-top: 10px;
+        margin-top: 6px;
         border: 1px solid #000;
-        padding: 10px;
+        padding: 6px 8px;
     }
     .condicionantes ul {
-        margin: 5px 0;
-        padding-left: 20px;
+        margin: 3px 0;
+        padding-left: 18px;
     }
     .data-local {
-        margin-top: 30px;
+        margin-top: 16px;
         text-align: right;
         font-size: 11pt;
     }
     .linha-assinatura {
         border-top: 1px solid #000;
-        margin-top: 40px;
-        padding-top: 5px;
+        margin-top: 22px;
+        padding-top: 4px;
         text-align: center;
     }
     .nome-assinante {
@@ -93,51 +93,51 @@
     CONAMA.
 </div>
 
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">1. IDENTIFICAÇÃO DO PROPRIETÁRIO</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:3px 5px; margin-top:8px; margin-bottom:3px; font-size:10pt; border:1px solid #aaa;">1. IDENTIFICAÇÃO DO PROPRIETÁRIO</div>
+<table class="tabela-dados" width="100%" cellpadding="3" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:6px;">
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Nome/Razão Social:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{nome_requerente}}</td>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Nome/Razão Social:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{nome_requerente}}</td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">CPF/CNPJ:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{cpf_cnpj_requerente}}</td>
-    </tr>
-</table>
-
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">2. DADOS DO EMPREENDIMENTO/OBRA</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Endereço da Obra:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{endereco_objetivo}}</td>
-    </tr>
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Tipo de Alvará:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{tipo_alvara}}</td>
-    </tr>
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Área construída:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{area_construida}} m²</td>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">CPF/CNPJ:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{cpf_cnpj_requerente}}</td>
     </tr>
 </table>
 
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">3. RESPONSABILIDADE TÉCNICA</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:3px 5px; margin-top:8px; margin-bottom:3px; font-size:10pt; border:1px solid #aaa;">2. DADOS DO EMPREENDIMENTO/OBRA</div>
+<table class="tabela-dados" width="100%" cellpadding="3" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:6px;">
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Responsável Técnico:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_nome}}</td>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Endereço da Obra:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{endereco_objetivo}}</td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Registro Profissional:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_registro}}</td>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Tipo de Alvará:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{tipo_alvara}}</td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">ART/RRT/TRT:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}</td>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Área construída:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{area_construida}} m²</td>
     </tr>
 </table>
 
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">4. PARECER TÉCNICO</div>
+<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:3px 5px; margin-top:8px; margin-bottom:3px; font-size:10pt; border:1px solid #aaa;">3. RESPONSABILIDADE TÉCNICA</div>
+<table class="tabela-dados" width="100%" cellpadding="3" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+    <tr>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Responsável Técnico:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{responsavel_tecnico_nome}}</td>
+    </tr>
+    <tr>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">Registro Profissional:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{responsavel_tecnico_registro}}</td>
+    </tr>
+    <tr>
+        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:3px 6px; width:30%;">ART/RRT/TRT:</td>
+        <td style="border:1px solid #aaa; padding:3px 6px;">{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}</td>
+    </tr>
+</table>
+
+<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:3px 5px; margin-top:8px; margin-bottom:3px; font-size:10pt; border:1px solid #aaa;">4. PARECER TÉCNICO</div>
 <div class="especificacao">
     <p><strong>DESCRIÇÃO:</strong> {{especificacao}}</p>
     <p>
