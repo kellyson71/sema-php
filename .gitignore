@@ -196,3 +196,6 @@ docker-compose.yml
 playwright-report/
 test-results/
 
+tests/results/phpunit-junit.xml
+tests/results/playwright-raw.json
+tests/results/playwright-artifacts/

@@ -620,6 +620,23 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </li>
             </ul>
 
+            <?php
+            // Exibe menu de testes apenas no ambiente de homologação (sematst)
+            $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
+            if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)):
+            ?>
+            <div class="menu-header" style="color: #f59e0b;">Homologação</div>
+            <ul>
+                <li>
+                    <a href="<?= $adminBase ?>testes.php" class="<?= $currentPage === 'testes.php' ? 'active' : '' ?>"
+                       style="border-left: 3px solid #f59e0b;">
+                        <i class="fas fa-vial" style="color: #f59e0b;"></i>
+                        <span>Painel de Testes</span>
+                    </a>
+                </li>
+            </ul>
+            <?php endif; ?>
+
             <div class="menu-header">Administração</div>
             <ul>
                 <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'admin_geral'): ?>
