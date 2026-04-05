@@ -31,7 +31,8 @@ vendor/
 node_modules/
 composer.phar
 composer.lock
-composer.json
+# composer.json is tracked (needed for PHPUnit test setup)
+# composer.json
 
 # ===== ARQUIVOS TEMPORÁRIOS =====
 *.tmp
@@ -190,3 +191,8 @@ docker-compose.yml
 .dockerignore
 
 !docker-compose.yml
+
+# ===== TESTES E2E (PLAYWRIGHT) =====
+playwright-report/
+test-results/
+

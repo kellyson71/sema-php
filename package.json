@@ -1,0 +1,14 @@
+{
+  "name": "sema-requerimentos-e2e",
+  "description": "Testes E2E do Sistema SEMA - Pau dos Ferros/RN",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
