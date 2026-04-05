@@ -88,15 +88,16 @@ if [ "$UNIT_ONLY" = false ]; then
   else
     set +e
     BASE_URL="$BASE_URL" npx playwright test \
-      --reporter=json \
-      --output="$RESULTS/playwright-artifacts" \
-      2>"$RESULTS/playwright-raw.json"
+      --project=homologacao \
+      --output="$RESULTS/playwright-artifacts"
     E2E_EXIT=$?
     set -e
 
     php "$ROOT/tests/helpers/playwright-to-json.php" \
         "$RESULTS/playwright-raw.json" \
         "$RESULTS/playwright-results.json"
+
+    # Gera o meta.json após conversão bem-sucedida
 
     E2E_TOTAL=$(php -r "
       \$j = json_decode(file_get_contents('$RESULTS/playwright-results.json'), true);
@@ -149,6 +150,17 @@ echo "  Acesse o relatório em:"
 echo "  https://sematst.protocolosead.com/admin/testes.php"
 echo "========================================================"
 echo ""
+
+# ─── 4. Commit e deploy automático ───────────────────────────────────────────
+if [ "${AUTO_DEPLOY:-false}" = true ]; then
+  echo "▶  Fazendo commit e deploy dos resultados..."
+  git add "$RESULTS/phpunit-results.json" "$RESULTS/playwright-results.json" "$RESULTS/meta.json" 2>/dev/null || true
+  git commit -m "chore(tests): atualiza resultados — PHPUnit $PHPUNIT_PASSED/$PHPUNIT_TOTAL | E2E $E2E_PASSED/$E2E_TOTAL [$TIMESTAMP]" 2>/dev/null || echo "   Sem alterações para commitar."
+  git push origin "$(git branch --show-current)" 2>/dev/null || true
+  ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+    "cd ~/domains/sematst.protocolosead.com/public_html && git pull" 2>/dev/null || true
+  echo "   Deploy concluído."
+fi
 
 # Retorna código de saída não-zero se algum teste falhou
 [ "$PHPUNIT_OK" = true ] && [ "$E2E_OK" = true ] && exit 0 || exit 1
