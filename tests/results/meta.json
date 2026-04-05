@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-04-05T18:09:30Z",
+  "timestamp": "2026-04-05T18:14:34Z",
   "branch": "homologacao",
-  "commit": "703cbeb",
-  "commit_message": "feat: adiciona testes automatizados PHPUnit e Playwright E2E",
+  "commit": "b3d8d49",
+  "commit_message": "feat(homologacao): adiciona painel de testes e infraestrutura de relatórios",
   "base_url": "https://sematst.protocolosead.com",
   "phpunit_ok": true,
   "e2e_ok": false,
