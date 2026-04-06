@@ -5,127 +5,185 @@ if (!defined('BASE_URL')) {
 }
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Mpdf\Mpdf;
-use Mpdf\Output\Destination;
+class SEMA_PDF extends TCPDF {
+    
+    public $assinante_nome = '';
+    public $assinante_cargo = '';
+    public $assinante_data = '';
+    public $assinante_cpf = '';
+    public $assinante_matricula = '';
+
+    // Header Premium com Marca D'água
+    public function Header() {
+        $image_file = dirname(__DIR__, 2) . '/assets/SEMA/PNG/Azul/Logo SEMA Vertical.png';
+        
+        // 1. Marca D'água Transparente no Centro da Página (Discreta: 6%)
+        $this->SetAlpha(0.06); 
+        if (file_exists($image_file)) {
+            $this->Image($image_file, 55, 100, 100, '', 'PNG', '', '', false, 300, '', false, false, 0, false, false, false);
+        }
+        $this->SetAlpha(1); 
+        
+        // 2. Logo no Topo Esquerdo (Movida um pouco mais para cima: de Y 10 para Y 5, mantendo o tamanho 15mm)
+        if (file_exists($image_file)) {
+            $this->Image($image_file, 15, 6, 17, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        }
+        
+        $this->SetFont('helvetica', 'B', 10);
+        $this->SetXY(35, 11);
+        $this->SetTextColor(40, 40, 40);
+        $this->Cell(0, 5, 'PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN', 0, 1, 'L', 0, '', 0, false, 'M', 'M');
+        
+        $this->SetFont('helvetica', 'B', 8);
+        $this->SetXY(35, 15);
+        $this->SetTextColor(100, 100, 100);
+        $this->Cell(0, 5, 'SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA', 0, 1, 'L', 0, '', 0, false, 'M', 'M');
+        
+        // Linha divisória fina verde movida pra cima (-2mm)
+        $this->SetLineStyle(array('width' => 0.3, 'color' => array(45, 134, 97))); 
+        $this->Line(15, 23, 195, 23);
+    }
+
+    // Footer — linha discreta + numeração de página
+    public function Footer() {
+        $this->SetY(-12);
+        $this->SetLineStyle(array('width' => 0.1, 'color' => array(210, 210, 210)));
+        $this->Line(15, $this->GetY(), 195, $this->GetY());
+
+        $this->SetY(-10);
+        $this->SetFont('helvetica', '', 6);
+        $this->SetTextColor(180, 180, 180);
+        $this->Cell(0, 10, 'Pag. ' . $this->getAliasNumPage() . ' / ' . $this->getAliasNbPages() . '   —   Prefeitura Municipal de Pau dos Ferros/RN — SEMA', 0, false, 'C', 0, '', 0, false, 'T', 'M');
+    }
+}
 
 /**
- * Gera e emite/salva o PDF assinado usando mPDF.
+ * Função para gerar e baixar/exibir o PDF assinado
  */
-function emitirParecerAssinado(string $conteudo_html, array $assinante, string $numero_processo, string $modo_saida = 'D', ?string $caminho_salvar = null): ?string {
+function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $modo_saida = 'D', $caminho_salvar = null) {
+    
+    $pdf = new SEMA_PDF('P', 'mm', 'A4', true, 'UTF-8', false);
+    
+    $pdf->assinante_nome = strtoupper($assinante['nome'] ?? '');
+    $pdf->assinante_cargo = $assinante['cargo'] ?? '';
+    $pdf->assinante_data = $assinante['data_hora'] ?? date('d/m/Y H:i:s');
+    $pdf->assinante_cpf = $assinante['cpf'] ?? '';
+    $pdf->assinante_matricula = $assinante['matricula'] ?? '';
 
-    $image_file = dirname(__DIR__, 2) . '/assets/SEMA/PNG/Azul/Logo SEMA Vertical.png';
+    $pdf->SetCreator('SEMA Documentos Digitais');
+    $pdf->SetAuthor($pdf->assinante_nome);
+    $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
 
-    $mpdf = new Mpdf([
-        'mode'           => 'utf-8',
-        'format'         => 'A4',
-        'margin_left'    => 15,
-        'margin_right'   => 15,
-        'margin_top'     => 27,
-        'margin_bottom'  => 15,
-        'margin_header'  => 5,
-        'margin_footer'  => 5,
-        'default_font_size' => 12,
-        'default_font'   => 'dejavuserif',
-        'tempDir'        => sys_get_temp_dir(),
-    ]);
+    // Sem criptografia — ela bloqueava impressão em leitores não-Adobe
 
-    $mpdf->SetCreator('SEMA Documentos Digitais');
-    $mpdf->SetAuthor(strtoupper($assinante['nome'] ?? ''));
-    $mpdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
+    // Margens super otimizadas
+    $pdf->SetMargins(15, 27, 15);
+    $pdf->SetFooterMargin(12);
+    $pdf->SetAutoPageBreak(TRUE, 15);
+    
+    $pdf->AddPage();
 
-    // Marca d'água
-    if (file_exists($image_file)) {
-        $mpdf->SetWatermarkImage($image_file, 0.06, [100, 100]);
-        $mpdf->showWatermarkImage = true;
-    }
+    $pdf->SetFont('times', '', 12);
+    $pdf->SetTextColor(30, 30, 30);
 
-    // Header HTML
-    $logo_tag = '';
-    if (file_exists($image_file)) {
-        $logo_b64 = base64_encode(file_get_contents($image_file));
-        $logo_tag = '<img src="data:image/png;base64,' . $logo_b64 . '" style="width:17mm; vertical-align:middle;">';
-    }
-    $header_html = '
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-bottom: 0.3mm solid #2d8661;">
-        <tr>
-            <td width="20mm">' . $logo_tag . '</td>
-            <td style="vertical-align:middle; padding-left:3mm;">
-                <span style="font-family:helvetica; font-size:10pt; font-weight:bold; color:#282828;">PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</span><br>
-                <span style="font-family:helvetica; font-size:8pt; font-weight:bold; color:#646464;">SECRETARIA MUNICIPAL DE MEIO AMBIENTE - SEMA</span>
-            </td>
-        </tr>
-    </table>';
-    $mpdf->SetHTMLHeader($header_html);
-
-    // Footer HTML
-    $footer_html = '
-    <table width="100%" cellpadding="0" cellspacing="0" style="border-top: 0.1mm solid #d2d2d2;">
-        <tr>
-            <td style="font-family:helvetica; font-size:6pt; color:#b4b4b4; text-align:center; padding-top:1mm;">
-                Pág. {PAGENO} / {nbpg} &nbsp;—&nbsp; Prefeitura Municipal de Pau dos Ferros/RN — SEMA
-            </td>
-        </tr>
-    </table>';
-    $mpdf->SetHTMLFooter($footer_html);
-
-    // Dados do assinante
-    $nome      = strtoupper($assinante['nome'] ?? '');
-    $cargo     = $assinante['cargo'] ?? '';
-    $cpf       = $assinante['cpf'] ?? '';
-    $data_hora = $assinante['data_hora'] ?? date('d/m/Y \à\s H:i:s');
-    $linha2    = $cargo . (!empty($cpf) ? '  |  CPF: ' . $cpf : '');
-
-    // Carimbo de assinatura — fluxo normal no final do conteúdo (última página)
-    $stamp = '
-    <div style="width:62mm; border:0.25mm solid #a0a0a0; font-family:helvetica; font-size:5pt; margin-left:auto; margin-top:6mm;">
-        <div style="background:#dcdcdc; padding:1mm 2mm;">
-            <strong>&#9632; ASSINADO DIGITALMENTE</strong>
-        </div>
-        <div style="padding:1mm 2mm; line-height:1.6;">
-            <strong style="font-size:5.5pt;">' . htmlspecialchars($nome) . '</strong><br>
-            ' . htmlspecialchars($linha2) . '<br>
-            <span style="color:#505050;">' . htmlspecialchars($data_hora) . '</span>
-        </div>
-    </div>';
-
-    $css = '
-        body { font-family: dejavuserif; font-size: 12pt; line-height: 1.4; }
+    // CSS compatível com TCPDF — mínimo necessário, pois Components.php usa atributos HTML
+    $css_base = '<style>
+        body { font-family: "times"; font-size: 12pt; line-height: 1.4; }
         p { margin-top: 0pt; margin-bottom: 4pt; line-height: 1.4; }
+
+        /* Títulos */
         h1 { font-size: 13pt; font-weight: bold; margin-top: 6pt; margin-bottom: 4pt; }
         h2 { font-size: 12pt; font-weight: bold; margin-top: 5pt; margin-bottom: 3pt; }
         h3 { font-size: 12pt; font-weight: bold; margin-top: 4pt; margin-bottom: 2pt; }
+
+        /* Tabelas — atributos HTML (width, border, cellpadding, bgcolor) fazem o trabalho pesado */
         table { border-collapse: collapse; }
         td, th { vertical-align: middle; line-height: 1.4; }
+
+        /* Texto e parágrafos */
         .texto-parecer p { margin-bottom: 4pt; text-indent: 25pt; line-height: 1.45; }
         .data-local { text-align: right; }
         .linha-assinatura { text-align: center; padding-top: 3pt; }
+
+        /* Condicionantes */
         .condicionantes { font-size: 9pt; border: 1px solid #000; padding: 6pt 8pt; }
+
+        /* Listas */
         ul, ol { margin-top: 2pt; margin-bottom: 5pt; }
         li { margin-bottom: 2pt; line-height: 1.35; }
+
+        /* Segurança: anula highlight de var-field caso chegue aqui */
         .var-field { color: #1e1e1e !important; background: transparent !important;
                      font-weight: bold !important; text-decoration: none !important; }
-    ';
+        /* Remove cor azul residual de spans quebrados pelo Summernote */
+        span[style*=\"1a5276\"] { color: #1e1e1e !important; }
+    </style>';
 
-    $html_final = '<style>' . $css . '</style>
-    <div style="text-align: justify; line-height: 1.4;">'
-        . $conteudo_html
-        . $stamp
-    . '</div>';
+    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
 
-    $mpdf->WriteHTML($html_final);
+    $pdf->writeHTML($html_corpo, true, false, true, false, '');
 
-    $nome_arquivo = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '_' . date('His') . '.pdf';
+    // Bloco de assinatura digital — absolutamente posicionado, sem afetar paginação
+    $pdf->lastPage();
+    $pdf->SetAutoPageBreak(FALSE); // impede que Cell() crie nova página
 
-    if ($modo_saida === 'F' && $caminho_salvar) {
-        $mpdf->Output($caminho_salvar, Destination::FILE);
-        return $nome_arquivo;
-    }
+    $pw = $pdf->getPageWidth();   // 210mm
+    $ph = $pdf->getPageHeight();  // 297mm
+    $bW = 62;
+    $bH = 13;
+    $bX = $pw - 15 - $bW;        // X = 133, margem direita 15mm
+    $bY = $ph - 14 - $bH;        // Y = 270, fica acima do footer (footer em -12)
+
+    // Fundo branco para cobrir qualquer conteúdo abaixo (transparência visual)
+    $pdf->SetFillColor(255, 255, 255);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'F');
+
+    // Borda externa fina cinza
+    $pdf->SetDrawColor(160, 160, 160);
+    $pdf->SetLineWidth(0.25);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'D');
+
+    // Faixa cabeçalho cinza claro
+    $pdf->SetFillColor(220, 220, 220);
+    $pdf->Rect($bX, $bY, $bW, 4, 'F');
+
+    // Marcador quadrado
+    $pdf->SetFillColor(50, 50, 50);
+    $pdf->Rect($bX + 2, $bY + 1.2, 1.8, 1.8, 'F');
+
+    // Título
+    $pdf->SetFont('helvetica', 'B', 5);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetXY($bX + 5, $bY + 0.7);
+    $pdf->Cell($bW - 6, 2.8, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
+
+    // Nome
+    $pdf->SetFont('helvetica', 'B', 5.5);
+    $pdf->SetXY($bX + 2, $bY + 4.5);
+    $pdf->Cell($bW - 4, 2.8, $pdf->assinante_nome, 0, 0);
+
+    // Cargo + CPF
+    $pdf->SetFont('helvetica', '', 5);
+    $linha2 = $pdf->assinante_cargo;
+    if (!empty($pdf->assinante_cpf)) $linha2 .= '  |  CPF: ' . $pdf->assinante_cpf;
+    $pdf->SetXY($bX + 2, $bY + 7.3);
+    $pdf->Cell($bW - 4, 2.5, $linha2, 0, 0);
+
+    // Data
+    $pdf->SetTextColor(80, 80, 80);
+    $pdf->SetXY($bX + 2, $bY + 10);
+    $pdf->Cell($bW - 4, 2.5, $pdf->assinante_data, 0, 0);
 
     if (ob_get_length()) {
-        ob_clean();
+       ob_clean();
     }
 
-    $dest = ($modo_saida === 'D') ? Destination::DOWNLOAD : Destination::INLINE;
-    $mpdf->Output($nome_arquivo, $dest);
-    return null;
+    $nome_arquivo = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '_' . date('His') . '.pdf';
+    
+    if ($modo_saida === 'F' && $caminho_salvar) {
+        $pdf->Output($caminho_salvar, 'F');
+        return $nome_arquivo;
+    } else {
+        $pdf->Output($nome_arquivo, $modo_saida);
+    }
 }
