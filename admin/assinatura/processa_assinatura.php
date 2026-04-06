@@ -1,6 +1,7 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ob_start();
 
 // Conexão e Sessão (Caminhos Absolutos a partir da raiz)
 $rootDir = dirname(__DIR__, 2); // Raiz (sema-php)
@@ -56,9 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $salvar_banco = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
     $template_salvo = $_POST['template_salvo'] ?? 'Documento Eletrônico';
 
+    if ($salvar_banco) {
+        header('Content-Type: application/json');
+    }
+
     if (empty($conteudo)) {
         if ($salvar_banco) {
-            echo json_encode(['success' => false, 'error' => 'ERRO: O conteúdo do parecer não pode estar vazio.']); exit;
+            ob_clean(); echo json_encode(['success' => false, 'error' => 'ERRO: O conteúdo do parecer não pode estar vazio.']); exit;
         }
         die("ERRO: O conteúdo do parecer não pode estar vazio.");
     }
@@ -66,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $admin_id = $_SESSION['admin_id'] ?? null;
     if (!$admin_id) {
         if ($salvar_banco) {
-            echo json_encode(['success' => false, 'error' => 'ERRO: Sessão expirada ou não encontrada.']); exit;
+            ob_clean(); echo json_encode(['success' => false, 'error' => 'ERRO: Sessão expirada ou não encontrada.']); exit;
         }
         die("ERRO: Sessão expirada ou não encontrada.");
     }
@@ -77,11 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$admin) {
-             if ($salvar_banco) { echo json_encode(['success' => false, 'error' => 'Administrador não encontrado.']); exit; }
+             if ($salvar_banco) { ob_clean(); echo json_encode(['success' => false, 'error' => 'Administrador não encontrado.']); exit; }
              die("ERRO: Administrador não encontrado no banco.");
         }
     } catch (Exception $e) {
-        if ($salvar_banco) { echo json_encode(['success' => false, 'error' => 'ERRO SQL: ' . $e->getMessage()]); exit; }
+        if ($salvar_banco) { ob_clean(); echo json_encode(['success' => false, 'error' => 'ERRO SQL: ' . $e->getMessage()]); exit; }
         die("ERRO SQL: " . $e->getMessage());
     }
 
@@ -115,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
 
             if (!file_exists($caminhoFisico)) {
-                echo json_encode(['success' => false, 'error' => 'A biblioteca PDF falhou ao gravar o arquivo físico.']); exit;
+                ob_clean(); echo json_encode(['success' => false, 'error' => 'A biblioteca PDF falhou ao gravar o arquivo físico.']); exit;
             }
             
             // 2. Coletar Metadados p/ Tabela
@@ -159,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "Gerou e assinou digitalmente o documento: " . strtoupper(str_replace('_', ' ', $nomeCurto_template))
             ]);
             
+            ob_clean();
             echo json_encode([
                  'success' => true,
                  'url_pdf' => $caminhoRelativo,
@@ -169,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         } catch (Exception $e) {
             error_log("Erro em processa_assinatura no fluxo JSON -> " . $e->getMessage());
-            echo json_encode(['success' => false, 'error' => 'Falha Crítica ao registrar documento: ' . $e->getMessage()]); exit;
+            ob_clean(); echo json_encode(['success' => false, 'error' => 'Falha Crítica ao registrar documento: ' . $e->getMessage()]); exit;
         }
 
     } else {
