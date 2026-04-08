@@ -1,0 +1,80 @@
+<style>
+    .texto-parecer p { margin-bottom: 12px; text-indent: 50px; line-height: 1.7; text-align: justify; }
+    .titulo-doc { font-size: 13pt; font-weight: bold; text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; }
+    .subtitulo-doc { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 20px; color: #555; }
+    .tabela-dados { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .tabela-dados td { padding: 5px 8px; border: 1px solid #999; vertical-align: top; font-size: 11pt; }
+    .tabela-dados .label { font-weight: bold; background-color: #f2f2f2; width: 35%; white-space: nowrap; }
+    .secao-titulo { font-weight: bold; text-transform: uppercase; font-size: 10.5pt; margin-top: 18px; margin-bottom: 8px; background: #f0f0f0; padding: 4px 8px; border: 1px solid #ccc; }
+    .data-local { margin-top: 24px; text-align: center; font-size: 11pt; }
+    .campo-livre { min-height: 80px; border: 1px dashed #bbb; padding: 8px; margin: 8px 0; background: #fafafa; font-size: 11pt; line-height: 1.6; }
+</style>
+
+<div class="titulo-doc">Relatório de Vistoria Ambiental</div>
+<div class="subtitulo-doc">Fiscalização Ambiental – SEMA<br>Secretaria Municipal de Meio Ambiente – Pau dos Ferros/RN</div>
+
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Objeto da Vistoria:</td>
+        <td>{{observacoes}}</td>
+    </tr>
+    <tr>
+        <td class="label">Autuado / Vistoriado:</td>
+        <td><strong>{{infrator_nome}}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">CPF / CNPJ:</td>
+        <td>{{infrator_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Local:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Data da Vistoria:</td>
+        <td>{{data_registro}}</td>
+    </tr>
+    <tr>
+        <td class="label">Situação:</td>
+        <td>Pau dos Ferros – RN, {{data_atual}}</td>
+    </tr>
+    <tr>
+        <td class="label">Equipe de Vistoria:</td>
+        <td>{{fiscal_nome}} – Fiscal de Meio Ambiente</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">I – Do Histórico</div>
+
+<div class="texto-parecer">
+    <p>A equipe de Fiscalização Ambiental da Secretaria Municipal de Meio Ambiente – SEMA realizou vistoria no local acima identificado, com o objetivo de verificar a situação ambiental e apurar os fatos descritos neste relatório.</p>
+    <p>Durante a inspeção in loco, foram constatadas as seguintes situações:</p>
+</div>
+
+<div class="campo-livre">
+    [Descrever as constatações da vistoria]
+</div>
+
+<div class="secao-titulo">II – Das Irregularidades Constatadas</div>
+
+<div class="texto-parecer">
+    <p>A conduta verificada caracteriza infração às normas ambientais vigentes, especialmente à <strong>Lei Municipal nº 2.116/2025</strong> – Código de Meio Ambiente de Pau dos Ferros/RN, e à <strong>Lei nº 9.605/1998</strong> – Lei de Crimes Ambientais.</p>
+</div>
+
+<div class="secao-titulo">III – Das Providências Adotadas</div>
+
+<div class="texto-parecer">
+    <p>Em razão das irregularidades verificadas, foram adotadas as seguintes providências:</p>
+</div>
+
+<div class="campo-livre">
+    [Descrever as providências: notificação, auto de infração, etc.]
+</div>
+
+<div class="secao-titulo">IV – Da Conclusão</div>
+
+<div class="texto-parecer">
+    <p>Ressalta-se que o presente relatório possui caráter inicial e poderá ser complementado a qualquer tempo, mediante a juntada de novos elementos, documentos ou informações decorrentes do andamento do processo administrativo, incluindo manifestação do autuado, cumprimento ou descumprimento das determinações impostas, bem como a adoção de eventuais medidas administrativas, civis ou penais cabíveis.</p>
+</div>
+
+<div class="data-local">Pau dos Ferros – RN, {{data_atual}}</div>

@@ -59,6 +59,9 @@ include '../header.php';
         .tpl-badge.notificacao   { background: #fef3c7; color: #92400e; }
         .tpl-badge.tac           { background: #dbeafe; color: #1e40af; }
         .tpl-badge.compromisso   { background: #d1fae5; color: #065f46; }
+        .tpl-badge.auto          { background: #fee2e2; color: #991b1b; }
+        .tpl-badge.relatorio     { background: #e0f2fe; color: #075985; }
+        .tpl-badge.parecer       { background: #f1f5f9; color: #475569; }
         .preview-miniature {
             font-size: 0.72rem; color: #64748b; text-align: left;
             background: #f8fafc; padding: 10px 12px; border-radius: 8px;
@@ -131,9 +134,12 @@ include '../header.php';
     const denunciaId = <?= $denuncia_id ?>;
 
     const badgeClass = {
-        'Notificação': 'notificacao',
-        'TAC':         'tac',
-        'Compromisso': 'compromisso',
+        'Notificação':    'notificacao',
+        'Auto de Infração': 'auto',
+        'TAC':            'tac',
+        'Compromisso':    'compromisso',
+        'Relatório':      'relatorio',
+        'Parecer':        'parecer',
     };
 
     function escapeHtml(str) {

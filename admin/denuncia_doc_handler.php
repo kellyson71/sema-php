@@ -29,6 +29,14 @@ try {
                     'desc'    => 'Notificação oficial expedida pela fiscalização ambiental ao infrator identificado.',
                     'preview' => 'Notifica o proprietário/responsável a regularizar a situação ambiental no prazo estabelecido.',
                 ],
+                'denuncia_auto_infracao' => [
+                    'label'   => 'Auto de Infração Ambiental',
+                    'icon'    => 'fa-ban',
+                    'cor'     => 'text-danger',
+                    'badge'   => 'Auto de Infração',
+                    'desc'    => 'Auto de infração com dados do autuado, base legal e penalidade aplicada.',
+                    'preview' => 'Documenta a infração ambiental, aplica multa e determina prazo para defesa.',
+                ],
                 'denuncia_tac' => [
                     'label'   => 'Termo de Ajustamento de Conduta (TAC)',
                     'icon'    => 'fa-handshake',
@@ -44,6 +52,22 @@ try {
                     'badge'   => 'Compromisso',
                     'desc'    => 'Termo de compromisso de recuperação ambiental com obrigações, prazos e penalidades.',
                     'preview' => 'Define as obrigações de recuperação ambiental, prazos e consequências do descumprimento.',
+                ],
+                'denuncia_relatorio_vistoria' => [
+                    'label'   => 'Relatório de Vistoria Ambiental',
+                    'icon'    => 'fa-clipboard-list',
+                    'cor'     => 'text-info',
+                    'badge'   => 'Relatório',
+                    'desc'    => 'Relatório de vistoria com histórico, constatações e providências adotadas.',
+                    'preview' => 'Documenta os fatos constatados na vistoria ambiental realizada no local.',
+                ],
+                'denuncia_parecer_ambiental' => [
+                    'label'   => 'Parecer Técnico Ambiental',
+                    'icon'    => 'fa-microscope',
+                    'cor'     => 'text-secondary',
+                    'badge'   => 'Parecer',
+                    'desc'    => 'Parecer técnico da fiscalização com constatações, fundamentação legal e conclusão.',
+                    'preview' => 'Emite parecer técnico fundamentado sobre a infração ambiental identificada.',
                 ],
             ];
 

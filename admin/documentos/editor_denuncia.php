@@ -147,7 +147,7 @@ include '../header.php';
                 <h5 class="mb-0 fw-bold text-dark">
                     <i class="fas fa-edit me-2" style="color:var(--sema-green)"></i> Editor de Documento
                 </h5>
-                <small class="text-muted">Edite e gere o PDF do documento da denúncia</small>
+                <small class="text-muted">Edite e assine digitalmente o documento da denúncia</small>
             </div>
         </div>
         <span class="badge px-3 py-2 rounded-pill fw-semibold"
@@ -182,8 +182,8 @@ include '../header.php';
                        class="btn btn-outline-secondary fw-medium px-3">
                         <i class="fas fa-arrow-left me-1"></i> Voltar
                     </a>
-                    <button class="btn btn-sema fw-medium px-4" onclick="gerarPDF()">
-                        <i class="fas fa-file-pdf me-2"></i> Gerar PDF
+                    <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
+                        <i class="fas fa-signature me-2"></i> Assinar e Finalizar
                     </button>
                 </div>
             </div>
@@ -194,6 +194,60 @@ include '../header.php';
             <textarea id="editor-conteudo"></textarea>
         </div>
 
+    </div>
+
+    <!-- Modal de Assinatura Digital -->
+    <div class="modal fade" id="modalConfirmacao" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header modal-header-sema px-4 py-3">
+            <h5 class="modal-title fw-bold text-sema">
+              <i class="fas fa-shield-alt me-2"></i> Autenticação Legal Exigida
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-5">
+            <div class="text-center mb-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                   style="width:72px;height:72px;background:#d1fae5;">
+                <i class="fas fa-file-signature fs-2 text-success"></i>
+              </div>
+              <h4 class="fw-bold text-dark">Deseja finalizar a assinatura digital?</h4>
+              <p class="text-muted mb-0">Após a confirmação, o documento será gerado com carimbo de assinatura digital.</p>
+            </div>
+            <div class="bg-light p-3 rounded-3 mb-4 text-center border">
+              <a href="../diretrizes_assinatura.php" target="_blank" class="text-decoration-none fw-bold text-sema">
+                <i class="fas fa-external-link-alt me-1"></i>
+                Ler Diretrizes de Convalidação e Responsabilidade Legal
+              </a>
+            </div>
+            <form id="formCheckout">
+              <div class="form-check p-3 mb-3 border rounded border-success" style="background:rgba(16,185,129,0.06)">
+                <input class="form-check-input ms-1 me-2 border-success shadow-none" type="checkbox"
+                       id="checkDiretrizes" required style="transform:scale(1.3);margin-top:5px">
+                <label class="form-check-label fw-bold text-dark" for="checkDiretrizes">
+                  Eu afirmo que li e concordo inteiramente com as diretrizes de assinatura digital
+                  <span class="text-danger">*</span>
+                </label>
+              </div>
+              <div class="form-check ms-2 mb-4">
+                <input class="form-check-input" type="checkbox" id="checkDownload" checked>
+                <label class="form-check-label text-muted" for="checkDownload">
+                  Fazer o download automático do PDF logo após assinar
+                </label>
+              </div>
+              <div class="d-grid gap-3 d-md-flex justify-content-md-end pt-3">
+                <button type="button" class="btn btn-light fw-medium px-4 border"
+                        data-bs-dismiss="modal">Revisar Documento</button>
+                <button type="button" class="btn btn-sema fw-bold px-5"
+                        id="btnAssinarFinal" onclick="finalizarAssinatura()">
+                  <i class="fas fa-check-circle me-2"></i> Confirmar Assinatura
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -392,8 +446,40 @@ include '../header.php';
         });
     }
 
-    /* ─── Gerar PDF ─────────────────────────────────────── */
-    function gerarPDF() {
+    /* ─── Abrir modal de assinatura ────────────────────────── */
+    function abrirModalAssinatura() {
+        let html = '';
+        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
+            html = $('#editor-conteudo').summernote('code');
+        } else {
+            html = document.getElementById('editor-conteudo').value;
+        }
+        if (!html || html.trim() === '' || html === '<p><br></p>') {
+            Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
+            return;
+        }
+        const chk = document.getElementById('checkDiretrizes');
+        chk.checked = false;
+        chk.setCustomValidity('O aceite nas diretrizes é obrigatório.');
+        new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('checkDiretrizes').addEventListener('change', function() {
+            this.setCustomValidity(this.checked ? '' : 'O aceite nas diretrizes é obrigatório.');
+        });
+        carregarTemplate();
+    });
+
+    /* ─── Finalizar assinatura digital ─────────────────────── */
+    function finalizarAssinatura() {
+        const form = document.getElementById('formCheckout');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const btn = document.getElementById('btnAssinarFinal');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+
         let conteudoHtml = '';
         if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
             conteudoHtml = $('#editor-conteudo').summernote('code');
@@ -401,47 +487,51 @@ include '../header.php';
             conteudoHtml = document.getElementById('editor-conteudo').value;
         }
 
-        if (!conteudoHtml || conteudoHtml.trim() === '' || conteudoHtml === '<p><br></p>') {
-            Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
-            return;
-        }
-
-        // Limpar indicadores visuais de página
+        // Remover indicadores visuais de quebra de página
         conteudoHtml = conteudoHtml.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
 
-        Swal.fire({
-            title: 'Gerando PDF...',
-            text: 'Aguarde enquanto o documento é processado.',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        const fazDownload = document.getElementById('checkDownload').checked;
+        const fd = new FormData();
+        fd.append('conteudo_parecer', conteudoHtml);
+        fd.append('denuncia_id',      denunciaId);
+        fd.append('template_salvo',   templateNome);
 
-        fetch('../denuncia_doc_handler.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                action:      'gerar_pdf_denuncia',
-                html:        conteudoHtml,
-                denuncia_id: denunciaId,
-                template:    templateNome
-            })
-        })
-        .then(r => r.json())
+        fetch('../assinatura/processa_assinatura_denuncia.php', { method: 'POST', body: fd })
+        .then(res => res.json())
         .then(ret => {
-            Swal.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura';
+
             if (ret.success) {
-                // Abrir PDF em nova aba
-                window.open(ret.pdf_url, '_blank');
+                bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
+                Swal.fire({
+                    title: 'Documento Assinado!',
+                    text: 'O documento foi gerado e assinado digitalmente.',
+                    icon: 'success',
+                    timer: 2500,
+                    showConfirmButton: false
+                }).then(() => {
+                    if (fazDownload && ret.url_pdf) {
+                        const a = document.createElement('a');
+                        a.href = '../' + ret.url_pdf;
+                        a.download = ret.nome_arquivo || 'Documento_Assinado.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    }
+                    setTimeout(() => {
+                        window.location.href = '../visualizar_denuncia.php?id=' + denunciaId + '&success=atualizada';
+                    }, 500);
+                });
             } else {
-                Swal.fire('Erro', ret.error || 'Não foi possível gerar o PDF.', 'error');
+                Swal.fire('Erro', ret.error || 'Não foi possível gerar o documento.', 'error');
             }
         })
-        .catch(err => {
-            Swal.close();
-            Swal.fire('Falha na Conexão', err.message || 'Erro inesperado.', 'error');
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura';
+            Swal.fire('Falha na Conexão', 'Erro ao enviar para o servidor.', 'error');
         });
     }
-
-    document.addEventListener('DOMContentLoaded', carregarTemplate);
     </script>
 <?php include '../footer.php'; ?>
