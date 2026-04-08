@@ -73,6 +73,10 @@ include 'header.php';
             </div>
             
             <div class="flex items-center gap-3">
+                <a href="documentos/selecionar_denuncia.php?denuncia_id=<?php echo $denuncia['id']; ?>"
+                   class="bg-white border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                    <i class="fas fa-file-signature mr-2"></i> Gerar Documento
+                </a>
                 <form action="processar_denuncia.php" method="POST" class="d-inline" onsubmit="return confirm('ATENÇÃO: Esta ação é irreversível e excluirá todos os dados e arquivos anexados desta denúncia. Deseja continuar?')">
                     <input type="hidden" name="acao" value="excluir">
                     <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
