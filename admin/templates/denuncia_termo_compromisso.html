@@ -1,0 +1,131 @@
+<style>
+    .texto-parecer p {
+        margin-bottom: 12px;
+        text-indent: 50px;
+        line-height: 1.7;
+        text-align: justify;
+    }
+    .titulo-doc {
+        font-size: 13pt;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+    }
+    .subtitulo-doc {
+        font-size: 11pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #555;
+    }
+    .tabela-dados {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    .tabela-dados td {
+        padding: 5px 8px;
+        border: 1px solid #999;
+        vertical-align: top;
+        font-size: 11pt;
+    }
+    .tabela-dados .label {
+        font-weight: bold;
+        background-color: #f2f2f2;
+        width: 35%;
+        white-space: nowrap;
+    }
+    .secao-titulo {
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 11pt;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        background: #f0f0f0;
+        padding: 5px 8px;
+        border: 1px solid #ccc;
+    }
+    .data-local {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 11pt;
+    }
+    .lista-obrigacoes {
+        margin: 8px 0 8px 20px;
+        line-height: 1.8;
+    }
+    .lista-obrigacoes li { margin-bottom: 6px; }
+</style>
+
+<div class="titulo-doc">Termo de Compromisso de Recuperação Ambiental</div>
+<div class="subtitulo-doc">Secretaria Municipal de Meio Ambiente – SEMA<br>Pau dos Ferros/RN</div>
+
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Processo Administrativo nº:</td>
+        <td>_____________</td>
+    </tr>
+    <tr>
+        <td class="label">Compromissário(a):</td>
+        <td><strong>{{infrator_nome}}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">CPF / CNPJ:</td>
+        <td>{{infrator_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Endereço:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Fiscal Responsável:</td>
+        <td>{{fiscal_nome}}</td>
+    </tr>
+    <tr>
+        <td class="label">Data:</td>
+        <td>{{data_atual}}</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">I – Do Objeto</div>
+
+<div class="texto-parecer">
+    <p>O presente Termo de Compromisso Ambiental tem por objeto a adoção de medidas de recuperação, mitigação e compensação ambiental pelos danos causados ao meio ambiente, em razão da conduta identificada: <strong>{{observacoes}}</strong></p>
+
+    <p>O compromissário se obriga a adotar todas as medidas necessárias para a cessação da degradação ambiental e a recuperação da área afetada, conforme condições estabelecidas neste instrumento.</p>
+</div>
+
+<div class="secao-titulo">II – Da Fundamentação Legal</div>
+
+<div class="texto-parecer">
+    <p>O presente instrumento tem como fundamento a <strong>Lei Municipal nº 2.116/2025</strong> – Código de Meio Ambiente do Município de Pau dos Ferros/RN, a <strong>Lei Federal nº 9.605/1998</strong> – Lei de Crimes Ambientais, e demais normas ambientais aplicáveis.</p>
+</div>
+
+<div class="secao-titulo">III – Das Obrigações do Compromissário</div>
+
+<div class="texto-parecer">
+    <p>O(A) compromissário(a) se compromete a cumprir as seguintes obrigações:</p>
+</div>
+
+<ul class="lista-obrigacoes">
+    <li>Cessar imediatamente as atividades lesivas ao meio ambiente identificadas neste processo;</li>
+    <li>Adotar as medidas de recuperação ambiental indicadas pela fiscalização da SEMA;</li>
+    <li>Cumprir o prazo de <strong>_____ (___________) dias</strong> para execução das medidas compensatórias;</li>
+    <li>Apresentar relatório de cumprimento das obrigações à Secretaria Municipal de Meio Ambiente;</li>
+    <li>Permitir o acesso da fiscalização ambiental ao local para aferição do cumprimento das medidas.</li>
+</ul>
+
+<div class="secao-titulo">IV – Das Penalidades</div>
+
+<div class="texto-parecer">
+    <p>O não cumprimento das obrigações assumidas neste termo implicará na aplicação das sanções previstas na legislação ambiental vigente, inclusive multas administrativas, bem como cancelamento do presente termo e adoção das medidas judiciais e extrajudiciais cabíveis.</p>
+
+    <p>Este termo terá vigência de <strong>_____ (___________) dias</strong>, podendo ser prorrogado mediante justificativa técnica e concordância das partes.</p>
+
+    <p>O presente termo é celebrado em duas vias de igual teor e forma, assinadas pelas partes, para que produza seus efeitos legais.</p>
+</div>
+
+<div class="data-local">Pau dos Ferros – RN, {{data_atual}}</div>

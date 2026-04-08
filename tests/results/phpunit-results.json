@@ -1,0 +1,1529 @@
+{
+    "summary": {
+        "total": 212,
+        "passed": 212,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duration_ms": 19
+    },
+    "suites": [
+        {
+            "name": "FunctionsTest",
+            "total": 42,
+            "passed": 42,
+            "failed": 0,
+            "errors": 0,
+            "skipped": 0,
+            "duration_ms": 12,
+            "tests": [
+                {
+                    "name": "gerarProtocoloRetornaStringNaoVazia",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 8,
+                    "message": null
+                },
+                {
+                    "name": "gerarProtocoloTemFormatoCorreto",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "gerarProtocoloEUnico",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 2,
+                    "message": null
+                },
+                {
+                    "name": "sanitizeEscapaTagsHtml",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "sanitizeEscapaAspas",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "sanitizeNaoAlteraTextoSimples",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "sanitizeStringVaziaRetornaVazia",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarDataRetornaFormatoBrasileiro",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarDataHoraRetornaFormatoCompleto",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarDataHoraStringVaziaRetornaMensagem",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "mensagemFlashEArmazenadaERecuperada",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "getMensagemLimpaAposLeitura",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "getMensagemRetornaNullQuandoNaoExiste",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "isAdminRetornaTrueQuandoSessaoAtiva",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "isAdminRetornaFalseQuandoSemSessao",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "isAdminRetornaFalseQuandoSessaoFalsa",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"analise minusculo\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"em analise com acento\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"em analise sem acento\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"aprovado minusculo\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"aprovado maiusculo\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"rejeitado\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"reprovado vira rejeitado\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"pendente\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarStatusNormalizaCorretamente with data set \"status desconhecido\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"CPF somente digitos\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"CPF com mascara existente\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"CPF curto completa zeros\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"CNPJ somente digitos\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"CNPJ com mascara\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"string vazia retorna msg\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarCpfCnpjAplicaMascaraCorreta with data set \"so letras retorna msg\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarTamanhoRetornaUnidadeCorreta with data set \"bytes\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarTamanhoRetornaUnidadeCorreta with data set \"kilobytes\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarTamanhoRetornaUnidadeCorreta with data set \"megabytes\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarTamanhoRetornaUnidadeCorreta with data set \"gigabytes\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarTamanhoRetornaUnidadeCorreta with data set \"zero bytes\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarNomeMesRetornaPortugues with data set \"janeiro\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarNomeMesRetornaPortugues with data set \"junho\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarNomeMesRetornaPortugues with data set \"dezembro\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarNomeMesRetornaPortugues with data set \"invalido\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "formatarNomeMesRetornaPortugues with data set \"zero\"",
+                    "class": "FunctionsTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                }
+            ]
+        },
+        {
+            "name": "TiposAlvaraTest",
+            "total": 143,
+            "passed": 143,
+            "failed": 0,
+            "errors": 0,
+            "skipped": 0,
+            "duration_ms": 7,
+            "tests": [
+                {
+                    "name": "arrayNaoEstaVazio",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeAlvaraRetornaNomeCorretoParaSlugConhecido",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeAlvaraRetornaFallbackParaSlugDesconhecido",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoPossuiChavesObrigatorias with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeTipoNaoEstaVazio with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 1,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "categoriaTipoEValida with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "documentosEhArray with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeCtfEBooleano with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"construcao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"construcao_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"habite_se\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"habite_se_obras_publicas\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"habite_se_simples\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"funcionamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"desmembramento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"demolicao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"transporte\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"loteamento\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"uso_solo\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"parques_circos\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_previa_obras\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "exigeLicencaAnteriorEBooleano with data set \"outros\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_previa_ambiental\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_previa_instalacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_instalacao_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_operacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_ambiental_unica\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_ampliacao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"licenca_operacional_corretiva\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "tipoAmbientalQueExigeCtfTemChaveCtfExplicita with data set \"autorizacao_supressao\"",
+                    "class": "TiposAlvaraTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                }
+            ]
+        },
+        {
+            "name": "ValidacaoFormularioTest",
+            "total": 27,
+            "passed": 27,
+            "failed": 0,
+            "errors": 0,
+            "skipped": 0,
+            "duration_ms": 0,
+            "tests": [
+                {
+                    "name": "arquivoDentroDo10MbEValido",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "arquivoExatamente10MbEValido",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "arquivoAcimaDe10MbEInvalido",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "arquivoZeroBytesEValido",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "pdfComMimeCorretoEAceito",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "pdfComMimeErradoERecusado",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "extensaoNaoPdfERecusada",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "extensaoJpgComMimePdfERecusada",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "dadosRequerenteCompletosNaoGeramErros",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "nomeFazendoFaltaGeraErro",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailInvalidoGeraErro",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "cpfFazendoFaltaGeraErro",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "telefoneFazendoFaltaGeraErro",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "construcaoNaoEAmbiental",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "licencaPreviaEAmbiental",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "construcaoNaoExigeCtf",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "licencaOperacaoExigeCtf",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "sanitizeProtegeTodosInputsDoFormulario",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsValidosPassamValidacao with data set #0",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsValidosPassamValidacao with data set #1",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsValidosPassamValidacao with data set #2",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsValidosPassamValidacao with data set #3",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsInvalidosReprovamValidacao with data set #0",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsInvalidosReprovamValidacao with data set #1",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsInvalidosReprovamValidacao with data set #2",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsInvalidosReprovamValidacao with data set #3",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                },
+                {
+                    "name": "emailsInvalidosReprovamValidacao with data set #4",
+                    "class": "ValidacaoFormularioTest",
+                    "status": "passed",
+                    "duration_ms": 0,
+                    "message": null
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,455 @@
+{
+    "summary": {
+        "total": 43,
+        "passed": 23,
+        "failed": 11,
+        "skipped": 9,
+        "duration_ms": 326611
+    },
+    "suites": [
+        {
+            "name": "Admin Login - Carregamento",
+            "file": "admin-login.spec.ts",
+            "total": 4,
+            "passed": 1,
+            "failed": 3,
+            "skipped": 0,
+            "duration_ms": 51091,
+            "tests": [
+                {
+                    "name": "página de login carrega corretamente",
+                    "status": "passed",
+                    "duration_ms": 996,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "campos de usuário e senha estão presentes",
+                    "status": "failed",
+                    "duration_ms": 6946,
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[name=\"usuario\"], #usuario')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('[name=\"usuario\"], #usuario')\u001b[22m\n",
+                    "retry": 0
+                },
+                {
+                    "name": "botão de login está presente",
+                    "status": "failed",
+                    "duration_ms": 6895,
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('button[type=\"submit\"], input[type=\"submit\"]')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('button[type=\"submit\"], input[type=\"submit\"]')\u001b[22m\n",
+                    "retry": 0
+                },
+                {
+                    "name": "campo de senha não exibe texto em claro",
+                    "status": "failed",
+                    "duration_ms": 36254,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Login - Credenciais Inválidas",
+            "file": "admin-login.spec.ts",
+            "total": 3,
+            "passed": 0,
+            "failed": 3,
+            "skipped": 0,
+            "duration_ms": 111265,
+            "tests": [
+                {
+                    "name": "credenciais inválidas exibem mensagem de erro",
+                    "status": "failed",
+                    "duration_ms": 36477,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                },
+                {
+                    "name": "usuário vazio não submete o formulário",
+                    "status": "failed",
+                    "duration_ms": 37314,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                },
+                {
+                    "name": "senha vazia não submete o formulário",
+                    "status": "failed",
+                    "duration_ms": 37474,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Login - Proteção contra Força Bruta",
+            "file": "admin-login.spec.ts",
+            "total": 1,
+            "passed": 0,
+            "failed": 1,
+            "skipped": 0,
+            "duration_ms": 36569,
+            "tests": [
+                {
+                    "name": "após múltiplas tentativas incorretas exibe aviso de bloqueio",
+                    "status": "failed",
+                    "duration_ms": 36569,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Login - Redirecionamento",
+            "file": "admin-login.spec.ts",
+            "total": 2,
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 1733,
+            "tests": [
+                {
+                    "name": "acesso direto ao admin sem login redireciona para o login",
+                    "status": "passed",
+                    "duration_ms": 956,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "acesso ao dashboard sem login redireciona para o login",
+                    "status": "passed",
+                    "duration_ms": 777,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Requerimentos - Estrutura da Página",
+            "file": "admin-requerimentos.spec.ts",
+            "total": 3,
+            "passed": 1,
+            "failed": 2,
+            "skipped": 0,
+            "duration_ms": 3682,
+            "tests": [
+                {
+                    "name": "página de requerimentos existe e responde",
+                    "status": "failed",
+                    "duration_ms": 847,
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) \/\/ Object.is equality\u001b[22m\n\nExpected: not \u001b[32m500\u001b[39m",
+                    "retry": 0
+                },
+                {
+                    "name": "página de login do admin responde com 200",
+                    "status": "failed",
+                    "duration_ms": 918,
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) \/\/ Object.is equality\u001b[22m\n\nExpected: \u001b[32m200\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
+                    "retry": 0
+                },
+                {
+                    "name": "formulário de consulta pública responde com 200",
+                    "status": "passed",
+                    "duration_ms": 1917,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Requerimentos - Com Autenticação",
+            "file": "admin-requerimentos.spec.ts",
+            "total": 7,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 7,
+            "duration_ms": 0,
+            "tests": [
+                {
+                    "name": "lista de requerimentos carrega após login",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "tabela de requerimentos está presente",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "filtro por status funciona",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "campo de busca está presente",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "paginação avança para a próxima página",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "link de visualizar requerimento abre a página correta",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "dashboard exibe estatísticas",
+                    "status": "skipped",
+                    "duration_ms": 0,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Admin Requerimentos - Consulta Pública",
+            "file": "admin-requerimentos.spec.ts",
+            "total": 3,
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 7522,
+            "tests": [
+                {
+                    "name": "formulário de consulta pública está acessível",
+                    "status": "passed",
+                    "duration_ms": 2040,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "campo de protocolo está presente na consulta pública",
+                    "status": "passed",
+                    "duration_ms": 2297,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "protocolo inválido exibe mensagem de não encontrado",
+                    "status": "passed",
+                    "duration_ms": 3185,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Carregamento",
+            "file": "formulario.spec.ts",
+            "total": 6,
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 11645,
+            "tests": [
+                {
+                    "name": "página carrega com título correto",
+                    "status": "passed",
+                    "duration_ms": 1913,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "formulário principal está visível",
+                    "status": "passed",
+                    "duration_ms": 1828,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "campos do requerente estão presentes",
+                    "status": "passed",
+                    "duration_ms": 2039,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "seletor de tipo de alvará está presente",
+                    "status": "passed",
+                    "duration_ms": 1911,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "campo de endereço está presente",
+                    "status": "passed",
+                    "duration_ms": 1826,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "checkbox de declaração de veracidade está presente",
+                    "status": "passed",
+                    "duration_ms": 2128,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Validação de Campos Obrigatórios",
+            "file": "formulario.spec.ts",
+            "total": 3,
+            "passed": 1,
+            "failed": 2,
+            "skipped": 0,
+            "duration_ms": 72334,
+            "tests": [
+                {
+                    "name": "submissão sem tipo de alvará exibe erro",
+                    "status": "passed",
+                    "duration_ms": 2914,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "submissão sem nome do requerente não avança",
+                    "status": "failed",
+                    "duration_ms": 34527,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                },
+                {
+                    "name": "e-mail inválido não passa validação",
+                    "status": "failed",
+                    "duration_ms": 34893,
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Campos Dinâmicos",
+            "file": "formulario.spec.ts",
+            "total": 5,
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 15267,
+            "tests": [
+                {
+                    "name": "selecionar \"construção\" não exibe campos ambientais",
+                    "status": "passed",
+                    "duration_ms": 2055,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "selecionar \"licença prévia ambiental\" exibe campos ambientais",
+                    "status": "passed",
+                    "duration_ms": 3005,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "selecionar \"licença de operação\" exibe campo CTF",
+                    "status": "passed",
+                    "duration_ms": 2906,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "lista de documentos exigidos é atualizada ao trocar tipo",
+                    "status": "passed",
+                    "duration_ms": 3658,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "trocar tipo de alvará limpa seleção anterior de documentos",
+                    "status": "passed",
+                    "duration_ms": 3643,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Proprietário",
+            "file": "formulario.spec.ts",
+            "total": 2,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 2,
+            "duration_ms": 4436,
+            "tests": [
+                {
+                    "name": "checkbox \"mesmo que requerente\" oculta campos do proprietário",
+                    "status": "skipped",
+                    "duration_ms": 2090,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "desmarcando \"mesmo que requerente\" exibe campos do proprietário",
+                    "status": "skipped",
+                    "duration_ms": 2346,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Upload de Documentos",
+            "file": "formulario.spec.ts",
+            "total": 2,
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 5391,
+            "tests": [
+                {
+                    "name": "inputs de arquivo estão presentes após selecionar tipo",
+                    "status": "passed",
+                    "duration_ms": 2706,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "inputs de arquivo aceitam apenas PDF",
+                    "status": "passed",
+                    "duration_ms": 2685,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        },
+        {
+            "name": "Formulário Principal - Declaração de Veracidade",
+            "file": "formulario.spec.ts",
+            "total": 2,
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "duration_ms": 5676,
+            "tests": [
+                {
+                    "name": "checkbox de declaração deve ser marcado para submeter",
+                    "status": "passed",
+                    "duration_ms": 3567,
+                    "message": null,
+                    "retry": 0
+                },
+                {
+                    "name": "após marcar declaração o formulário pode avançar",
+                    "status": "passed",
+                    "duration_ms": 2109,
+                    "message": null,
+                    "retry": 0
+                }
+            ]
+        }
+    ]
+}

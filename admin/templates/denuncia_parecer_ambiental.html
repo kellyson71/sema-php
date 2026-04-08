@@ -1,0 +1,81 @@
+<style>
+    .texto-parecer p { margin-bottom: 12px; text-indent: 50px; line-height: 1.7; text-align: justify; }
+    .titulo-doc { font-size: 13pt; font-weight: bold; text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; }
+    .subtitulo-doc { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 20px; color: #555; }
+    .tabela-dados { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .tabela-dados td { padding: 5px 8px; border: 1px solid #999; vertical-align: top; font-size: 11pt; }
+    .tabela-dados .label { font-weight: bold; background-color: #f2f2f2; width: 35%; white-space: nowrap; }
+    .secao-titulo { font-weight: bold; text-transform: uppercase; font-size: 10.5pt; margin-top: 18px; margin-bottom: 8px; background: #f0f0f0; padding: 4px 8px; border: 1px solid #ccc; }
+    .data-local { margin-top: 24px; text-align: center; font-size: 11pt; }
+    .campo-livre { min-height: 80px; border: 1px dashed #bbb; padding: 8px; margin: 8px 0; background: #fafafa; font-size: 11pt; line-height: 1.6; }
+</style>
+
+<div class="titulo-doc">Parecer Técnico Ambiental</div>
+<div class="subtitulo-doc">Setor de Fiscalização Ambiental – SEMA<br>Secretaria Municipal de Meio Ambiente – Pau dos Ferros/RN</div>
+
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Objeto de Fiscalização:</td>
+        <td>{{observacoes}}</td>
+    </tr>
+    <tr>
+        <td class="label">Responsável / Autuado:</td>
+        <td><strong>{{infrator_nome}}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">CPF / CNPJ:</td>
+        <td>{{infrator_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Local:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Data da Vistoria:</td>
+        <td>{{data_registro}}</td>
+    </tr>
+    <tr>
+        <td class="label">Equipe de Vistoria:</td>
+        <td>{{fiscal_nome}} – Fiscal de Meio Ambiente</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">I – Do Histórico</div>
+
+<div class="texto-parecer">
+    <p>A equipe de Fiscalização Ambiental da Secretaria Municipal de Meio Ambiente – SEMA realizou vistoria técnica no local acima identificado, com o objetivo de apurar os fatos e emitir parecer técnico fundamentado.</p>
+</div>
+
+<div class="secao-titulo">II – Das Constatações Técnicas</div>
+
+<div class="texto-parecer">
+    <p>Durante a inspeção in loco, foram constatadas as seguintes situações técnicas:</p>
+</div>
+
+<div class="campo-livre">
+    [Descrever as constatações técnicas da vistoria]
+</div>
+
+<div class="texto-parecer">
+    <p>A conduta identificada viola as seguintes normas ambientais: <strong>Lei Municipal nº 2.116/2025</strong> – Código de Meio Ambiente de Pau dos Ferros/RN, bem como a <strong>Lei Federal nº 9.605/1998</strong> – Lei de Crimes Ambientais, e demais normas aplicáveis.</p>
+</div>
+
+<div class="secao-titulo">III – Das Providências</div>
+
+<div class="texto-parecer">
+    <p>Em razão das irregularidades técnicas verificadas, foram adotadas as seguintes medidas:</p>
+</div>
+
+<div class="campo-livre">
+    [Descrever as medidas adotadas: auto de infração, notificação, TAC, etc.]
+</div>
+
+<div class="secao-titulo">IV – Da Conclusão</div>
+
+<div class="texto-parecer">
+    <p>Com base nas constatações técnicas acima descritas, conclui-se pela existência de infração ambiental, recomendando-se a adoção das medidas administrativas cabíveis, incluindo as já aplicadas neste processo, bem como o acompanhamento do cumprimento das determinações impostas.</p>
+
+    <p>Ressalta-se que o presente parecer poderá ser complementado a qualquer tempo mediante novos elementos de prova ou informações decorrentes do andamento do processo administrativo.</p>
+</div>
+
+<div class="data-local">Pau dos Ferros – RN, {{data_atual}}</div>

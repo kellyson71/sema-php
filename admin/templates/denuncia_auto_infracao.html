@@ -1,0 +1,99 @@
+<style>
+    .texto-parecer p { margin-bottom: 12px; text-indent: 50px; line-height: 1.7; text-align: justify; }
+    .titulo-doc { font-size: 13pt; font-weight: bold; text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; }
+    .subtitulo-doc { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 20px; color: #555; }
+    .tabela-dados { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .tabela-dados td { padding: 5px 8px; border: 1px solid #999; vertical-align: top; font-size: 11pt; }
+    .tabela-dados .label { font-weight: bold; background-color: #f2f2f2; width: 35%; white-space: nowrap; }
+    .secao-titulo { font-weight: bold; text-transform: uppercase; font-size: 10.5pt; margin-top: 18px; margin-bottom: 8px; background: #f0f0f0; padding: 4px 8px; border: 1px solid #ccc; }
+    .lista-infracoes { margin: 8px 0 8px 20px; line-height: 1.7; }
+    .lista-infracoes li { margin-bottom: 4px; }
+    .destaque { font-weight: bold; text-transform: uppercase; }
+    .data-local { margin-top: 24px; text-align: center; font-size: 11pt; }
+    .penalidade-box { border: 2px solid #000; padding: 10px; margin: 14px 0; background: #fafafa; font-size: 11pt; }
+</style>
+
+<div class="titulo-doc">Auto de Infração Ambiental</div>
+<div class="subtitulo-doc">Fiscalização Ambiental – SEMA<br>Secretaria Municipal de Meio Ambiente – Pau dos Ferros/RN</div>
+
+<div class="secao-titulo">Dados do Autuado</div>
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Nome / Razão Social:</td>
+        <td><strong>{{infrator_nome}}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">CPF / CNPJ:</td>
+        <td>{{infrator_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Endereço:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Cidade:</td>
+        <td>Pau dos Ferros – RN</td>
+    </tr>
+    <tr>
+        <td class="label">Telefone / E-mail:</td>
+        <td>&nbsp;</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">Dados do Local Fiscalizado</div>
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Endereço:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Data da Vistoria:</td>
+        <td>{{data_registro}}</td>
+    </tr>
+    <tr>
+        <td class="label">Fiscal Responsável:</td>
+        <td>{{fiscal_nome}}</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">Base Legal e Penalidade Aplicada</div>
+
+<div class="texto-parecer">
+    <p>Fica o contribuinte acima qualificado ciente das seguintes irregularidades constatadas em vistoria realizada no local:</p>
+    <p>{{observacoes}}</p>
+    <p>A conduta caracteriza infração administrativa ambiental, conforme:</p>
+</div>
+
+<ul class="lista-infracoes">
+    <li><strong>Lei nº 9.605/1998</strong> – Lei de Crimes Ambientais;</li>
+    <li><strong>Lei Municipal nº 2.116/2025</strong> – Código de Meio Ambiente de Pau dos Ferros/RN.</li>
+</ul>
+
+<div class="texto-parecer">
+    <p>O autuado deverá efetuar o pagamento ou apresentar defesa, conforme os prazos e procedimentos estabelecidos, sujeitando-se às demais medidas legais em caso de não cumprimento.</p>
+</div>
+
+<div class="secao-titulo">Circunstâncias Atenuantes e Agravantes</div>
+<div class="texto-parecer">
+    <p>Ausência de autorização do órgão ambiental competente.</p>
+</div>
+
+<div class="secao-titulo">Determinações / Penalidade</div>
+
+<div class="penalidade-box">
+    Diante do exposto, fica aplicada ao autuado a seguinte penalidade:<br><br>
+    <strong>Multa simples no valor de R$ _________ (_________________________________)</strong>
+</div>
+
+<div class="texto-parecer">
+    <p>O autuado poderá apresentar sua defesa junto à Prefeitura Municipal, no prazo de até <strong>20 (vinte) dias</strong> a contar da data do recebimento comprovado deste Auto de Infração.</p>
+</div>
+
+<table class="tabela-dados" style="margin-top:16px">
+    <tr>
+        <td class="label">Recebido por:</td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ( ) Recusou-se a assinar</td>
+    </tr>
+</table>
+
+<div class="data-local">Pau dos Ferros – RN, {{data_atual}}</div>

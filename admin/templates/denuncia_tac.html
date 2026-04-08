@@ -1,0 +1,97 @@
+<style>
+    .texto-parecer p {
+        margin-bottom: 12px;
+        text-indent: 50px;
+        line-height: 1.7;
+        text-align: justify;
+    }
+    .titulo-doc {
+        font-size: 13pt;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+    }
+    .subtitulo-doc {
+        font-size: 11pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #555;
+    }
+    .tabela-dados {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    .tabela-dados td {
+        padding: 5px 8px;
+        border: 1px solid #999;
+        vertical-align: top;
+        font-size: 11pt;
+    }
+    .tabela-dados .label {
+        font-weight: bold;
+        background-color: #f2f2f2;
+        width: 35%;
+        white-space: nowrap;
+    }
+    .secao-titulo {
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 10.5pt;
+        margin-top: 18px;
+        margin-bottom: 8px;
+    }
+    .data-local {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 11pt;
+    }
+</style>
+
+<div class="titulo-doc">Termo de Ajustamento de Conduta – TAC</div>
+<div class="subtitulo-doc">Secretaria Municipal de Meio Ambiente – SEMA<br>Pau dos Ferros/RN</div>
+
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Autuado(a) / Compromissário(a):</td>
+        <td><strong>{{infrator_nome}}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">CPF / CNPJ:</td>
+        <td>{{infrator_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Local da Ocorrência:</td>
+        <td>{{infrator_endereco}}</td>
+    </tr>
+    <tr>
+        <td class="label">Auto de Infração nº:</td>
+        <td>_____________</td>
+    </tr>
+    <tr>
+        <td class="label">Data da Fiscalização:</td>
+        <td>{{data_registro}}</td>
+    </tr>
+    <tr>
+        <td class="label">Fiscal Responsável:</td>
+        <td>{{fiscal_nome}}</td>
+    </tr>
+</table>
+
+<div class="texto-parecer">
+    <p>Considerando a infração ambiental constatada e devidamente registrada em procedimento administrativo próprio, bem como a manifestação do autuado em regularizar a situação e reparar os impactos ambientais decorrentes de sua conduta, informa-se que foi firmada medida de ajuste de conduta ambiental, nos moldes de Termo de Ajustamento de Conduta (TAC).</p>
+
+    <p>A medida adotada tem como fundamento o Novo Código de Meio Ambiente do Município, <strong>Lei nº 2.116/2025</strong>, que prevê a possibilidade de substituição ou exclusão da penalidade pecuniária mediante o cumprimento de medidas compensatórias, reparadoras ou educativas, desde que haja interesse público e efetiva contribuição à proteção ambiental.</p>
+
+    <p>No caso em análise, o autuado comprometeu-se a cumprir integralmente a compensação ambiental estabelecida, consistente em <strong>[DESCREVER A MEDIDA COMPENSATÓRIA: doação de mudas, recuperação de área, prestação de serviço ambiental, entre outros]</strong>, a qual deverá ser executada e comprovada perante a Secretaria Municipal de Meio Ambiente no prazo de <strong>_____ (____________) dias</strong>.</p>
+
+    <p>Diante do cumprimento integral das obrigações pactuadas neste TAC e considerando o atendimento aos princípios da razoabilidade, proporcionalidade e da função educativa da sanção ambiental, fica justificada a exclusão da multa aplicada, procedendo-se ao encerramento do processo administrativo, sem prejuízo de futuras fiscalizações.</p>
+
+    <p>O descumprimento das obrigações assumidas neste termo implicará na retomada imediata do processo administrativo de infração, com aplicação integral das penalidades cabíveis, conforme a legislação ambiental vigente.</p>
+</div>
+
+<div class="data-local">Pau dos Ferros – RN, {{data_atual}}</div>

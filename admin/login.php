@@ -1,15 +1,17 @@
 <?php
-        // Verificação de redirecionamento para o domínio principal
+        require_once 'conexao.php';
+        require_once '../includes/email_service.php';
+
+        // Redireciona apenas o ambiente principal. A homologação vive em /homologacao/.
         $host = $_SERVER['HTTP_HOST'] ?? '';
-        if (preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-            $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $_SERVER['REQUEST_URI'];
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        $isHomologRequest = defined('MODO_HOMOLOG') && MODO_HOMOLOG;
+        if (!$isHomologRequest && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
+            $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
             header("HTTP/1.1 301 Moved Permanently");
             header("Location: $redirect_url");
             exit();
         }
-
-        require_once 'conexao.php';
-        require_once '../includes/email_service.php';
 
 // Valida que o redirect é relativo (sem protocolo/domínio externo)
 function sanitizarRedirect($url, $fallback = 'index.php') {
@@ -63,10 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $senha = trim($_POST['senha'] ?? '');
         $recaptcha_token = $_POST['recaptcha_token'] ?? '';
 
-        // Validar reCAPTCHA
-        $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
-        $recaptcha_response = file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
-        $recaptcha_data = json_decode($recaptcha_response);
+        $recaptcha_data = (object) ['success' => true, 'score' => 1.0];
+        if (!MODO_HOMOLOG) {
+            $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
+            $recaptcha_response = @file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
+            $recaptcha_data = json_decode($recaptcha_response ?: '{}');
+        }
 
         if (empty($usuario) || empty($senha)) {
             if (ob_get_length()) ob_clean();
