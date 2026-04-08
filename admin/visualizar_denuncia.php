@@ -254,9 +254,66 @@ include 'header.php';
                     <?php endif; ?>
                 </div>
 
+                <?php
+                // Documentos gerados (PDFs assinados digitalmente)
+                $pastaDocsDenuncia = __DIR__ . '/pareceres_denuncia/' . $denuncia['id'] . '/';
+                $docsPdf = [];
+                if (is_dir($pastaDocsDenuncia)) {
+                    $arquivos = glob($pastaDocsDenuncia . '*.pdf');
+                    foreach ($arquivos as $arq) {
+                        $docsPdf[] = [
+                            'nome' => basename($arq),
+                            'data' => filemtime($arq),
+                            'url'  => 'pareceres_denuncia/' . $denuncia['id'] . '/' . basename($arq),
+                        ];
+                    }
+                    usort($docsPdf, fn($a,$b) => $b['data'] - $a['data']);
+                }
+                ?>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
+                        <span><i class="fas fa-file-signature text-gray-400 mr-2"></i> Documentos Gerados</span>
+                        <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full font-bold"><?php echo count($docsPdf); ?></span>
+                    </h3>
+
+                    <?php if (count($docsPdf) > 0): ?>
+                        <div class="space-y-3">
+                            <?php foreach ($docsPdf as $doc):
+                                // Extrair label legível do nome do arquivo
+                                $label = $doc['nome'];
+                                $label = preg_replace('/_DEN\d+_\d+\.pdf$/i', '', $label);
+                                $label = str_replace('_', ' ', $label);
+                            ?>
+                                <a href="<?php echo htmlspecialchars($doc['url']); ?>" target="_blank"
+                                   class="flex items-center p-3 bg-red-50 rounded-lg border border-transparent hover:border-red-200 transition-colors group">
+                                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm mr-3 flex-shrink-0">
+                                        <i class="fas fa-file-pdf text-red-500 text-lg"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate"><?php echo htmlspecialchars($label); ?></p>
+                                        <p class="text-xs text-gray-500"><?php echo date('d/m/Y H:i', $doc['data']); ?></p>
+                                    </div>
+                                    <div class="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <i class="fas fa-download text-sm"></i>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            <i class="fas fa-file-signature text-gray-300 text-3xl mb-2"></i>
+                            <p class="text-sm text-gray-500">Nenhum documento gerado ainda.</p>
+                            <a href="documentos/selecionar_denuncia.php?denuncia_id=<?php echo $denuncia['id']; ?>"
+                               class="text-xs text-green-600 hover:text-green-700 font-medium mt-1 inline-block">
+                                Gerar documento →
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
             </div>
         </div>
-        
+
     </div>
 </body>
 </html>

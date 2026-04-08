@@ -130,7 +130,7 @@ try {
                 '{{infrator_nome}}'     => $denuncia['infrator_nome'] ?? '',
                 '{{infrator_cpf_cnpj}}' => $denuncia['infrator_cpf_cnpj'] ?: 'Não informado',
                 '{{infrator_endereco}}' => $denuncia['infrator_endereco'] ?: 'Não informado',
-                '{{observacoes}}'       => nl2br(htmlspecialchars($denuncia['observacoes'] ?? '')),
+                '{{observacoes}}'       => htmlspecialchars($denuncia['observacoes'] ?? ''),
                 '{{data_registro}}'     => $dataReg,
                 '{{data_atual}}'        => date('d') . ' de ' . _mesExtenso(date('n')) . ' de ' . date('Y'),
                 '{{fiscal_nome}}'       => $nomeAdmin,
