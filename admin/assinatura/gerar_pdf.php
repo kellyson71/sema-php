@@ -213,6 +213,8 @@ function renderizarParecerPdf(string $conteudo_html, array $assinantes, string $
     $cssBase = montarCssParecerPdf($layout);
     $htmlCorpo = $cssBase . '<div class="pdf-document">' . $htmlNormalizado . '</div>';
 
+    log_debug_pdf('final_pdf_html', $htmlCorpo);
+
     $pdf->writeHTML($htmlCorpo, true, false, true, false, '');
 
     $pageCount = $pdf->getNumPages();
