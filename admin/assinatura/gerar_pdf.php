@@ -102,8 +102,8 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
     $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
     $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
-    $html = preg_replace('/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $html);
-    $html = preg_replace('/<div>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/i', '', $html);
+    // NÃO remover <p> e <div> vazios — eles são respiros intencionais entre blocos
+    // e garantem que o espaçamento do PDF fique fiel ao preview/editor.
 
     return $html;
 }
@@ -132,8 +132,14 @@ function montarCssParecerPdf(array $layout): string
         }
 
         p {
-            margin: 0 0 8pt 0;
+            margin: 0 0 9pt 0;
             line-height: ' . $bodyLineHeight . ';
+        }
+
+        .texto-parecer p {
+            text-indent: 50px;
+            line-height: 1.70;
+            margin-bottom: 9pt;
         }
 
         div {
@@ -311,15 +317,15 @@ function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero
 
     $layout = [
         'body_font_size' => 12.0,
-        'body_line_height' => 1.60,
+        'body_line_height' => 1.40,       // editor: --doc-line-h: 1.4
         'margin_left' => 15.0,
         'margin_top' => 27.0,
         'margin_right' => 15.0,
         'footer_margin' => 12.0,
         'page_break_bottom' => 15.0,
         'cell_height_ratio' => 1.0,
-        'table_cell_v_padding' => 3.0,
-        'table_cell_h_padding' => 5.0,
+        'table_cell_v_padding' => 5.0,    // editor: --doc-table-vpad: 5px
+        'table_cell_h_padding' => 8.0,    // editor: --doc-table-hpad: 8px
         'cond_padding_v' => 6.0,
         'cond_padding_h' => 8.0,
     ];

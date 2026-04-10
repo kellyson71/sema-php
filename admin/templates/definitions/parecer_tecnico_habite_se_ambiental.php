@@ -35,7 +35,7 @@ return [
 
         [
             'tipo'  => 'secao',
-            'texto' => 'III – ANÁLISE E CONCLUSÃO TÉCNICA',
+            'texto' => 'II – CONCLUSÃO',
         ],
         [
             'tipo'   => 'paragrafos',
