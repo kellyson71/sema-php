@@ -99,8 +99,9 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
 {
     $html = trim($conteudo_html);
 
-    $html = preg_replace('/<style\b[^>]*>[\s\S]*?<\/style>/i', '', $html);
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
+    $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
+    $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
     $html = preg_replace('/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $html);
     $html = preg_replace('/<div>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/i', '', $html);
 
@@ -114,25 +115,8 @@ function montarCssParecerPdf(array $layout): string
 {
     $bodyFontSize      = number_format((float) $layout['body_font_size'], 2, '.', '');
     $bodyLineHeight    = number_format((float) $layout['body_line_height'], 2, '.', '');
-    $paragraphSpacing  = number_format((float) $layout['paragraph_spacing'], 2, '.', '');
-    $paragraphIndent   = number_format((float) $layout['paragraph_indent'], 2, '.', '');
-    $paragraphLine     = number_format((float) $layout['paragraph_line_height'], 2, '.', '');
-    $titleSpacing      = number_format((float) $layout['title_spacing'], 2, '.', '');
-    $sectionSpacing    = number_format((float) $layout['section_spacing'], 2, '.', '');
-    $dataLocalTop      = number_format((float) $layout['data_local_top'], 2, '.', '');
-    $dataLocalBottom   = number_format((float) $layout['data_local_bottom'], 2, '.', '');
-    $signatureTop      = number_format((float) $layout['signature_top'], 2, '.', '');
-    $signaturePad      = number_format((float) $layout['signature_padding'], 2, '.', '');
-    $titleFontSize     = number_format((float) ($layout['title_font_size'] ?? 15.0), 2, '.', '');
-    $sectionTitleSize  = number_format((float) ($layout['section_title_font_size'] ?? 11.5), 2, '.', '');
-    $sectionTitleTop   = number_format((float) ($layout['section_title_margin_top'] ?? ($paragraphSpacing + 2.0)), 2, '.', '');
-    $sectionTitleBottom = number_format((float) ($layout['section_title_margin_bottom'] ?? $paragraphSpacing), 2, '.', '');
-    $dataBlockSpacing  = number_format((float) ($layout['data_block_spacing'] ?? $sectionSpacing), 2, '.', '');
-    $dataBlockLine     = number_format((float) ($layout['data_block_line_height'] ?? $bodyLineHeight), 2, '.', '');
-    $dataLineSpacing   = number_format((float) ($layout['data_line_spacing'] ?? 2.0), 2, '.', '');
     $tableCellVPad     = number_format((float) $layout['table_cell_v_padding'], 2, '.', '');
     $tableCellHPad     = number_format((float) $layout['table_cell_h_padding'], 2, '.', '');
-    $listSpacing       = number_format((float) $layout['list_spacing'], 2, '.', '');
     $condPadV          = number_format((float) $layout['cond_padding_v'], 2, '.', '');
     $condPadH          = number_format((float) $layout['cond_padding_h'], 2, '.', '');
 
@@ -143,11 +127,13 @@ function montarCssParecerPdf(array $layout): string
             line-height: ' . $bodyLineHeight . ';
             color: #1e1e1e;
             text-align: justify;
+            margin: 0;
+            padding: 0;
         }
 
         p {
-            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
-            line-height: ' . $paragraphLine . ';
+            margin: 0 0 8pt 0;
+            line-height: ' . $bodyLineHeight . ';
         }
 
         div {
@@ -155,90 +141,22 @@ function montarCssParecerPdf(array $layout): string
             padding: 0;
         }
 
-        .titulo {
-            font-size: ' . $titleFontSize . 'pt;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: ' . $titleSpacing . 'pt;
-            border-bottom: 2px solid #000;
-            padding-bottom: 8pt;
-            letter-spacing: 0.5pt;
-        }
-
-        .secao-titulo {
-            font-size: ' . $sectionTitleSize . 'pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: ' . $sectionTitleTop . 'pt 0 ' . $sectionTitleBottom . 'pt 0;
-        }
-
-        .dados-interessado {
-            margin-bottom: ' . $dataBlockSpacing . 'pt;
-            line-height: ' . $dataBlockLine . ';
-        }
-
-        .dados-interessado .linha {
-            margin-bottom: ' . $dataLineSpacing . 'pt;
-        }
-
-        .dados-interessado .label {
-            font-weight: bold;
-        }
-
-        .texto-parecer {
-            margin-bottom: ' . $sectionSpacing . 'pt;
-        }
-
-        .texto-parecer p {
-            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
-            text-indent: ' . $paragraphIndent . 'pt;
-            line-height: ' . $paragraphLine . ';
-            text-align: justify;
-        }
-
-        .data-local {
-            margin-top: ' . $dataLocalTop . 'pt;
-            margin-bottom: ' . $dataLocalBottom . 'pt;
-            text-align: right;
-            font-weight: normal;
-        }
-
-        .linha-assinatura {
-            border-top: 1px solid #000;
-            margin-top: ' . $signatureTop . 'pt;
-            padding-top: ' . $signaturePad . 'pt;
-            text-align: center;
-            width: 60%;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .nome-assinante {
-            font-weight: bold;
-            font-size: 11pt;
-        }
-
-        .cargo-assinante {
-            font-size: 10pt;
-            display: block;
-        }
-
         h1 {
             font-size: 13pt;
             font-weight: bold;
-            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+            margin: 0 0 8pt 0;
         }
 
         h2, h3 {
             font-size: 12pt;
             font-weight: bold;
-            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+            margin: 0 0 8pt 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+            margin: 0 0 8pt 0;
         }
 
         td, th {
@@ -249,7 +167,7 @@ function montarCssParecerPdf(array $layout): string
         }
 
         ul, ol {
-            margin: ' . $listSpacing . 'pt 0 ' . $listSpacing . 'pt 0;
+            margin: 4pt 0;
             padding-left: 18pt;
         }
 
@@ -391,141 +309,22 @@ function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero
         $assinantes = array_values((array) $assinante_ou_assinantes);
     }
 
-    $layouts = [
-        [
-            'body_font_size' => 12.0,
-            'body_line_height' => 1.40,
-            'paragraph_spacing' => 9.0,
-            'paragraph_indent' => 37.5,
-            'paragraph_line_height' => 1.70,
-            'title_font_size' => 15.0,
-            'title_spacing' => 22.0,
-            'section_title_font_size' => 11.5,
-            'section_title_margin_top' => 14.0,
-            'section_title_margin_bottom' => 9.0,
-            'section_spacing' => 16.0,
-            'data_block_spacing' => 14.0,
-            'data_block_line_height' => 1.45,
-            'data_line_spacing' => 2.0,
-            'data_local_top' => 18.0,
-            'data_local_bottom' => 24.0,
-            'signature_top' => 18.0,
-            'signature_padding' => 6.0,
-            'margin_left' => 15.0,
-            'margin_top' => 27.0,
-            'margin_right' => 15.0,
-            'footer_margin' => 12.0,
-            'page_break_bottom' => 15.0,
-            'cell_height_ratio' => 1.0,
-            'table_cell_v_padding' => 3.75,
-            'table_cell_h_padding' => 6.0,
-            'list_spacing' => 4.0,
-            'cond_padding_v' => 6.0,
-            'cond_padding_h' => 8.0,
-        ],
-        [
-            'body_font_size' => 11.6,
-            'body_line_height' => 1.34,
-            'paragraph_spacing' => 6.0,
-            'paragraph_indent' => 32.0,
-            'paragraph_line_height' => 1.52,
-            'title_font_size' => 14.0,
-            'title_spacing' => 16.0,
-            'section_title_font_size' => 11.0,
-            'section_title_margin_top' => 10.0,
-            'section_title_margin_bottom' => 6.0,
-            'section_spacing' => 10.0,
-            'data_block_spacing' => 9.0,
-            'data_block_line_height' => 1.30,
-            'data_line_spacing' => 1.5,
-            'data_local_top' => 12.0,
-            'data_local_bottom' => 16.0,
-            'signature_top' => 14.0,
-            'signature_padding' => 5.0,
-            'margin_left' => 14.0,
-            'margin_top' => 25.0,
-            'margin_right' => 14.0,
-            'footer_margin' => 10.0,
-            'page_break_bottom' => 12.0,
-            'cell_height_ratio' => 0.94,
-            'table_cell_v_padding' => 3.0,
-            'table_cell_h_padding' => 5.0,
-            'list_spacing' => 3.0,
-            'cond_padding_v' => 5.0,
-            'cond_padding_h' => 7.0,
-        ],
-        [
-            'body_font_size' => 11.2,
-            'body_line_height' => 1.28,
-            'paragraph_spacing' => 4.0,
-            'paragraph_indent' => 28.0,
-            'paragraph_line_height' => 1.40,
-            'title_font_size' => 13.2,
-            'title_spacing' => 12.0,
-            'section_title_font_size' => 10.5,
-            'section_title_margin_top' => 8.0,
-            'section_title_margin_bottom' => 4.0,
-            'section_spacing' => 8.0,
-            'data_block_spacing' => 7.0,
-            'data_block_line_height' => 1.22,
-            'data_line_spacing' => 1.0,
-            'data_local_top' => 9.0,
-            'data_local_bottom' => 12.0,
-            'signature_top' => 11.0,
-            'signature_padding' => 4.0,
-            'margin_left' => 13.0,
-            'margin_top' => 23.0,
-            'margin_right' => 13.0,
-            'footer_margin' => 8.0,
-            'page_break_bottom' => 10.0,
-            'cell_height_ratio' => 0.88,
-            'table_cell_v_padding' => 2.5,
-            'table_cell_h_padding' => 4.5,
-            'list_spacing' => 2.0,
-            'cond_padding_v' => 4.0,
-            'cond_padding_h' => 6.0,
-        ],
-        [
-            'body_font_size' => 10.6,
-            'body_line_height' => 1.18,
-            'paragraph_spacing' => 2.0,
-            'paragraph_indent' => 18.0,
-            'paragraph_line_height' => 1.20,
-            'title_font_size' => 12.4,
-            'title_spacing' => 8.0,
-            'section_title_font_size' => 9.8,
-            'section_title_margin_top' => 5.0,
-            'section_title_margin_bottom' => 3.0,
-            'section_spacing' => 4.0,
-            'data_block_spacing' => 4.0,
-            'data_block_line_height' => 1.12,
-            'data_line_spacing' => 0.5,
-            'data_local_top' => 5.0,
-            'data_local_bottom' => 7.0,
-            'signature_top' => 8.0,
-            'signature_padding' => 3.0,
-            'margin_left' => 12.0,
-            'margin_top' => 22.0,
-            'margin_right' => 12.0,
-            'footer_margin' => 7.0,
-            'page_break_bottom' => 8.0,
-            'cell_height_ratio' => 0.82,
-            'table_cell_v_padding' => 2.0,
-            'table_cell_h_padding' => 4.0,
-            'list_spacing' => 1.0,
-            'cond_padding_v' => 3.0,
-            'cond_padding_h' => 5.0,
-        ],
+    $layout = [
+        'body_font_size' => 12.0,
+        'body_line_height' => 1.60,
+        'margin_left' => 15.0,
+        'margin_top' => 27.0,
+        'margin_right' => 15.0,
+        'footer_margin' => 12.0,
+        'page_break_bottom' => 15.0,
+        'cell_height_ratio' => 1.0,
+        'table_cell_v_padding' => 3.0,
+        'table_cell_h_padding' => 5.0,
+        'cond_padding_v' => 6.0,
+        'cond_padding_h' => 8.0,
     ];
 
-    $pdf = null;
-
-    foreach ($layouts as $layout) {
-        $pdf = renderizarParecerPdf($conteudo_html, $assinantes, $numero_processo, $layout);
-        if ($pdf->getNumPages() <= 1) {
-            break;
-        }
-    }
+    $pdf = renderizarParecerPdf($conteudo_html, $assinantes, $numero_processo, $layout);
 
     aplicarBlocosAssinaturaNoPdf($pdf, $assinantes);
 
