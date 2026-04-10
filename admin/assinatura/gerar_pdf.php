@@ -58,121 +58,476 @@ class SEMA_PDF extends TCPDF {
 }
 
 /**
- * Função para gerar e baixar/exibir o PDF assinado
+ * Cria uma instância base do PDF com a mesma área útil exibida no editor A4.
  */
-function emitirParecerAssinado($conteudo_html, $assinante, $numero_processo, $modo_saida = 'D', $caminho_salvar = null) {
-    
+function criarParecerPdfBase(array $primeiroAssinante, string $numero_processo, array $layout): SEMA_PDF
+{
     $pdf = new SEMA_PDF('P', 'mm', 'A4', true, 'UTF-8', false);
-    
-    $pdf->assinante_nome = strtoupper($assinante['nome'] ?? '');
-    $pdf->assinante_cargo = $assinante['cargo'] ?? '';
-    $pdf->assinante_data = $assinante['data_hora'] ?? date('d/m/Y H:i:s');
-    $pdf->assinante_cpf = $assinante['cpf'] ?? '';
-    $pdf->assinante_matricula = $assinante['matricula'] ?? '';
+
+    $pdf->assinante_nome      = strtoupper($primeiroAssinante['nome'] ?? '');
+    $pdf->assinante_cargo     = $primeiroAssinante['cargo'] ?? '';
+    $pdf->assinante_data      = $primeiroAssinante['data_hora'] ?? date('d/m/Y H:i:s');
+    $pdf->assinante_cpf       = $primeiroAssinante['cpf'] ?? '';
+    $pdf->assinante_matricula = $primeiroAssinante['matricula'] ?? '';
 
     $pdf->SetCreator('SEMA Documentos Digitais');
     $pdf->SetAuthor($pdf->assinante_nome);
     $pdf->SetTitle('Parecer Ambiental - ' . $numero_processo);
 
-    // Sem criptografia — ela bloqueava impressão em leitores não-Adobe
+    $marginLeft = (float) ($layout['margin_left'] ?? 15.0);
+    $marginTop = (float) ($layout['margin_top'] ?? 27.0);
+    $marginRight = (float) ($layout['margin_right'] ?? 15.0);
+    $footerMargin = (float) ($layout['footer_margin'] ?? 12.0);
+    $pageBreakBottom = (float) ($layout['page_break_bottom'] ?? 15.0);
+    $cellHeightRatio = (float) ($layout['cell_height_ratio'] ?? 1.0);
 
-    // Margens super otimizadas
-    $pdf->SetMargins(15, 27, 15);
-    $pdf->SetFooterMargin(12);
-    $pdf->SetAutoPageBreak(TRUE, 15);
-    
-    $pdf->AddPage();
-
+    $pdf->SetMargins($marginLeft, $marginTop, $marginRight);
+    $pdf->SetFooterMargin($footerMargin);
+    $pdf->SetAutoPageBreak(true, $pageBreakBottom);
+    $pdf->setCellHeightRatio($cellHeightRatio);
     $pdf->SetFont('times', '', 12);
     $pdf->SetTextColor(30, 30, 30);
+    $pdf->AddPage();
 
-    // CSS compatível com TCPDF — mínimo necessário, pois Components.php usa atributos HTML
-    $css_base = '<style>
-        body { font-family: "times"; font-size: 12pt; line-height: 1.4; }
-        p { margin-top: 0pt; margin-bottom: 4pt; line-height: 1.4; }
+    return $pdf;
+}
 
-        /* Títulos */
-        h1 { font-size: 13pt; font-weight: bold; margin-top: 6pt; margin-bottom: 4pt; }
-        h2 { font-size: 12pt; font-weight: bold; margin-top: 5pt; margin-bottom: 3pt; }
-        h3 { font-size: 12pt; font-weight: bold; margin-top: 4pt; margin-bottom: 2pt; }
+/**
+ * Remove ruídos do editor e força uma régua visual consistente para o TCPDF.
+ */
+function normalizarHtmlParaParecerPdf(string $conteudo_html): string
+{
+    $html = trim($conteudo_html);
 
-        /* Tabelas — atributos HTML (width, border, cellpadding, bgcolor) fazem o trabalho pesado */
-        table { border-collapse: collapse; }
-        td, th { vertical-align: middle; line-height: 1.4; }
+    $html = preg_replace('/<style\b[^>]*>[\s\S]*?<\/style>/i', '', $html);
+    $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
+    $html = preg_replace('/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $html);
+    $html = preg_replace('/<div>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/i', '', $html);
 
-        /* Texto e parágrafos */
-        .texto-parecer p { margin-bottom: 4pt; text-indent: 25pt; line-height: 1.45; }
-        .data-local { text-align: right; }
-        .linha-assinatura { text-align: center; padding-top: 3pt; }
+    return $html;
+}
 
-        /* Condicionantes */
-        .condicionantes { font-size: 9pt; border: 1px solid #000; padding: 6pt 8pt; }
+/**
+ * Gera a folha de estilos do PDF alinhada ao preview do editor.
+ */
+function montarCssParecerPdf(array $layout): string
+{
+    $bodyFontSize      = number_format((float) $layout['body_font_size'], 2, '.', '');
+    $bodyLineHeight    = number_format((float) $layout['body_line_height'], 2, '.', '');
+    $paragraphSpacing  = number_format((float) $layout['paragraph_spacing'], 2, '.', '');
+    $paragraphIndent   = number_format((float) $layout['paragraph_indent'], 2, '.', '');
+    $paragraphLine     = number_format((float) $layout['paragraph_line_height'], 2, '.', '');
+    $titleSpacing      = number_format((float) $layout['title_spacing'], 2, '.', '');
+    $sectionSpacing    = number_format((float) $layout['section_spacing'], 2, '.', '');
+    $dataLocalTop      = number_format((float) $layout['data_local_top'], 2, '.', '');
+    $dataLocalBottom   = number_format((float) $layout['data_local_bottom'], 2, '.', '');
+    $signatureTop      = number_format((float) $layout['signature_top'], 2, '.', '');
+    $signaturePad      = number_format((float) $layout['signature_padding'], 2, '.', '');
+    $titleFontSize     = number_format((float) ($layout['title_font_size'] ?? 15.0), 2, '.', '');
+    $sectionTitleSize  = number_format((float) ($layout['section_title_font_size'] ?? 11.5), 2, '.', '');
+    $sectionTitleTop   = number_format((float) ($layout['section_title_margin_top'] ?? ($paragraphSpacing + 2.0)), 2, '.', '');
+    $sectionTitleBottom = number_format((float) ($layout['section_title_margin_bottom'] ?? $paragraphSpacing), 2, '.', '');
+    $dataBlockSpacing  = number_format((float) ($layout['data_block_spacing'] ?? $sectionSpacing), 2, '.', '');
+    $dataBlockLine     = number_format((float) ($layout['data_block_line_height'] ?? $bodyLineHeight), 2, '.', '');
+    $dataLineSpacing   = number_format((float) ($layout['data_line_spacing'] ?? 2.0), 2, '.', '');
+    $tableCellVPad     = number_format((float) $layout['table_cell_v_padding'], 2, '.', '');
+    $tableCellHPad     = number_format((float) $layout['table_cell_h_padding'], 2, '.', '');
+    $listSpacing       = number_format((float) $layout['list_spacing'], 2, '.', '');
+    $condPadV          = number_format((float) $layout['cond_padding_v'], 2, '.', '');
+    $condPadH          = number_format((float) $layout['cond_padding_h'], 2, '.', '');
 
-        /* Listas */
-        ul, ol { margin-top: 2pt; margin-bottom: 5pt; }
-        li { margin-bottom: 2pt; line-height: 1.35; }
+    return '<style>
+        body, .pdf-document {
+            font-family: "Times New Roman", Times, serif;
+            font-size: ' . $bodyFontSize . 'pt;
+            line-height: ' . $bodyLineHeight . ';
+            color: #1e1e1e;
+            text-align: justify;
+        }
 
-        /* Segurança: anula highlight de var-field caso chegue aqui */
-        .var-field { color: #1e1e1e !important; background: transparent !important;
-                     font-weight: bold !important; text-decoration: none !important; }
-        /* Remove cor azul residual de spans quebrados pelo Summernote */
-        span[style*=\"1a5276\"] { color: #1e1e1e !important; }
+        p {
+            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+            line-height: ' . $paragraphLine . ';
+        }
+
+        div {
+            margin: 0;
+            padding: 0;
+        }
+
+        .titulo {
+            font-size: ' . $titleFontSize . 'pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: ' . $titleSpacing . 'pt;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8pt;
+            letter-spacing: 0.5pt;
+        }
+
+        .secao-titulo {
+            font-size: ' . $sectionTitleSize . 'pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: ' . $sectionTitleTop . 'pt 0 ' . $sectionTitleBottom . 'pt 0;
+        }
+
+        .dados-interessado {
+            margin-bottom: ' . $dataBlockSpacing . 'pt;
+            line-height: ' . $dataBlockLine . ';
+        }
+
+        .dados-interessado .linha {
+            margin-bottom: ' . $dataLineSpacing . 'pt;
+        }
+
+        .dados-interessado .label {
+            font-weight: bold;
+        }
+
+        .texto-parecer {
+            margin-bottom: ' . $sectionSpacing . 'pt;
+        }
+
+        .texto-parecer p {
+            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+            text-indent: ' . $paragraphIndent . 'pt;
+            line-height: ' . $paragraphLine . ';
+            text-align: justify;
+        }
+
+        .data-local {
+            margin-top: ' . $dataLocalTop . 'pt;
+            margin-bottom: ' . $dataLocalBottom . 'pt;
+            text-align: right;
+            font-weight: normal;
+        }
+
+        .linha-assinatura {
+            border-top: 1px solid #000;
+            margin-top: ' . $signatureTop . 'pt;
+            padding-top: ' . $signaturePad . 'pt;
+            text-align: center;
+            width: 60%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nome-assinante {
+            font-weight: bold;
+            font-size: 11pt;
+        }
+
+        .cargo-assinante {
+            font-size: 10pt;
+            display: block;
+        }
+
+        h1 {
+            font-size: 13pt;
+            font-weight: bold;
+            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+        }
+
+        h2, h3 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 ' . $paragraphSpacing . 'pt 0;
+        }
+
+        td, th {
+            vertical-align: middle;
+            line-height: ' . $bodyLineHeight . ';
+            padding: ' . $tableCellVPad . 'pt ' . $tableCellHPad . 'pt;
+            font-size: 11pt;
+        }
+
+        ul, ol {
+            margin: ' . $listSpacing . 'pt 0 ' . $listSpacing . 'pt 0;
+            padding-left: 18pt;
+        }
+
+        li {
+            margin: 0 0 2pt 0;
+            line-height: ' . $bodyLineHeight . ';
+        }
+
+        .condicionantes {
+            font-size: 9pt;
+            border: 1px solid #000;
+            padding: ' . $condPadV . 'pt ' . $condPadH . 'pt;
+        }
+
+        .var-field {
+            color: #1e1e1e !important;
+            background: transparent !important;
+            font-weight: bold !important;
+            text-decoration: none !important;
+        }
+
+        span[style*="1a5276"] {
+            color: #1e1e1e !important;
+        }
     </style>';
+}
 
-    $html_corpo = $css_base . '<div style="text-align: justify; line-height: 1.4;">' . $conteudo_html . '</div>';
+/**
+ * Renderiza o HTML em um PDF com a configuração de layout especificada.
+ */
+function renderizarParecerPdf(string $conteudo_html, array $assinantes, string $numero_processo, array $layout): SEMA_PDF
+{
+    $primeiro = $assinantes[0] ?? [];
+    $pdf = criarParecerPdfBase($primeiro, $numero_processo, $layout);
 
-    $pdf->writeHTML($html_corpo, true, false, true, false, '');
+    $htmlNormalizado = normalizarHtmlParaParecerPdf($conteudo_html);
+    $cssBase = montarCssParecerPdf($layout);
+    $htmlCorpo = $cssBase . '<div class="pdf-document">' . $htmlNormalizado . '</div>';
 
-    // Bloco de assinatura digital — absolutamente posicionado, sem afetar paginação
+    $pdf->writeHTML($htmlCorpo, true, false, true, false, '');
+
+    $pageCount = $pdf->getNumPages();
+    $blankTrailingPageThreshold = (float) ($layout['margin_top'] ?? 27.0) + 6.0;
+    if ($pageCount > 1 && $pdf->GetY() <= $blankTrailingPageThreshold) {
+        $pdf->deletePage($pageCount);
+        $pdf->setPage($pdf->getNumPages());
+    }
+
+    return $pdf;
+}
+
+/**
+ * Posiciona os blocos de assinatura digital sem interferir na paginação do conteúdo.
+ */
+function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
+{
     $pdf->lastPage();
-    $pdf->SetAutoPageBreak(FALSE); // impede que Cell() crie nova página
+    $pdf->SetAutoPageBreak(false);
 
-    $pw = $pdf->getPageWidth();   // 210mm
-    $ph = $pdf->getPageHeight();  // 297mm
-    $bW = 62;
+    $pw = $pdf->getPageWidth();
+    $ph = $pdf->getPageHeight();
     $bH = 13;
-    $bX = $pw - 15 - $bW;        // X = 133, margem direita 15mm
-    $bY = $ph - 14 - $bH;        // Y = 270, fica acima do footer (footer em -12)
+    $bY = $ph - 14 - $bH;
 
-    // Fundo branco para cobrir qualquer conteúdo abaixo (transparência visual)
+    $n = count($assinantes);
+
+    if ($n === 1) {
+        $bW = 62;
+        $bX = $pw - 15 - $bW;
+        _renderBlocoAssinatura($pdf, $assinantes[0], $bX, $bY, $bW, $bH);
+        return;
+    }
+
+    $bW = ($n <= 2) ? 62 : 55;
+    $gap = 4;
+    $totalW = $n * $bW + ($n - 1) * $gap;
+    $startX = ($pw - $totalW) / 2;
+
+    foreach ($assinantes as $i => $assinante) {
+        $bX = $startX + $i * ($bW + $gap);
+        _renderBlocoAssinatura($pdf, $assinante, $bX, $bY, $bW, $bH);
+    }
+}
+
+/**
+ * Renderiza um bloco de assinatura digital no PDF.
+ */
+function _renderBlocoAssinatura(SEMA_PDF $pdf, array $assinante, float $bX, float $bY, float $bW, float $bH): void {
+    $nome      = strtoupper($assinante['nome'] ?? '');
+    $cargo     = $assinante['cargo'] ?? '';
+    $cpf       = $assinante['cpf'] ?? '';
+    $data_hora = $assinante['data_hora'] ?? '';
+
     $pdf->SetFillColor(255, 255, 255);
     $pdf->Rect($bX, $bY, $bW, $bH, 'F');
 
-    // Borda externa fina cinza
     $pdf->SetDrawColor(160, 160, 160);
     $pdf->SetLineWidth(0.25);
     $pdf->Rect($bX, $bY, $bW, $bH, 'D');
 
-    // Faixa cabeçalho cinza claro
     $pdf->SetFillColor(220, 220, 220);
     $pdf->Rect($bX, $bY, $bW, 4, 'F');
 
-    // Marcador quadrado
     $pdf->SetFillColor(50, 50, 50);
     $pdf->Rect($bX + 2, $bY + 1.2, 1.8, 1.8, 'F');
 
-    // Título
     $pdf->SetFont('helvetica', 'B', 5);
     $pdf->SetTextColor(0, 0, 0);
     $pdf->SetXY($bX + 5, $bY + 0.7);
     $pdf->Cell($bW - 6, 2.8, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
 
-    // Nome
     $pdf->SetFont('helvetica', 'B', 5.5);
     $pdf->SetXY($bX + 2, $bY + 4.5);
-    $pdf->Cell($bW - 4, 2.8, $pdf->assinante_nome, 0, 0);
+    $pdf->Cell($bW - 4, 2.8, $nome, 0, 0);
 
-    // Cargo + CPF
     $pdf->SetFont('helvetica', '', 5);
-    $linha2 = $pdf->assinante_cargo;
-    if (!empty($pdf->assinante_cpf)) $linha2 .= '  |  CPF: ' . $pdf->assinante_cpf;
+    $linha2 = $cargo;
+    if (!empty($cpf)) $linha2 .= '  |  CPF: ' . $cpf;
     $pdf->SetXY($bX + 2, $bY + 7.3);
     $pdf->Cell($bW - 4, 2.5, $linha2, 0, 0);
 
-    // Data
     $pdf->SetTextColor(80, 80, 80);
     $pdf->SetXY($bX + 2, $bY + 10);
-    $pdf->Cell($bW - 4, 2.5, $pdf->assinante_data, 0, 0);
+    $pdf->Cell($bW - 4, 2.5, $data_hora, 0, 0);
+}
+
+/**
+ * Gera e baixa/salva o PDF assinado.
+ *
+ * $assinante_ou_assinantes aceita:
+ *   - array simples com 'nome' (1 assinante, retrocompatível)
+ *   - array indexado de arrays de assinante (múltiplos)
+ */
+function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero_processo, $modo_saida = 'D', $caminho_salvar = null) {
+
+    if (isset($assinante_ou_assinantes['nome'])) {
+        $assinantes = [$assinante_ou_assinantes];
+    } else {
+        $assinantes = array_values((array) $assinante_ou_assinantes);
+    }
+
+    $layouts = [
+        [
+            'body_font_size' => 12.0,
+            'body_line_height' => 1.40,
+            'paragraph_spacing' => 9.0,
+            'paragraph_indent' => 37.5,
+            'paragraph_line_height' => 1.70,
+            'title_font_size' => 15.0,
+            'title_spacing' => 22.0,
+            'section_title_font_size' => 11.5,
+            'section_title_margin_top' => 14.0,
+            'section_title_margin_bottom' => 9.0,
+            'section_spacing' => 16.0,
+            'data_block_spacing' => 14.0,
+            'data_block_line_height' => 1.45,
+            'data_line_spacing' => 2.0,
+            'data_local_top' => 18.0,
+            'data_local_bottom' => 24.0,
+            'signature_top' => 18.0,
+            'signature_padding' => 6.0,
+            'margin_left' => 15.0,
+            'margin_top' => 27.0,
+            'margin_right' => 15.0,
+            'footer_margin' => 12.0,
+            'page_break_bottom' => 15.0,
+            'cell_height_ratio' => 1.0,
+            'table_cell_v_padding' => 3.75,
+            'table_cell_h_padding' => 6.0,
+            'list_spacing' => 4.0,
+            'cond_padding_v' => 6.0,
+            'cond_padding_h' => 8.0,
+        ],
+        [
+            'body_font_size' => 11.6,
+            'body_line_height' => 1.34,
+            'paragraph_spacing' => 6.0,
+            'paragraph_indent' => 32.0,
+            'paragraph_line_height' => 1.52,
+            'title_font_size' => 14.0,
+            'title_spacing' => 16.0,
+            'section_title_font_size' => 11.0,
+            'section_title_margin_top' => 10.0,
+            'section_title_margin_bottom' => 6.0,
+            'section_spacing' => 10.0,
+            'data_block_spacing' => 9.0,
+            'data_block_line_height' => 1.30,
+            'data_line_spacing' => 1.5,
+            'data_local_top' => 12.0,
+            'data_local_bottom' => 16.0,
+            'signature_top' => 14.0,
+            'signature_padding' => 5.0,
+            'margin_left' => 14.0,
+            'margin_top' => 25.0,
+            'margin_right' => 14.0,
+            'footer_margin' => 10.0,
+            'page_break_bottom' => 12.0,
+            'cell_height_ratio' => 0.94,
+            'table_cell_v_padding' => 3.0,
+            'table_cell_h_padding' => 5.0,
+            'list_spacing' => 3.0,
+            'cond_padding_v' => 5.0,
+            'cond_padding_h' => 7.0,
+        ],
+        [
+            'body_font_size' => 11.2,
+            'body_line_height' => 1.28,
+            'paragraph_spacing' => 4.0,
+            'paragraph_indent' => 28.0,
+            'paragraph_line_height' => 1.40,
+            'title_font_size' => 13.2,
+            'title_spacing' => 12.0,
+            'section_title_font_size' => 10.5,
+            'section_title_margin_top' => 8.0,
+            'section_title_margin_bottom' => 4.0,
+            'section_spacing' => 8.0,
+            'data_block_spacing' => 7.0,
+            'data_block_line_height' => 1.22,
+            'data_line_spacing' => 1.0,
+            'data_local_top' => 9.0,
+            'data_local_bottom' => 12.0,
+            'signature_top' => 11.0,
+            'signature_padding' => 4.0,
+            'margin_left' => 13.0,
+            'margin_top' => 23.0,
+            'margin_right' => 13.0,
+            'footer_margin' => 8.0,
+            'page_break_bottom' => 10.0,
+            'cell_height_ratio' => 0.88,
+            'table_cell_v_padding' => 2.5,
+            'table_cell_h_padding' => 4.5,
+            'list_spacing' => 2.0,
+            'cond_padding_v' => 4.0,
+            'cond_padding_h' => 6.0,
+        ],
+        [
+            'body_font_size' => 10.6,
+            'body_line_height' => 1.18,
+            'paragraph_spacing' => 2.0,
+            'paragraph_indent' => 18.0,
+            'paragraph_line_height' => 1.20,
+            'title_font_size' => 12.4,
+            'title_spacing' => 8.0,
+            'section_title_font_size' => 9.8,
+            'section_title_margin_top' => 5.0,
+            'section_title_margin_bottom' => 3.0,
+            'section_spacing' => 4.0,
+            'data_block_spacing' => 4.0,
+            'data_block_line_height' => 1.12,
+            'data_line_spacing' => 0.5,
+            'data_local_top' => 5.0,
+            'data_local_bottom' => 7.0,
+            'signature_top' => 8.0,
+            'signature_padding' => 3.0,
+            'margin_left' => 12.0,
+            'margin_top' => 22.0,
+            'margin_right' => 12.0,
+            'footer_margin' => 7.0,
+            'page_break_bottom' => 8.0,
+            'cell_height_ratio' => 0.82,
+            'table_cell_v_padding' => 2.0,
+            'table_cell_h_padding' => 4.0,
+            'list_spacing' => 1.0,
+            'cond_padding_v' => 3.0,
+            'cond_padding_h' => 5.0,
+        ],
+    ];
+
+    $pdf = null;
+
+    foreach ($layouts as $layout) {
+        $pdf = renderizarParecerPdf($conteudo_html, $assinantes, $numero_processo, $layout);
+        if ($pdf->getNumPages() <= 1) {
+            break;
+        }
+    }
+
+    aplicarBlocosAssinaturaNoPdf($pdf, $assinantes);
 
     if (ob_get_length()) {
        ob_clean();

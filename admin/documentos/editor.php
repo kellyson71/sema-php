@@ -41,6 +41,13 @@ include '../header.php';
             --a4-margin-lr:  15mm;
             --a4-usable-h:   256mm; /* 297 - 27 - 14 */
             --page-gap:      28px;
+            --doc-font-size: 12pt;
+            --doc-line-h:    1.4;
+            --doc-p-gap:     12px;
+            --doc-p-indent:  50px;
+            --doc-p-line-h:  1.7;
+            --doc-table-vpad: 5px;
+            --doc-table-hpad: 8px;
         }
 
         @keyframes shimmer {
@@ -243,8 +250,8 @@ include '../header.php';
         }
         .note-editable {
             font-family: "Times New Roman", Times, serif !important;
-            font-size: 12pt !important;
-            line-height: 1.4 !important;
+            font-size: var(--doc-font-size) !important;
+            line-height: var(--doc-line-h) !important;
             color: #1e1e1e !important;
             text-align: justify !important;
             padding: 2mm var(--a4-margin-lr) 10mm !important;
@@ -258,11 +265,11 @@ include '../header.php';
             width: 100%; border-collapse: collapse;
         }
         .note-editable td, .note-editable th {
-            padding: 5px 8px; border: 1px solid #aaa; vertical-align: middle;
-            font-size: 11pt; line-height: 1.4;
+            padding: var(--doc-table-vpad) var(--doc-table-hpad); border: 1px solid #aaa; vertical-align: middle;
+            font-size: 11pt; line-height: var(--doc-line-h);
         }
         .note-editable .texto-parecer p {
-            margin-bottom: 12px; text-indent: 50px; line-height: 1.7;
+            margin-bottom: var(--doc-p-gap); text-indent: var(--doc-p-indent); line-height: var(--doc-p-line-h);
         }
         .note-editable .condicionantes {
             font-size: 9pt; border: 1px solid #000; padding: 8px 10px;
