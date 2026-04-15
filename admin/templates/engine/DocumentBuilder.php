@@ -44,7 +44,7 @@ class DocumentBuilder
             throw new \Exception("Definição inválida em: {$nome}");
         }
 
-        return DocumentStyles::styleTag() . "\n" . $this->renderBlocos($definicao['blocos']);
+        return $this->renderBlocos($definicao['blocos']);
     }
 
     /**

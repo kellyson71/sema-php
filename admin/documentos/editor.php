@@ -563,7 +563,6 @@ include '../header.php';
     const templateLabel = <?= json_encode($label) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
     let currentTemplate = templateNome;
-    let templateCss = '';
 
     /* ─── Icon Picker ────────────────────────────────────────── */
     const ICONES_DISPONIVEIS = [
@@ -758,7 +757,6 @@ include '../header.php';
         .then(res => res.json())
         .then(ret => {
             if (ret.success) {
-                templateCss = ret.css_template || '';
                 initEditor(ret.html, templateLabel || ret.nome_rascunho || templateNome);
             } else {
                 document.getElementById('editor-loading').innerHTML = `
@@ -877,9 +875,6 @@ include '../header.php';
             '$1'
         );
 
-        const conteudoSemCss = conteudoHtml;
-        conteudoHtml = (templateCss ? (templateCss + '\n') : '') + conteudoHtml;
-
         const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
         fd.append('conteudo_parecer', conteudoHtml);
@@ -975,7 +970,6 @@ include '../header.php';
             /<span[^>]+class="var-field"[^>]+data-var="([^"]+)"[^>]*>(?:(?!<\/span>)[\s\S])*?<\/span>/g,
             '{{$1}}'
         );
-        const templateHtmlCompleto = (templateCss ? (templateCss + '\n') : '') + templateHtml;
 
         const nome  = document.getElementById('novoTemplateNome').value.trim();
         const desc  = document.getElementById('novoTemplateDesc').value.trim();
@@ -991,7 +985,7 @@ include '../header.php';
         const icone = document.getElementById('novoTemplateIcone')?.value || 'fa-bookmark';
         const body = new URLSearchParams({
             action:        'salvar_template_usuario',
-            conteudo_html: templateHtmlCompleto,
+            conteudo_html: templateHtml,
             template_base: templateNome,
             icone:         icone,
         });

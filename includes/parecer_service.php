@@ -828,16 +828,8 @@ class ParecerService
     {
         $html = file_get_contents($templatePath);
         $html = $this->processarImagensRelativas($html, dirname($templatePath));
+        $html = self::removerEstilosTemplate($html);
         return self::extrairConteudoTemplate($html);
-    }
-
-    /**
-     * Carrega o template completo já com imagens relativas convertidas.
-     */
-    public function prepararTemplateCompletoParaEditor(string $templatePath): string
-    {
-        $html = file_get_contents($templatePath);
-        return $this->processarImagensRelativas($html, dirname($templatePath));
     }
 
     /**
@@ -884,34 +876,10 @@ class ParecerService
     }
 
     /**
-     * Extrai todas as tags <style> do HTML, preservando a ordem original.
-     */
-    public static function extrairEstilosTemplate(string $html): string
-    {
-        preg_match_all('/<style\b[^>]*>[\s\S]*?<\/style>/i', $html, $matches);
-        return trim(implode("\n", $matches[0] ?? []));
-    }
-
-    /**
      * Remove tags <style> do HTML, mantendo apenas o conteúdo editável.
      */
     public static function removerEstilosTemplate(string $html): string
     {
         return preg_replace('/<style\b[^>]*>[\s\S]*?<\/style>/i', '', $html);
-    }
-
-    /**
-     * Recompõe o HTML final juntando estilos e conteúdo.
-     */
-    public static function combinarEstilosEConteudo(string $cssTemplate, string $htmlConteudo): string
-    {
-        $cssTemplate = trim($cssTemplate);
-        $htmlConteudo = trim($htmlConteudo);
-
-        if ($cssTemplate === '') {
-            return $htmlConteudo;
-        }
-
-        return $cssTemplate . "\n" . $htmlConteudo;
     }
 }

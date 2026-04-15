@@ -168,7 +168,7 @@ function montarCssParecerPdf(array $layout): string
         td, th {
             vertical-align: middle;
             line-height: ' . $bodyLineHeight . ';
-            padding: ' . $tableCellVPad . 'pt ' . $tableCellHPad . 'pt;
+            padding: ' . $tableCellVPad . 'px ' . $tableCellHPad . 'px;
             font-size: 11pt;
         }
 
