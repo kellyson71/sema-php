@@ -30,13 +30,12 @@ class Components
     public static function titulo(string $texto, string $subtexto = ''): string
     {
         $s = DocumentStyles::TITULO;
-        $html = '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="' . $s . '">';
+        $html = '<div class="titulo" style="' . $s . '">';
         $html .= strtoupper($texto);
         if ($subtexto) {
             $html .= '<br><span style="font-size:12pt; font-weight:normal;">' . $subtexto . '</span>';
         }
-        $html .= '</td></tr></table>';
-        $html .= '<br>';
+        $html .= '</div>';
         return $html;
     }
 
@@ -45,10 +44,9 @@ class Components
      */
     public static function subtitulo(string $texto): string
     {
-        $html = '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="' . DocumentStyles::SUBTITULO . '">';
+        $html = '<div class="subtitulo-doc" style="' . DocumentStyles::SUBTITULO . '">';
         $html .= $texto;
-        $html .= '</td></tr></table>';
-        $html .= '<br>';
+        $html .= '</div>';
         return $html;
     }
 
@@ -58,11 +56,7 @@ class Components
     public static function secao(string $texto): string
     {
         $s = DocumentStyles::SECAO_TITULO;
-        $html = '<br>';
-        $html .= '<table width="100%" cellpadding="4" cellspacing="0" border="1" style="border-color:#aaa;">';
-        $html .= '<tr><td bgcolor="#e8e8e8" style="' . $s . '">' . strtoupper($texto) . '</td></tr>';
-        $html .= '</table>';
-        return $html;
+        return '<div class="secao-titulo" style="' . $s . '">' . strtoupper($texto) . '</div>';
     }
 
     /**
@@ -110,7 +104,7 @@ class Components
      */
     public static function texto(string $conteudo): string
     {
-        return '<div style="' . DocumentStyles::TEXTO . '">' . $conteudo . '</div>';
+        return '<div class="texto-livre" style="' . DocumentStyles::TEXTO . '">' . $conteudo . '</div>';
     }
 
     /**
@@ -139,8 +133,7 @@ class Components
      */
     public static function condicionantes(array $itens, string $titulo = 'CONDICIONANTES:'): string
     {
-        $html = '<br>';
-        $html .= '<div class="condicionantes" style="' . DocumentStyles::CONDICIONANTES . '">';
+        $html = '<div class="condicionantes" style="' . DocumentStyles::CONDICIONANTES . '">';
         $html .= '<strong>' . $titulo . '</strong><ul style="padding-left:20px;">';
         foreach ($itens as $item) {
             $html .= '<li style="line-height:1.4;">' . $item . '</li>';
@@ -154,7 +147,7 @@ class Components
      */
     public static function dataLocal(string $data = '{{data_atual}}'): string
     {
-        return '<br><br><div style="' . DocumentStyles::DATA_LOCAL . '">Pau dos Ferros/RN, ' . $data . '.</div>';
+        return '<div class="data-local" style="' . DocumentStyles::DATA_LOCAL . '">Pau dos Ferros/RN, ' . $data . '.</div>';
     }
 
     /**
@@ -162,10 +155,9 @@ class Components
      */
     public static function assinatura(string $nome = '', string $cargo = ''): string
     {
-        $html  = '<br><br><br>';
-        $html .= '<div style="' . DocumentStyles::ASSINATURA . '">';
-        $html .= '<p style="' . DocumentStyles::ASSINATURA_NOME . '">' . strtoupper($nome) . '</p>';
-        $html .= '<p style="' . DocumentStyles::ASSINATURA_CARGO . '">' . $cargo . '</p>';
+        $html  = '<div class="linha-assinatura" style="' . DocumentStyles::ASSINATURA . '">';
+        $html .= '<p class="nome-assinante" style="' . DocumentStyles::ASSINATURA_NOME . '">' . strtoupper($nome) . '</p>';
+        $html .= '<p class="cargo-assinante" style="' . DocumentStyles::ASSINATURA_CARGO . '">' . $cargo . '</p>';
         $html .= '</div>';
         return $html;
     }
@@ -175,11 +167,11 @@ class Components
      */
     public static function dadosInline(array $dados): string
     {
-        $html = '<div style="line-height:1.8;">';
+        $html = '<div class="dados-interessado" style="line-height:1.8; margin-bottom:24px;">';
         foreach ($dados as [$label, $valor]) {
-            $html .= '<div><span style="font-weight:bold;">' . $label . ':</span> ' . $valor . '</div>';
+            $html .= '<div class="linha" style="margin-bottom:4px;"><span class="label" style="font-weight:bold;">' . $label . ':</span> ' . $valor . '</div>';
         }
-        $html .= '</div><br>';
+        $html .= '</div>';
         return $html;
     }
 }

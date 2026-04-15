@@ -353,30 +353,3 @@ function formatarCpfCnpj($cpf_cnpj)
             substr($cpf_cnpj, 12, 2);
     }
 }
-
-/**
- * Log de depuração específico para geração de PDF.
- * Salva metadados em .log e o HTML bruto em arquivos .html separados.
- */
-function log_debug_pdf(string $area, $conteudo): void
-{
-    $logsDir = dirname(__DIR__) . '/uploads/logs';
-    if (!is_dir($logsDir)) {
-        mkdir($logsDir, 0777, true);
-        file_put_contents($logsDir . '/.htaccess', "Deny from all\n");
-    }
-
-    $timestamp = date('Y-m-d H:i:s');
-    $logFile = $logsDir . '/pdf_debug.log';
-    
-    $resumo = is_string($conteudo) ? mb_substr($conteudo, 0, 100) . '...' : json_encode($conteudo);
-    $msg = "[$timestamp] [$area] $resumo\n";
-    file_put_contents($logFile, $msg, FILE_APPEND);
-
-    // Se o conteúdo for uma string longa (provavelmente um HTML), salva em arquivo separado
-    if (is_string($conteudo) && strlen($conteudo) > 50) {
-        $cleanArea = preg_replace('/[^a-z0-9]/i', '_', strtolower($area));
-        $htmlFile = $logsDir . "/debug_{$cleanArea}_" . date('Ymd_His') . ".html";
-        file_put_contents($htmlFile, $conteudo);
-    }
-}

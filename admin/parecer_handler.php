@@ -4,7 +4,6 @@ require_once '../includes/parecer_service.php';
 require_once '../includes/email_service.php';
 require_once '../includes/functions.php';
 
-
 verificaLogin();
 
 header('Content-Type: application/json');
@@ -344,6 +343,7 @@ try {
                  echo json_encode([
                     'success' => true,
                     'html' => '',
+                    'css_template' => '',
                     'is_draft' => false,
                     'nome_rascunho' => 'Novo Parecer',
                     'dados' => []
@@ -379,11 +379,14 @@ try {
                 $adminDataUt = $stmtAdmUt->fetch(PDO::FETCH_ASSOC);
 
                 $dadosUt = $parecerService->preencherDados($requerimentoUt, $adminDataUt);
-                $htmlUt  = ParecerService::aplicarHighlights($utRow['conteudo_html'], $dadosUt);
+                $htmlUtCompleto  = ParecerService::aplicarHighlights($utRow['conteudo_html'], $dadosUt);
+                $cssUt = ParecerService::extrairEstilosTemplate($htmlUtCompleto);
+                $htmlUt = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($htmlUtCompleto));
 
                 echo json_encode([
                     'success'       => true,
                     'html'          => $htmlUt,
+                    'css_template'  => $cssUt,
                     'is_draft'      => false,
                     'nome_rascunho' => $utRow['nome'],
                     'dados'         => $dadosUt,
@@ -403,10 +406,13 @@ try {
                     throw new Exception('Rascunho não encontrado no banco de dados');
                 }
 
-                $htmlRascunho = ParecerService::extrairConteudoTemplate($rascunho['conteudo_html'] ?? '');
+                $htmlRascunhoCompleto = $rascunho['conteudo_html'] ?? '';
+                $cssRascunho = ParecerService::extrairEstilosTemplate($htmlRascunhoCompleto);
+                $htmlRascunho = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($htmlRascunhoCompleto));
                 echo json_encode([
                     'success' => true,
                     'html' => $htmlRascunho,
+                    'css_template' => $cssRascunho,
                     'is_draft' => true,
                     'nome_rascunho' => $rascunho['nome'],
                     'dados' => []
@@ -443,10 +449,12 @@ try {
                      }
                 }
 
-                $html = ParecerService::extrairConteudoTemplate($html);
+                $cssDraft = ParecerService::extrairEstilosTemplate($html);
+                $html = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($html));
                 echo json_encode([
                     'success' => true,
                     'html' => $html,
+                    'css_template' => $cssDraft,
                     'is_draft' => true,
                     'dados' => [] // Drafts já vêm preenchidos
                 ]);
@@ -486,11 +494,14 @@ try {
 
             if ($builder->existeDefinicao($template)) {
                 $rawHtml = $builder->render($template);
-                $html    = ParecerService::aplicarHighlights($rawHtml, $dados);
+                $htmlCompleto = ParecerService::aplicarHighlights($rawHtml, $dados);
+                $cssTemplate = ParecerService::extrairEstilosTemplate($htmlCompleto);
+                $html    = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($htmlCompleto));
 
                 echo json_encode([
                     'success' => true,
                     'html'    => $html,
+                    'css_template' => $cssTemplate,
                     'dados'   => $dados,
                 ]);
                 break;
@@ -514,15 +525,19 @@ try {
             // Verificar se é DOCX — DOCX não suporta highlights, usa substituição direta
             $extTpl = strtolower(pathinfo($templatePath, PATHINFO_EXTENSION));
             if ($extTpl === 'docx') {
-                $html = $parecerService->substituirVariaveisDocx($templatePath, $dados);
+                $htmlCompleto = $parecerService->substituirVariaveisDocx($templatePath, $dados);
             } else {
-                $rawHtml = $parecerService->prepararTemplateParaEditor($templatePath);
-                $html    = ParecerService::aplicarHighlights($rawHtml, $dados);
+                $rawHtmlCompleto = $parecerService->prepararTemplateCompletoParaEditor($templatePath);
+                $htmlCompleto = ParecerService::aplicarHighlights($rawHtmlCompleto, $dados);
             }
+
+            $cssTemplate = ParecerService::extrairEstilosTemplate($htmlCompleto);
+            $html = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($htmlCompleto));
 
             echo json_encode([
                 'success' => true,
                 'html'    => $html,
+                'css_template' => $cssTemplate,
                 'dados'   => $dados,
             ]);
             break;

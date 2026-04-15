@@ -8,7 +8,6 @@ $rootDir = dirname(__DIR__, 2); // Raiz (sema-php)
 require_once $rootDir . '/includes/config.php';
 require_once dirname(__DIR__) . '/conexao.php'; // admin/conexao.php
 require_once $rootDir . '/includes/parecer_service.php';
-require_once $rootDir . '/includes/functions.php';
 
 // Validar login
 if (function_exists('verificaLogin')) {
@@ -53,11 +52,7 @@ function sanitizarHtmlParaPdf(string $html): string {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $raw_conteudo = trim($_POST['conteudo_parecer'] ?? '');
-    log_debug_pdf('recebido_post', $raw_conteudo);
-
-    $conteudo = sanitizarHtmlParaPdf($raw_conteudo);
-    log_debug_pdf('sanitizado', $conteudo);
+    $conteudo = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
     $requerimento_id = trim($_POST['requerimento_id'] ?? '');
     $salvar_banco = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
     $template_salvo = $_POST['template_salvo'] ?? 'Documento Eletrônico';
