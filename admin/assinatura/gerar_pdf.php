@@ -87,8 +87,9 @@ function criarParecerPdfBase(array $primeiroAssinante, string $numero_processo, 
     $pdf->setCellHeightRatio($cellHeightRatio);
     // TCPDF adiciona ~1 line-height de espaço antes de cada bloco (via $hbz na
     // função de abertura do HTML parser) quando $on > 0 e ~1 line-height depois
-    // (via $hb) quando a tag não é div/dt/dd/li/br/hr. Zeramos $on para todos
-    // os blocos — o espaçamento passa a depender só do CSS, batendo com o editor.
+    // (via $hb) quando a tag não é div/dt/dd/li/br/hr. Zeramos $on só para os
+    // blocos de fluxo de texto — NUNCA para ul/ol/li/table, porque o $hbz
+    // deles funciona como quebra de linha natural entre itens e linhas.
     $zeroVSpace = [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]];
     $pdf->setHtmlVSpace([
         'div'   => $zeroVSpace,
@@ -99,14 +100,6 @@ function criarParecerPdfBase(array $primeiroAssinante, string $numero_processo, 
         'h4'    => $zeroVSpace,
         'h5'    => $zeroVSpace,
         'h6'    => $zeroVSpace,
-        'ul'    => $zeroVSpace,
-        'ol'    => $zeroVSpace,
-        'li'    => $zeroVSpace,
-        'table' => $zeroVSpace,
-        'tr'    => $zeroVSpace,
-        'td'    => $zeroVSpace,
-        'th'    => $zeroVSpace,
-        'blockquote' => $zeroVSpace,
     ]);
     $pdf->SetFont('times', '', 12);
     $pdf->SetTextColor(30, 30, 30);

@@ -712,7 +712,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <i class="fab fa-whatsapp"></i>
                 <span>Problemas? Fale conosco</span>
             </a>
-            <span class="version-text">v3.8</span>
+            <span class="version-text">v3.9</span>
         </div>
     </div>
 
