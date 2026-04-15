@@ -85,18 +85,28 @@ function criarParecerPdfBase(array $primeiroAssinante, string $numero_processo, 
     $pdf->SetFooterMargin($footerMargin);
     $pdf->SetAutoPageBreak(true, $pageBreakBottom);
     $pdf->setCellHeightRatio($cellHeightRatio);
-    // TCPDF adiciona ~1 line-height de espaço antes E depois de cada <p>/<h*>
-    // além do margin CSS — zeramos para o espaçamento casar com o editor.
+    // TCPDF adiciona ~1 line-height de espaço antes de cada bloco (via $hbz na
+    // função de abertura do HTML parser) quando $on > 0 e ~1 line-height depois
+    // (via $hb) quando a tag não é div/dt/dd/li/br/hr. Zeramos $on para todos
+    // os blocos — o espaçamento passa a depender só do CSS, batendo com o editor.
+    $zeroVSpace = [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]];
     $pdf->setHtmlVSpace([
-        'p'  => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'h1' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'h2' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'h3' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'h4' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'ul' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'ol' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'li' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
-        'table' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'div'   => $zeroVSpace,
+        'p'     => $zeroVSpace,
+        'h1'    => $zeroVSpace,
+        'h2'    => $zeroVSpace,
+        'h3'    => $zeroVSpace,
+        'h4'    => $zeroVSpace,
+        'h5'    => $zeroVSpace,
+        'h6'    => $zeroVSpace,
+        'ul'    => $zeroVSpace,
+        'ol'    => $zeroVSpace,
+        'li'    => $zeroVSpace,
+        'table' => $zeroVSpace,
+        'tr'    => $zeroVSpace,
+        'td'    => $zeroVSpace,
+        'th'    => $zeroVSpace,
+        'blockquote' => $zeroVSpace,
     ]);
     $pdf->SetFont('times', '', 12);
     $pdf->SetTextColor(30, 30, 30);
