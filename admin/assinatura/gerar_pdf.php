@@ -85,6 +85,19 @@ function criarParecerPdfBase(array $primeiroAssinante, string $numero_processo, 
     $pdf->SetFooterMargin($footerMargin);
     $pdf->SetAutoPageBreak(true, $pageBreakBottom);
     $pdf->setCellHeightRatio($cellHeightRatio);
+    // TCPDF adiciona ~1 line-height de espaço antes E depois de cada <p>/<h*>
+    // além do margin CSS — zeramos para o espaçamento casar com o editor.
+    $pdf->setHtmlVSpace([
+        'p'  => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'h1' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'h2' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'h3' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'h4' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'ul' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'ol' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'li' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+        'table' => [0 => ['h' => '', 'n' => 0], 1 => ['h' => '', 'n' => 0]],
+    ]);
     $pdf->SetFont('times', '', 12);
     $pdf->SetTextColor(30, 30, 30);
     $pdf->AddPage();
@@ -102,8 +115,11 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
     $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
     $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
-    // NÃO remover <p> e <div> vazios — eles são respiros intencionais entre blocos
-    // e garantem que o espaçamento do PDF fique fiel ao preview/editor.
+    // Summernote injeta <p><br></p> ao apertar Enter — no editor viram "respiros"
+    // visualmente discretos, mas no TCPDF cada um vira uma linha cheia. Removemos
+    // para o PDF bater com a preview.
+    $html = preg_replace('/<p[^>]*>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $html);
+    $html = preg_replace('/<div[^>]*>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/i', '', $html);
 
     return $html;
 }
