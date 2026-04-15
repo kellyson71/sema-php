@@ -557,8 +557,8 @@ include_once 'tipos_alvara.php';
     </div>
 
     <!-- Modal de Legislação Municipal -->
-    <div id="modal-legislacao" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto;">
-        <div style="background:#fff; max-width:700px; margin:40px auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <div id="modal-legislacao" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto; padding:24px 16px;">
+        <div style="background:#fff; max-width:700px; max-height:min(85vh, 760px); margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
             <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
                 <div>
                     <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-book-open" style="margin-right:10px;"></i>Legislação Municipal</h2>
@@ -566,7 +566,7 @@ include_once 'tipos_alvara.php';
                 </div>
                 <button onclick="document.getElementById('modal-legislacao').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
             </div>
-            <div style="padding:24px 28px;">
+            <div style="padding:24px 28px; overflow-y:auto; flex:1 1 auto;">
                 <?php
                 $leis = [
                     [
