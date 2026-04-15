@@ -18,7 +18,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '9. Projeto de Calçada com Detalhamento;',
         ],
         'documentos_opcionais' => [
@@ -51,7 +51,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '9. Projeto de Calçada com Detalhamento;',
             '10. Contrato;',
             '11. Ordem de Serviço;',
@@ -86,7 +86,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, além do projeto sanitário, apresentar um documento que comprova (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
             '10. Projeto de Calçada com Detalhamento;',
@@ -116,7 +116,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, além do projeto sanitário, apresentar um documento que comprova (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
             '10. Projeto de Calçada com Detalhamento;',
@@ -150,7 +150,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, além do projeto sanitário, apresentar um documento que comprova (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '9. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
             '10. Cópia da Licença solicitada junto ao IDEMA (de acordo com a Resolução nº 02/2014 do CONEMA);',
         ],
@@ -373,7 +373,7 @@ $tipos_alvara = [
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
             '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
-               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar um documento que comprove (conta de água ou declaração de viabilidade técnica);',
+               - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
             '8. Projeto de Calçada com Detalhamento;',
         ],
         'observacoes' => [
