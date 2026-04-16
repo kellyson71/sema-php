@@ -125,6 +125,8 @@ try {
     $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
     $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
     $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
+    $enquadramento_atividade = trim($_POST['enquadramento_atividade'] ?? '');
+    $localizacao_google_maps = trim($_POST['localizacao_google_maps'] ?? '');
     $observacoes = '';
 
     if (in_array($tipoAlvara, $tiposAmbientais)) {
@@ -206,6 +208,8 @@ try {
         'comprovante_pagamento' => $comprovante_pagamento ?: null,
         'possui_estudo_ambiental' => $possui_estudo,
         'tipo_estudo_ambiental' => $tipo_estudo_ambiental ?: null,
+        'enquadramento_atividade' => $enquadramento_atividade ?: null,
+        'localizacao_google_maps' => $localizacao_google_maps ?: null,
         'status' => 'Em análise',
         'observacoes' => isset($observacoes) && !empty($observacoes) ? $observacoes : null
     ];

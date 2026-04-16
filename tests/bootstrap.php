@@ -6,7 +6,7 @@
  * sem precisar de banco de dados ou servidor web.
  */
 
-define('MAX_FILE_SIZE', 10 * 1024 * 1024);
+define('MAX_FILE_SIZE', 100 * 1024 * 1024);
 define('UPLOAD_DIR', sys_get_temp_dir() . '/sema_tests/');
 define('BASE_URL', 'http://localhost:8090');
 define('DB_HOST', 'localhost');

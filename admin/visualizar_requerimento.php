@@ -1532,6 +1532,40 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['especificacao'])); ?></div>
                         </div>
                     <?php endif; ?>
+                    <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Enquadramento CONEMA:</div>
+                            <div class="data-value">
+                                <?php
+                                    include_once __DIR__ . '/../enquadramento_conema.php';
+                                    $nomeAtividade = $requerimento['enquadramento_atividade'];
+                                    foreach ($enquadramento_conema as $cat) {
+                                        if (isset($cat['atividades'][$nomeAtividade])) {
+                                            $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome']
+                                                . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
+                                            break;
+                                        }
+                                    }
+                                    echo htmlspecialchars($nomeAtividade);
+                                ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Localização (Google Maps):</div>
+                            <div class="data-value">
+                                <a href="<?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>" target="_blank" rel="noopener" style="color:#009640;">
+                                    <i class="fas fa-map-marker-alt me-1"></i><?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>
+                                </a>
+                            </div>
+                            <div class="data-actions">
+                                <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>', this)" title="Copiar link">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($requerimento['ctf_numero'])): ?>
                         <div class="data-row">
                             <div class="data-label">Cadastro Técnico Federal:</div>

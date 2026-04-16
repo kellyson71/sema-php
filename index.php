@@ -14,6 +14,8 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
+// Inclui tabela de enquadramento CONEMA para licenciamento ambiental
+include_once 'enquadramento_conema.php';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -873,13 +875,35 @@ include_once 'tipos_alvara.php';
                         `;
                     } else if (tiposAmbientais.includes(tipo)) {
                         campos = `
+                            <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
+                                <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">
+                                    <i class="fas fa-clipboard-check" style="margin-right:6px;"></i>Enquadramento Ambiental (Resolução CONEMA 04/2009)
+                                </div>
+                                <select required name="enquadramento_atividade" style="padding:10px; border:1px solid #ddd; border-radius:4px; width:100%; margin-bottom:8px;">
+                                    <option value="" hidden>Selecione a atividade do empreendimento *</option>
+                                    <?php foreach ($enquadramento_conema as $cat): ?>
+                                    <optgroup label="<?= htmlspecialchars($cat['titulo']) ?>">
+                                        <?php foreach ($cat['atividades'] as $slug => $ativ): ?>
+                                        <option value="<?= $slug ?>"><?= htmlspecialchars($ativ['nome']) ?> (<?= $ativ['potencial'] ?>)</option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem;">Potencial poluidor: P = Pequeno, M = Médio, G = Grande</small>
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <input name="localizacao_google_maps" placeholder="Link do Google Maps do empreendimento (opcional)" style="width:100%;">
+                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem; display:block; margin-top:4px;">
+                                    Abra o Google Maps, busque o local, clique em "Compartilhar" → "Copiar link" e cole aqui.
+                                </small>
+                            </div>
                             <div class="form-grid-2">
                                 <input ${tiposExigemCTF.includes(tipo) ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${tiposExigemCTF.includes(tipo) ? '*' : '(se houver)'}">
                                 <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
                                 <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
-                                <input required name="comprovante_pagamento" placeholder="Comprovante de pagamento (código/recibo) *">
+                                <input required name="comprovante_pagamento" placeholder="Comprovante de pagamento do boleto (código/recibo) *">
                             </div>
                             <div class="form-grid-2">
                                 <label class="form-toggle">
@@ -960,9 +984,9 @@ include_once 'tipos_alvara.php';
                 return false;
             }
 
-            // Verificar tamanho do arquivo (máximo 10MB)
-            if (file.size > 10485760) {
-                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 10MB.');
+            // Verificar tamanho do arquivo (máximo 100MB)
+            if (file.size > 104857600) {
+                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 100MB.');
                 input.value = '';
                 return false;
             }
