@@ -299,7 +299,7 @@ include_once 'tipos_alvara.php';
                                         'outro' => 'Outros Serviços',
                                     ];
                                     foreach ($categorias as $catSlug => $catNome):
-                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug);
+                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
                                         if (empty($tiposDaCategoria)) continue;
                                     ?>
                                     <optgroup label="<?= htmlspecialchars($catNome) ?>">
