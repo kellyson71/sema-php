@@ -286,319 +286,208 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Painel Administrativo SEMA</title>
     <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(160deg, #0a2e1a 0%, #1a472a 30%, #0d3320 60%, #122a1c 100%);
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+            font-family:'Inter',system-ui,-apple-system,sans-serif;
+            background:#0f172a;
+            color:#e2e8f0;
         }
 
-        .login-wrapper {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-            position: relative;
+        .login-wrapper{
+            flex:1;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:2rem 1rem;
+            position:relative;
+            overflow:hidden;
         }
 
-        /* Fundo com padrão sutil */
-        .login-wrapper::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at 20% 50%, rgba(0,150,64,0.08) 0%, transparent 60%),
-                        radial-gradient(ellipse at 80% 20%, rgba(0,100,200,0.06) 0%, transparent 50%);
-            pointer-events: none;
+        /* Orbs decorativas de fundo */
+        .login-wrapper::before,
+        .login-wrapper::after{
+            content:'';position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;
+        }
+        .login-wrapper::before{
+            width:500px;height:500px;top:-150px;right:-100px;
+            background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);
+        }
+        .login-wrapper::after{
+            width:400px;height:400px;bottom:-100px;left:-80px;
+            background:radial-gradient(circle,rgba(14,165,233,0.1),transparent 70%);
         }
 
-        .login-card {
-            background: rgba(255,255,255,0.97);
-            border-radius: 16px;
-            width: 420px;
-            max-width: 100%;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.15);
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
+        .login-card{
+            background:rgba(30,41,59,0.8);
+            backdrop-filter:blur(20px);
+            -webkit-backdrop-filter:blur(20px);
+            border:1px solid rgba(148,163,184,0.1);
+            border-radius:20px;
+            width:420px;
+            max-width:100%;
+            overflow:hidden;
+            position:relative;
+            z-index:1;
+            box-shadow:0 25px 50px rgba(0,0,0,0.4);
         }
 
-        .login-card-header {
-            background: linear-gradient(135deg, #1a472a 0%, #0d5a2d 100%);
-            padding: 32px 32px 28px;
-            text-align: center;
+        .login-card-header{
+            padding:36px 32px 28px;
+            text-align:center;
+            border-bottom:1px solid rgba(148,163,184,0.08);
+        }
+        .login-card-header img{
+            max-width:180px;height:auto;margin-bottom:8px;
+            filter:brightness(0) invert(1);opacity:0.92;
+        }
+        .login-card-header p{
+            font-size:0.8rem;color:#94a3b8;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin:0;
         }
 
-        .login-card-header img {
-            max-width: 160px;
-            height: auto;
-            margin-bottom: 12px;
-            filter: brightness(0) invert(1);
+        .login-card-body{padding:32px}
+
+        .form-group{margin-bottom:18px}
+        .form-label{
+            display:block;font-size:0.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;
+            letter-spacing:0.5px;text-transform:uppercase;
         }
 
-        .login-card-header h1 {
-            color: #fff;
-            font-size: 1.05rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin: 0;
-            opacity: 0.9;
+        .input-wrap{position:relative}
+        .input-wrap i{
+            position:absolute;left:14px;top:50%;transform:translateY(-50%);
+            color:#64748b;font-size:0.85rem;transition:color .2s;
         }
+        .input-wrap input{
+            width:100%;padding:13px 14px 13px 42px;
+            background:rgba(15,23,42,0.6);
+            border:1px solid rgba(148,163,184,0.15);
+            border-radius:12px;font-size:0.95rem;color:#f1f5f9;
+            transition:all .2s;
+        }
+        .input-wrap input::placeholder{color:#475569}
+        .input-wrap input:focus{
+            border-color:#6366f1;
+            box-shadow:0 0 0 3px rgba(99,102,241,0.15);
+            outline:none;background:rgba(15,23,42,0.8);
+        }
+        .input-wrap:focus-within i{color:#818cf8}
 
-        .login-card-body {
-            padding: 32px;
+        .btn-login{
+            width:100%;padding:13px;margin-top:8px;
+            background:linear-gradient(135deg,#6366f1,#4f46e5);
+            border:none;border-radius:12px;color:#fff;
+            font-weight:600;font-size:0.95rem;cursor:pointer;
+            transition:all .2s;letter-spacing:0.3px;
         }
+        .btn-login:hover{
+            background:linear-gradient(135deg,#818cf8,#6366f1);
+            transform:translateY(-1px);
+            box-shadow:0 8px 24px rgba(99,102,241,0.3);
+        }
+        .btn-login:active{transform:translateY(0)}
+        .btn-login:disabled{opacity:0.6;transform:none;cursor:not-allowed}
 
-        .form-group { margin-bottom: 20px; }
+        .alert-box{
+            padding:12px 14px;border-radius:10px;font-size:0.85rem;
+            margin-bottom:16px;display:flex;align-items:center;gap:10px;
+        }
+        .alert-box.error{background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.2)}
+        .alert-box.error i{color:#ef4444}
 
-        .form-label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 6px;
-            letter-spacing: 0.3px;
-        }
+        /* Etapa 2 */
+        .otp-header{text-align:center;margin-bottom:24px}
+        .otp-header i{font-size:2.5rem;margin-bottom:12px;display:block}
+        .otp-header .fa-shield-alt,.otp-header .fa-mobile-alt{color:#818cf8}
+        .otp-header .fa-envelope-open-text{color:#38bdf8}
+        .otp-header p{color:#94a3b8;font-size:0.9rem;line-height:1.5}
+        .otp-header strong{color:#f1f5f9}
 
-        .input-wrapper {
-            position: relative;
+        .otp-input{
+            width:100%;padding:16px;
+            background:rgba(15,23,42,0.6);
+            border:1px solid rgba(148,163,184,0.15);
+            border-radius:14px;font-size:1.8rem;font-weight:700;
+            text-align:center;letter-spacing:10px;color:#f1f5f9;
+            transition:all .2s;
         }
+        .otp-input:focus{
+            border-color:#6366f1;
+            box-shadow:0 0 0 3px rgba(99,102,241,0.15);
+            outline:none;
+        }
+        .otp-input::placeholder{letter-spacing:4px;font-size:1.3rem;color:#475569;font-weight:400}
 
-        .input-wrapper i {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+        .remember-device{
+            display:flex;align-items:center;gap:10px;
+            margin:16px 0 4px;padding:12px 14px;
+            background:rgba(99,102,241,0.06);
+            border-radius:10px;border:1px solid rgba(99,102,241,0.12);
+            cursor:pointer;transition:background .2s;
         }
+        .remember-device:hover{background:rgba(99,102,241,0.1)}
+        .remember-device input[type="checkbox"]{
+            width:18px;height:18px;accent-color:#6366f1;cursor:pointer;flex-shrink:0;
+        }
+        .remember-device span{font-size:0.85rem;color:#cbd5e1;line-height:1.3}
+        .remember-device small{display:block;color:#64748b;font-size:0.75rem;margin-top:2px}
 
-        .input-wrapper input {
-            width: 100%;
-            padding: 12px 14px 12px 42px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-            background: #f9fafb;
-            color: #111;
+        .btn-link-back{
+            background:none;border:none;color:#64748b;font-size:0.85rem;
+            cursor:pointer;margin-top:12px;transition:color .2s;
         }
+        .btn-link-back:hover{color:#818cf8}
 
-        .input-wrapper input:focus {
-            border-color: #009640;
-            box-shadow: 0 0 0 3px rgba(0,150,64,0.12);
-            outline: none;
-            background: #fff;
-        }
+        .divider{display:flex;align-items:center;gap:12px;margin:20px 0}
+        .divider hr{flex:1;border:none;border-top:1px solid rgba(148,163,184,0.1)}
+        .divider span{font-size:0.72rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px}
 
-        .input-wrapper input:focus + i,
-        .input-wrapper:focus-within i {
-            color: #009640;
+        .btn-alt{
+            width:100%;padding:11px;
+            border:1px solid rgba(148,163,184,0.15);
+            border-radius:10px;background:transparent;
+            color:#94a3b8;font-size:0.88rem;font-weight:500;
+            cursor:pointer;transition:all .2s;
+            display:flex;align-items:center;justify-content:center;gap:8px;
         }
-
-        .btn-login {
-            width: 100%;
-            padding: 13px;
-            background: linear-gradient(135deg, #009640 0%, #007a34 100%);
-            border: none;
-            border-radius: 10px;
-            color: #fff;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            letter-spacing: 0.3px;
-            margin-top: 4px;
-        }
-
-        .btn-login:hover {
-            background: linear-gradient(135deg, #007a34 0%, #005c28 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(0,150,64,0.3);
-        }
-
-        .btn-login:disabled {
-            opacity: 0.7;
-            transform: none;
-            cursor: not-allowed;
-        }
-
-        .alert-box {
-            padding: 12px 14px;
-            border-radius: 10px;
-            font-size: 0.88rem;
-            margin-bottom: 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .alert-box.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-        .alert-box.error i { color: #dc2626; }
-
-        /* Etapa 2 - OTP */
-        .otp-header { text-align: center; margin-bottom: 24px; }
-        .otp-header i { font-size: 2.5rem; color: #009640; margin-bottom: 12px; }
-        .otp-header p { color: #6b7280; font-size: 0.9rem; line-height: 1.5; }
-        .otp-header strong { color: #111; }
-
-        .otp-input {
-            width: 100%;
-            padding: 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1.8rem;
-            font-weight: 700;
-            text-align: center;
-            letter-spacing: 8px;
-            color: #111;
-            transition: all 0.2s;
-            background: #f9fafb;
-        }
-        .otp-input:focus {
-            border-color: #009640;
-            box-shadow: 0 0 0 3px rgba(0,150,64,0.12);
-            outline: none;
-            background: #fff;
-        }
-        .otp-input::placeholder { letter-spacing: 4px; font-size: 1.4rem; color: #d1d5db; font-weight: 400; }
-
-        /* Checkbox lembrar dispositivo */
-        .remember-device {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 16px 0 4px;
-            padding: 12px 14px;
-            background: #f0fdf4;
-            border-radius: 10px;
-            border: 1px solid #bbf7d0;
-            cursor: pointer;
-        }
-        .remember-device input[type="checkbox"] {
-            width: 18px; height: 18px;
-            accent-color: #009640;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-        .remember-device span {
-            font-size: 0.85rem;
-            color: #374151;
-            line-height: 1.3;
-        }
-        .remember-device small { display: block; color: #6b7280; font-size: 0.75rem; margin-top: 2px; }
-
-        .btn-link-back {
-            background: none;
-            border: none;
-            color: #6b7280;
-            font-size: 0.85rem;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: color 0.2s;
-        }
-        .btn-link-back:hover { color: #009640; }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 20px 0;
-        }
-        .divider hr { flex: 1; border: none; border-top: 1px solid #e5e7eb; }
-        .divider span { font-size: 0.75rem; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-
-        .btn-switch {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            background: #fff;
-            color: #374151;
-            font-size: 0.88rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .btn-switch:hover {
-            border-color: #009640;
-            color: #009640;
-            background: #f0fdf4;
-        }
+        .btn-alt:hover{border-color:#6366f1;color:#818cf8;background:rgba(99,102,241,0.05)}
 
         /* Footer */
-        .login-footer {
-            background: #0a1a2e;
-            padding: 36px 24px 24px;
-            text-align: center;
+        .login-footer{
+            background:#0a1a2e;padding:32px 24px 20px;text-align:center;
+            border-top:1px solid rgba(148,163,184,0.06);
         }
-        .login-footer img {
-            max-width: 180px;
-            height: auto;
-            margin-bottom: 20px;
-            opacity: 0.9;
+        .login-footer img{max-width:150px;height:auto;margin-bottom:16px;opacity:0.85}
+        .footer-contacts{
+            display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-bottom:20px;
         }
-        .login-footer-contacts {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 24px;
-            margin-bottom: 24px;
+        .footer-contacts a{
+            display:inline-flex;align-items:center;gap:8px;
+            color:rgba(255,255,255,0.5);text-decoration:none;font-size:0.82rem;transition:color .2s;
         }
-        .login-footer-contacts a {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.7);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+        .footer-contacts a:hover{color:rgba(255,255,255,0.8)}
+        .footer-contacts .ic{
+            width:28px;height:28px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;
         }
-        .login-footer-contacts a:hover { color: #fff; }
-        .login-footer-contacts .icon-circle {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .login-footer p {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.82rem;
-            margin: 0;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255,255,255,0.08);
+        .login-footer .copy{
+            color:rgba(255,255,255,0.3);font-size:0.75rem;margin:0;
+            padding-top:14px;border-top:1px solid rgba(255,255,255,0.05);
         }
 
-        .wave-transition {
-            display: block;
-            width: 100%;
-            line-height: 0;
-            font-size: 0;
-        }
-        .wave-transition svg {
-            display: block;
-            width: 100%;
-            height: 60px;
-        }
+        .d-none{display:none!important}
+        .spinner-border{display:inline-block;width:1rem;height:1rem;border:.2em solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
 
-        .d-none { display: none !important; }
-
-        @media (max-width: 480px) {
-            .login-card-body { padding: 24px 20px; }
-            .login-card-header { padding: 24px 20px 20px; }
+        @media(max-width:480px){
+            .login-card-body{padding:24px 20px}
+            .login-card-header{padding:28px 20px 20px}
         }
     </style>
 </head>
@@ -614,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         <div class="login-card">
             <div class="login-card-header">
                 <img src="../assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png" alt="SEMA">
-                <h1>Painel Administrativo</h1>
+                <p>Painel Administrativo</p>
             </div>
 
             <div class="login-card-body">
@@ -637,22 +526,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
 
                         <div class="form-group">
                             <label class="form-label" for="usuario">Usuario</label>
-                            <div class="input-wrapper">
-                                <input type="text" id="usuario" name="usuario" required placeholder="Digite seu usuario" autocomplete="username">
+                            <div class="input-wrap">
                                 <i class="fas fa-user"></i>
+                                <input type="text" id="usuario" name="usuario" required placeholder="Digite seu usuario" autocomplete="username">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label" for="senha">Senha</label>
-                            <div class="input-wrapper">
-                                <input type="password" id="senha" name="senha" required placeholder="Digite sua senha" autocomplete="current-password">
+                            <div class="input-wrap">
                                 <i class="fas fa-lock"></i>
+                                <input type="password" id="senha" name="senha" required placeholder="Digite sua senha" autocomplete="current-password">
                             </div>
                         </div>
 
                         <button type="submit" class="btn-login" id="btn-1">
-                            <i class="fas fa-arrow-right me-2"></i>Entrar
+                            Entrar <i class="fas fa-arrow-right" style="margin-left:8px;font-size:0.85rem;"></i>
                         </button>
                     </form>
                 </div>
@@ -680,36 +569,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                             <input type="checkbox" id="lembrar_check">
                             <span>
                                 Lembrar este dispositivo
-                                <small>Nao pedir codigo novamente por 30 dias neste navegador</small>
+                                <small>Pular verificacao por 30 dias neste navegador</small>
                             </span>
                         </label>
 
                         <button type="submit" class="btn-login" id="btn-2" style="margin-top:16px;">
-                            <i class="fas fa-check-circle me-2"></i>Verificar e Entrar
+                            <i class="fas fa-check-circle" style="margin-right:8px;"></i>Verificar e Entrar
                         </button>
 
                         <div style="text-align:center;">
                             <button type="button" class="btn-link-back" onclick="voltarLogin()">
-                                <i class="fas fa-arrow-left me-1"></i> Voltar
+                                <i class="fas fa-arrow-left" style="margin-right:4px;"></i> Voltar
                             </button>
                         </div>
                     </form>
 
                     <div id="totp-switch" class="d-none">
-                        <div class="divider">
-                            <hr><span>ou</span><hr>
-                        </div>
-                        <button type="button" class="btn-switch" onclick="toggleMetodo()" id="btn-metodo">
+                        <div class="divider"><hr><span>ou</span><hr></div>
+                        <button type="button" class="btn-alt" onclick="toggleMetodo()" id="btn-metodo">
                             <i class="fas fa-mobile-alt"></i> Usar App Autenticador
                         </button>
                     </div>
 
                     <div id="totp-promo" class="d-none">
-                        <div class="divider">
-                            <hr><span><i class="fas fa-shield-alt"></i> Mais seguranca</span><hr>
-                        </div>
-                        <button type="button" class="btn-switch" onclick="alert('Apos entrar, acesse Meu Perfil para configurar o App Autenticador!')">
-                            <i class="fas fa-qrcode" style="color:#009640;"></i> Configurar App Autenticador
+                        <div class="divider"><hr><span>mais seguranca</span><hr></div>
+                        <button type="button" class="btn-alt" onclick="alert('Apos entrar, acesse Meu Perfil para configurar o App Autenticador!')">
+                            <i class="fas fa-qrcode" style="color:#818cf8;"></i> Configurar App Autenticador
                         </button>
                     </div>
                 </div>
@@ -717,28 +602,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         </div>
     </div>
 
-    <!-- Onda + Footer -->
-    <div class="wave-transition">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
-            <path d="M0,30 C360,65 1080,-5 1440,30 L1440,60 L0,60 Z" fill="#0a1a2e"/>
-        </svg>
-    </div>
+    <!-- Footer -->
     <footer class="login-footer">
         <img src="../assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png" alt="SEMA">
-        <div class="login-footer-contacts">
+        <div class="footer-contacts">
             <a href="https://wa.me/5584996686413" target="_blank" rel="noopener">
-                <span class="icon-circle" style="background:rgba(74,222,128,0.15);"><i class="fab fa-whatsapp" style="color:#4ade80;"></i></span>
+                <span class="ic" style="background:rgba(74,222,128,0.1);"><i class="fab fa-whatsapp" style="color:#4ade80;font-size:0.85rem;"></i></span>
                 (84) 99668-6413
             </a>
             <a href="mailto:fiscalizacaosemapdf@gmail.com">
-                <span class="icon-circle" style="background:rgba(249,168,212,0.15);"><i class="fas fa-envelope" style="color:#f9a8d4;"></i></span>
+                <span class="ic" style="background:rgba(56,189,248,0.1);"><i class="fas fa-envelope" style="color:#38bdf8;font-size:0.8rem;"></i></span>
                 fiscalizacaosemapdf@gmail.com
             </a>
         </div>
-        <p>&copy; <?= date('Y') ?> Prefeitura Municipal de Pau dos Ferros — Todos os direitos reservados.</p>
+        <p class="copy">&copy; <?= date('Y') ?> Prefeitura Municipal de Pau dos Ferros</p>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const loginForm = document.getElementById('loginForm');
@@ -755,7 +634,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             const btn = document.getElementById('btn-1');
             const orig = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+            btn.innerHTML = '<span class="spinner-border" style="margin-right:8px;"></span>Verificando...';
 
             grecaptcha.ready(function() {
                 grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', {action: 'login'}).then(function(token) {
@@ -801,7 +680,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             const btn = document.getElementById('btn-2');
             const orig = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+            btn.innerHTML = '<span class="spinner-border" style="margin-right:8px;"></span>Validando...';
 
             fetch('login.php', { method: 'POST', body: new FormData(otpForm) })
             .then(r => r.json())
