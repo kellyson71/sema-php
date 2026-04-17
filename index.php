@@ -77,26 +77,24 @@ include_once 'enquadramento_conema.php';
     <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
     <!-- Banner de Homologação -->
     <div style="
-        background: repeating-linear-gradient(45deg, #ff9800, #ff9800 10px, #f57c00 10px, #f57c00 20px);
-        color: white;
+        background: #f59e0b;
+        color: #1f2937;
         text-align: center;
-        padding: 10px;
-        font-weight: bold;
-        font-size: 1.2rem;
+        padding: 4px 12px;
+        font-weight: 600;
+        font-size: 0.72rem;
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         z-index: 9999;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
         pointer-events: none;
-        opacity: 0.9;
     ">
-        Ambiente de Homologação / Testes
+        Ambiente de Homologação
     </div>
-    <div style="height: 44px;"></div> <!-- Espaçador para o banner fixo -->
+    <div style="height: 22px;"></div> <!-- Espaçador para o banner fixo -->
     <?php endif; ?>
     <header>
         <nav>
