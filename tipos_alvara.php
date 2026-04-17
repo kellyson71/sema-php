@@ -571,8 +571,31 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
+    'lac' => [
+        'nome' => 'LAC — LICENÇA POR ADESÃO E COMPROMISSO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Certidão municipal válida por até 2 anos ou alvará equivalente;',
+            '5. Memorial descritivo do empreendimento/atividade;',
+            '6. Planta georreferenciada (digital e impressa);',
+            '7. Termo de Compromisso assinado com as condicionantes aplicáveis;',
+            '8. Descrição e classificação de resíduos;',
+            '9. ARTs/RRTs dos projetos apresentados;',
+            '10. Publicação em Diário Oficial;',
+            '11. Comprovante de pagamento.'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
     'autorizacao_supressao' => [
-        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL',
+        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL (ainda não disponível no momento)',
         'categoria' => 'ambiental',
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
