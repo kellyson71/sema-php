@@ -23,8 +23,8 @@ return [
         [
             'tipo'   => 'tabela',
             'linhas' => [
-                ['Nome/Razão Social', '{{nome_requerente}}'],
-                ['CPF/CNPJ',          '{{cpf_cnpj_requerente}}'],
+                ['Nome/Razão Social', '{{nome_proprietario}}'],
+                ['CPF/CNPJ',          '{{cpf_cnpj_proprietario}}'],
             ],
         ],
 
