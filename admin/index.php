@@ -100,9 +100,7 @@ if (!$resumoOperacional) {
     }
 
     .dashboard-hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(280px, .9fr);
-        gap: 18px;
+        display: block;
     }
 
     .hero-card,
@@ -118,43 +116,22 @@ if (!$resumoOperacional) {
     }
 
     .hero-card {
-        padding: 28px;
-        background:
-            radial-gradient(circle at top right, rgba(14, 165, 233, .15), transparent 28%),
-            linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
-    }
-
-    .hero-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: var(--primary-soft);
-        color: var(--primary-strong);
-        font-size: .78rem;
-        font-weight: 600;
-        margin-bottom: 14px;
+        padding: 24px;
+        background: #fff;
     }
 
     .hero-title {
-        font-size: 1.9rem;
+        font-size: 1.4rem;
         font-weight: 700;
-        line-height: 1.15;
-        margin-bottom: 10px;
+        line-height: 1.2;
+        margin-bottom: 6px;
         color: var(--text);
     }
 
-    .hero-copy {
-        font-size: .96rem;
-        line-height: 1.7;
+    .hero-subtitle {
+        font-size: .88rem;
         color: var(--muted);
-        max-width: 720px;
-        margin-bottom: 22px;
-    }
-
-    .hero-copy strong {
-        color: var(--text);
+        margin-bottom: 16px;
     }
 
     .hero-actions {
@@ -167,62 +144,6 @@ if (!$resumoOperacional) {
         border-radius: 14px;
         padding: 10px 16px;
         font-weight: 600;
-    }
-
-    .hero-side-card {
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        justify-content: space-between;
-    }
-
-    .hero-side-header h3 {
-        font-size: 1rem;
-        font-weight: 700;
-        margin-bottom: 6px;
-        color: var(--text);
-    }
-
-    .hero-side-header p {
-        font-size: .84rem;
-        line-height: 1.6;
-        color: var(--muted);
-        margin: 0;
-    }
-
-    .operational-checklist {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .operational-check {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 12px 14px;
-        border-radius: var(--radius-sm);
-        background: var(--surface-soft);
-        border: 1px solid rgba(219, 231, 243, .85);
-    }
-
-    .operational-check i {
-        color: var(--primary);
-        margin-top: 3px;
-    }
-
-    .operational-check strong {
-        display: block;
-        font-size: .85rem;
-        margin-bottom: 2px;
-        color: var(--text);
-    }
-
-    .operational-check span {
-        font-size: .78rem;
-        color: var(--muted);
-        line-height: 1.5;
     }
 
     .metric-grid {
@@ -251,7 +172,7 @@ if (!$resumoOperacional) {
 
     .metric-copy strong {
         display: block;
-        font-size: 1.95rem;
+        font-size: 1.7rem;
         font-weight: 700;
         line-height: 1;
         color: var(--text);
@@ -266,9 +187,9 @@ if (!$resumoOperacional) {
     }
 
     .metric-icon {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -276,8 +197,8 @@ if (!$resumoOperacional) {
         font-size: 1.05rem;
     }
 
-    .metric-icon.info { background: #e0f2fe; color: #0369a1; }
-    .metric-icon.warning { background: #fff7ed; color: #c2410c; }
+    .metric-icon.info { background: #eef2ff; color: #4338ca; }
+    .metric-icon.warning { background: #fffbeb; color: #b45309; }
     .metric-icon.danger { background: #fef2f2; color: #b91c1c; }
     .metric-icon.success { background: #ecfdf5; color: #047857; }
 
@@ -411,47 +332,6 @@ if (!$resumoOperacional) {
         gap: 18px;
     }
 
-    .priority-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 18px;
-    }
-
-    .priority-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: var(--surface-soft);
-        border: 1px solid rgba(219, 231, 243, .85);
-    }
-
-    .priority-copy strong {
-        display: block;
-        font-size: .84rem;
-        color: var(--text);
-        margin-bottom: 2px;
-    }
-
-    .priority-copy span {
-        font-size: .76rem;
-        color: var(--muted);
-    }
-
-    .priority-value {
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: .76rem;
-        font-weight: 700;
-    }
-
-    .priority-value.info { background: #e0f2fe; color: #075985; }
-    .priority-value.warning { background: #fff7ed; color: #9a3412; }
-    .priority-value.danger { background: #fef2f2; color: #991b1b; }
-
     .feed-list {
         display: flex;
         flex-direction: column;
@@ -563,65 +443,25 @@ if (!$resumoOperacional) {
 <div class="dashboard-shell">
     <section class="dashboard-hero">
         <div class="hero-card">
-            <div class="hero-label">
-                <i class="fas fa-bolt"></i>
-                Painel operacional
-            </div>
-            <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?>.</h2>
-            <p class="hero-copy">
-                A fila de hoje está com <strong><?= implode(' · ', array_map('htmlspecialchars', $resumoOperacional)) ?></strong>.
-                Use este painel para atacar primeiro o que exige resposta rápida e navegar para os fluxos principais sem passar por telas intermediárias.
-            </p>
+            <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?></h2>
+            <p class="hero-subtitle"><?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?></p>
             <div class="hero-actions">
-                <a href="requerimentos.php" class="btn btn-primary">
-                    <i class="fas fa-clipboard-list me-2"></i>Abrir requerimentos
+                <a href="requerimentos.php" class="btn btn-primary btn-sm">
+                    <i class="fas fa-clipboard-list me-1"></i>Requerimentos
                 </a>
-                <a href="requerimentos.php?nao_visualizados=1" class="btn btn-outline-primary">
-                    <i class="fas fa-eye-slash me-2"></i>Não visualizados
-                </a>
-                <a href="estatisticas.php" class="btn btn-outline-secondary">
-                    <i class="fas fa-chart-column me-2"></i>Estatísticas
+                <a href="requerimentos.php?nao_visualizados=1" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-eye-slash me-1"></i>Nao visualizados
                 </a>
                 <?php if ($isAnalista): ?>
-                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="btn btn-outline-secondary">
-                        <i class="fas fa-magnifying-glass me-2"></i>Triagem
+                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-magnifying-glass me-1"></i>Triagem
                     </a>
                 <?php endif; ?>
                 <?php if ($isFiscal): ?>
-                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="btn btn-outline-secondary">
-                        <i class="fas fa-hard-hat me-2"></i>Fiscalização
+                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-hard-hat me-1"></i>Fiscalizacao
                     </a>
                 <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="hero-side-card">
-            <div class="hero-side-header">
-                <h3>Leitura rápida da operação</h3>
-                <p>Resumo institucional com foco no que precisa de atenção imediata.</p>
-            </div>
-            <div class="operational-checklist">
-                <div class="operational-check">
-                    <i class="fas fa-hourglass-half"></i>
-                    <div>
-                        <strong>Fluxo em análise</strong>
-                        <span><?= $emAnalise ?> processos aguardam andamento técnico ou administrativo.</span>
-                    </div>
-                </div>
-                <div class="operational-check">
-                    <i class="fas fa-envelope-open-text"></i>
-                    <div>
-                        <strong>Fila não lida</strong>
-                        <span><?= $naoVisualizados ?> requerimentos ainda não foram visualizados pela equipe.</span>
-                    </div>
-                </div>
-                <div class="operational-check">
-                    <i class="fas fa-hard-hat"></i>
-                    <div>
-                        <strong>Fiscalização</strong>
-                        <span><?= (int) $totalAguardandoFiscal ?> processos estão aguardando inspeção ou retorno de campo.</span>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
@@ -629,33 +469,29 @@ if (!$resumoOperacional) {
     <section class="metric-grid">
         <article class="metric-card">
             <div class="metric-copy">
-                <small>Total da base</small>
+                <small>Total</small>
                 <strong><?= $totalRequerimentos ?></strong>
-                <span>Volume geral de requerimentos cadastrados.</span>
             </div>
             <span class="metric-icon info"><i class="fas fa-folder-tree"></i></span>
         </article>
         <article class="metric-card">
             <div class="metric-copy">
-                <small>Em análise</small>
+                <small>Em analise</small>
                 <strong><?= $emAnalise ?></strong>
-                <span>Principal fila ativa do fluxo administrativo.</span>
             </div>
             <span class="metric-icon warning"><i class="fas fa-hourglass-half"></i></span>
         </article>
         <article class="metric-card">
             <div class="metric-copy">
-                <small>Não visualizados</small>
+                <small>Nao lidos</small>
                 <strong><?= $naoVisualizados ?></strong>
-                <span>Entradas que ainda precisam de primeiro olhar.</span>
             </div>
             <span class="metric-icon danger"><i class="fas fa-eye-slash"></i></span>
         </article>
         <article class="metric-card">
             <div class="metric-copy">
-                <small>Fiscalização</small>
+                <small>Fiscalizacao</small>
                 <strong><?= (int) $totalAguardandoFiscal ?></strong>
-                <span>Processos aguardando ação da equipe de campo.</span>
             </div>
             <span class="metric-icon success"><i class="fas fa-hard-hat"></i></span>
         </article>
@@ -665,12 +501,9 @@ if (!$resumoOperacional) {
         <div class="queue-card">
             <div class="section-head">
                 <div class="section-head-copy">
-                    <h2>Fila operacional</h2>
-                    <p>Últimos requerimentos recebidos, organizados para leitura rápida e ação imediata.</p>
+                    <h2>Ultimos requerimentos</h2>
                 </div>
-                <a href="requerimentos.php" class="btn btn-outline-primary btn-sm">
-                    <i class="fas fa-arrow-up-right-from-square me-1"></i>Ver todos
-                </a>
+                <a href="requerimentos.php" class="btn btn-outline-secondary btn-sm">Ver todos</a>
             </div>
 
             <?php if ($ultimosRequerimentos): ?>
@@ -707,39 +540,7 @@ if (!$resumoOperacional) {
             <div class="activity-card">
                 <div class="section-head">
                     <div class="section-head-copy">
-                        <h3>Prioridades do dia</h3>
-                        <p>Indicadores rápidos para definir o próximo movimento.</p>
-                    </div>
-                </div>
-
-                <div class="priority-list">
-                    <div class="priority-row">
-                        <div class="priority-copy">
-                            <strong>Protocolos em análise</strong>
-                            <span>Fila central do fluxo administrativo</span>
-                        </div>
-                        <span class="priority-value warning"><?= $emAnalise ?></span>
-                    </div>
-                    <div class="priority-row">
-                        <div class="priority-copy">
-                            <strong>Itens não visualizados</strong>
-                            <span>Entradas que precisam de primeira leitura</span>
-                        </div>
-                        <span class="priority-value danger"><?= $naoVisualizados ?></span>
-                    </div>
-                    <div class="priority-row">
-                        <div class="priority-copy">
-                            <strong>Aguardando fiscalização</strong>
-                            <span>Dependem de inspeção ou retorno da equipe</span>
-                        </div>
-                        <span class="priority-value info"><?= (int) $totalAguardandoFiscal ?></span>
-                    </div>
-                </div>
-
-                <div class="section-head" style="margin-bottom:12px;">
-                    <div class="section-head-copy">
-                        <h3>Histórico recente</h3>
-                        <p>Últimas ações registradas na plataforma.</p>
+                        <h3>Historico recente</h3>
                     </div>
                 </div>
 
@@ -767,8 +568,7 @@ if (!$resumoOperacional) {
             <div class="mail-card">
                 <div class="section-head">
                     <div class="section-head-copy">
-                        <h3>Últimos emails</h3>
-                        <p>Visão rápida da comunicação mais recente enviada pelo sistema.</p>
+                        <h3>Ultimos emails</h3>
                     </div>
                 </div>
 

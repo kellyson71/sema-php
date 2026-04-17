@@ -116,30 +116,30 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         :root {
-            --shell-bg: #f3f7fb;
+            --shell-bg: #f8f9fb;
             --surface: #ffffff;
-            --surface-soft: #f8fbff;
-            --surface-strong: #0f172a;
-            --line: #dbe7f3;
-            --text: #0f172a;
-            --muted: #64748b;
-            --primary: #0284c7;
-            --primary-strong: #0369a1;
-            --primary-soft: #e0f2fe;
-            --warning-soft: #fff7ed;
-            --warning: #f97316;
+            --surface-soft: #f9fafb;
+            --surface-strong: #111827;
+            --line: #e5e7eb;
+            --text: #111827;
+            --muted: #6b7280;
+            --primary: #4f46e5;
+            --primary-strong: #4338ca;
+            --primary-soft: #eef2ff;
+            --warning-soft: #fffbeb;
+            --warning: #f59e0b;
             --success-soft: #ecfdf5;
             --success: #10b981;
             --danger-soft: #fef2f2;
             --danger: #ef4444;
-            --sidebar-width: 284px;
-            --sidebar-collapsed-width: 92px;
-            --topbar-height: 82px;
-            --shell-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-            --card-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
-            --radius-lg: 24px;
-            --radius-md: 18px;
-            --radius-sm: 14px;
+            --sidebar-width: 264px;
+            --sidebar-collapsed-width: 80px;
+            --topbar-height: 64px;
+            --shell-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
         }
 
         * {
@@ -154,10 +154,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             margin: 0;
             font-family: 'Poppins', system-ui, sans-serif;
             color: var(--text);
-            background:
-                radial-gradient(circle at top left, rgba(2, 132, 199, 0.08), transparent 20%),
-                radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 18%),
-                var(--shell-bg);
+            background: var(--shell-bg);
             overflow-x: hidden;
         }
 
@@ -175,7 +172,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             left: 0;
             bottom: 0;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #0f172a 0%, #10253c 30%, #11324d 100%);
+            background: #111827;
             color: #fff;
             z-index: 1040;
             display: flex;
@@ -189,9 +186,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             content: '';
             position: absolute;
             inset: 0;
-            background:
-                radial-gradient(circle at top right, rgba(56, 189, 248, 0.22), transparent 24%),
-                radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.16), transparent 18%);
+            background: none;
             pointer-events: none;
         }
 
@@ -321,8 +316,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-link.active {
-            background: linear-gradient(135deg, rgba(2,132,199,.24), rgba(14,165,233,.18));
-            box-shadow: inset 0 0 0 1px rgba(125,211,252,.18);
+            background: rgba(99,102,241,.15);
+            box-shadow: inset 0 0 0 1px rgba(99,102,241,.2);
         }
 
         .sidebar-link-icon {
@@ -465,13 +460,12 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             align-items: center;
             gap: 18px;
             min-height: var(--topbar-height);
-            margin: 18px 18px 0;
-            padding: 14px 20px;
-            background: rgba(255,255,255,.88);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(219, 231, 243, .9);
-            border-radius: 24px;
-            box-shadow: var(--shell-shadow);
+            margin: 0;
+            padding: 12px 24px;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .topbar-left {
@@ -550,8 +544,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .topbar-search-box:focus-within {
-            border-color: #8ed1f3;
-            box-shadow: 0 0 0 4px rgba(2, 132, 199, .08);
+            border-color: #a5b4fc;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.08);
             background: #fff;
         }
 
