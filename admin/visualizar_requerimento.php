@@ -2218,17 +2218,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                               </div>
 
                               <div class="d-flex flex-wrap gap-2">
-                                  <?php $statusBoletoJaEnviado = in_array($requerimento['status'], ['Aguardando boleto', 'Boleto pago']); ?>
-                                  <?php if (!$statusBoletoJaEnviado && in_array($_SESSION['admin_nivel'], ['admin', 'admin_geral', 'operador'])): ?>
                                   <button type="button" class="btn btn-outline-warning fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#boletoModal">
                                       <i class="fas fa-receipt me-2"></i>Enviar Boleto para Pagamento
                                   </button>
-                                  <?php elseif ($statusBoletoJaEnviado): ?>
-                                  <span class="badge bg-warning text-dark py-2 px-3 d-flex align-items-center gap-1" style="border-radius:8px;font-size:.82rem;font-weight:600;">
-                                      <i class="fas fa-receipt me-1"></i>Boleto já enviado
-                                  </span>
-                                  <?php endif; ?>
 
                                   <button type="button" class="btn btn-outline-primary fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">

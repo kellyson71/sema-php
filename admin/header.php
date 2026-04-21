@@ -212,21 +212,19 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-logo-wrap {
-            width: 60px;
-            height: 60px;
-            border-radius: 18px;
+            width: 52px;
+            height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.10);
-            border: 1px solid rgba(255, 255, 255, 0.16);
             flex-shrink: 0;
         }
 
         .sidebar-logo {
-            width: 44px;
-            height: 44px;
+            width: 52px;
+            height: 52px;
             object-fit: contain;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,.18));
         }
 
         .sidebar-brand-copy {
