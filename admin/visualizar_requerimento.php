@@ -80,13 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
 
 // Processar envio manual de boleto
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamento'])) {
-    $boletoUrl = trim($_POST['boleto_url'] ?? '');
     $instrucoesBoleto = trim($_POST['instrucoes_boleto'] ?? '');
     $arquivoBoleto = $_FILES['boleto_pdf'] ?? null;
     $arquivoFoiEnviado = $arquivoBoleto && ($arquivoBoleto['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
 
-    if ($boletoUrl === '' && !$arquivoFoiEnviado) {
-        $mensagem = "Informe um link do boleto ou anexe o PDF do boleto.";
+    if (!$arquivoFoiEnviado) {
+        $mensagem = "Anexe o PDF do boleto para prosseguir.";
         $mensagemTipo = "danger";
     } else {
         try {
@@ -96,23 +95,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
             if ($pagamentoAtual) {
                 $stmt = $pdo->prepare("
                     UPDATE requerimento_pagamentos
-                    SET boleto_url = ?, instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?, data_atualizacao = NOW()
+                    SET instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?, data_atualizacao = NOW()
                     WHERE requerimento_id = ?
                 ");
                 $stmt->execute([
-                    $boletoUrl ?: null,
                     $instrucoesBoleto ?: null,
                     $_SESSION['admin_id'],
                     $id
                 ]);
             } else {
                 $stmt = $pdo->prepare("
-                    INSERT INTO requerimento_pagamentos (requerimento_id, boleto_url, instrucoes, enviado_em, admin_envio_id)
-                    VALUES (?, ?, ?, NOW(), ?)
+                    INSERT INTO requerimento_pagamentos (requerimento_id, instrucoes, enviado_em, admin_envio_id)
+                    VALUES (?, ?, NOW(), ?)
                 ");
                 $stmt->execute([
                     $id,
-                    $boletoUrl ?: null,
                     $instrucoesBoleto ?: null,
                     $_SESSION['admin_id']
                 ]);
@@ -2218,9 +2215,9 @@ $isBlocked = $isFinalized || $isIndeferido;
                               </div>
 
                               <div class="d-flex flex-wrap gap-2">
-                                  <button type="button" class="btn btn-outline-warning fw-medium"
+                                  <button type="button" class="btn btn-sky fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#boletoModal">
-                                      <i class="fas fa-receipt me-2"></i>Enviar Boleto para Pagamento
+                                      <i class="fas fa-file-invoice me-2"></i>Enviar Boleto
                                   </button>
 
                                   <button type="button" class="btn btn-outline-primary fw-medium"
@@ -2283,47 +2280,53 @@ $isBlocked = $isFinalized || $isIndeferido;
 
 <!-- Modal: Enviar Boleto -->
 <div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold text-warning">
-                    <i class="fas fa-receipt me-2"></i>Enviar Boleto para Pagamento
-                </h5>
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width:36px;height:36px;border-radius:10px;background:var(--sky-soft);border:1px solid var(--sky-mid);display:inline-flex;align-items:center;justify-content:center;color:var(--sky-text);">
+                        <i class="fas fa-file-invoice"></i>
+                    </span>
+                    <h5 class="modal-title fw-bold mb-0" style="color:var(--sky-text);">Enviar Boleto</h5>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="" enctype="multipart/form-data">
-                <div class="modal-body p-4">
-                    <div class="alert alert-warning mb-4">
-                        O requerente receberá um email com um link seguro para acessar esta etapa de pagamento.
-                    </div>
+                <div class="modal-body px-4 pt-3 pb-2">
+                    <p class="text-muted small mb-4" style="line-height:1.55;">
+                        O requerente receberá um e-mail com o arquivo em anexo e um link seguro para acessar a página de pagamento.
+                    </p>
+
                     <div class="mb-3">
-                        <label for="boleto_url" class="form-label fw-semibold">Link do boleto</label>
-                        <input type="url" class="form-control" id="boleto_url" name="boleto_url"
-                               value="<?= htmlspecialchars($pagamento['boleto_url'] ?? '') ?>"
-                               placeholder="https://...">
-                        <small class="text-muted">Use quando o boleto estiver hospedado externamente.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="boleto_pdf" class="form-label fw-semibold">PDF do boleto</label>
-                        <input type="file" class="form-control" id="boleto_pdf" name="boleto_pdf" accept="application/pdf,.pdf">
-                        <small class="text-muted">Envie um PDF se quiser disponibilizar download direto na página de pagamento.</small>
+                        <label for="boleto_pdf" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Arquivo PDF do boleto <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="boleto_pdf" name="boleto_pdf"
+                               accept="application/pdf,.pdf" required>
                         <?php if ($documentoBoleto): ?>
-                            <div class="mt-2 small">
-                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener">
+                            <div class="mt-2 d-flex align-items-center gap-2 small" style="color:var(--teal-text);">
+                                <i class="fas fa-file-pdf"></i>
+                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>"
+                                          target="_blank" rel="noopener" style="color:inherit;">
                                     <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
                                 </a>
+                                <span class="text-muted">(substituir com novo arquivo)</span>
                             </div>
                         <?php endif; ?>
                     </div>
-                    <div class="mb-0">
-                        <label for="instrucoes_boleto" class="form-label fw-semibold">Instruções para o requerente</label>
-                        <textarea class="form-control" id="instrucoes_boleto" name="instrucoes_boleto" rows="4"
-                                  placeholder="Prazo, observações ou orientações complementares..."><?= htmlspecialchars($pagamento['instrucoes'] ?? '') ?></textarea>
+
+                    <div class="mb-2">
+                        <label for="instrucoes_boleto" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Observações <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <textarea class="form-control" id="instrucoes_boleto" name="instrucoes_boleto" rows="3"
+                                  style="font-size:.875rem;resize:none;"
+                                  placeholder="Prazo de vencimento, orientações complementares..."><?= htmlspecialchars($pagamento['instrucoes'] ?? '') ?></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-warning fw-semibold px-4">
+                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
+                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-sky px-4">
                         <i class="fas fa-paper-plane me-2"></i>Enviar boleto
                     </button>
                 </div>

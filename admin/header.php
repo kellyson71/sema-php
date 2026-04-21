@@ -126,6 +126,37 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             --primary: #009851;
             --primary-strong: #007840;
             --primary-soft: #e6f7ef;
+            /* Paleta pastel moderna */
+            --sky:         #0ea5e9;
+            --sky-soft:    #e0f2fe;
+            --sky-mid:     #7dd3fc;
+            --sky-text:    #0369a1;
+
+            --violet:      #8b5cf6;
+            --violet-soft: #ede9fe;
+            --violet-mid:  #c4b5fd;
+            --violet-text: #5b21b6;
+
+            --rose:        #f43f5e;
+            --rose-soft:   #ffe4e6;
+            --rose-mid:    #fda4af;
+            --rose-text:   #9f1239;
+
+            --teal:        #14b8a6;
+            --teal-soft:   #ccfbf1;
+            --teal-mid:    #5eead4;
+            --teal-text:   #0f766e;
+
+            --amber:       #f59e0b;
+            --amber-soft:  #fef3c7;
+            --amber-mid:   #fde68a;
+            --amber-text:  #92400e;
+
+            --slate:       #64748b;
+            --slate-soft:  #f1f5f9;
+            --slate-mid:   #cbd5e1;
+            --slate-text:  #1e293b;
+
             --warning-soft: #fffbeb;
             --warning: #f59e0b;
             --success-soft: #ecfdf5;
@@ -403,6 +434,18 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             letter-spacing: .08em;
             margin-bottom: 8px;
         }
+
+        /* Botões pastel reutilizáveis */
+        .btn-sky    { background: var(--sky-soft);    border: 1px solid var(--sky-mid);    color: var(--sky-text);    font-weight: 600; }
+        .btn-sky:hover    { background: #bae6fd; border-color: #38bdf8; color: var(--sky-text); }
+        .btn-teal   { background: var(--teal-soft);   border: 1px solid var(--teal-mid);   color: var(--teal-text);   font-weight: 600; }
+        .btn-teal:hover   { background: #99f6e4; border-color: var(--teal); color: var(--teal-text); }
+        .btn-violet { background: var(--violet-soft); border: 1px solid var(--violet-mid); color: var(--violet-text); font-weight: 600; }
+        .btn-violet:hover { background: #ddd6fe; border-color: var(--violet); color: var(--violet-text); }
+        .btn-rose   { background: var(--rose-soft);   border: 1px solid var(--rose-mid);   color: var(--rose-text);   font-weight: 600; }
+        .btn-rose:hover   { background: #fecdd3; border-color: var(--rose); color: var(--rose-text); }
+        .btn-slate  { background: var(--slate-soft);  border: 1px solid var(--slate-mid);  color: var(--slate-text);  font-weight: 600; }
+        .btn-slate:hover  { background: #e2e8f0; border-color: var(--slate); color: var(--slate-text); }
 
         .sidebar-utility-link,
         .sidebar-utility-action {
