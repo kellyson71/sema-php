@@ -26,6 +26,7 @@ $filtroStatus = isset($_GET['status']) ? $_GET['status'] : '';
 $filtroTipo = isset($_GET['tipo']) ? $_GET['tipo'] : '';
 $filtroBusca = isset($_GET['busca']) ? $_GET['busca'] : '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] == '1';
+$modoVisualizacao = (isset($_GET['view']) && $_GET['view'] === 'table') ? 'table' : 'list';
 
 // Mensagens de sucesso
 $mensagem = '';
@@ -120,13 +121,43 @@ $estatisticas = [
     'nao_lidos' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
     'pendentes' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
     'aprovados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
-    'finalizados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn()
+    'finalizados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn(),
+    'em_analise' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn(),
+    'indeferidos' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
 ];
 $pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
 
 // Listas para filtros
 $tiposAlvara = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
 $statusList = $pdo->query("SELECT DISTINCT status FROM requerimentos ORDER BY status")->fetchAll();
+
+$tipoSiglas = [
+    'licenca_ambiental_unica' => 'LAU',
+    'habite_se' => 'HBT',
+    'habite_se_simples' => 'HBS',
+    'construcao' => 'CNS',
+    'licenca_previa_obras' => 'LPO',
+    'desmembramento' => 'DSM',
+];
+
+$statusCards = [
+    ['label' => 'Todos', 'value' => (int) $estatisticas['total'], 'status' => ''],
+    ['label' => 'Em análise', 'value' => (int) $estatisticas['em_analise'], 'status' => 'Em análise'],
+    ['label' => 'Pendente', 'value' => (int) $estatisticas['pendentes'], 'status' => 'Pendente'],
+    ['label' => 'Finalizado', 'value' => (int) $estatisticas['finalizados'], 'status' => 'Finalizado'],
+    ['label' => 'Indeferido', 'value' => (int) $estatisticas['indeferidos'], 'status' => 'Indeferido'],
+];
+
+function buildReqUrl(array $overrides = []): string
+{
+    $params = array_merge($_GET, $overrides);
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null) {
+            unset($params[$key]);
+        }
+    }
+    return 'requerimentos.php' . ($params ? '?' . http_build_query($params) : '');
+}
 
 include 'header.php';
 ?>
@@ -137,20 +168,18 @@ include 'header.php';
 <link rel="stylesheet" href="includes/admin-styles.css">
 
     <div class="admin-page-shell requerimentos-page">
-        <section class="page-hero">
+        <section class="page-hero page-hero-compact">
             <div class="page-hero-copy">
-                <span class="page-kicker"><i class="fas fa-clipboard-list"></i>Fila principal</span>
-                <h1 class="page-title">Gerenciamento de Requerimentos</h1>
-                <p class="page-subtitle">Visualize, filtre e opere todos os requerimentos de alvará ambiental sem alterar o fluxo atual do sistema.</p>
+                <h1 class="page-title">Requerimentos</h1>
+                <p class="page-subtitle">Exibindo <?= count($requerimentos) ?> de <?= (int) $totalRequerimentos ?> processos</p>
             </div>
-            <div class="page-hero-meta">
-                <div class="page-meta-pill">
-                    <span class="mono">ATIVOS</span>
-                    <strong><?= number_format($totalRequerimentos) ?></strong>
-                </div>
-                <div class="page-meta-pill subtle">
-                    <span class="mono">NAO LIDOS</span>
-                    <strong><?= number_format((int) $estatisticas['nao_lidos']) ?></strong>
+            <div class="page-toolbar">
+                <button type="button" class="toolbar-button" onclick="window.print()">
+                    <i class="fas fa-download"></i> Exportar
+                </button>
+                <div class="view-toggle">
+                    <a href="<?= htmlspecialchars(buildReqUrl(['view' => 'list'])) ?>" class="view-toggle-item <?= $modoVisualizacao === 'list' ? 'active' : '' ?>">Lista</a>
+                    <a href="<?= htmlspecialchars(buildReqUrl(['view' => 'table'])) ?>" class="view-toggle-item <?= $modoVisualizacao === 'table' ? 'active' : '' ?>">Tabela</a>
                 </div>
             </div>
         </section>
@@ -158,19 +187,93 @@ include 'header.php';
         <!-- Mensagens -->
         <?php renderMensagens($mensagem, $mensagemErro); ?>
 
-        <!-- Estatísticas -->
-        <?php renderEstatisticas($estatisticas); ?>
+        <section class="req-summary-strip">
+            <?php foreach ($statusCards as $card): ?>
+                <?php $isActive = $filtroStatus === $card['status'] || ($card['status'] === '' && $filtroStatus === ''); ?>
+                <a href="<?= htmlspecialchars(buildReqUrl(['status' => $card['status'], 'pagina' => 1])) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?>">
+                    <span><?= htmlspecialchars($card['label']) ?></span>
+                    <strong><?= (int) $card['value'] ?></strong>
+                </a>
+            <?php endforeach; ?>
+        </section>
 
-        <!-- Filtros -->
-        <?php renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $filtroBusca, $filtroNaoVisualizados); ?>
+        <section class="req-filter-bar">
+            <form method="GET" class="req-filter-form">
+                <input type="hidden" name="view" value="<?= htmlspecialchars($modoVisualizacao) ?>">
+                <?php if ($filtroStatus !== ''): ?>
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($filtroStatus) ?>">
+                <?php endif; ?>
+                <?php if ($filtroNaoVisualizados): ?>
+                    <input type="hidden" name="nao_visualizados" value="1">
+                <?php endif; ?>
+                <div class="req-filter-search">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" name="busca" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Buscar por protocolo, nome ou CPF/CNPJ">
+                </div>
+                <label class="req-filter-label" for="tipoFiltro">Tipo:</label>
+                <select id="tipoFiltro" name="tipo" class="req-filter-select">
+                    <option value="">Todos</option>
+                    <?php foreach ($tiposAlvara as $tipo): ?>
+                        <option value="<?= htmlspecialchars($tipo['tipo_alvara']) ?>" <?= $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
+                <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            </form>
+        </section>
 
         <!-- Alertas -->
         <?php renderAlertas($pagamentosPendentesConclusao); ?>
 
-        <!-- Tabela de Requerimentos -->
-        <div class="modern-table">
-            <?php renderTabela($requerimentos); ?>
-        </div>
+        <?php if ($modoVisualizacao === 'list'): ?>
+            <section class="req-list">
+                <?php if ($requerimentos): ?>
+                    <?php foreach ($requerimentos as $req): ?>
+                        <?php
+                        $meta = [
+                            'class' => match (strtolower($req['status'])) {
+                                'em análise', 'em_analise' => 'status-em-analise',
+                                'pendente' => 'status-pendente',
+                                'finalizado' => 'status-finalizado',
+                                'indeferido' => 'status-indeferido',
+                                'aprovado' => 'status-aprovado',
+                                default => 'status-pendente',
+                            },
+                        ];
+                        $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
+                        ?>
+                        <article class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?>">
+                            <div class="req-list-main">
+                                <div class="req-list-top">
+                                    <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
+                                    <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                                </div>
+                                <div class="req-name"><?= htmlspecialchars($req['requerente']) ?></div>
+                                <div class="req-type-row">
+                                    <span class="req-type-short"><?= htmlspecialchars($short) ?></span>
+                                    <span class="req-type-name"><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?></span>
+                                </div>
+                            </div>
+                            <div class="req-list-side">
+                                <div class="req-date"><?= formataDataBR($req['data_envio']) ?></div>
+                                <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="req-open-button">Abrir</a>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="req-empty">
+                        <i class="fas fa-search"></i>
+                        <p>Nenhum requerimento encontrado.</p>
+                    </div>
+                <?php endif; ?>
+            </section>
+        <?php else: ?>
+            <div class="modern-table">
+                <?php renderTabela($requerimentos); ?>
+            </div>
+        <?php endif; ?>
 
         <!-- Context Menu -->
         <?php renderContextMenu(); ?>

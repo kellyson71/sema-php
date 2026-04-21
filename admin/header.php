@@ -118,26 +118,26 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Geist+Mono:wght@500&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         :root {
-            --ink: #0b1f17;
-            --ink-2: #1c2e26;
-            --muted: #6a7a72;
-            --muted-2: #95a29a;
-            --line: #e6ece8;
-            --line-strong: #d7e0da;
-            --bg: #f5f7f5;
+            --ink: #102117;
+            --ink-2: #21372b;
+            --muted: #66756d;
+            --muted-2: #8e9b94;
+            --line: #e3e8e4;
+            --line-strong: #d3dbd5;
+            --bg: #f4f6f3;
             --surface: #ffffff;
-            --surface-soft: #f7faf8;
-            --surface-tint: #eef3ef;
-            --primary: #0d5433;
-            --primary-strong: #0a4027;
-            --primary-soft: #e6f0eb;
-            --primary-soft-2: #d7e8df;
-            --sidebar-bg: #0b1f17;
-            --sidebar-bg-2: #132a20;
-            --sidebar-line: #1f382d;
-            --sidebar-text: #9cb1a6;
-            --sidebar-text-strong: #eef4ef;
-            --sidebar-active: #1a3a2a;
+            --surface-soft: #f7f9f7;
+            --surface-tint: #edf3ef;
+            --primary: #14532d;
+            --primary-strong: #0f4425;
+            --primary-soft: #e5f2ea;
+            --primary-soft-2: #d8eadf;
+            --sidebar-bg: #14532d;
+            --sidebar-bg-2: #14532d;
+            --sidebar-line: rgba(255, 255, 255, 0.08);
+            --sidebar-text: rgba(255, 255, 255, 0.78);
+            --sidebar-text-strong: #ffffff;
+            --sidebar-active: rgba(255, 255, 255, 0.12);
             --warning: #d89a00;
             --warning-soft: #fdf5d7;
             --info: #3762d9;
@@ -146,14 +146,14 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             --success-soft: #def2e6;
             --danger: #b13232;
             --danger-soft: #fce7e7;
-            --sidebar-width: 270px;
+            --sidebar-width: 258px;
             --sidebar-collapsed-width: 84px;
-            --topbar-height: 78px;
-            --radius-lg: 24px;
-            --radius-md: 18px;
+            --topbar-height: 72px;
+            --radius-lg: 22px;
+            --radius-md: 16px;
             --radius-sm: 12px;
-            --shell-shadow: 0 20px 45px rgba(11, 31, 23, 0.07);
-            --card-shadow: 0 8px 24px rgba(11, 31, 23, 0.05);
+            --shell-shadow: 0 12px 28px rgba(16, 33, 23, 0.06);
+            --card-shadow: 0 8px 20px rgba(16, 33, 23, 0.04);
         }
 
         * {
@@ -171,9 +171,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             margin: 0;
             font-family: 'Inter Tight', system-ui, sans-serif;
             color: var(--ink);
-            background:
-                radial-gradient(circle at top right, rgba(13, 84, 51, 0.06), transparent 26%),
-                linear-gradient(180deg, #f8faf8 0%, var(--bg) 36%);
+            background: var(--bg);
             overflow-x: hidden;
         }
 
@@ -194,9 +192,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             position: fixed;
             inset: 0 auto 0 0;
             width: var(--sidebar-width);
-            background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 26%),
-                linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+            background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
             color: var(--sidebar-text);
             border-right: 1px solid var(--sidebar-line);
             display: flex;
@@ -208,13 +204,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
-                linear-gradient(180deg, transparent 68%, rgba(0, 0, 0, 0.14));
-            pointer-events: none;
+            display: none;
         }
 
         .sidebar > * {
@@ -223,61 +213,38 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-header {
-            padding: 2px 4px 18px;
+            padding: 2px 6px 18px;
         }
 
         .sidebar-brand {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            min-height: 52px;
-        }
-
-        .sidebar-brand-mark {
-            width: 42px;
-            height: 42px;
-            border-radius: 14px;
-            background: linear-gradient(180deg, #214735 0%, #0d1c16 100%);
-            display: inline-flex;
-            align-items: center;
             justify-content: center;
-            color: #fff;
-            font-size: 0.92rem;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-            flex-shrink: 0;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+            text-align: center;
         }
 
         .sidebar-logo {
-            height: 34px;
+            height: 52px;
             width: auto;
-            max-width: 142px;
+            max-width: 164px;
             object-fit: contain;
-            filter: brightness(1.08);
+            filter: brightness(1.02);
             display: block;
+            margin: 0 auto 10px;
         }
 
         .sidebar-brand-copy {
-            min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 2px;
-        }
-
-        .sidebar-brand-title {
-            font-size: 0.98rem;
-            font-weight: 700;
-            color: var(--sidebar-text-strong);
-            line-height: 1;
+            align-items: center;
+            gap: 4px;
         }
 
         .sidebar-brand-subtitle {
-            font-size: 0.72rem;
-            color: rgba(238, 244, 239, 0.68);
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.88);
             line-height: 1.2;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-weight: 700;
         }
 
         .sidebar-scroll {
@@ -309,7 +276,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             font-size: 0.72rem;
             text-transform: uppercase;
             letter-spacing: 0.12em;
-            color: rgba(238, 244, 239, 0.45);
+            color: rgba(255, 255, 255, 0.48);
             font-weight: 700;
         }
 
@@ -330,10 +297,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 12px;
-            min-height: 50px;
+            min-height: 46px;
             padding: 7px 10px;
             border: 1px solid transparent;
-            border-radius: 16px;
+            border-radius: 14px;
             background: transparent;
             color: var(--sidebar-text) !important;
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
@@ -344,25 +311,24 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         .sidebar-menu .nav-link:hover,
         .sidebar-menu .nav-link:not(.collapsed) {
             color: var(--sidebar-text-strong) !important;
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.05);
         }
 
         .sidebar-link.active {
             background: var(--sidebar-active);
-            border-color: rgba(155, 208, 52, 0.16);
-            box-shadow: inset 0 0 0 1px rgba(155, 208, 52, 0.16);
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         .sidebar-link-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.06);
-            font-size: 0.92rem;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.88rem;
             color: inherit;
             flex-shrink: 0;
         }
@@ -393,7 +359,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             margin-top: 2px;
             font-size: 0.72rem;
             line-height: 1.2;
-            color: rgba(238, 244, 239, 0.48);
+            color: rgba(255, 255, 255, 0.56);
         }
 
         .sidebar-link-badge {
@@ -417,7 +383,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         .sidebar-submenu {
             margin: 8px 0 2px 16px;
             padding-left: 16px;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .sidebar-submenu .sidebar-link {
@@ -455,8 +421,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             padding: 11px 12px;
             border-radius: 14px;
             color: var(--sidebar-text);
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
@@ -480,12 +446,12 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(280px, 520px) auto;
             align-items: center;
-            gap: 18px;
+            gap: 16px;
             min-height: var(--topbar-height);
-            padding: 16px 22px;
-            background: rgba(245, 247, 245, 0.88);
-            backdrop-filter: blur(14px);
-            border-bottom: 1px solid rgba(215, 224, 218, 0.8);
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--line);
         }
 
         .topbar-left {
@@ -496,16 +462,15 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .icon-button {
-            width: 46px;
-            height: 46px;
+            width: 42px;
+            height: 42px;
             border: 1px solid var(--line);
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            background: #fff;
             color: var(--ink);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 18px rgba(11, 31, 23, 0.04);
             transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
         }
 
@@ -525,8 +490,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 4px;
-            font-size: 0.76rem;
+            margin-bottom: 2px;
+            font-size: 0.74rem;
             color: var(--muted);
         }
 
@@ -534,7 +499,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
+            padding: 4px 8px;
             border-radius: 999px;
             background: var(--primary-soft);
             color: var(--primary-strong);
@@ -543,7 +508,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .topbar-title {
             margin: 0;
-            font-size: 1.32rem;
+            font-size: 1.18rem;
             font-weight: 800;
             line-height: 1.1;
             color: var(--ink);
@@ -560,12 +525,11 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 12px;
-            min-height: 52px;
+            min-height: 46px;
             padding: 0 14px;
             border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.92);
-            box-shadow: 0 8px 24px rgba(11, 31, 23, 0.04);
+            border-radius: 14px;
+            background: #fff;
             transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
 
@@ -597,7 +561,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             align-items: center;
             padding: 5px 9px;
             border-radius: 999px;
-            background: var(--surface-tint);
+            background: var(--surface-soft);
             border: 1px solid var(--line);
             color: var(--muted);
             font-size: 0.68rem;
@@ -616,7 +580,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             overflow-y: auto;
             padding: 8px;
             border: 1px solid var(--line);
-            border-radius: 22px;
+            border-radius: 16px;
             background: rgba(255, 255, 255, 0.98);
             box-shadow: var(--shell-shadow);
         }
@@ -638,7 +602,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             gap: 12px;
             width: 100%;
             padding: 12px 14px;
-            border-radius: 16px;
+            border-radius: 12px;
             color: var(--ink);
             transition: background-color 0.2s ease, transform 0.2s ease;
         }
@@ -716,13 +680,12 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 10px;
-            min-height: 46px;
+            min-height: 42px;
             padding: 5px 8px 5px 5px;
             border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.92);
+            border-radius: 14px;
+            background: #fff;
             color: var(--ink);
-            box-shadow: 0 8px 24px rgba(11, 31, 23, 0.04);
         }
 
         .topbar-profile-toggle:hover {
@@ -730,9 +693,9 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .user-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 14px;
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
             overflow: hidden;
             display: flex;
             align-items: center;
@@ -796,7 +759,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .content-wrapper-inner {
-            padding: 24px 18px 28px;
+            padding: 20px 18px 26px;
         }
 
         .main-content {
@@ -866,7 +829,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             overflow: hidden;
             background: rgba(255, 255, 255, 0.98);
             border: 1px solid var(--line);
-            border-radius: 26px;
+            border-radius: 18px;
             box-shadow: var(--shell-shadow);
             transform: translateX(calc(100% + 24px));
             transition: transform 0.24s ease;
@@ -882,9 +845,9 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            padding: 20px 18px 14px;
+            padding: 18px 18px 14px;
             border-bottom: 1px solid var(--line);
-            background: linear-gradient(180deg, #f7faf8 0%, #fff 100%);
+            background: #fff;
         }
 
         .notification-sidebar-header h5 {
@@ -981,8 +944,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             gap: 16px;
             margin: 18px 18px 0;
             padding: 15px 18px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, #fff7df 0%, #fff5eb 100%);
+            border-radius: 16px;
+            background: linear-gradient(135deg, #fff7df 0%, #fff6ea 100%);
             border: 1px solid #f4d19c;
             box-shadow: var(--card-shadow);
             color: #9a3412;
@@ -1049,7 +1012,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 bottom: 14px;
                 left: 14px;
                 width: min(286px, calc(100vw - 28px));
-                border-radius: 28px;
+                border-radius: 18px;
                 transform: translateX(calc(-100% - 20px));
                 box-shadow: 0 28px 55px rgba(11, 31, 23, 0.26);
             }
@@ -1106,7 +1069,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <aside class="sidebar" id="adminSidebar">
         <div class="sidebar-header">
             <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA">
-                <span class="sidebar-brand-mark mono">SE</span>
                 <span class="sidebar-brand-copy">
                     <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
                     <span class="sidebar-brand-subtitle">Painel Administrativo</span>
@@ -1456,7 +1418,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                     </div>
                 <?php endif; ?>
 
-                <h6 class="mb-3" style="font-weight:700;color:var(--text);">Requerimentos recentes</h6>
+                <h6 class="mb-3" style="font-weight:700;color:var(--ink);">Requerimentos recentes</h6>
 
                 <ul class="notification-list">
                     <?php if ($todasNotificacoes): ?>

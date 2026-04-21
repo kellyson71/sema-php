@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 
 $host = $_SERVER['HTTP_HOST'] ?? '';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
@@ -24,6 +25,7 @@ if (isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'fiscal') {
 $totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
 $emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
 $naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
+$novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
 
 $stmt = $pdo->query("
     SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
@@ -92,428 +94,143 @@ if (($totalAguardandoFiscal ?? 0) > 0) {
 if (!$resumoOperacional) {
     $resumoOperacional[] = 'sem filas críticas no momento';
 }
+
+$tipoSiglas = [
+    'licenca_ambiental_unica' => 'LAU',
+    'habite_se' => 'HBT',
+    'habite_se_simples' => 'HBS',
+    'construcao' => 'CNS',
+    'licenca_previa_obras' => 'LPO',
+    'desmembramento' => 'DSM',
+];
+
+$dataPainel = new DateTimeImmutable('now');
+$diasSemana = [
+    'Sunday' => 'domingo',
+    'Monday' => 'segunda-feira',
+    'Tuesday' => 'terça-feira',
+    'Wednesday' => 'quarta-feira',
+    'Thursday' => 'quinta-feira',
+    'Friday' => 'sexta-feira',
+    'Saturday' => 'sábado',
+];
+$meses = [
+    1 => 'janeiro',
+    2 => 'fevereiro',
+    3 => 'março',
+    4 => 'abril',
+    5 => 'maio',
+    6 => 'junho',
+    7 => 'julho',
+    8 => 'agosto',
+    9 => 'setembro',
+    10 => 'outubro',
+    11 => 'novembro',
+    12 => 'dezembro',
+];
+$dataPainelLabel = sprintf(
+    '%s, %d de %s',
+    $diasSemana[$dataPainel->format('l')] ?? strtolower($dataPainel->format('l')),
+    (int) $dataPainel->format('d'),
+    $meses[(int) $dataPainel->format('n')] ?? $dataPainel->format('m')
+);
+
+$rotaFiscal = $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php';
 ?>
 
 <style>
-    .dashboard-shell {
-        display: flex;
-        flex-direction: column;
-        gap: 22px;
-    }
-
-    .dashboard-hero {
-        display: block;
-    }
-
-    .hero-card,
-    .hero-side-card,
-    .metric-card,
-    .queue-card,
-    .activity-card,
-    .mail-card {
-        border: 1px solid rgba(219, 231, 243, .96);
-        border-radius: var(--radius-lg);
-        background: rgba(255,255,255,.95);
-        box-shadow: var(--card-shadow);
-    }
-
-    .hero-card {
-        padding: 28px;
-        background:
-            radial-gradient(circle at top right, rgba(13, 84, 51, 0.08), transparent 26%),
-            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(247,250,248,0.96));
-        border-color: var(--line);
-    }
-
-    .hero-kicker {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 14px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: var(--primary-soft);
-        color: var(--primary-strong);
-        font-size: .75rem;
-        font-weight: 700;
-        letter-spacing: .06em;
-        text-transform: uppercase;
-    }
-
-    .hero-title {
-        font-size: 1.8rem;
-        font-weight: 800;
-        line-height: 1.2;
-        margin-bottom: 8px;
-        color: var(--ink);
-    }
-
-    .hero-subtitle {
-        max-width: 760px;
-        font-size: .95rem;
-        color: var(--muted);
-        margin-bottom: 16px;
-        line-height: 1.55;
-    }
-
-    .hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-
-    .hero-actions .btn {
-        border-radius: 14px;
-        padding: 10px 16px;
-        font-weight: 600;
-    }
-
-    .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 18px;
-    }
-
-    .metric-card {
-        padding: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        border-color: var(--line);
-    }
-
-    .metric-copy small {
-        display: block;
-        font-size: .76rem;
-        font-weight: 600;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: .08em;
-        margin-bottom: 8px;
-    }
-
-    .metric-copy strong {
-        display: block;
-        font-size: 1.85rem;
-        font-weight: 800;
-        line-height: 1;
-        color: var(--ink);
-        margin-bottom: 6px;
-    }
-
-    .metric-copy span {
-        display: block;
-        font-size: .82rem;
-        color: var(--muted);
-        line-height: 1.45;
-    }
-
-    .metric-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-size: 1.05rem;
-    }
-
-    .metric-icon.info { background: var(--primary-soft); color: var(--primary-strong); }
-    .metric-icon.warning { background: #fff7df; color: #9a6700; }
-    .metric-icon.danger { background: #fce7e7; color: #a32929; }
-    .metric-icon.success { background: #e4f4ea; color: #0d5433; }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 18px;
-        align-items: start;
-    }
-
-    .queue-card,
-    .activity-card,
-    .mail-card {
-        padding: 24px;
-        border-color: var(--line);
-    }
-
-    .section-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        margin-bottom: 18px;
-    }
-
-    .section-head-copy h2,
-    .section-head-copy h3 {
-        margin: 0 0 6px;
-        font-size: 1.16rem;
-        font-weight: 800;
-        color: var(--ink);
-    }
-
-    .section-head-copy p {
-        margin: 0;
-        font-size: .84rem;
-        color: var(--muted);
-        line-height: 1.5;
-    }
-
-    .queue-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .queue-item {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 18px;
-        align-items: center;
-        padding: 18px 20px;
-        border: 1px solid var(--line);
-        border-radius: 20px;
-        background: linear-gradient(180deg, #fff, #fbfdfb);
-        transition: transform .2s ease, border-color .2s ease, background-color .2s ease;
-    }
-
-    .queue-item:hover {
-        transform: translateY(-1px);
-        border-color: var(--line-strong);
-        background: #fff;
-    }
-
-    .queue-item-main {
-        min-width: 0;
-    }
-
-    .queue-item-top {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 8px;
-    }
-
-    .queue-protocol {
-        font-size: .78rem;
-        font-weight: 700;
-        color: var(--primary-strong);
-        text-transform: uppercase;
-        letter-spacing: .06em;
-    }
-
-    .queue-name {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .queue-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        font-size: .8rem;
-        color: var(--muted);
-    }
-
-    .queue-meta span {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .queue-item-side {
-        text-align: right;
-    }
-
-    .queue-date {
-        font-size: .76rem;
-        color: var(--muted);
-        margin-top: 8px;
-    }
-
-    .queue-empty {
-        padding: 28px;
-        border: 1px dashed var(--line-strong);
-        border-radius: 20px;
-        background: #fbfdfb;
-        text-align: center;
-        color: var(--muted);
-        font-size: .92rem;
-    }
-
-    .side-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-    }
-
-    .feed-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 440px;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-
-    .feed-item {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 12px;
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: var(--surface-soft);
-        border: 1px solid rgba(219, 231, 243, .85);
-    }
-
-    .feed-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #fff;
-        color: var(--primary-strong);
-        border: 1px solid rgba(219, 231, 243, .85);
-        flex-shrink: 0;
-    }
-
-    .feed-copy small {
-        display: block;
-        color: var(--muted);
-        font-size: .72rem;
-        margin-bottom: 3px;
-    }
-
-    .feed-copy strong {
-        display: block;
-        font-size: .85rem;
-        color: var(--text);
-        margin-bottom: 4px;
-    }
-
-    .feed-copy span {
-        display: block;
-        font-size: .78rem;
-        color: var(--muted);
-        line-height: 1.5;
-    }
-
-    .feed-copy .feed-protocol {
-        margin-top: 6px;
-        color: var(--primary-strong);
-        font-weight: 600;
-    }
-
-    .section-head .btn {
-        border-radius: 12px;
-    }
-
-    @media (max-width: 1199px) {
-        .metric-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .dashboard-grid,
-        .dashboard-hero {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media (max-width: 767px) {
-        .hero-card,
-        .hero-side-card,
-        .metric-card,
-        .queue-card,
-        .activity-card,
-        .mail-card {
-            padding: 18px;
-            border-radius: 20px;
-        }
-
-        .hero-title {
-            font-size: 1.45rem;
-        }
-
-        .metric-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .queue-item {
-            grid-template-columns: 1fr;
-        }
-
-        .queue-item-side {
-            text-align: left;
-        }
-
-        .section-head {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
+    .dashboard-shell { display:flex; flex-direction:column; gap:18px; max-width:1240px; margin:0 auto; }
+    .dashboard-date { font-size:.84rem; color:var(--muted); font-weight:600; margin-bottom:10px; text-transform:lowercase; }
+    .dashboard-hero { background:#fff; border:1px solid var(--line); border-radius:20px; padding:28px; box-shadow:var(--card-shadow); }
+    .hero-title { margin:0 0 8px; font-size:2rem; font-weight:800; color:var(--ink); line-height:1.05; }
+    .hero-subtitle { margin:0 0 18px; max-width:760px; color:var(--muted); font-size:1rem; line-height:1.5; }
+    .hero-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .hero-actions .btn { border-radius:14px; min-height:42px; padding:0 16px; font-weight:700; }
+    .hero-actions .btn-primary { background:var(--primary); border-color:var(--primary); }
+    .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
+    .metric-card, .panel-card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:var(--card-shadow); }
+    .metric-card { padding:22px; }
+    .metric-label { display:block; margin-bottom:6px; font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .metric-value { display:block; margin-bottom:6px; font-size:1.95rem; font-weight:800; color:var(--ink); line-height:1; }
+    .metric-note { display:block; color:var(--muted); font-size:.82rem; }
+    .dashboard-grid { display:grid; grid-template-columns:minmax(0, 300px) minmax(0, 1fr); gap:16px; align-items:start; }
+    .fiscal-card { padding:22px; }
+    .fiscal-kicker { display:block; margin-bottom:8px; font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .fiscal-title { margin:0 0 8px; font-size:1.15rem; font-weight:800; color:var(--ink); }
+    .fiscal-copy { margin:0 0 16px; color:var(--muted); font-size:.88rem; line-height:1.5; }
+    .fiscal-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .fiscal-actions .btn { border-radius:12px; font-weight:700; }
+    .queue-card { padding:22px; }
+    .section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .section-head h2 { margin:0 0 4px; font-size:1.12rem; font-weight:800; color:var(--ink); }
+    .section-head p { margin:0; color:var(--muted); font-size:.84rem; }
+    .queue-list { display:flex; flex-direction:column; gap:10px; }
+    .queue-item { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:16px; padding:16px 18px; border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); transition:border-color .2s ease, background-color .2s ease; }
+    .queue-item:hover { border-color:var(--line-strong); background:#fff; }
+    .queue-item-top { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+    .queue-protocol { font-size:.82rem; font-weight:800; color:var(--primary-strong); letter-spacing:.02em; }
+    .queue-name { margin-bottom:6px; font-size:1rem; font-weight:700; color:var(--ink); }
+    .queue-meta { display:flex; flex-wrap:wrap; gap:10px; color:var(--muted); font-size:.82rem; }
+    .queue-meta span { display:inline-flex; align-items:center; gap:6px; }
+    .queue-type-short { display:inline-flex; align-items:center; justify-content:center; min-width:36px; padding:3px 8px; border-radius:999px; background:var(--primary-soft); color:var(--primary-strong); font-size:.7rem; font-weight:800; letter-spacing:.08em; }
+    .queue-item-side { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+    .queue-open { min-height:36px; padding:0 14px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font-size:.82rem; font-weight:700; display:inline-flex; align-items:center; }
+    .queue-open:hover { border-color:var(--primary-soft-2); color:var(--primary); }
+    .queue-date { color:var(--muted); font-size:.76rem; }
+    .queue-empty { padding:24px; border:1px dashed var(--line-strong); border-radius:18px; color:var(--muted); text-align:center; }
+    @media (max-width: 1199px) { .metric-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .dashboard-grid { grid-template-columns:1fr; } }
+    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head { flex-direction:column; align-items:flex-start; } }
 </style>
 
 <div class="dashboard-shell">
     <section class="dashboard-hero">
-        <div class="hero-card">
-            <span class="hero-kicker"><i class="fas fa-leaf"></i>Painel operacional</span>
-            <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?></h2>
-            <p class="hero-subtitle" style="margin-bottom:0">Resumo do momento: <?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?>.</p>
+        <div class="dashboard-date"><?= htmlspecialchars($dataPainelLabel) ?></div>
+        <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?>.</h2>
+        <p class="hero-subtitle">Você tem <strong><?= $naoVisualizados ?></strong> requerimentos novos e <strong><?= $emAnalise ?></strong> em análise hoje.</p>
+        <div class="hero-actions">
+            <a href="requerimentos.php?nao_visualizados=1" class="btn btn-primary">Abrir fila não lida</a>
         </div>
     </section>
 
     <section class="metric-grid">
         <article class="metric-card">
-            <div class="metric-copy">
-                <small>Total</small>
-                <strong><?= $totalRequerimentos ?></strong>
-                <span>Protocolos registrados na base administrativa.</span>
-            </div>
-            <span class="metric-icon info"><i class="fas fa-folder-tree"></i></span>
+            <span class="metric-label">Total de processos</span>
+            <strong class="metric-value"><?= $totalRequerimentos ?></strong>
+            <span class="metric-note">+<?= $novosSemana ?> esta semana</span>
         </article>
         <article class="metric-card">
-            <div class="metric-copy">
-                <small>Em analise</small>
-                <strong><?= $emAnalise ?></strong>
-                <span>Fluxos técnicos aguardando andamento.</span>
-            </div>
-            <span class="metric-icon warning"><i class="fas fa-hourglass-half"></i></span>
+            <span class="metric-label">Em análise</span>
+            <strong class="metric-value"><?= $emAnalise ?></strong>
+            <span class="metric-note">aguardando ação</span>
         </article>
         <article class="metric-card">
-            <div class="metric-copy">
-                <small>Nao lidos</small>
-                <strong><?= $naoVisualizados ?></strong>
-                <span>Itens ainda fora da fila visualizada.</span>
-            </div>
-            <span class="metric-icon danger"><i class="fas fa-eye-slash"></i></span>
+            <span class="metric-label">Não visualizados</span>
+            <strong class="metric-value"><?= $naoVisualizados ?></strong>
+            <span class="metric-note">precisam revisão</span>
         </article>
         <article class="metric-card">
-            <div class="metric-copy">
-                <small>Fiscalizacao</small>
-                <strong><?= (int) $totalAguardandoFiscal ?></strong>
-                <span>Demandas aguardando vistoria ou retorno.</span>
-            </div>
-            <span class="metric-icon success"><i class="fas fa-hard-hat"></i></span>
+            <span class="metric-label">Em fiscalização</span>
+            <strong class="metric-value"><?= (int) $totalAguardandoFiscal ?></strong>
+            <span class="metric-note">campo ativo</span>
         </article>
     </section>
 
     <section class="dashboard-grid">
+        <aside class="panel-card fiscal-card">
+            <span class="fiscal-kicker">Acesso de fiscal</span>
+            <h3 class="fiscal-title">Processos aguardando vistoria</h3>
+            <p class="fiscal-copy">Visite as obras, registre relatórios de vistoria e marque processos como aptos ao alvará.</p>
+            <div class="fiscal-actions">
+                <a href="<?= htmlspecialchars($rotaFiscal) ?>" class="btn btn-success btn-sm">Processos para vistoria</a>
+                <a href="estatisticas.php" class="btn btn-outline-secondary btn-sm">Relatórios</a>
+            </div>
+        </aside>
+
         <div class="queue-card">
             <div class="section-head">
                 <div class="section-head-copy">
-                    <h2>Ultimos requerimentos</h2>
-                    <p>Fila recente com acesso rapido aos protocolos mais atuais.</p>
+                    <h2>Últimos requerimentos</h2>
+                    <p>Clique para abrir os detalhes do processo</p>
                 </div>
                 <a href="requerimentos.php" class="btn btn-outline-secondary btn-sm">Ver todos</a>
             </div>
@@ -522,23 +239,23 @@ if (!$resumoOperacional) {
                 <div class="queue-list">
                     <?php foreach ($ultimosRequerimentos as $req): ?>
                         <?php $meta = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']]; ?>
+                        <?php $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV'; ?>
                         <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item">
                             <div class="queue-item-main">
                                 <div class="queue-item-top">
-                                    <span class="queue-protocol">Protocolo #<?= htmlspecialchars($req['protocolo']) ?></span>
+                                    <span class="queue-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                                     <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
                                 </div>
                                 <div class="queue-name"><?= htmlspecialchars($req['requerente']) ?></div>
                                 <div class="queue-meta">
-                                    <span><i class="fas fa-file-lines"></i><?= htmlspecialchars($req['tipo_alvara']) ?></span>
-                                    <span><i class="far fa-calendar"></i><?= formataData($req['data_envio']) ?></span>
+                                    <span class="queue-type-short"><?= htmlspecialchars($short) ?></span>
+                                    <span><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?></span>
+                                    <span><?= date('d/m/Y H:i', strtotime($req['data_envio'])) ?></span>
                                 </div>
                             </div>
                             <div class="queue-item-side">
-                                <div class="btn btn-light btn-sm">
-                                    Abrir <i class="fas fa-arrow-right ms-1"></i>
-                                </div>
-                                <div class="queue-date">Atualizado em <?= date('d/m \à\s H:i', strtotime($req['data_envio'])) ?></div>
+                                <span class="queue-open">Abrir</span>
+                                <div class="queue-date"><?= date('d/m/Y H:i', strtotime($req['data_envio'])) ?></div>
                             </div>
                         </a>
                     <?php endforeach; ?>
