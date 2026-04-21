@@ -75,6 +75,8 @@ $statusMeta = [
     'Apto a gerar alvará' => ['class' => 'status-apto-a-gerar-alvara', 'label' => 'Apto a gerar alvará'],
     'Alvará Emitido' => ['class' => 'status-alvara-emitido', 'label' => 'Alvará emitido'],
     'Aguardando Fiscalização' => ['class' => 'status-aguardando-fiscalizacao', 'label' => 'Aguardando fiscalização'],
+    'Aguardando boleto' => ['class' => 'status-aguardando-boleto', 'label' => 'Aguardando boleto'],
+    'Boleto pago' => ['class' => 'status-boleto-pago', 'label' => 'Boleto pago'],
 ];
 
 $resumoOperacional = [];
@@ -197,14 +199,14 @@ if (!$resumoOperacional) {
         font-size: 1.05rem;
     }
 
-    .metric-icon.info { background: #eef2ff; color: #4338ca; }
+    .metric-icon.info { background: #e6f7ef; color: #007840; }
     .metric-icon.warning { background: #fffbeb; color: #b45309; }
     .metric-icon.danger { background: #fef2f2; color: #b91c1c; }
     .metric-icon.success { background: #ecfdf5; color: #047857; }
 
     .dashboard-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.45fr) minmax(320px, .8fr);
+        grid-template-columns: 1fr;
         gap: 18px;
         align-items: start;
     }
@@ -444,25 +446,7 @@ if (!$resumoOperacional) {
     <section class="dashboard-hero">
         <div class="hero-card">
             <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?></h2>
-            <p class="hero-subtitle"><?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?></p>
-            <div class="hero-actions">
-                <a href="requerimentos.php" class="btn btn-primary btn-sm">
-                    <i class="fas fa-clipboard-list me-1"></i>Requerimentos
-                </a>
-                <a href="requerimentos.php?nao_visualizados=1" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-eye-slash me-1"></i>Nao visualizados
-                </a>
-                <?php if ($isAnalista): ?>
-                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-magnifying-glass me-1"></i>Triagem
-                    </a>
-                <?php endif; ?>
-                <?php if ($isFiscal): ?>
-                    <a href="<?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-hard-hat me-1"></i>Fiscalizacao
-                    </a>
-                <?php endif; ?>
-            </div>
+            <p class="hero-subtitle" style="margin-bottom:0"><?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?></p>
         </div>
     </section>
 
@@ -536,69 +520,6 @@ if (!$resumoOperacional) {
             <?php endif; ?>
         </div>
 
-        <div class="side-stack">
-            <div class="activity-card">
-                <div class="section-head">
-                    <div class="section-head-copy">
-                        <h3>Historico recente</h3>
-                    </div>
-                </div>
-
-                <div class="feed-list">
-                    <?php if ($historicoAcoes): ?>
-                        <?php foreach ($historicoAcoes as $acao): ?>
-                            <div class="feed-item">
-                                <span class="feed-icon"><i class="fas fa-clock-rotate-left"></i></span>
-                                <div class="feed-copy">
-                                    <small><?= date('d/m H:i', strtotime($acao['data_acao'])) ?></small>
-                                    <strong><?= htmlspecialchars($acao['admin_nome'] ?? 'Sistema') ?></strong>
-                                    <span><?= htmlspecialchars($acao['acao']) ?></span>
-                                    <?php if ($acao['protocolo']): ?>
-                                        <span class="feed-protocol">Protocolo: <?= htmlspecialchars($acao['protocolo']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="queue-empty">Nenhuma ação registrada até o momento.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="mail-card">
-                <div class="section-head">
-                    <div class="section-head-copy">
-                        <h3>Ultimos emails</h3>
-                    </div>
-                </div>
-
-                <div class="feed-list" style="max-height:320px;">
-                    <?php if ($ultimosEmails): ?>
-                        <?php foreach ($ultimosEmails as $email): ?>
-                            <?php $emailOk = strtoupper($email['status']) === 'SUCESSO'; ?>
-                            <div class="feed-item">
-                                <span class="feed-icon" style="color:<?= $emailOk ? '#047857' : '#b91c1c' ?>;">
-                                    <i class="fas <?= $emailOk ? 'fa-paper-plane' : 'fa-triangle-exclamation' ?>"></i>
-                                </span>
-                                <div class="feed-copy">
-                                    <small><?= date('d/m H:i', strtotime($email['data_envio'])) ?></small>
-                                    <strong><?= htmlspecialchars($email['email_destino']) ?></strong>
-                                    <span><?= htmlspecialchars($email['assunto']) ?></span>
-                                    <span class="mt-1">
-                                        <span class="badge badge-status <?= $emailOk ? 'status-aprovado' : 'status-reprovado' ?>"><?= htmlspecialchars($email['status']) ?></span>
-                                    </span>
-                                    <?php if ($email['protocolo']): ?>
-                                        <span class="feed-protocol">Protocolo: <?= htmlspecialchars($email['protocolo']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="queue-empty">Nenhum email enviado recentemente.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
     </section>
 </div>
 

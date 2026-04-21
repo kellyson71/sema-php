@@ -123,9 +123,9 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             --line: #e5e7eb;
             --text: #111827;
             --muted: #6b7280;
-            --primary: #4f46e5;
-            --primary-strong: #4338ca;
-            --primary-soft: #eef2ff;
+            --primary: #009851;
+            --primary-strong: #007840;
+            --primary-soft: #e6f7ef;
             --warning-soft: #fffbeb;
             --warning: #f59e0b;
             --success-soft: #ecfdf5;
@@ -212,20 +212,20 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-logo-wrap {
-            width: 52px;
-            height: 52px;
-            border-radius: 16px;
+            width: 60px;
+            height: 60px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.16);
             flex-shrink: 0;
         }
 
         .sidebar-logo {
-            width: 34px;
-            height: 34px;
+            width: 44px;
+            height: 44px;
             object-fit: contain;
         }
 
@@ -237,13 +237,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             font-size: 1rem;
             font-weight: 700;
             line-height: 1.1;
-            margin-bottom: 4px;
         }
 
         .sidebar-brand-subtitle {
-            font-size: .76rem;
-            color: rgba(255,255,255,.68);
-            line-height: 1.4;
+            display: none;
         }
 
         .sidebar-scroll {
@@ -297,10 +294,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 12px;
-            min-height: 48px;
-            border-radius: 16px;
+            min-height: 40px;
+            border-radius: 14px;
             color: rgba(255,255,255,.76) !important;
-            padding: 11px 12px;
+            padding: 7px 10px;
             transition: background-color .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
             border: 1px solid transparent;
             background: transparent;
@@ -316,8 +313,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-link.active {
-            background: rgba(99,102,241,.15);
-            box-shadow: inset 0 0 0 1px rgba(99,102,241,.2);
+            background: rgba(0,152,81,.18);
+            box-shadow: inset 0 0 0 1px rgba(0,152,81,.28);
         }
 
         .sidebar-link-icon {
@@ -354,11 +351,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-link-caption {
-            display: block;
-            font-size: .72rem;
-            color: rgba(255,255,255,.5);
-            margin-top: 2px;
-            line-height: 1.3;
+            display: none;
         }
 
         .sidebar-link-badge {
@@ -544,8 +537,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .topbar-search-box:focus-within {
-            border-color: #a5b4fc;
-            box-shadow: 0 0 0 3px rgba(99,102,241,.08);
+            border-color: #6ee7b7;
+            box-shadow: 0 0 0 3px rgba(0,152,81,.08);
             background: #fff;
         }
 
@@ -803,26 +796,32 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .badge-status {
-            padding: 6px 10px;
-            border-radius: 999px;
-            font-size: .72rem;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: .70rem;
             font-weight: 600;
-            line-height: 1;
+            line-height: 1.4;
+            border: 1px solid transparent;
+            letter-spacing: .01em;
         }
 
-        .status-em-analise { background-color: #fef3c7; color: #92400e; }
-        .status-aprovado { background-color: #dcfce7; color: #166534; }
-        .status-reprovado { background-color: #fee2e2; color: #991b1b; }
-        .status-pendente { background-color: #dbeafe; color: #1d4ed8; }
-        .status-cancelado { background-color: #e5e7eb; color: #374151; }
+        .status-em-analise { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
+        .status-aprovado { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+        .status-reprovado { background-color: #fff1f2; color: #9f1239; border-color: #fecdd3; }
+        .status-pendente { background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .status-cancelado { background-color: #f9fafb; color: #374151; border-color: #d1d5db; }
         .status-aguardando-fiscalização,
-        .status-aguardando-fiscalizacao { background-color: #e0f2fe; color: #075985; }
+        .status-aguardando-fiscalizacao { background-color: #f0f9ff; color: #075985; border-color: #bae6fd; }
         .status-apto-a-gerar-alvará,
-        .status-apto-a-gerar-alvara { background-color: #ede9fe; color: #6d28d9; }
+        .status-apto-a-gerar-alvara { background-color: #faf5ff; color: #6d28d9; border-color: #ddd6fe; }
         .status-alvará-emitido,
-        .status-alvara-emitido { background-color: #d1fae5; color: #047857; }
-        .status-finalizado { background-color: #dbeafe; color: #1d4ed8; }
-        .status-indeferido { background-color: #e2e8f0; color: #0f172a; }
+        .status-alvara-emitido { background-color: #f0fdf4; color: #047857; border-color: #a7f3d0; }
+        .status-finalizado { background-color: #f0fdf4; color: #065f46; border-color: #6ee7b7; }
+        .status-indeferido { background-color: #f9fafb; color: #374151; border-color: #d1d5db; }
+        .status-aguardando-boleto { background-color: #fffbeb; color: #78350f; border-color: #fde68a; }
+        .status-boleto-pago { background-color: #f0fdf4; color: #065f46; border-color: #6ee7b7; }
 
         .notification-sidebar {
             position: fixed;
@@ -1092,12 +1091,11 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 <div class="menu-header"><span>Principal</span></div>
                 <ul>
                     <li>
-                        <a href="<?= $adminBase ?>index.php" class="sidebar-link <?= $currentPage === 'index.php' ? 'active' : '' ?>" title="Dashboard">
-                            <span class="sidebar-link-icon"><i class="fas fa-gauge-high"></i></span>
+                        <a href="<?= $adminBase ?>index.php" class="sidebar-link <?= $currentPage === 'index.php' ? 'active' : '' ?>" title="Painel Inicial">
+                            <span class="sidebar-link-icon"><i class="fas fa-house"></i></span>
                             <span class="sidebar-link-content">
                                 <span class="sidebar-link-text">
-                                    <span class="sidebar-link-title">Dashboard</span>
-                                    <span class="sidebar-link-caption">Resumo operacional do sistema</span>
+                                    <span class="sidebar-link-title">Painel Inicial</span>
                                 </span>
                             </span>
                         </a>
