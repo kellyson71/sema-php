@@ -58,6 +58,8 @@ $isFiscal = ($nivelAtual === 'fiscal' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
 $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../uploads/perfil/' . $adminData['foto_perfil'] : null;
 $isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php'], true);
+$isOperacaoSectionOpen = in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php', 'fiscal_dashboard.php'], true)
+    || ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente');
 $notificationTotal = $totalNaoVisualizados > 0 ? $totalNaoVisualizados : $totalNotificacoes;
 
 $searchItems = [
@@ -203,14 +205,14 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             left: 0;
             bottom: 0;
             width: var(--sidebar-width);
-            background: #111827;
+            background: #052e16;
             color: #fff;
             z-index: 1040;
             display: flex;
             flex-direction: column;
             padding: 20px 16px 18px;
             transition: width .28s ease, transform .28s ease;
-            box-shadow: 10px 0 40px rgba(15, 23, 42, 0.18);
+            box-shadow: 10px 0 40px rgba(5, 46, 22, 0.32);
         }
 
         .sidebar::before {
@@ -227,47 +229,31 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 10px 18px;
-            margin-bottom: 10px;
+            padding: 4px 4px 16px;
+            margin-bottom: 6px;
         }
 
         .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            min-width: 0;
-            color: #fff;
+            display: block;
+            text-align: center;
         }
 
         .sidebar-logo-wrap {
-            width: 52px;
-            height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            display: none;
         }
 
         .sidebar-logo {
-            width: 52px;
-            height: 52px;
+            width: 100%;
+            max-height: 62px;
             object-fit: contain;
-            filter: drop-shadow(0 1px 3px rgba(0,0,0,.18));
+            filter: drop-shadow(0 1px 4px rgba(0,0,0,.22)) brightness(1.08);
         }
 
         .sidebar-brand-copy {
-            min-width: 0;
+            display: none;
         }
 
-        .sidebar-brand-title {
-            font-size: 1rem;
-            font-weight: 700;
-            line-height: 1.1;
-        }
-
+        .sidebar-brand-title,
         .sidebar-brand-subtitle {
             display: none;
         }
@@ -285,7 +271,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,.18);
+            background: rgba(255,255,255,.14);
             border-radius: 999px;
         }
 
@@ -1117,13 +1103,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <aside class="sidebar" id="adminSidebar">
         <div class="sidebar-header">
             <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA">
-                <span class="sidebar-logo-wrap">
-                    <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
-                </span>
-                <span class="sidebar-brand-copy">
-                    <span class="sidebar-brand-title">SEMA Admin</span>
-                    <span class="sidebar-brand-subtitle">Secretaria Municipal de Meio Ambiente</span>
-                </span>
+                <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
             </a>
         </div>
 
@@ -1170,52 +1150,64 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             </div>
 
             <div class="sidebar-section">
-                <div class="menu-header"><span>Operação</span></div>
                 <ul>
-                    <?php if ($isSecretario): ?>
-                        <li>
-                            <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=secretario' : 'secretario_dashboard.php' ?>" class="sidebar-link <?= in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php'], true) ? 'active' : '' ?>" title="Aprovação de Alvarás">
-                                <span class="sidebar-link-icon"><i class="fas fa-signature" style="color:#c084fc;"></i></span>
-                                <span class="sidebar-link-content">
-                                    <span class="sidebar-link-text">
-                                        <span class="sidebar-link-title">Aprovação de Alvarás</span>
-                                        <span class="sidebar-link-caption">Fluxo de assinatura e decisão</span>
-                                    </span>
+                    <li class="nav-item">
+                        <a href="#submenuOperacao" data-bs-toggle="collapse"
+                           class="nav-link <?= $isOperacaoSectionOpen ? '' : 'collapsed' ?>" title="Operação">
+                            <span class="sidebar-link-icon"><i class="fas fa-briefcase" style="color:#86efac;"></i></span>
+                            <div class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Operação</span>
                                 </span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
+                                <i class="fas fa-chevron-down sidebar-link-chevron"></i>
+                            </div>
+                        </a>
+                        <div class="collapse <?= $isOperacaoSectionOpen ? 'show' : '' ?>" id="submenuOperacao">
+                            <ul class="sidebar-submenu">
+                                <?php if ($isSecretario): ?>
+                                    <li>
+                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=secretario' : 'secretario_dashboard.php' ?>" class="sidebar-link <?= in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php'], true) ? 'active' : '' ?>" title="Aprovação de Alvarás">
+                                            <span class="sidebar-link-icon"><i class="fas fa-signature" style="color:#c084fc;"></i></span>
+                                            <span class="sidebar-link-content">
+                                                <span class="sidebar-link-text">
+                                                    <span class="sidebar-link-title">Aprovação de Alvarás</span>
+                                                </span>
+                                            </span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                    <?php if ($isAnalista): ?>
-                        <li>
-                            <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
-                                <span class="sidebar-link-icon"><i class="fas fa-magnifying-glass" style="color:#38bdf8;"></i></span>
-                                <span class="sidebar-link-content">
-                                    <span class="sidebar-link-text">
-                                        <span class="sidebar-link-title">Triagem de Protocolos</span>
-                                        <span class="sidebar-link-caption">Pendências de análise inicial</span>
-                                    </span>
-                                </span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
+                                <?php if ($isAnalista): ?>
+                                    <li>
+                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
+                                            <span class="sidebar-link-icon"><i class="fas fa-magnifying-glass" style="color:#86efac;"></i></span>
+                                            <span class="sidebar-link-content">
+                                                <span class="sidebar-link-text">
+                                                    <span class="sidebar-link-title">Triagem de Protocolos</span>
+                                                </span>
+                                            </span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                    <?php if ($isFiscal): ?>
-                        <li>
-                            <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="sidebar-link <?= $currentPage === 'fiscal_dashboard.php' ? 'active' : '' ?>" title="Fiscalização de Obras">
-                                <span class="sidebar-link-icon"><i class="fas fa-hard-hat" style="color:#34d399;"></i></span>
-                                <span class="sidebar-link-content">
-                                    <span class="sidebar-link-text">
-                                        <span class="sidebar-link-title">Fiscalização de Obras</span>
-                                        <span class="sidebar-link-caption">Vistorias e retornos ao fluxo</span>
-                                    </span>
-                                    <?php if ($totalAguardandoFiscal > 0): ?>
-                                        <span class="badge bg-info sidebar-link-badge"><?= $totalAguardandoFiscal > 99 ? '99+' : $totalAguardandoFiscal ?></span>
-                                    <?php endif; ?>
-                                </span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
+                                <?php if ($isFiscal): ?>
+                                    <li>
+                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="sidebar-link <?= $currentPage === 'fiscal_dashboard.php' ? 'active' : '' ?>" title="Fiscalização de Obras">
+                                            <span class="sidebar-link-icon"><i class="fas fa-hard-hat" style="color:#86efac;"></i></span>
+                                            <span class="sidebar-link-content">
+                                                <span class="sidebar-link-text">
+                                                    <span class="sidebar-link-title">Fiscalização de Obras</span>
+                                                </span>
+                                                <?php if ($totalAguardandoFiscal > 0): ?>
+                                                    <span class="badge sidebar-link-badge" style="background:rgba(134,239,172,.18);color:#86efac;border:1px solid rgba(134,239,172,.3);"><?= $totalAguardandoFiscal > 99 ? '99+' : $totalAguardandoFiscal ?></span>
+                                                <?php endif; ?>
+                                            </span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                    </li>
                 </ul>
             </div>
 

@@ -1643,15 +1643,22 @@ $isBlocked = $isFinalized || $isIndeferido;
                         </div>
                     <?php endif; ?>
                     <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
+                        <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
                         <div class="data-row">
-                            <div class="data-label">Localização (Google Maps):</div>
+                            <div class="data-label">Localização:</div>
                             <div class="data-value">
-                                <a href="<?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>" target="_blank" rel="noopener" style="color:#009640;">
-                                    <i class="fas fa-map-marker-alt me-1"></i><?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>
-                                </a>
+                                <?php if ($mapsIsUrl): ?>
+                                    <a href="<?= htmlspecialchars($mapsVal) ?>" target="_blank" rel="noopener"
+                                       style="color:#009640;display:inline-flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-map-marker-alt"></i>Ver no Google Maps
+                                        <i class="fas fa-external-link-alt" style="font-size:.7rem;opacity:.6;"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <span><?= htmlspecialchars($mapsVal) ?></span>
+                                <?php endif; ?>
                             </div>
                             <div class="data-actions">
-                                <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['localizacao_google_maps']); ?>', this)" title="Copiar link">
+                                <button class="copy-btn" onclick="copyToClipboard('<?= htmlspecialchars($mapsVal, ENT_QUOTES) ?>', this)" title="Copiar link">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
