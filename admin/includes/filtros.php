@@ -3,15 +3,20 @@
 function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $filtroBusca, $filtroNaoVisualizados)
 {
 ?>
-    <div class="filter-section">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-            <i class="fas fa-filter mr-2 text-blue-500"></i>
-            Filtros de Pesquisa
-        </h3>
-
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <section class="filter-section">
+        <div class="filter-head">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                <h3 class="filter-title">
+                    <i class="fas fa-filter"></i>
+                    Filtros de Pesquisa
+                </h3>
+                <p class="filter-subtitle">Refine a fila por status, tipo, termo livre e leitura pendente.</p>
+            </div>
+        </div>
+
+        <form method="GET" class="filter-grid">
+            <div class="filter-field">
+                <label class="filter-label">Buscar</label>
                 <input type="text"
                     name="busca"
                     value="<?php echo htmlspecialchars($filtroBusca); ?>"
@@ -19,8 +24,8 @@ function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $f
                     class="filter-input w-full">
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <div class="filter-field">
+                <label class="filter-label">Status</label>
                 <select name="status" class="filter-input w-full">
                     <option value="">Todos os Status</option>
                     <?php foreach ($statusList as $status): ?>
@@ -31,8 +36,8 @@ function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $f
                 </select>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Alvará</label>
+            <div class="filter-field">
+                <label class="filter-label">Tipo de Alvará</label>
                 <select name="tipo" class="filter-input w-full">
                     <option value="">Todos os Tipos</option>
                     <?php foreach ($tiposAlvara as $tipo): ?>
@@ -43,16 +48,16 @@ function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $f
                 </select>
             </div>
 
-            <div class="flex flex-col justify-end">
-                <div class="flex items-center mb-3">
+            <div class="filter-actions">
+                <div class="filter-checkbox">
                     <input type="checkbox"
                         name="nao_visualizados"
                         value="1"
                         <?php echo $filtroNaoVisualizados ? 'checked' : ''; ?>
                         class="w-4 h-4 text-blue-600 border-gray-300 rounded">
-                    <label class="ml-2 text-sm text-gray-700">Apenas não visualizados</label>
+                    <label class="filter-check-label">Apenas não visualizados</label>
                 </div>
-                <div class="flex gap-2">
+                <div class="filter-button-row">
                     <button type="submit" class="btn-primary flex-1">
                         <i class="fas fa-search mr-2"></i>Filtrar
                     </button>
@@ -62,5 +67,5 @@ function renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $f
                 </div>
             </div>
         </form>
-    </div>
+    </section>
 <?php } ?>

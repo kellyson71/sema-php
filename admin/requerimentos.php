@@ -130,40 +130,30 @@ $statusList = $pdo->query("SELECT DISTINCT status FROM requerimentos ORDER BY st
 
 include 'header.php';
 ?>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="includes/admin-styles.css">
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requerimentos - SEMA Pau dos Ferros</title>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Simple DataTables -->
-    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.js"></script>
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <!-- Admin Styles -->
-    <link rel="stylesheet" href="includes/admin-styles.css">
-</head>
-
-<body class="bg-gray-50 min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">
-                <i class="fas fa-file-alt text-blue-600 mr-3"></i>
-                Gerenciamento de Requerimentos
-            </h1>
-            <p class="text-gray-600">Visualize e gerencie todos os requerimentos de alvará ambiental</p>
-        </div>
+    <div class="admin-page-shell requerimentos-page">
+        <section class="page-hero">
+            <div class="page-hero-copy">
+                <span class="page-kicker"><i class="fas fa-clipboard-list"></i>Fila principal</span>
+                <h1 class="page-title">Gerenciamento de Requerimentos</h1>
+                <p class="page-subtitle">Visualize, filtre e opere todos os requerimentos de alvará ambiental sem alterar o fluxo atual do sistema.</p>
+            </div>
+            <div class="page-hero-meta">
+                <div class="page-meta-pill">
+                    <span class="mono">ATIVOS</span>
+                    <strong><?= number_format($totalRequerimentos) ?></strong>
+                </div>
+                <div class="page-meta-pill subtle">
+                    <span class="mono">NAO LIDOS</span>
+                    <strong><?= number_format((int) $estatisticas['nao_lidos']) ?></strong>
+                </div>
+            </div>
+        </section>
 
         <!-- Mensagens -->
         <?php renderMensagens($mensagem, $mensagemErro); ?>
@@ -188,8 +178,5 @@ include 'header.php';
 
     <!-- Admin Scripts -->
     <script src="includes/admin-scripts.js"></script>
-</body>
-
-</html>
 
 <?php include 'footer.php'; ?>

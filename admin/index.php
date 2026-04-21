@@ -98,7 +98,7 @@ if (!$resumoOperacional) {
     .dashboard-shell {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 22px;
     }
 
     .dashboard-hero {
@@ -118,22 +118,42 @@ if (!$resumoOperacional) {
     }
 
     .hero-card {
-        padding: 24px;
-        background: #fff;
+        padding: 28px;
+        background:
+            radial-gradient(circle at top right, rgba(13, 84, 51, 0.08), transparent 26%),
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(247,250,248,0.96));
+        border-color: var(--line);
+    }
+
+    .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary-strong);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
     }
 
     .hero-title {
-        font-size: 1.4rem;
-        font-weight: 700;
+        font-size: 1.8rem;
+        font-weight: 800;
         line-height: 1.2;
-        margin-bottom: 6px;
-        color: var(--text);
+        margin-bottom: 8px;
+        color: var(--ink);
     }
 
     .hero-subtitle {
-        font-size: .88rem;
+        max-width: 760px;
+        font-size: .95rem;
         color: var(--muted);
         margin-bottom: 16px;
+        line-height: 1.55;
     }
 
     .hero-actions {
@@ -151,15 +171,16 @@ if (!$resumoOperacional) {
     .metric-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
+        gap: 18px;
     }
 
     .metric-card {
-        padding: 20px;
+        padding: 22px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
+        border-color: var(--line);
     }
 
     .metric-copy small {
@@ -174,10 +195,10 @@ if (!$resumoOperacional) {
 
     .metric-copy strong {
         display: block;
-        font-size: 1.7rem;
-        font-weight: 700;
+        font-size: 1.85rem;
+        font-weight: 800;
         line-height: 1;
-        color: var(--text);
+        color: var(--ink);
         margin-bottom: 6px;
     }
 
@@ -189,9 +210,9 @@ if (!$resumoOperacional) {
     }
 
     .metric-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -199,10 +220,10 @@ if (!$resumoOperacional) {
         font-size: 1.05rem;
     }
 
-    .metric-icon.info { background: #e6f7ef; color: #007840; }
-    .metric-icon.warning { background: #fffbeb; color: #b45309; }
-    .metric-icon.danger { background: #fef2f2; color: #b91c1c; }
-    .metric-icon.success { background: #ecfdf5; color: #047857; }
+    .metric-icon.info { background: var(--primary-soft); color: var(--primary-strong); }
+    .metric-icon.warning { background: #fff7df; color: #9a6700; }
+    .metric-icon.danger { background: #fce7e7; color: #a32929; }
+    .metric-icon.success { background: #e4f4ea; color: #0d5433; }
 
     .dashboard-grid {
         display: grid;
@@ -214,7 +235,8 @@ if (!$resumoOperacional) {
     .queue-card,
     .activity-card,
     .mail-card {
-        padding: 22px;
+        padding: 24px;
+        border-color: var(--line);
     }
 
     .section-head {
@@ -228,9 +250,9 @@ if (!$resumoOperacional) {
     .section-head-copy h2,
     .section-head-copy h3 {
         margin: 0 0 6px;
-        font-size: 1.08rem;
-        font-weight: 700;
-        color: var(--text);
+        font-size: 1.16rem;
+        font-weight: 800;
+        color: var(--ink);
     }
 
     .section-head-copy p {
@@ -251,17 +273,17 @@ if (!$resumoOperacional) {
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 18px;
         align-items: center;
-        padding: 16px 18px;
-        border: 1px solid rgba(219, 231, 243, .9);
-        border-radius: 18px;
-        background: #fff;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: linear-gradient(180deg, #fff, #fbfdfb);
         transition: transform .2s ease, border-color .2s ease, background-color .2s ease;
     }
 
     .queue-item:hover {
         transform: translateY(-1px);
-        border-color: #b7d8ea;
-        background: #fafdff;
+        border-color: var(--line-strong);
+        background: #fff;
     }
 
     .queue-item-main {
@@ -286,8 +308,8 @@ if (!$resumoOperacional) {
 
     .queue-name {
         font-size: 1rem;
-        font-weight: 600;
-        color: var(--text);
+        font-weight: 700;
+        color: var(--ink);
         margin-bottom: 4px;
         white-space: nowrap;
         overflow: hidden;
@@ -320,9 +342,9 @@ if (!$resumoOperacional) {
 
     .queue-empty {
         padding: 28px;
-        border: 1px dashed rgba(180, 198, 214, .9);
-        border-radius: 18px;
-        background: #fafcff;
+        border: 1px dashed var(--line-strong);
+        border-radius: 20px;
+        background: #fbfdfb;
         text-align: center;
         color: var(--muted);
         font-size: .92rem;
@@ -445,8 +467,9 @@ if (!$resumoOperacional) {
 <div class="dashboard-shell">
     <section class="dashboard-hero">
         <div class="hero-card">
+            <span class="hero-kicker"><i class="fas fa-leaf"></i>Painel operacional</span>
             <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?></h2>
-            <p class="hero-subtitle" style="margin-bottom:0"><?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?></p>
+            <p class="hero-subtitle" style="margin-bottom:0">Resumo do momento: <?= implode(' &middot; ', array_map('htmlspecialchars', $resumoOperacional)) ?>.</p>
         </div>
     </section>
 
@@ -455,6 +478,7 @@ if (!$resumoOperacional) {
             <div class="metric-copy">
                 <small>Total</small>
                 <strong><?= $totalRequerimentos ?></strong>
+                <span>Protocolos registrados na base administrativa.</span>
             </div>
             <span class="metric-icon info"><i class="fas fa-folder-tree"></i></span>
         </article>
@@ -462,6 +486,7 @@ if (!$resumoOperacional) {
             <div class="metric-copy">
                 <small>Em analise</small>
                 <strong><?= $emAnalise ?></strong>
+                <span>Fluxos técnicos aguardando andamento.</span>
             </div>
             <span class="metric-icon warning"><i class="fas fa-hourglass-half"></i></span>
         </article>
@@ -469,6 +494,7 @@ if (!$resumoOperacional) {
             <div class="metric-copy">
                 <small>Nao lidos</small>
                 <strong><?= $naoVisualizados ?></strong>
+                <span>Itens ainda fora da fila visualizada.</span>
             </div>
             <span class="metric-icon danger"><i class="fas fa-eye-slash"></i></span>
         </article>
@@ -476,6 +502,7 @@ if (!$resumoOperacional) {
             <div class="metric-copy">
                 <small>Fiscalizacao</small>
                 <strong><?= (int) $totalAguardandoFiscal ?></strong>
+                <span>Demandas aguardando vistoria ou retorno.</span>
             </div>
             <span class="metric-icon success"><i class="fas fa-hard-hat"></i></span>
         </article>
@@ -486,6 +513,7 @@ if (!$resumoOperacional) {
             <div class="section-head">
                 <div class="section-head-copy">
                     <h2>Ultimos requerimentos</h2>
+                    <p>Fila recente com acesso rapido aos protocolos mais atuais.</p>
                 </div>
                 <a href="requerimentos.php" class="btn btn-outline-secondary btn-sm">Ver todos</a>
             </div>

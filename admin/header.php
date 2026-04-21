@@ -115,79 +115,65 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tiny.cloud/1/djvd4vhwlkk5pio6pmjhmqd0a0j0iwziovpy9rz7k4jvzboi/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Geist+Mono:wght@500&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         :root {
-            --shell-bg: #f8f9fb;
+            --ink: #0b1f17;
+            --ink-2: #1c2e26;
+            --muted: #6a7a72;
+            --muted-2: #95a29a;
+            --line: #e6ece8;
+            --line-strong: #d7e0da;
+            --bg: #f5f7f5;
             --surface: #ffffff;
-            --surface-soft: #f9fafb;
-            --surface-strong: #111827;
-            --line: #e5e7eb;
-            --text: #111827;
-            --muted: #6b7280;
-            --primary: #009851;
-            --primary-strong: #007840;
-            --primary-soft: #e6f7ef;
-            /* Paleta pastel moderna */
-            --sky:         #0ea5e9;
-            --sky-soft:    #e0f2fe;
-            --sky-mid:     #7dd3fc;
-            --sky-text:    #0369a1;
-
-            --violet:      #8b5cf6;
-            --violet-soft: #ede9fe;
-            --violet-mid:  #c4b5fd;
-            --violet-text: #5b21b6;
-
-            --rose:        #f43f5e;
-            --rose-soft:   #ffe4e6;
-            --rose-mid:    #fda4af;
-            --rose-text:   #9f1239;
-
-            --teal:        #14b8a6;
-            --teal-soft:   #ccfbf1;
-            --teal-mid:    #5eead4;
-            --teal-text:   #0f766e;
-
-            --amber:       #f59e0b;
-            --amber-soft:  #fef3c7;
-            --amber-mid:   #fde68a;
-            --amber-text:  #92400e;
-
-            --slate:       #64748b;
-            --slate-soft:  #f1f5f9;
-            --slate-mid:   #cbd5e1;
-            --slate-text:  #1e293b;
-
-            --warning-soft: #fffbeb;
-            --warning: #f59e0b;
-            --success-soft: #ecfdf5;
-            --success: #10b981;
-            --danger-soft: #fef2f2;
-            --danger: #ef4444;
-            --sidebar-width: 264px;
-            --sidebar-collapsed-width: 80px;
-            --topbar-height: 64px;
-            --shell-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-            --card-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
+            --surface-soft: #f7faf8;
+            --surface-tint: #eef3ef;
+            --primary: #0d5433;
+            --primary-strong: #0a4027;
+            --primary-soft: #e6f0eb;
+            --primary-soft-2: #d7e8df;
+            --sidebar-bg: #0b1f17;
+            --sidebar-bg-2: #132a20;
+            --sidebar-line: #1f382d;
+            --sidebar-text: #9cb1a6;
+            --sidebar-text-strong: #eef4ef;
+            --sidebar-active: #1a3a2a;
+            --warning: #d89a00;
+            --warning-soft: #fdf5d7;
+            --info: #3762d9;
+            --info-soft: #e8effd;
+            --success: #0d5433;
+            --success-soft: #def2e6;
+            --danger: #b13232;
+            --danger-soft: #fce7e7;
+            --sidebar-width: 270px;
+            --sidebar-collapsed-width: 84px;
+            --topbar-height: 78px;
+            --radius-lg: 24px;
+            --radius-md: 18px;
+            --radius-sm: 12px;
+            --shell-shadow: 0 20px 45px rgba(11, 31, 23, 0.07);
+            --card-shadow: 0 8px 24px rgba(11, 31, 23, 0.05);
         }
 
         * {
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
         }
 
-        html, body {
+        html,
+        body {
             min-height: 100%;
+            background: var(--bg);
         }
 
         body {
             margin: 0;
-            font-family: 'Poppins', system-ui, sans-serif;
-            color: var(--text);
-            background: var(--shell-bg);
+            font-family: 'Inter Tight', system-ui, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top right, rgba(13, 84, 51, 0.06), transparent 26%),
+                linear-gradient(180deg, #f8faf8 0%, var(--bg) 36%);
             overflow-x: hidden;
         }
 
@@ -196,30 +182,38 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         a {
+            color: inherit;
             text-decoration: none;
+        }
+
+        .mono {
+            font-family: 'Geist Mono', ui-monospace, monospace;
         }
 
         .sidebar {
             position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
+            inset: 0 auto 0 0;
             width: var(--sidebar-width);
-            background: #14532d;
-            color: #fff;
-            z-index: 1040;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 26%),
+                linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+            color: var(--sidebar-text);
+            border-right: 1px solid var(--sidebar-line);
             display: flex;
             flex-direction: column;
-            padding: 20px 16px 18px;
-            transition: width .28s ease, transform .28s ease;
-            box-shadow: 10px 0 40px rgba(10, 50, 25, 0.28);
+            padding: 18px 14px 14px;
+            transition: width 0.24s ease, transform 0.24s ease;
+            z-index: 1040;
+            overflow: hidden;
         }
 
         .sidebar::before {
-            content: '';
+            content: "";
             position: absolute;
             inset: 0;
-            background: none;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
+                linear-gradient(180deg, transparent 68%, rgba(0, 0, 0, 0.14));
             pointer-events: none;
         }
 
@@ -229,41 +223,69 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-header {
-            padding: 4px 4px 16px;
-            margin-bottom: 6px;
+            padding: 2px 4px 18px;
         }
 
         .sidebar-brand {
-            display: block;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 52px;
         }
 
-        .sidebar-logo-wrap {
-            display: none;
+        .sidebar-brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #214735 0%, #0d1c16 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
 
         .sidebar-logo {
-            width: 100%;
-            max-height: 62px;
+            height: 34px;
+            width: auto;
+            max-width: 142px;
             object-fit: contain;
-            filter: drop-shadow(0 1px 4px rgba(0,0,0,.22)) brightness(1.08);
+            filter: brightness(1.08);
+            display: block;
         }
 
         .sidebar-brand-copy {
-            display: none;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
-        .sidebar-brand-title,
+        .sidebar-brand-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: var(--sidebar-text-strong);
+            line-height: 1;
+        }
+
         .sidebar-brand-subtitle {
-            display: none;
+            font-size: 0.72rem;
+            color: rgba(238, 244, 239, 0.68);
+            line-height: 1.2;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
         .sidebar-scroll {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            padding-right: 6px;
-            margin-right: -6px;
+            padding-right: 4px;
+            margin-right: -4px;
         }
 
         .sidebar-scroll::-webkit-scrollbar {
@@ -271,7 +293,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,.14);
+            background: rgba(255, 255, 255, 0.14);
             border-radius: 999px;
         }
 
@@ -283,20 +305,19 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 0 10px;
-            margin-bottom: 10px;
-            font-size: .74rem;
+            margin: 0 8px 10px;
+            font-size: 0.72rem;
             text-transform: uppercase;
-            letter-spacing: .08em;
-            color: rgba(255,255,255,.52);
-            font-weight: 600;
+            letter-spacing: 0.12em;
+            color: rgba(238, 244, 239, 0.45);
+            font-weight: 700;
         }
 
         .sidebar-menu ul,
         .sidebar-submenu {
             list-style: none;
-            padding: 0;
             margin: 0;
+            padding: 0;
         }
 
         .sidebar-menu li + li {
@@ -309,47 +330,48 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 12px;
-            min-height: 40px;
-            border-radius: 14px;
-            color: rgba(255,255,255,.76) !important;
+            min-height: 50px;
             padding: 7px 10px;
-            transition: background-color .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
             border: 1px solid transparent;
+            border-radius: 16px;
             background: transparent;
+            color: var(--sidebar-text) !important;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
         }
 
         .sidebar-link:hover,
         .sidebar-link.active,
         .sidebar-menu .nav-link:hover,
         .sidebar-menu .nav-link:not(.collapsed) {
-            color: #fff !important;
-            background: rgba(255,255,255,.08);
-            border-color: rgba(255,255,255,.08);
+            color: var(--sidebar-text-strong) !important;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.06);
         }
 
         .sidebar-link.active {
-            background: rgba(0,152,81,.18);
-            box-shadow: inset 0 0 0 1px rgba(0,152,81,.28);
+            background: var(--sidebar-active);
+            border-color: rgba(155, 208, 52, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(155, 208, 52, 0.16);
         }
 
         .sidebar-link-icon {
-            width: 36px;
-            height: 36px;
+            width: 34px;
+            height: 34px;
             border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255,255,255,.06);
+            background: rgba(255, 255, 255, 0.06);
+            font-size: 0.92rem;
             color: inherit;
             flex-shrink: 0;
-            font-size: .95rem;
         }
 
         .sidebar-link-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 10px;
             min-width: 0;
             flex: 1;
         }
@@ -360,26 +382,32 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .sidebar-link-title {
             display: block;
-            font-size: .9rem;
-            font-weight: 500;
-            line-height: 1.2;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.15;
+            color: inherit;
         }
 
         .sidebar-link-caption {
-            display: none;
+            display: block;
+            margin-top: 2px;
+            font-size: 0.72rem;
+            line-height: 1.2;
+            color: rgba(238, 244, 239, 0.48);
         }
 
         .sidebar-link-badge {
             border-radius: 999px;
             padding: 4px 8px;
-            font-size: .72rem;
-            font-weight: 600;
+            font-size: 0.68rem;
+            font-weight: 700;
+            box-shadow: none;
         }
 
         .sidebar-link-chevron {
-            font-size: .72rem;
-            opacity: .72;
-            transition: transform .2s ease;
+            font-size: 0.72rem;
+            opacity: 0.72;
+            transition: transform 0.2s ease;
         }
 
         .sidebar-menu .nav-link:not(.collapsed) .sidebar-link-chevron {
@@ -387,14 +415,13 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-submenu {
-            margin: 8px 0 4px 16px;
+            margin: 8px 0 2px 16px;
             padding-left: 16px;
-            border-left: 1px solid rgba(255,255,255,.12);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-submenu .sidebar-link {
-            min-height: 40px;
-            padding: 8px 10px;
+            min-height: 44px;
             border-radius: 14px;
         }
 
@@ -402,80 +429,48 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             width: 28px;
             height: 28px;
             border-radius: 10px;
-            font-size: .78rem;
+            font-size: 0.78rem;
         }
 
         .sidebar-utility {
-            margin-top: 0;
-            padding: 12px 0 0;
-            border-radius: 0;
-            border-top: 1px solid rgba(255,255,255,.10);
-            background: rgba(0,0,0,.12);
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.09);
         }
 
         .sidebar-utility-label {
-            font-size: .72rem;
-            color: rgba(255,255,255,.55);
+            margin: 0 10px 8px;
+            font-size: 0.72rem;
             text-transform: uppercase;
-            letter-spacing: .08em;
-            margin: 0 14px 8px;
+            letter-spacing: 0.12em;
+            color: rgba(238, 244, 239, 0.44);
+            font-weight: 700;
         }
-
-        /* Botões pastel reutilizáveis */
-        .btn-sky    { background: var(--sky-soft);    border: 1px solid var(--sky-mid);    color: var(--sky-text);    font-weight: 600; }
-        .btn-sky:hover    { background: #bae6fd; border-color: #38bdf8; color: var(--sky-text); }
-        .btn-teal   { background: var(--teal-soft);   border: 1px solid var(--teal-mid);   color: var(--teal-text);   font-weight: 600; }
-        .btn-teal:hover   { background: #99f6e4; border-color: var(--teal); color: var(--teal-text); }
-        .btn-violet { background: var(--violet-soft); border: 1px solid var(--violet-mid); color: var(--violet-text); font-weight: 600; }
-        .btn-violet:hover { background: #ddd6fe; border-color: var(--violet); color: var(--violet-text); }
-        .btn-rose   { background: var(--rose-soft);   border: 1px solid var(--rose-mid);   color: var(--rose-text);   font-weight: 600; }
-        .btn-rose:hover   { background: #fecdd3; border-color: var(--rose); color: var(--rose-text); }
-        .btn-slate  { background: var(--slate-soft);  border: 1px solid var(--slate-mid);  color: var(--slate-text);  font-weight: 600; }
-        .btn-slate:hover  { background: #e2e8f0; border-color: var(--slate); color: var(--slate-text); }
 
         .sidebar-utility-link,
         .sidebar-utility-action {
             display: flex;
             align-items: center;
             gap: 10px;
-            width: calc(100% - 28px);
-            margin: 0 14px;
-            color: rgba(255,255,255,.8);
-            padding: 10px 12px;
+            margin: 0 0 8px;
+            padding: 11px 12px;
             border-radius: 14px;
-            font-size: .84rem;
-            transition: background-color .2s ease, color .2s ease;
-        }
-
-        .sidebar-utility-link + .sidebar-utility-action,
-        .sidebar-utility-action + .sidebar-utility-action {
-            margin-top: 8px;
+            color: var(--sidebar-text);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
         .sidebar-utility-link:hover,
         .sidebar-utility-action:hover {
-            color: #fff;
-            background: rgba(255,255,255,.08);
-        }
-
-        .sidebar-footer {
-            padding: 14px 14px 12px;
-            background: rgba(0,0,0,.12);
-        }
-
-        .sidebar-version {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            font-size: .72rem;
-            color: rgba(255,255,255,.48);
+            color: var(--sidebar-text-strong);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         .content-wrapper {
             min-height: 100vh;
             margin-left: var(--sidebar-width);
-            transition: margin-left .28s ease;
+            transition: margin-left 0.24s ease;
         }
 
         .topbar {
@@ -487,12 +482,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             align-items: center;
             gap: 18px;
             min-height: var(--topbar-height);
-            margin: 0;
-            padding: 12px 24px;
-            background: #fff;
-            border-bottom: 1px solid var(--line);
-            border-radius: 0;
-            box-shadow: none;
+            padding: 16px 22px;
+            background: rgba(245, 247, 245, 0.88);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(215, 224, 218, 0.8);
         }
 
         .topbar-left {
@@ -503,23 +496,24 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .icon-button {
-            width: 44px;
-            height: 44px;
+            width: 46px;
+            height: 46px;
             border: 1px solid var(--line);
-            border-radius: 14px;
-            background: var(--surface);
-            color: var(--text);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--ink);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: border-color .2s ease, background-color .2s ease, color .2s ease, transform .2s ease;
+            box-shadow: 0 6px 18px rgba(11, 31, 23, 0.04);
+            transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
         }
 
         .icon-button:hover {
-            color: var(--primary);
-            border-color: #b7d8ea;
-            background: var(--surface-soft);
             transform: translateY(-1px);
+            color: var(--primary);
+            background: #fff;
+            border-color: var(--primary-soft-2);
         }
 
         .topbar-heading {
@@ -529,26 +523,30 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         .topbar-eyebrow {
             display: inline-flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 3px;
-            font-size: .74rem;
+            margin-bottom: 4px;
+            font-size: 0.76rem;
             color: var(--muted);
         }
 
         .topbar-eyebrow .pill {
-            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
             border-radius: 999px;
             background: var(--primary-soft);
             color: var(--primary-strong);
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .topbar-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            line-height: 1.1;
-            color: var(--text);
             margin: 0;
+            font-size: 1.32rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--ink);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -562,17 +560,18 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 12px;
+            min-height: 52px;
             padding: 0 14px;
-            height: 48px;
-            background: var(--surface-soft);
             border: 1px solid var(--line);
-            border-radius: 16px;
-            transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 8px 24px rgba(11, 31, 23, 0.04);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
 
         .topbar-search-box:focus-within {
-            border-color: #6ee7b7;
-            box-shadow: 0 0 0 3px rgba(0,152,81,.08);
+            border-color: rgba(13, 84, 51, 0.24);
+            box-shadow: 0 0 0 4px rgba(13, 84, 51, 0.08);
             background: #fff;
         }
 
@@ -585,17 +584,25 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             border: 0;
             outline: 0;
             background: transparent;
-            color: var(--text);
-            font-size: .92rem;
+            color: var(--ink);
+            font-size: 0.92rem;
+        }
+
+        .topbar-search-input::placeholder {
+            color: #8b9991;
         }
 
         .topbar-search-hint {
-            padding: 5px 8px;
-            border-radius: 10px;
-            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: var(--surface-tint);
             border: 1px solid var(--line);
             color: var(--muted);
-            font-size: .72rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
             white-space: nowrap;
         }
 
@@ -604,14 +611,14 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             top: calc(100% + 10px);
             left: 0;
             right: 0;
-            background: rgba(255,255,255,.98);
-            border: 1px solid var(--line);
-            border-radius: 20px;
-            box-shadow: var(--shell-shadow);
-            padding: 8px;
             display: none;
             max-height: 380px;
             overflow-y: auto;
+            padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: var(--shell-shadow);
         }
 
         .search-results.active {
@@ -620,9 +627,9 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .search-empty {
             padding: 14px;
-            color: var(--muted);
-            font-size: .85rem;
             text-align: center;
+            color: var(--muted);
+            font-size: 0.84rem;
         }
 
         .search-result-item {
@@ -632,8 +639,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             width: 100%;
             padding: 12px 14px;
             border-radius: 16px;
-            color: var(--text);
-            transition: background-color .2s ease, transform .2s ease;
+            color: var(--ink);
+            transition: background-color 0.2s ease, transform 0.2s ease;
         }
 
         .search-result-item:hover,
@@ -660,14 +667,13 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .search-result-title {
             display: block;
-            font-size: .9rem;
-            font-weight: 600;
-            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 700;
         }
 
         .search-result-caption {
             display: block;
-            font-size: .76rem;
+            font-size: 0.75rem;
             color: var(--muted);
             white-space: nowrap;
             overflow: hidden;
@@ -686,19 +692,20 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .notification-badge {
             position: absolute;
-            top: -4px;
-            right: -4px;
+            top: -3px;
+            right: -3px;
             min-width: 18px;
             height: 18px;
+            padding: 0 5px;
             border-radius: 999px;
             background: var(--danger);
             color: #fff;
-            font-size: .68rem;
-            font-weight: 700;
-            display: flex;
+            font-size: 0.66rem;
+            font-weight: 800;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0 5px;
+            box-shadow: 0 0 0 3px var(--bg);
         }
 
         .topbar-profile {
@@ -708,29 +715,31 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         .topbar-profile-toggle {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 6px 8px 6px 6px;
+            gap: 10px;
+            min-height: 46px;
+            padding: 5px 8px 5px 5px;
             border: 1px solid var(--line);
             border-radius: 18px;
-            color: var(--text);
-            background: #fff;
+            background: rgba(255, 255, 255, 0.92);
+            color: var(--ink);
+            box-shadow: 0 8px 24px rgba(11, 31, 23, 0.04);
         }
 
         .topbar-profile-toggle:hover {
-            background: var(--surface-soft);
+            background: #fff;
         }
 
         .user-avatar {
-            width: 42px;
-            height: 42px;
+            width: 38px;
+            height: 38px;
             border-radius: 14px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--primary-soft);
-            color: var(--primary-strong);
             flex-shrink: 0;
+            background: linear-gradient(180deg, var(--primary-soft), #dceae2);
+            color: var(--primary-strong);
         }
 
         .user-avatar img {
@@ -746,9 +755,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .user-name {
-            font-size: .88rem;
-            font-weight: 600;
-            color: var(--text);
+            font-size: 0.86rem;
+            font-weight: 700;
             line-height: 1.2;
             white-space: nowrap;
             overflow: hidden;
@@ -756,31 +764,31 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .user-role {
-            font-size: .74rem;
+            font-size: 0.72rem;
             color: var(--muted);
             line-height: 1.2;
         }
 
         .dropdown-menu {
-            border: 1px solid var(--line);
-            box-shadow: var(--card-shadow);
-            border-radius: 18px;
             min-width: 260px;
             padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shell-shadow);
         }
 
         .dropdown-header {
-            padding: 12px 14px;
+            padding: 10px 14px;
             color: var(--muted);
-            font-size: .75rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
-            letter-spacing: .08em;
+            letter-spacing: 0.08em;
         }
 
         .dropdown-item {
             border-radius: 12px;
             padding: 11px 14px;
-            font-size: .88rem;
+            font-size: 0.88rem;
         }
 
         .dropdown-item:hover {
@@ -788,7 +796,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .content-wrapper-inner {
-            padding: 20px 18px 24px;
+            padding: 24px 18px 28px;
         }
 
         .main-content {
@@ -796,17 +804,17 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .card {
-            border: 1px solid rgba(219, 231, 243, .96);
+            border: 1px solid var(--line);
             border-radius: var(--radius-md);
             box-shadow: var(--card-shadow);
-            background: rgba(255,255,255,.94);
+            background: rgba(255, 255, 255, 0.94);
         }
 
         .card-header {
-            background: transparent;
-            border-bottom: 1px solid rgba(219, 231, 243, .85);
             padding: 18px 20px;
-            font-weight: 600;
+            border-bottom: 1px solid var(--line);
+            background: transparent;
+            font-weight: 700;
         }
 
         .card-body {
@@ -814,65 +822,55 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .section-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text);
             margin-bottom: 20px;
-        }
-
-        .table tbody tr.clickable-row {
-            cursor: pointer;
-            transition: background-color .2s ease;
-        }
-
-        .table tbody tr.clickable-row:hover {
-            background: rgba(2,132,199,.06);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--ink);
         }
 
         .badge-status {
             display: inline-flex;
             align-items: center;
             padding: 4px 10px;
-            border-radius: 6px;
-            font-size: .70rem;
-            font-weight: 600;
-            line-height: 1.4;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            line-height: 1.3;
             border: 1px solid transparent;
-            letter-spacing: .01em;
         }
 
-        .status-em-analise { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
-        .status-aprovado { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+        .status-em-analise { background-color: var(--warning-soft); color: #7a5b00; border-color: #f2d56c; }
+        .status-aprovado { background-color: var(--success-soft); color: #166534; border-color: #9fddb4; }
         .status-reprovado { background-color: #fff1f2; color: #9f1239; border-color: #fecdd3; }
-        .status-pendente { background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-        .status-cancelado { background-color: #f9fafb; color: #374151; border-color: #d1d5db; }
+        .status-pendente { background-color: var(--info-soft); color: #1e429f; border-color: #c7d7fb; }
+        .status-cancelado { background-color: #f4f6f5; color: #42514a; border-color: #d9e1dc; }
         .status-aguardando-fiscalização,
-        .status-aguardando-fiscalizacao { background-color: #f0f9ff; color: #075985; border-color: #bae6fd; }
+        .status-aguardando-fiscalizacao { background-color: #eef6ff; color: #0c4a6e; border-color: #bfdbfe; }
         .status-apto-a-gerar-alvará,
-        .status-apto-a-gerar-alvara { background-color: #faf5ff; color: #6d28d9; border-color: #ddd6fe; }
+        .status-apto-a-gerar-alvara { background-color: #f6f0ff; color: #6d28d9; border-color: #ddd6fe; }
         .status-alvará-emitido,
-        .status-alvara-emitido { background-color: #f0fdf4; color: #047857; border-color: #a7f3d0; }
-        .status-finalizado { background-color: #f0fdf4; color: #065f46; border-color: #6ee7b7; }
-        .status-indeferido { background-color: #f9fafb; color: #374151; border-color: #d1d5db; }
-        .status-aguardando-boleto { background-color: #fffbeb; color: #78350f; border-color: #fde68a; }
-        .status-boleto-pago { background-color: #f0fdf4; color: #065f46; border-color: #6ee7b7; }
+        .status-alvara-emitido { background-color: var(--success-soft); color: #047857; border-color: #9fddb4; }
+        .status-finalizado { background-color: var(--success-soft); color: #0d5433; border-color: #89d1a3; }
+        .status-indeferido { background-color: #f5f7f6; color: #46554d; border-color: #d4ddd7; }
+        .status-aguardando-boleto { background-color: #fff7e8; color: #8a4b08; border-color: #f4ca8b; }
+        .status-boleto-pago { background-color: #e9f8f0; color: #0f766e; border-color: #9edbcc; }
 
         .notification-sidebar {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            bottom: 20px;
-            width: min(380px, calc(100vw - 40px));
-            background: rgba(255,255,255,.98);
-            border: 1px solid var(--line);
-            box-shadow: var(--shell-shadow);
-            border-radius: 26px;
-            z-index: 1060;
-            transform: translateX(calc(100% + 20px));
-            transition: transform .28s ease;
-            overflow: hidden;
+            top: 16px;
+            right: 16px;
+            bottom: 16px;
+            width: min(390px, calc(100vw - 32px));
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid var(--line);
+            border-radius: 26px;
+            box-shadow: var(--shell-shadow);
+            transform: translateX(calc(100% + 24px));
+            transition: transform 0.24s ease;
+            z-index: 1060;
         }
 
         .notification-sidebar.active {
@@ -881,24 +879,32 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .notification-sidebar-header {
             display: flex;
+            align-items: flex-start;
             justify-content: space-between;
-            align-items: center;
-            padding: 18px 18px 14px;
+            gap: 12px;
+            padding: 20px 18px 14px;
             border-bottom: 1px solid var(--line);
-            background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+            background: linear-gradient(180deg, #f7faf8 0%, #fff 100%);
         }
 
         .notification-sidebar-header h5 {
-            margin: 0;
+            margin: 0 0 4px;
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .notification-sidebar-header p {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--muted);
         }
 
         .notification-sidebar-close {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: 14px;
             background: #fff;
             color: var(--muted);
         }
@@ -910,59 +916,58 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .notification-list {
             list-style: none;
-            padding: 0;
             margin: 0;
+            padding: 0;
         }
 
         .notification-item-sidebar {
-            border: 1px solid rgba(219, 231, 243, .9);
-            border-radius: 16px;
             margin-bottom: 10px;
-            transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+            border: 1px solid var(--line);
+            border-radius: 18px;
             background: #fff;
+            transition: border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
         }
 
         .notification-item-sidebar:hover {
-            border-color: #b7d8ea;
-            background: var(--surface-soft);
             transform: translateY(-1px);
+            border-color: var(--line-strong);
+            background: var(--surface-soft);
         }
 
         .notification-item-sidebar a {
             display: block;
             padding: 14px;
-            color: inherit;
         }
 
         .notification-title {
-            font-size: .9rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--ink);
         }
 
         .notification-content {
-            font-size: .8rem;
-            color: var(--muted);
             margin-bottom: 6px;
+            font-size: 0.8rem;
+            color: var(--muted);
         }
 
         .notification-time {
-            font-size: .74rem;
+            font-size: 0.74rem;
             color: var(--muted);
         }
 
         .notification-unread {
-            background: #f8fbff;
-            border-color: #b7d8ea;
+            background: #f8fbf9;
+            border-color: rgba(13, 84, 51, 0.14);
         }
 
         .content-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, .44);
-            z-index: 1050;
+            background: rgba(11, 31, 23, 0.38);
             display: none;
+            z-index: 1050;
         }
 
         .content-overlay.active {
@@ -975,16 +980,16 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             justify-content: space-between;
             gap: 16px;
             margin: 18px 18px 0;
-            padding: 14px 18px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #fffbeb, #fff7ed);
-            border: 1px solid #fed7aa;
-            color: #9a3412;
+            padding: 15px 18px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #fff7df 0%, #fff5eb 100%);
+            border: 1px solid #f4d19c;
             box-shadow: var(--card-shadow);
+            color: #9a3412;
         }
 
         .simulation-banner-copy {
-            font-size: .88rem;
+            font-size: 0.88rem;
             line-height: 1.5;
         }
 
@@ -1001,23 +1006,21 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         body.sidebar-collapsed .sidebar-link-text,
         body.sidebar-collapsed .sidebar-link-badge,
         body.sidebar-collapsed .sidebar-link-chevron,
-        body.sidebar-collapsed .sidebar-utility,
-        body.sidebar-collapsed .sidebar-footer {
-            display: none;
+        body.sidebar-collapsed .sidebar-utility-label,
+        body.sidebar-collapsed .sidebar-utility span {
+            display: none !important;
         }
 
-        body.sidebar-collapsed .sidebar-header {
-            justify-content: center;
-            padding-inline: 0;
-        }
-
-        body.sidebar-collapsed .sidebar-brand {
+        body.sidebar-collapsed .sidebar-link,
+        body.sidebar-collapsed .sidebar-menu .nav-link,
+        body.sidebar-collapsed .sidebar-brand,
+        body.sidebar-collapsed .sidebar-utility-link,
+        body.sidebar-collapsed .sidebar-utility-action {
             justify-content: center;
         }
 
         body.sidebar-collapsed .sidebar-link,
         body.sidebar-collapsed .sidebar-menu .nav-link {
-            justify-content: center;
             padding-inline: 0;
         }
 
@@ -1027,10 +1030,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         body.sidebar-collapsed .sidebar-link-content {
             display: none;
-        }
-
-        body.sidebar-collapsed .sidebar-menu .nav-link > div {
-            justify-content: center !important;
         }
 
         @media (max-width: 1199px) {
@@ -1046,12 +1045,13 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         @media (max-width: 991px) {
             .sidebar {
-                transform: translateX(calc(-100% - 16px));
-                width: min(284px, calc(100vw - 32px));
-                left: 16px;
-                top: 16px;
-                bottom: 16px;
+                top: 14px;
+                bottom: 14px;
+                left: 14px;
+                width: min(286px, calc(100vw - 28px));
                 border-radius: 28px;
+                transform: translateX(calc(-100% - 20px));
+                box-shadow: 0 28px 55px rgba(11, 31, 23, 0.26);
             }
 
             body.sidebar-open .sidebar {
@@ -1063,40 +1063,36 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             }
 
             .topbar {
-                margin: 16px 16px 0;
-                grid-template-columns: minmax(0, 1fr) auto;
-            }
-
-            .content-wrapper-inner,
-            .simulation-banner {
-                margin-inline: 0;
+                padding: 14px 16px;
             }
         }
 
         @media (max-width: 767px) {
             .topbar {
-                padding: 14px;
+                grid-template-columns: minmax(0, 1fr) auto;
                 gap: 12px;
+                padding: 12px 14px;
             }
 
             .topbar-title {
-                font-size: 1.05rem;
+                font-size: 1.08rem;
             }
 
-            .topbar-profile-toggle {
-                padding-right: 6px;
-            }
-
+            .topbar-search-hint,
             .topbar-profile-toggle .user-info,
-            .topbar-search-hint {
+            .topbar-eyebrow span:not(.pill) {
                 display: none !important;
             }
 
+            .content-wrapper-inner {
+                padding: 18px 14px 24px;
+            }
+
             .notification-sidebar {
-                top: 12px;
-                right: 12px;
-                bottom: 12px;
-                width: calc(100vw - 24px);
+                top: 10px;
+                right: 10px;
+                bottom: 10px;
+                width: calc(100vw - 20px);
             }
 
             .simulation-banner {
@@ -1110,7 +1106,11 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <aside class="sidebar" id="adminSidebar">
         <div class="sidebar-header">
             <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA">
-                <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
+                <span class="sidebar-brand-mark mono">SE</span>
+                <span class="sidebar-brand-copy">
+                    <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
+                    <span class="sidebar-brand-subtitle">Painel Administrativo</span>
+                </span>
             </a>
         </div>
 
@@ -1368,10 +1368,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         type="search"
                         id="globalSearchInput"
                         class="topbar-search-input"
-                        placeholder="Buscar requerimento por nome, protocolo..."
+                        placeholder="Buscar atalhos, requerimentos ou nomes..."
                         autocomplete="off"
                     >
-                    <span class="topbar-search-hint">Preparado para protocolos</span>
+                    <span class="topbar-search-hint">/ buscar</span>
                 </div>
                 <div class="search-results" id="globalSearchResults">
                     <?php foreach ($searchItems as $item): ?>
@@ -1439,7 +1439,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         <div class="notification-sidebar" id="notificationSidebar">
             <div class="notification-sidebar-header">
-                <h5><i class="fas fa-bell me-2"></i>Notificações</h5>
+                <div>
+                    <h5><i class="fas fa-bell me-2"></i>Notificações</h5>
+                    <p>Atualizações recentes de protocolos e filas internas.</p>
+                </div>
                 <button class="notification-sidebar-close" id="closeNotificationSidebar" type="button" aria-label="Fechar notificações">
                     <i class="fas fa-times"></i>
                 </button>
