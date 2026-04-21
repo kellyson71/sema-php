@@ -2149,14 +2149,19 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
             </div>
 
             <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <i class="fas fa-history icon"></i>
-                    <h6>Histórico de Ações</h6>
+                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-history icon"></i>
+                        <h6 class="mb-0">Histórico de Ações</h6>
+                    </div>
+                    <?php if (count($historico) > 0): ?>
+                    <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
+                    <?php endif; ?>
                 </div>
                 <div class="card-body p-0">
                     <?php if (count($historico) > 0): ?>
-                        <?php foreach ($historico as $h): ?>
-                            <div class="data-row">
+                        <?php foreach ($historico as $idx => $h): ?>
+                            <div class="data-row" data-historico-item="<?php echo $idx; ?>">
                                 <div class="data-label" style="min-width: 140px;">
                                     <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome'] ?? 'Sistema'); ?></div>
                                     <div class="text-muted small"><?php echo formataData($h['data_acao']); ?></div>
@@ -2165,12 +2170,26 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                                     <?php echo htmlspecialchars($h['acao']); ?>
                                 </div>
                                 <div class="data-actions">
-                                    <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($h['acao']); ?>', this)" title="Copiar ação">
+                                    <button class="copy-btn" onclick="copyToClipboard('<?php echo addslashes(htmlspecialchars($h['acao'])); ?>', this)" title="Copiar ação">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
+
+                        <!-- Paginação do Histórico -->
+                        <?php if (count($historico) > 10): ?>
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light" id="historico-pagination">
+                            <button class="btn btn-sm btn-outline-secondary" id="historico-prev" onclick="historicoChangePage(-1)" disabled>
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </button>
+                            <span class="text-muted small" id="historico-page-info">Página 1 de <?php echo ceil(count($historico)/10); ?></span>
+                            <button class="btn btn-sm btn-outline-secondary" id="historico-next" onclick="historicoChangePage(1)">
+                                Próximo<i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <div class="card-body">
                             <div class="text-center text-muted py-3">
@@ -2828,6 +2847,50 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
             }, 2000);
         });
     }
+
+    // === Paginação do Histórico de Ações ===
+    (function () {
+        const PER_PAGE = 10;
+        let currentPage = 0;
+
+        function getItems() {
+            return document.querySelectorAll('[data-historico-item]');
+        }
+
+        function getTotalPages() {
+            return Math.ceil(getItems().length / PER_PAGE);
+        }
+
+        function renderPage(page) {
+            const items = getItems();
+            if (!items.length) return;
+
+            const total = Math.ceil(items.length / PER_PAGE);
+            currentPage = Math.max(0, Math.min(page, total - 1));
+
+            items.forEach(function (el, idx) {
+                const start = currentPage * PER_PAGE;
+                el.style.display = (idx >= start && idx < start + PER_PAGE) ? '' : 'none';
+            });
+
+            const info = document.getElementById('historico-page-info');
+            const prev = document.getElementById('historico-prev');
+            const next = document.getElementById('historico-next');
+
+            if (info) info.textContent = 'Página ' + (currentPage + 1) + ' de ' + total;
+            if (prev) prev.disabled = currentPage === 0;
+            if (next) next.disabled = currentPage >= total - 1;
+        }
+
+        window.historicoChangePage = function (delta) {
+            renderPage(currentPage + delta);
+        };
+
+        // Inicializar ao carregar
+        document.addEventListener('DOMContentLoaded', function () {
+            renderPage(0);
+        });
+    })();
 
     // Função para baixar todos os arquivos
     function downloadAllFiles() {
