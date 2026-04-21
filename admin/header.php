@@ -205,14 +205,14 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             left: 0;
             bottom: 0;
             width: var(--sidebar-width);
-            background: #052e16;
+            background: #14532d;
             color: #fff;
             z-index: 1040;
             display: flex;
             flex-direction: column;
             padding: 20px 16px 18px;
             transition: width .28s ease, transform .28s ease;
-            box-shadow: 10px 0 40px rgba(5, 46, 22, 0.32);
+            box-shadow: 10px 0 40px rgba(10, 50, 25, 0.28);
         }
 
         .sidebar::before {
@@ -406,11 +406,11 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-utility {
-            margin-top: 18px;
-            padding: 14px;
-            border-radius: 20px;
-            background: rgba(255,255,255,.06);
-            border: 1px solid rgba(255,255,255,.08);
+            margin-top: 0;
+            padding: 12px 14px 14px;
+            border-radius: 0;
+            border-top: 1px solid rgba(255,255,255,.10);
+            background: rgba(0,0,0,.12);
         }
 
         .sidebar-utility-label {
@@ -1311,31 +1311,25 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 </ul>
             </div>
 
-            <div class="sidebar-utility">
-                <div class="sidebar-utility-label">Ações rápidas</div>
-                <a href="https://wa.me/5584981087357" target="_blank" class="sidebar-utility-link" title="Fale conosco no WhatsApp">
-                    <i class="fab fa-whatsapp"></i>
-                    <span>Problemas? Fale conosco</span>
-                </a>
-                <?php if (isset($_SESSION['admin_nivel_original'])): ?>
-                    <a href="<?= $adminBase ?>simular_perfil.php?sair=1" class="sidebar-utility-action" style="color:#fcd34d;">
-                        <i class="fas fa-rotate-left"></i>
-                        <span>Voltar ao meu perfil</span>
-                    </a>
-                <?php else: ?>
-                    <a href="<?= $adminBase ?>logout.php" class="sidebar-utility-action">
-                        <i class="fas fa-right-from-bracket"></i>
-                        <span>Sair</span>
-                    </a>
-                <?php endif; ?>
-            </div>
         </div>
 
-        <div class="sidebar-footer">
-            <div class="sidebar-version">
-                <span>SEMA Admin</span>
-                <span>v3.9</span>
-            </div>
+        <div class="sidebar-utility">
+            <div class="sidebar-utility-label">Ações rápidas</div>
+            <a href="https://wa.me/5584981087357" target="_blank" class="sidebar-utility-link" title="Fale conosco no WhatsApp">
+                <i class="fab fa-whatsapp"></i>
+                <span>Problemas? Fale conosco</span>
+            </a>
+            <?php if (isset($_SESSION['admin_nivel_original'])): ?>
+                <a href="<?= $adminBase ?>simular_perfil.php?sair=1" class="sidebar-utility-action" style="color:#fcd34d;">
+                    <i class="fas fa-rotate-left"></i>
+                    <span>Voltar ao meu perfil</span>
+                </a>
+            <?php else: ?>
+                <a href="<?= $adminBase ?>logout.php" class="sidebar-utility-action">
+                    <i class="fas fa-right-from-bracket"></i>
+                    <span>Sair</span>
+                </a>
+            <?php endif; ?>
         </div>
     </aside>
 
@@ -1367,7 +1361,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         type="search"
                         id="globalSearchInput"
                         class="topbar-search-input"
-                        placeholder="Busca global de páginas, ações e fluxos"
+                        placeholder="Buscar requerimento por nome, protocolo..."
                         autocomplete="off"
                     >
                     <span class="topbar-search-hint">Preparado para protocolos</span>

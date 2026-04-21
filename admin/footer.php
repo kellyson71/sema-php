@@ -152,9 +152,9 @@
 
                     searchInput.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter') {
-                            const firstVisible = searchItems.find(item => !item.classList.contains('d-none'));
-                            if (firstVisible) {
-                                window.location.href = firstVisible.getAttribute('href');
+                            const q = searchInput.value.trim();
+                            if (q.length > 0) {
+                                window.location.href = 'requerimentos.php?busca=' + encodeURIComponent(q) + '&status=&tipo=';
                             }
                         }
                     });
