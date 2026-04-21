@@ -71,7 +71,6 @@ if ($_SESSION['login_attempts'] >= 5) {
 
 /**
  * Verifica se o dispositivo atual é confiável (cookie + DB).
- * Retorna o admin_id se confiável, ou false.
  */
 function verificarDispositivoConfiavel($pdo) {
     $token = $_COOKIE['sema_trusted_device'] ?? '';
@@ -88,7 +87,7 @@ function verificarDispositivoConfiavel($pdo) {
  * Registra o dispositivo como confiável por 30 dias.
  */
 function registrarDispositivoConfiavel($pdo, $adminId) {
-    $token = bin2hex(random_bytes(32)); // 64 chars hex
+    $token = bin2hex(random_bytes(32));
     $hash = hash('sha256', $token);
     $expira = date('Y-m-d H:i:s', time() + 30 * 24 * 3600);
 
@@ -100,16 +99,15 @@ function registrarDispositivoConfiavel($pdo, $adminId) {
         'expires'  => time() + 30 * 24 * 3600,
         'path'     => '/',
         'secure'   => $isSecure,
-        'httponly'  => true,
+        'httponly' => true,
         'samesite' => 'Strict',
     ]);
 
-    // Limpa tokens expirados (manutenção)
     $pdo->exec("DELETE FROM dispositivos_confiados WHERE expira_em < NOW()");
 }
 
 /**
- * Cria a sessão de admin (reutilizado em login normal e dispositivo confiável).
+ * Cria a sessão de admin.
  */
 function criarSessaoAdmin($pdo, $admin) {
     session_regenerate_id(true);
@@ -137,6 +135,19 @@ function criarSessaoAdmin($pdo, $admin) {
 
     $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
     $stmt->execute([$admin['id']]);
+}
+
+function mascararEmail($email) {
+    return preg_replace('/(?<=.).(?=.*@)/', '*', $email ?? '');
+}
+
+function enviarCodigoLoginPorEmail($admin, $codigo) {
+    if (empty($admin['email'])) {
+        return false;
+    }
+
+    $emailService = new EmailService();
+    return $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
 }
 
 // Processar formulário de login via AJAX
@@ -170,10 +181,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            // Verificar dispositivo confiável
             $trustedAdminId = verificarDispositivoConfiavel($pdo);
             if ($trustedAdminId === (int)$admin['id']) {
-                // Dispositivo confiável: pula 2FA
                 criarSessaoAdmin($pdo, $admin);
                 $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
                 unset($_SESSION['login_redirect_url']);
@@ -197,10 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
 
             $emailMascarado = '';
             if (!empty($admin['email'])) {
-                $emailService = new EmailService();
-                $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
+                $enviado = enviarCodigoLoginPorEmail($admin, $codigo);
                 if ($enviado) {
-                    $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                    $emailMascarado = mascararEmail($admin['email']);
                 } else if (!$hasTotp) {
                     if (ob_get_length()) ob_clean();
                     echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
@@ -238,7 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $codigoValido = false;
         $erroMsg = 'Código incorreto.';
 
-        // 1. Tentar TOTP
         if (!empty($admin['totp_secret'])) {
             require_once 'MultiFactorService.php';
             $twoFactorService = new \Admin\Services\TwoFactorService();
@@ -247,7 +254,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             }
         }
 
-        // 2. Fallback e-mail
         if (!$codigoValido && isset($_SESSION['2fa_otp_code'])) {
             if (time() > $_SESSION['2fa_otp_expires']) {
                 $erroMsg = 'Código expirado. Volte e faça login novamente.';
@@ -259,7 +265,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         if ($codigoValido) {
             criarSessaoAdmin($pdo, $admin);
 
-            // Registrar dispositivo confiável se solicitado
             if ($lembrarDispositivo) {
                 registrarDispositivoConfiavel($pdo, $admin['id']);
             }
@@ -277,427 +282,1068 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         }
         exit;
     }
+
+    if (isset($_POST['action']) && $_POST['action'] === 'reenviar_otp_email') {
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['2fa_admin_data'])) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Sessão de verificação expirada. Faça login novamente.']);
+            exit;
+        }
+
+        $admin = $_SESSION['2fa_admin_data'];
+        if (empty($admin['email'])) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Este usuário não possui e-mail cadastrado para reenvio do código.']);
+            exit;
+        }
+
+        $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $_SESSION['2fa_otp_code'] = $codigo;
+        $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
+
+        if (!enviarCodigoLoginPorEmail($admin, $codigo)) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Não foi possível reenviar o código agora. Tente novamente em instantes.']);
+            exit;
+        }
+
+        if (ob_get_length()) ob_clean();
+        echo json_encode([
+            'success' => true,
+            'email_mascarado' => mascararEmail($admin['email']),
+            'message' => 'Enviamos um novo código para o seu e-mail institucional.'
+        ]);
+        exit;
+    }
+}
+
+// Recuperação de senha (placeholder institucional)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'recuperar_senha') {
+    header('Content-Type: application/json');
+    $email = trim($_POST['email'] ?? '');
+    $emailMascarado = '';
+
+    if ($email !== '' && strpos($email, '@') !== false) {
+        $emailMascarado = mascararEmail($email);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'email_mascarado' => $emailMascarado,
+        'message' => 'A redefinição online ainda não está disponível. Entre em contato com o setor de TI pelo ramal 2104 para recuperar seu acesso.'
+    ]);
+    exit;
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Painel Administrativo SEMA</title>
+    <title>Login — SEMA Painel Administrativo</title>
     <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <style>
-        :root{
-            --brand-700:#0369a1;
-            --brand-600:#0284c7;
-            --brand-500:#0ea5e9;
-            --brand-100:#e0f2fe;
-            --surface:#ffffff;
-            --surface-alt:#f8fafc;
-            --line:#e2e8f0;
-            --text:#0f172a;
-            --muted:#64748b;
-            --shadow:0 24px 60px rgba(15,23,42,.12);
+        :root {
+            --ph: 225;
+            --primary:     oklch(0.48 0.16 var(--ph));
+            --primary-600: oklch(0.42 0.17 var(--ph));
+            --primary-700: oklch(0.36 0.17 var(--ph));
+            --primary-50:  oklch(0.97 0.02 var(--ph));
+            --primary-100: oklch(0.94 0.04 var(--ph));
+            --ink:   oklch(0.20 0.02 260);
+            --ink-2: oklch(0.40 0.02 260);
+            --ink-3: oklch(0.60 0.015 260);
+            --line:  oklch(0.92 0.008 260);
+            --line-2:oklch(0.86 0.012 260);
+            --bg:    oklch(0.985 0.004 260);
+            --card:  #ffffff;
+            --danger:    oklch(0.55 0.19 28);
+            --danger-bg: oklch(0.97 0.03 28);
+            --success:    oklch(0.58 0.14 155);
+            --success-bg: oklch(0.97 0.03 155);
+            --radius:    10px;
+            --radius-lg: 14px;
+            --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.10);
         }
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{min-height:100vh;font-family:'Poppins',system-ui,sans-serif;background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%);color:var(--text);display:flex;flex-direction:column}
-
-        /* ── Layout split ── */
-        .split{flex:1;display:flex;min-height:0}
-
-        /* Painel esquerdo — branding */
-        .brand-panel{
-            flex:0 0 45%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-            background:
-                linear-gradient(160deg,rgba(3,105,161,.96) 0%,rgba(2,132,199,.94) 52%,rgba(14,165,233,.9) 100%),
-                url('../assets/SEMA/PNG/Azul/fundo.png') center/cover no-repeat;
-            color:#fff;padding:3rem 2.5rem;position:relative;overflow:hidden;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
-        .brand-panel::before{
-            content:'';position:absolute;width:600px;height:600px;border-radius:50%;
-            background:rgba(255,255,255,0.04);top:-200px;right:-200px;
-        }
-        .brand-panel::after{
-            content:'';position:absolute;width:400px;height:400px;border-radius:50%;
-            background:rgba(255,255,255,0.03);bottom:-150px;left:-100px;
-        }
-        .brand-badge{
-            position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;
-            padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.12);
-            border:1px solid rgba(255,255,255,.18);font-size:.76rem;font-weight:600;letter-spacing:.08em;
-            text-transform:uppercase;margin-bottom:1.25rem;
-        }
-        .brand-panel img{max-width:220px;height:auto;margin-bottom:1.5rem;position:relative;z-index:1;filter:brightness(0) invert(1)}
-        .brand-panel h2{font-size:2rem;font-weight:700;text-align:center;line-height:1.2;margin-bottom:1rem;position:relative;z-index:1;max-width:420px}
-        .brand-panel p.sub{font-size:0.96rem;text-align:center;opacity:0.88;line-height:1.7;max-width:390px;position:relative;z-index:1}
+        .display { font-family: 'Inter Tight', sans-serif; letter-spacing: -0.02em; }
+        .mono    { font-family: 'JetBrains Mono', monospace; }
+        button, input { font-family: inherit; }
+        ::selection { background: var(--primary-100); color: var(--ink); }
 
-        .brand-features{
-            margin-top:2.25rem;display:flex;flex-direction:column;gap:16px;
-            position:relative;z-index:1;width:100%;max-width:360px;
-        }
-        .brand-feat{
-            display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:rgba(255,255,255,0.1);
-            border:1px solid rgba(255,255,255,0.12);border-radius:16px;backdrop-filter:blur(10px);
-            box-shadow:0 10px 30px rgba(0,0,0,.08);
-        }
-        .brand-feat i{font-size:1.1rem;width:20px;text-align:center;flex-shrink:0;opacity:0.9}
-        .brand-feat span{font-size:0.85rem;opacity:0.9;line-height:1.4}
-
-        /* Painel direito — formulario */
-        .form-panel{
-            flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;
-            background:
-                radial-gradient(circle at top left,rgba(14,165,233,.08),transparent 28%),
-                radial-gradient(circle at bottom right,rgba(2,132,199,.08),transparent 22%),
-                var(--surface-alt);
-        }
-        .form-inner{
-            width:100%;max-width:430px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);
-            border:1px solid rgba(226,232,240,.9);border-radius:28px;padding:2rem;box-shadow:var(--shadow);
-        }
-        .form-kicker{
-            display:inline-flex;align-items:center;gap:8px;margin-bottom:.9rem;padding:8px 12px;border-radius:999px;
-            background:var(--brand-100);color:var(--brand-700);font-size:.78rem;font-weight:600;
-        }
-        .form-inner h1{font-size:1.7rem;font-weight:700;color:var(--text);margin-bottom:6px}
-        .form-inner .welcome{font-size:0.92rem;color:var(--muted);margin-bottom:1.75rem;line-height:1.6}
-        .quick-note{
-            display:flex;align-items:flex-start;gap:12px;margin-bottom:1.5rem;padding:14px 16px;border-radius:16px;
-            background:#f8fbff;border:1px solid #dbeafe;color:#334155;
-        }
-        .quick-note i{color:var(--brand-600);margin-top:3px}
-        .quick-note strong{display:block;font-size:.86rem;margin-bottom:2px}
-        .quick-note span{font-size:.8rem;line-height:1.5}
-
-        .form-group{margin-bottom:18px}
-        .form-label{display:block;font-size:0.78rem;font-weight:600;color:#475569;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
-
-        .input-wrap{position:relative}
-        .input-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:0.85rem;transition:color .2s}
-        .input-wrap input{
-            width:100%;padding:12px 14px 12px 42px;
-            background:#f8fafc;border:1.5px solid var(--line);border-radius:14px;
-            font-size:0.95rem;color:var(--text);transition:all .2s;
-        }
-        .input-wrap input::placeholder{color:#94a3b8}
-        .input-wrap input:focus{border-color:var(--brand-600);box-shadow:0 0 0 4px rgba(2,132,199,0.1);outline:none;background:#fff}
-        .input-wrap:focus-within i{color:var(--brand-600)}
-
-        .btn-login{
-            width:100%;padding:13px;margin-top:8px;
-            background:linear-gradient(135deg,var(--brand-700),var(--brand-600));border:none;border-radius:14px;color:#fff;
-            font-weight:600;font-size:0.95rem;cursor:pointer;transition:all .2s;
-        }
-        .btn-login:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(2,132,199,0.28)}
-        .btn-login:active{transform:translateY(0)}
-        .btn-login:disabled{opacity:0.6;transform:none;cursor:not-allowed}
-
-        .alert-box{padding:12px 14px;border-radius:10px;font-size:0.85rem;margin-bottom:16px;display:flex;align-items:center;gap:10px}
-        .alert-box.error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
-        .alert-box.error i{color:#ef4444}
-
-        /* Etapa 2 */
-        .otp-header{text-align:center;margin-bottom:24px}
-        .otp-header i{font-size:2.4rem;margin-bottom:12px;display:block;color:var(--brand-600)}
-        .otp-header p{color:var(--muted);font-size:0.9rem;line-height:1.5}
-        .otp-header strong{color:var(--text)}
-
-        .otp-input{
-            width:100%;padding:14px;background:#f8fafc;
-            border:1.5px solid var(--line);border-radius:14px;
-            font-size:1.8rem;font-weight:700;text-align:center;letter-spacing:10px;color:var(--text);transition:all .2s;
-        }
-        .otp-input:focus{border-color:var(--brand-600);box-shadow:0 0 0 4px rgba(2,132,199,0.1);outline:none;background:#fff}
-        .otp-input::placeholder{letter-spacing:4px;font-size:1.3rem;color:#cbd5e1;font-weight:400}
-
-        .remember-device{
-            display:flex;align-items:center;gap:10px;margin:16px 0 4px;padding:12px 14px;
-            background:#eff6ff;border-radius:10px;border:1px solid #dbeafe;cursor:pointer;transition:background .2s;
-        }
-        .remember-device:hover{background:#dbeafe}
-        .remember-device input[type="checkbox"]{width:18px;height:18px;accent-color:var(--brand-600);cursor:pointer;flex-shrink:0}
-        .remember-device span{font-size:0.85rem;color:#334155;line-height:1.3}
-        .remember-device small{display:block;color:#64748b;font-size:0.75rem;margin-top:2px}
-
-        .btn-link-back{background:none;border:none;color:#64748b;font-size:0.85rem;cursor:pointer;margin-top:12px;transition:color .2s}
-        .btn-link-back:hover{color:var(--brand-600)}
-
-        .divider{display:flex;align-items:center;gap:12px;margin:20px 0}
-        .divider hr{flex:1;border:none;border-top:1px solid #e2e8f0}
-        .divider span{font-size:0.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px}
-
-        .btn-alt{
-            width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;
-            color:#475569;font-size:0.88rem;font-weight:500;cursor:pointer;transition:all .2s;
-            display:flex;align-items:center;justify-content:center;gap:8px;
-        }
-        .btn-alt:hover{border-color:var(--brand-600);color:var(--brand-600);background:#eff6ff}
-
-        /* Footer */
-        .login-footer{background:#0f172a;padding:18px 24px;text-align:center}
-        .login-footer p{color:rgba(255,255,255,0.35);font-size:0.75rem;margin:0}
-
-        .d-none{display:none!important}
-        .spinner-border{display:inline-block;width:1rem;height:1rem;border:.2em solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
-        @keyframes spin{to{transform:rotate(360deg)}}
-
-        /* Responsivo: mobile empilha */
-        @media(max-width:860px){
-            .split{flex-direction:column}
-            .brand-panel{flex:0 0 auto;padding:2rem 1.5rem}
-            .brand-panel h2{font-size:1.45rem}
-            .brand-features{display:none}
-            .form-panel{padding:1.5rem}
-            .form-inner{padding:1.5rem;border-radius:22px}
-        }
-        @media(max-width:480px){
-            .brand-badge{font-size:.7rem}
-            .brand-panel img{max-width:180px}
-            .form-panel{padding:1rem}
-            .form-inner h1{font-size:1.45rem}
+        /* ── Layout ── */
+        .layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: minmax(380px, 1.1fr) 1fr;
         }
 
-        /* Homologacao banner */
-        .homolog-banner{
-            background:repeating-linear-gradient(45deg,#ff9800,#ff9800 10px,#f57c00 10px,#f57c00 20px);
-            color:#fff;text-align:center;padding:8px;font-weight:700;font-size:0.9rem;
-            text-transform:uppercase;letter-spacing:2px;
+        /* ── Brand Panel ── */
+        .brand-panel {
+            position: relative;
+            background: linear-gradient(160deg, var(--primary-700) 0%, var(--primary) 60%, var(--primary-600) 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 44px 48px;
+            overflow: hidden;
         }
+        .brand-grid-bg {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            opacity: .10; pointer-events: none;
+        }
+        .brand-glow {
+            position: absolute; right: -100px; top: -100px;
+            width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,.13), transparent 70%);
+            filter: blur(20px);
+        }
+        .brand-top { position: relative; z-index: 1; }
+        .brand-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 5px 12px; border-radius: 999px;
+            background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.20);
+            font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+        }
+        .brand-logo {
+            margin-top: 44px; width: 180px; display: block;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,.20));
+        }
+        .brand-middle { position: relative; z-index: 1; margin-top: 32px; }
+        .brand-middle h1 {
+            font-size: 40px; font-weight: 700; line-height: 1.07;
+            letter-spacing: -.025em; margin-bottom: 14px;
+        }
+        .brand-middle p {
+            font-size: 15px; line-height: 1.6; max-width: 460px;
+            color: rgba(255,255,255,.82); margin-bottom: 24px;
+        }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 500px; }
+        .stat-card {
+            padding: 13px 16px; border-radius: 10px;
+            background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+        }
+        .stat-value { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+        .stat-label { font-size: 11.5px; opacity: .72; margin-top: 2px; }
+        .brand-footer {
+            position: relative; z-index: 1; margin-top: 32px;
+            display: flex; gap: 16px; align-items: center;
+            font-size: 12px; color: rgba(255,255,255,.65);
+        }
+        .brand-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.4); }
+
+        /* ── Form Panel ── */
+        .form-panel {
+            display: flex; align-items: center; justify-content: center;
+            padding: 60px 32px; background: var(--bg);
+        }
+        .login-card {
+            width: 100%; max-width: 420px;
+            padding: 36px 36px 32px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+        }
+
+        /* ── Form fields ── */
+        .field { margin-bottom: 16px; }
+        .field-label {
+            display: block; font-size: 11.5px; font-weight: 600;
+            letter-spacing: .05em; color: var(--ink-2);
+            text-transform: uppercase; margin-bottom: 7px;
+        }
+        .field-wrap {
+            position: relative; display: flex; align-items: center;
+            border: 1px solid var(--line-2); border-radius: var(--radius);
+            background: var(--card); transition: border-color .15s, box-shadow .15s;
+        }
+        .field-wrap:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+        }
+        .field-wrap.has-error { border-color: var(--danger); }
+        .field-wrap.has-error:focus-within {
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--danger) 16%, transparent);
+        }
+        .field-icon { padding-left: 12px; display: flex; align-items: center; color: var(--ink-3); flex-shrink: 0; }
+        .field-wrap.has-error .field-icon { color: var(--danger); }
+        .field-input {
+            flex: 1; border: none; outline: none; background: transparent;
+            padding: 13px 12px; font-size: 14.5px; color: var(--ink); font-weight: 500;
+        }
+        .field-input::placeholder { color: var(--ink-3); opacity: .7; }
+        .field-trail { padding-right: 6px; display: flex; align-items: center; }
+        .field-error {
+            margin-top: 6px; font-size: 12.5px; color: var(--danger);
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            width: 100%; border: none; border-radius: var(--radius);
+            background: var(--primary); color: #fff;
+            padding: 13.5px 16px; font-size: 14.5px; font-weight: 600;
+            display: inline-flex; gap: 8px; align-items: center; justify-content: center;
+            cursor: pointer; transition: background .15s, transform .05s;
+            box-shadow: 0 1px 0 rgba(255,255,255,.14) inset,
+                        0 4px 12px -4px color-mix(in oklab, var(--primary) 55%, transparent);
+            margin-top: 4px;
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-600); }
+        .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+        .btn-primary:disabled { opacity: .8; cursor: progress; }
+        .btn-icon {
+            border: none; background: transparent; color: var(--ink-3);
+            padding: 8px; cursor: pointer; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-icon:hover { color: var(--ink-2); }
+        .btn-back {
+            background: none; border: none; color: var(--ink-2); font-size: 13px;
+            font-weight: 500; cursor: pointer; padding: 0;
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
+        }
+        .btn-back:hover { color: var(--primary); }
+        .btn-link {
+            background: none; border: none; font-size: 13px;
+            color: var(--primary); font-weight: 500; cursor: pointer; padding: 0;
+        }
+        .btn-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+        /* ── Alerts ── */
+        .alert {
+            padding: 11px 14px; border-radius: 10px;
+            display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px;
+        }
+        .alert-icon { flex-shrink: 0; margin-top: 1px; }
+        .alert.error {
+            background: var(--danger-bg);
+            border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+            color: var(--danger); font-size: 13.5px;
+        }
+        .alert.info {
+            background: var(--primary-50); border: 1px solid var(--line);
+            color: var(--ink-2); font-size: 12.5px;
+        }
+        .alert.info .alert-icon { color: var(--primary); }
+
+        /* ── Method cards ── */
+        .method-card {
+            border: 1.5px solid var(--line-2); border-radius: 10px; padding: 14px 16px;
+            cursor: pointer; background: var(--card); transition: all .15s;
+            display: flex; gap: 12px; align-items: flex-start; width: 100%;
+            text-align: left; margin-bottom: 10px;
+        }
+        .method-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 12%, transparent);
+        }
+        .method-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: var(--primary-50); color: var(--primary);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .method-title { font-weight: 600; font-size: 14px; color: var(--ink); }
+        .method-desc  { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+
+        /* ── OTP inputs ── */
+        .otp-grid { display: flex; gap: 8px; margin-bottom: 6px; }
+        .otp-digit {
+            width: 100%; height: 54px; border-radius: 10px;
+            border: 1.5px solid var(--line-2); background: var(--card);
+            text-align: center; font-family: 'Inter Tight', sans-serif;
+            font-size: 22px; font-weight: 600; color: var(--ink);
+            outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        .otp-digit:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+        }
+        .otp-digit.has-error { border-color: var(--danger); }
+
+        /* ── Remember device ── */
+        .remember-wrap {
+            display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+            padding: 11px 13px; border-radius: 10px;
+            background: var(--bg); border: 1px solid var(--line); margin-bottom: 4px;
+        }
+        .custom-check {
+            width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; margin-top: 1px;
+            border: 1.5px solid var(--line-2); background: var(--card);
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s; cursor: pointer;
+        }
+        .custom-check.on { border-color: var(--primary); background: var(--primary); }
+        .remember-title {
+            font-size: 13.5px; font-weight: 500; color: var(--ink);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .remember-desc { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: inline-block; width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin .65s linear infinite;
+        }
+
+        /* ── Animations ── */
+        @keyframes spin     { to { transform: rotate(360deg); } }
+        @keyframes fade-in  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes fill-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .fade-in { animation: fade-in .2s ease both; }
+
+        /* ── Footer ── */
+        .login-footer {
+            padding: 16px 28px; border-top: 1px solid var(--line);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3);
+            background: var(--bg);
+        }
+        .footer-links { display: flex; gap: 20px; }
+        .footer-links a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 12px; }
+        .footer-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+        /* ── Homolog banner ── */
+        .homolog-banner {
+            background: repeating-linear-gradient(45deg, #ff9800, #ff9800 10px, #f57c00 10px, #f57c00 20px);
+            color: #fff; text-align: center; padding: 8px; font-weight: 700;
+            font-size: .9rem; text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .brand-panel { display: none; }
+            .form-panel { padding: 40px 20px; }
+        }
+        @media (max-width: 480px) {
+            .login-card { padding: 24px 18px; }
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
-    <div class="homolog-banner">Ambiente de Homologacao / Testes</div>
-    <?php endif; ?>
 
-    <div class="split">
-        <!-- Painel esquerdo: branding -->
-        <div class="brand-panel">
-            <div class="brand-badge"><i class="fas fa-shield-halved"></i> Acesso Administrativo</div>
-            <img src="../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png" alt="SEMA">
-            <h2>Secretaria Municipal<br>de Meio Ambiente</h2>
-            <p class="sub">Painel de gestao de alvaras e licenciamento ambiental do municipio de Pau dos Ferros/RN.</p>
+<?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
+<div class="homolog-banner">Ambiente de Homologação / Testes</div>
+<?php endif; ?>
 
-            <div class="brand-features">
-                <div class="brand-feat">
-                    <i class="fas fa-file-signature"></i>
-                    <span>Gestao de requerimentos e pareceres tecnicos</span>
+<div class="layout">
+
+    <!-- ══ Brand Panel ══ -->
+    <aside class="brand-panel">
+        <svg class="brand-grid-bg" aria-hidden="true">
+            <defs>
+                <pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width=".6"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#g1)"/>
+        </svg>
+        <div class="brand-glow"></div>
+
+        <div class="brand-top">
+            <div class="brand-badge">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                Acesso Institucional
+            </div>
+            <img src="../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png"
+                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
+                 class="brand-logo">
+        </div>
+
+        <div class="brand-middle">
+            <h1 class="display">Secretaria Municipal<br>de Meio Ambiente</h1>
+            <p>Painel de gestão de alvarás, pareceres técnicos e licenciamento ambiental do município de Pau dos Ferros/RN.</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value display">1.248</div>
+                    <div class="stat-label">Processos ativos</div>
                 </div>
-                <div class="brand-feat">
-                    <i class="fas fa-signature"></i>
-                    <span>Assinatura digital com verificacao por QR Code</span>
+                <div class="stat-card">
+                    <div class="stat-value display">3.612</div>
+                    <div class="stat-label">Pareceres emitidos</div>
                 </div>
-                <div class="brand-feat">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Autenticacao em duas etapas para sua seguranca</span>
+                <div class="stat-card">
+                    <div class="stat-value display">24</div>
+                    <div class="stat-label">Analistas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value display">4.2 dias</div>
+                    <div class="stat-label">Tempo médio</div>
                 </div>
             </div>
         </div>
 
-        <!-- Painel direito: formulario -->
-        <div class="form-panel">
-            <div class="form-inner">
+        <div class="brand-footer">
+            <span class="mono">v2.4.1</span>
+            <span class="brand-dot"></span>
+            <span class="mono">ISO 27001</span>
+            <span class="brand-dot"></span>
+            <span class="mono">LGPD</span>
+        </div>
+    </aside>
+
+    <!-- ══ Form Panel ══ -->
+    <section class="form-panel">
+        <div class="login-card">
+
+            <!-- ── STEP: LOGIN ── -->
+            <div id="step-login" class="fade-in">
+                <div style="margin-bottom:22px">
+                    <div class="mono" style="font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase">Painel Administrativo</div>
+                    <h2 class="display" style="margin:6px 0 0;font-size:28px;font-weight:700">Bem-vindo de volta</h2>
+                    <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Informe suas credenciais institucionais.</p>
+                </div>
+
                 <?php if ($erro): ?>
-                    <div class="alert-box error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span><?= htmlspecialchars($erro) ?></span>
+                <div class="alert error" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
                     </div>
+                    <span><strong>Acesso bloqueado.</strong> <?= htmlspecialchars($erro) ?></span>
+                </div>
                 <?php endif; ?>
 
-                <!-- Etapa 1: Credenciais -->
-                <div id="etapa-1">
-                    <div class="form-kicker"><i class="fas fa-user-lock"></i> Painel Administrativo</div>
-                    <h1>Bem-vindo</h1>
-                    <p class="welcome">Acesse o painel administrativo da SEMA</p>
-                    <div class="quick-note">
-                        <i class="fas fa-circle-info"></i>
+                <div id="login-err" class="alert error hidden" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="login-form" novalidate>
+                    <input type="hidden" name="action" value="validar_credenciais">
+                    <input type="hidden" name="recaptcha_token" id="recaptcha-token">
+
+                    <div class="field">
+                        <label class="field-label" for="usuario">Usuário</label>
+                        <div class="field-wrap" id="wrap-usuario">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+                            </div>
+                            <input type="text" id="usuario" name="usuario" class="field-input"
+                                   placeholder="nome.sobrenome" autocomplete="username" required>
+                        </div>
+                        <div class="field-error hidden" id="err-usuario">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="senha">Senha</label>
+                        <div class="field-wrap" id="wrap-senha">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                            </div>
+                            <input type="password" id="senha" name="senha" class="field-input"
+                                   placeholder="••••••••" autocomplete="current-password" required>
+                            <div class="field-trail">
+                                <button type="button" class="btn-icon" id="toggle-senha" aria-label="Mostrar senha">
+                                    <svg id="eye-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="field-error hidden" id="err-senha">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;margin-top:-8px;margin-bottom:16px">
+                        <button type="button" class="btn-link" id="btn-forgot">Esqueci minha senha</button>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btn-login">
+                        Entrar no painel
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+
+                    <div class="alert info" style="margin-top:14px;margin-bottom:0">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                        </div>
                         <div>
-                            <strong>Aviso de seguranca</strong>
-                            <span>Use seu acesso institucional. Em dispositivos compartilhados, nao habilite a opcao de lembrar este navegador.</span>
+                            <strong style="color:var(--ink);font-weight:600">Aviso de segurança.</strong>
+                            Acesso restrito a servidores autorizados. Em dispositivos compartilhados, encerre a sessão ao terminar.
                         </div>
                     </div>
+                </form>
+            </div>
 
-                    <form id="loginForm">
-                        <div class="alert-box error d-none" id="erro-1">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <span></span>
-                        </div>
-                        <input type="hidden" name="recaptcha_token" id="recaptchaToken">
-                        <input type="hidden" name="action" value="validar_credenciais">
-
-                        <div class="form-group">
-                            <label class="form-label" for="usuario">Usuario</label>
-                            <div class="input-wrap">
-                                <i class="fas fa-user"></i>
-                                <input type="text" id="usuario" name="usuario" required placeholder="Digite seu usuario" autocomplete="username">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="senha">Senha</label>
-                            <div class="input-wrap">
-                                <i class="fas fa-lock"></i>
-                                <input type="password" id="senha" name="senha" required placeholder="Digite sua senha" autocomplete="current-password">
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn-login" id="btn-1">
-                            Entrar <i class="fas fa-arrow-right" style="margin-left:8px;font-size:0.85rem;"></i>
-                        </button>
-                    </form>
+            <!-- ── STEP: 2FA METHOD SELECTION ── -->
+            <div id="step-method" class="hidden">
+                <div style="margin-bottom:18px">
+                    <div style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                    </div>
+                    <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Verificação em duas etapas</h2>
+                    <p style="font-size:14px;color:var(--ink-2);line-height:1.55">
+                        Como deseja receber seu código, <strong style="color:var(--ink)" id="method-user"></strong>?
+                    </p>
                 </div>
 
-                <!-- Etapa 2: 2FA -->
-                <div id="etapa-2" class="d-none">
-                    <div class="otp-header">
-                        <i class="fas fa-shield-alt" id="otp-icon"></i>
-                        <p id="otp-text">Verificacao em duas etapas</p>
+                <button type="button" class="method-card" id="mc-email" onclick="selectMethod('email')">
+                    <div class="method-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
                     </div>
-
-                    <form id="otpForm">
-                        <div class="alert-box error d-none" id="erro-2">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <span></span>
-                        </div>
-                        <input type="hidden" name="action" value="validar_otp">
-                        <input type="hidden" name="lembrar_dispositivo" id="lembrar_dispositivo_input" value="0">
-
-                        <div class="form-group">
-                            <input type="text" class="otp-input" id="codigo" name="codigo" placeholder="000000" maxlength="6" required autocomplete="one-time-code" inputmode="numeric">
-                        </div>
-
-                        <label class="remember-device" for="lembrar_check">
-                            <input type="checkbox" id="lembrar_check">
-                            <span>
-                                Lembrar este dispositivo
-                                <small>Pular verificacao por 30 dias neste navegador</small>
-                            </span>
-                        </label>
-
-                        <button type="submit" class="btn-login" id="btn-2" style="margin-top:16px;">
-                            <i class="fas fa-check-circle" style="margin-right:8px;"></i>Verificar e Entrar
-                        </button>
-
-                        <div style="text-align:center;">
-                            <button type="button" class="btn-link-back" onclick="voltarLogin()">
-                                <i class="fas fa-arrow-left" style="margin-right:4px;"></i> Voltar
-                            </button>
-                        </div>
-                    </form>
-
-                    <div id="totp-switch" class="d-none">
-                        <div class="divider"><hr><span>ou</span><hr></div>
-                        <button type="button" class="btn-alt" onclick="toggleMetodo()" id="btn-metodo">
-                            <i class="fas fa-mobile-alt"></i> Usar App Autenticador
-                        </button>
+                    <div>
+                        <div class="method-title">E-mail institucional</div>
+                        <div class="method-desc">Enviar código para <strong id="method-email-masked"></strong></div>
                     </div>
+                </button>
 
-                    <div id="totp-promo" class="d-none">
-                        <div class="divider"><hr><span>mais seguranca</span><hr></div>
-                        <button type="button" class="btn-alt" onclick="alert('Apos entrar, acesse Meu Perfil para configurar o App Autenticador!')">
-                            <i class="fas fa-qrcode" style="color:#2563eb;"></i> Configurar App Autenticador
-                        </button>
+                <button type="button" class="method-card hidden" id="mc-app" onclick="selectMethod('app')">
+                    <div class="method-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>
                     </div>
+                    <div>
+                        <div class="method-title">Aplicativo autenticador</div>
+                        <div class="method-desc">Usar código do Google Authenticator ou similar</div>
+                    </div>
+                </button>
+
+                <button type="button" class="btn-back" onclick="goTo('login')">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
+                </button>
+            </div>
+
+            <!-- ── STEP: OTP ENTRY ── -->
+            <div id="step-otp" class="hidden">
+                <div style="margin-bottom:16px">
+                    <div id="otp-icon" style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px"></div>
+                    <h2 class="display" id="otp-title" style="font-size:24px;font-weight:700;margin-bottom:7px"></h2>
+                    <p id="otp-desc" style="font-size:13.5px;color:var(--ink-2);line-height:1.55"></p>
                 </div>
 
-                <!-- Rodape do formulario -->
-                <div style="text-align:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #f1f5f9;">
-                    <p style="font-size:0.78rem;color:#94a3b8;">Prefeitura Municipal de Pau dos Ferros/RN</p>
+                <div id="otp-err" class="alert error hidden" style="margin-bottom:12px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="otp-form" novalidate>
+                    <input type="hidden" name="action" value="validar_otp">
+                    <input type="hidden" name="lembrar_dispositivo" id="lembrar-input" value="0">
+                    <input type="hidden" name="codigo" id="codigo-hidden">
+
+                    <div class="otp-grid">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="0" aria-label="Dígito 1">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="1" aria-label="Dígito 2">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="2" aria-label="Dígito 3">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="3" aria-label="Dígito 4">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="4" aria-label="Dígito 5">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="5" aria-label="Dígito 6">
+                    </div>
+
+                    <label class="remember-wrap" style="margin-top:12px" onclick="toggleRemember()">
+                        <div class="custom-check" id="remember-check"></div>
+                        <div>
+                            <div class="remember-title">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 2v2h4V2"/></svg>
+                                Lembrar este dispositivo por 30 dias
+                            </div>
+                            <div class="remember-desc">Não solicitar verificação em duas etapas neste dispositivo.</div>
+                        </div>
+                    </label>
+
+                    <button type="submit" class="btn-primary" id="btn-otp" style="margin-top:12px">
+                        Verificar código
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:12px">
+                    <button type="button" class="btn-back" id="btn-other-method" style="margin-top:0" onclick="backFromOtp()">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                        <span id="btn-other-method-label">Outro método</span>
+                    </button>
+                    <div id="resend-wrap" class="hidden">
+                        <span id="resend-timer" style="color:var(--ink-3)">
+                            Reenviar em <span class="mono" id="resend-secs">60</span>s
+                        </span>
+                        <button type="button" class="btn-link hidden" id="btn-resend" onclick="startResend()">
+                            Reenviar código
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- ── STEP: FORGOT PASSWORD ── -->
+            <div id="step-forgot" class="hidden">
+                <div style="margin-bottom:16px">
+                    <div style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3"/><path d="M18 5l2 2"/></svg>
+                    </div>
+                    <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Recuperar acesso</h2>
+                    <p style="font-size:14px;color:var(--ink-2);line-height:1.55">
+                        Informe seu e-mail institucional. Enviaremos as instruções de recuperação.
+                    </p>
+                </div>
+
+                <div id="forgot-err" class="alert error hidden" style="margin-bottom:12px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="forgot-form" novalidate>
+                    <input type="hidden" name="action" value="recuperar_senha">
+                    <div class="field">
+                        <label class="field-label" for="forgot-email">E-mail institucional</label>
+                        <div class="field-wrap">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                            </div>
+                            <input type="email" id="forgot-email" name="email" class="field-input"
+                                   placeholder="nome@pauferros.rn.gov.br" autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div class="alert info" style="margin-bottom:14px">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        </div>
+                        <div>
+                            Não tem acesso ao e-mail cadastrado? Entre em contato com o setor de TI pelo ramal
+                            <strong class="mono" style="color:var(--ink)">2104</strong>.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btn-forgot-submit">
+                        Enviar instruções
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+
+                <button type="button" class="btn-back" onclick="goTo('login')" style="margin-top:12px">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
+                </button>
+            </div>
+
+            <!-- ── STEP: FORGOT SENT ── -->
+            <div id="step-forgot-sent" class="hidden">
+                <div style="display:inline-flex;padding:12px;border-radius:50%;background:var(--success-bg);color:var(--success);margin-bottom:16px">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                </div>
+                <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Solicitação registrada</h2>
+                <p style="font-size:14px;color:var(--ink-2);line-height:1.6;margin-bottom:16px">
+                    Recebemos a solicitação vinculada a <strong style="color:var(--ink)" id="sent-email"></strong>.
+                    A recuperação será orientada pelo suporte interno.
+                </p>
+                <div class="alert info" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    </div>
+                    <div>
+                        No momento, a redefinição de senha é feita com apoio do
+                        <strong style="color:var(--ink)"> setor de TI (ramal 2104)</strong>.
+                    </div>
+                </div>
+                <button type="button" class="btn-back" onclick="goTo('login')">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
+                </button>
+            </div>
+
+        </div><!-- /.login-card -->
+    </section>
+</div><!-- /.layout -->
+
+<footer class="login-footer">
+    <div style="display:flex;gap:16px;align-items:center">
+        <span class="mono" style="letter-spacing:.02em">SEMA · PAU DOS FERROS/RN</span>
+        <span style="opacity:.5">•</span>
+        <span>© <?= date('Y') ?> Secretaria Municipal de Meio Ambiente</span>
     </div>
+    <div class="footer-links">
+        <a href="../suporte.php">Suporte</a>
+        <a href="../privacidade.php">Privacidade</a>
+        <a href="../acessibilidade.php">Acessibilidade</a>
+    </div>
+</footer>
 
-    <footer class="login-footer">
-        <p>&copy; <?= date('Y') ?> SEMA - Secretaria Municipal de Meio Ambiente</p>
-    </footer>
+<script>
+/* ── State ── */
+const state = { maskedEmail: '', hasTotp: false, method: 'email', remember: false, user: '' };
+let resendTimer = null, resendSecs = 60;
+const ALL_STEPS = ['login','method','otp','forgot','forgot-sent'];
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const loginForm = document.getElementById('loginForm');
-        const otpForm = document.getElementById('otpForm');
-        const lembrarCheck = document.getElementById('lembrar_check');
-        const lembrarInput = document.getElementById('lembrar_dispositivo_input');
+/* ── Navigation ── */
+function goTo(name) {
+    ALL_STEPS.forEach(s => {
+        const el = document.getElementById('step-' + s);
+        if (el) el.classList.add('hidden');
+    });
+    const target = document.getElementById('step-' + name);
+    if (!target) return;
+    target.classList.remove('hidden');
+    target.classList.remove('fade-in');
+    void target.offsetWidth;
+    target.classList.add('fade-in');
 
-        lembrarCheck.addEventListener('change', () => { lembrarInput.value = lembrarCheck.checked ? '1' : '0'; });
+    // Reset passwords on back-to-login
+    if (name === 'login') {
+        document.getElementById('senha').value = '';
+        clearAlert('login-err');
+        clearFieldError('usuario');
+        clearFieldError('senha');
+        stopResendTimer();
+        clearAlert('otp-err');
+        clearAlert('forgot-err');
+        document.getElementById('forgot-email').value = '';
+        document.getElementById('mc-app').classList.add('hidden');
+        document.getElementById('method-email-masked').textContent = '';
+        document.getElementById('method-user').textContent = '';
+        state.maskedEmail = '';
+        state.hasTotp = false;
+        state.method = 'email';
+        state.remember = false;
+        state.user = '';
+    }
+}
 
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-1');
-            const orig = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border" style="margin-right:8px;"></span>Verificando...';
+/* ── Toggle password visibility ── */
+const senhaInput = document.getElementById('senha');
+const eyeIcon    = document.getElementById('eye-icon');
+document.getElementById('toggle-senha').addEventListener('click', () => {
+    const show = senhaInput.type === 'password';
+    senhaInput.type = show ? 'text' : 'password';
+    eyeIcon.innerHTML = show
+        ? '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a18.6 18.6 0 0 1-2.16 3.19"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/>'
+        : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+});
 
-            grecaptcha.ready(function() {
-                grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', {action: 'login'}).then(function(token) {
-                    document.getElementById('recaptchaToken').value = token;
-                    fetch('login.php', { method: 'POST', body: new FormData(loginForm) })
-                    .then(r => r.json())
-                    .then(data => {
-                        btn.disabled = false; btn.innerHTML = orig;
-                        if (data.success) {
-                            if (data.skip_2fa) { window.location.href = data.redirect || 'index.php'; return; }
-                            document.getElementById('erro-1').classList.add('d-none');
-                            window.maskedEmail = data.email_mascarado || '';
-                            window.authMethod = data.has_totp ? 'totp' : 'email';
-                            if (window.authMethod === 'totp') {
-                                renderTotp(); document.getElementById('totp-switch').classList.remove('d-none'); document.getElementById('totp-promo').classList.add('d-none');
-                            } else {
-                                renderEmail(); document.getElementById('totp-switch').classList.add('d-none'); document.getElementById('totp-promo').classList.remove('d-none');
-                            }
-                            document.getElementById('etapa-1').classList.add('d-none');
-                            document.getElementById('etapa-2').classList.remove('d-none');
-                            setTimeout(() => document.getElementById('codigo').focus(), 200);
-                        } else { showError('erro-1', data.error); }
-                    })
-                    .catch(() => { btn.disabled = false; btn.innerHTML = orig; showError('erro-1', 'Erro de rede.'); });
-                });
-            });
-        });
+/* ── Login form ── */
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const usuario = document.getElementById('usuario').value.trim();
+    const senha   = document.getElementById('senha').value;
 
-        otpForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-2');
-            const orig = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border" style="margin-right:8px;"></span>Validando...';
-            fetch('login.php', { method: 'POST', body: new FormData(otpForm) })
+    let ok = true;
+    if (usuario.length < 3) { showFieldError('usuario', 'Usuário inválido (mín. 3 caracteres)'); ok = false; }
+    else clearFieldError('usuario');
+    if (senha.length < 6)   { showFieldError('senha', 'A senha deve ter no mínimo 6 caracteres');  ok = false; }
+    else clearFieldError('senha');
+    if (!ok) return;
+
+    const btn = document.getElementById('btn-login');
+    setLoading(btn, true, 'Verificando…');
+    clearAlert('login-err');
+
+    grecaptcha.ready(() => {
+        grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', { action: 'login' }).then(token => {
+            document.getElementById('recaptcha-token').value = token;
+            fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
             .then(r => r.json())
             .then(data => {
-                btn.disabled = false; btn.innerHTML = orig;
-                if (data.success) { window.location.href = data.redirect || 'index.php'; }
-                else { showError('erro-2', data.error); }
+                setLoading(btn, false);
+                btn.innerHTML = 'Entrar no painel ' + iconArrow();
+                if (data.success) {
+                    if (data.skip_2fa) { window.location.href = data.redirect || 'index.php'; return; }
+                    state.user = usuario;
+                    state.maskedEmail = data.email_mascarado || '';
+                    state.hasTotp     = !!data.has_totp;
+                    document.getElementById('mc-app').classList.add('hidden');
+
+                    if (state.hasTotp && state.maskedEmail) {
+                        // Both methods — show selector
+                        document.getElementById('method-user').textContent = usuario;
+                        document.getElementById('method-email-masked').textContent = state.maskedEmail;
+                        document.getElementById('mc-app').classList.remove('hidden');
+                        goTo('method');
+                    } else {
+                        state.method = state.hasTotp ? 'app' : 'email';
+                        renderOtp();
+                        goTo('otp');
+                        setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
+                    }
+                } else {
+                    showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+                }
             })
-            .catch(() => { btn.disabled = false; btn.innerHTML = orig; showError('erro-2', 'Erro de rede.'); });
+            .catch(() => {
+                setLoading(btn, false);
+                btn.innerHTML = 'Entrar no painel ' + iconArrow();
+                showAlert('login-err', 'Erro de rede. Tente novamente.');
+            });
         });
     });
+});
 
-    function showError(id, msg) { const b = document.getElementById(id); b.querySelector('span').textContent = msg; b.classList.remove('d-none'); }
+/* ── 2FA method selection ── */
+function selectMethod(method) {
+    state.method = method;
+    renderOtp();
+    goTo('otp');
+    setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
+}
 
-    function voltarLogin() {
-        document.getElementById('etapa-2').classList.add('d-none');
-        document.getElementById('etapa-1').classList.remove('d-none');
-        document.getElementById('senha').value = '';
-        document.getElementById('codigo').value = '';
-        document.getElementById('erro-1').classList.add('d-none');
-        document.getElementById('erro-2').classList.add('d-none');
+function renderOtp() {
+    const isApp = state.method === 'app';
+    const icon  = document.getElementById('otp-icon');
+    const title = document.getElementById('otp-title');
+    const desc  = document.getElementById('otp-desc');
+    const resendWrap = document.getElementById('resend-wrap');
+    const resendTimerEl = document.getElementById('resend-timer');
+    const resendButton = document.getElementById('btn-resend');
+    const otherMethodButton = document.getElementById('btn-other-method');
+    const otherMethodLabel = document.getElementById('btn-other-method-label');
+    const hasMultipleMethods = state.hasTotp && !!state.maskedEmail;
+
+    if (isApp) {
+        icon.innerHTML  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>';
+        title.textContent = 'Código do autenticador';
+        desc.innerHTML    = 'Abra seu aplicativo autenticador e informe o código de 6 dígitos gerado para <strong>SEMA/Pau dos Ferros</strong>.';
+        resendWrap.classList.add('hidden');
+        stopResendTimer();
+    } else {
+        icon.innerHTML  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>';
+        title.textContent = 'Código por e-mail';
+        desc.innerHTML    = 'Enviamos um código de 6 dígitos para <strong>' + esc(state.maskedEmail) + '</strong>. Verifique sua caixa de entrada.';
+        resendWrap.classList.remove('hidden');
+        resendTimerEl.classList.remove('hidden');
+        resendButton.classList.add('hidden');
+        startResend();
     }
 
-    function toggleMetodo() { window.authMethod = window.authMethod === 'totp' ? 'email' : 'totp'; window.authMethod === 'totp' ? renderTotp() : renderEmail(); }
+    otherMethodLabel.textContent = hasMultipleMethods ? 'Outro método' : 'Voltar ao login';
+    otherMethodButton.classList.remove('hidden');
 
-    function renderTotp() {
-        document.getElementById('otp-icon').className = 'fas fa-mobile-alt';
-        document.getElementById('otp-text').innerHTML = 'Abra seu <strong>App Autenticador</strong> e informe o codigo de 6 digitos.';
-        const b = document.getElementById('btn-metodo'); if (b) b.innerHTML = '<i class="fas fa-envelope"></i> Usar codigo por E-mail';
+    document.querySelectorAll('.otp-digit').forEach(d => { d.value = ''; d.classList.remove('has-error'); });
+    clearAlert('otp-err');
+    // Reset remember device
+    state.remember = false;
+    const chk = document.getElementById('remember-check');
+    chk.classList.remove('on'); chk.innerHTML = '';
+    document.getElementById('lembrar-input').value = '0';
+}
+
+function backFromOtp() {
+    stopResendTimer();
+    if (state.hasTotp && state.maskedEmail) {
+        goTo('method');
+    } else {
+        goTo('login');
     }
-    function renderEmail() {
-        document.getElementById('otp-icon').className = 'fas fa-envelope-open-text';
-        document.getElementById('otp-text').innerHTML = 'Informe o codigo enviado para <strong>' + window.maskedEmail + '</strong>';
-        const b = document.getElementById('btn-metodo'); if (b) b.innerHTML = '<i class="fas fa-mobile-alt"></i> Usar App Autenticador';
+}
+
+/* ── OTP digit inputs ── */
+const digits = document.querySelectorAll('.otp-digit');
+digits.forEach((inp, i) => {
+    inp.addEventListener('input', e => {
+        const v = e.target.value.replace(/\D/g, '').slice(-1);
+        e.target.value = v;
+        e.target.classList.remove('has-error');
+        if (v && i < 5) digits[i + 1].focus();
+    });
+    inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) digits[i - 1].focus();
+        if (e.key === 'ArrowLeft'  && i > 0) { e.preventDefault(); digits[i - 1].focus(); }
+        if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); digits[i + 1].focus(); }
+    });
+    inp.addEventListener('paste', e => {
+        const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+        if (!t) return;
+        e.preventDefault();
+        [...t].forEach((c, j) => { if (digits[j]) digits[j].value = c; });
+        digits[Math.min(t.length, 5)].focus();
+    });
+});
+
+/* ── OTP submit ── */
+document.getElementById('otp-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const code = [...digits].map(d => d.value).join('');
+    if (code.length < 6) {
+        digits.forEach(d => { if (!d.value) d.classList.add('has-error'); });
+        showAlert('otp-err', 'Informe os 6 dígitos do código.');
+        return;
     }
-    </script>
+    document.getElementById('codigo-hidden').value = code;
+
+    const btn = document.getElementById('btn-otp');
+    setLoading(btn, true, 'Validando…');
+    clearAlert('otp-err');
+
+    fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('otp-form')) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Verificar código ' + iconArrow();
+        if (data.success) {
+            window.location.href = data.redirect || 'index.php';
+        } else {
+            digits.forEach(d => d.classList.add('has-error'));
+            showAlert('otp-err', esc(data.error));
+        }
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Verificar código ' + iconArrow();
+        showAlert('otp-err', 'Erro de rede. Tente novamente.');
+    });
+});
+
+/* ── Remember device ── */
+function toggleRemember() {
+    state.remember = !state.remember;
+    const chk = document.getElementById('remember-check');
+    if (state.remember) {
+        chk.classList.add('on');
+        chk.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    } else {
+        chk.classList.remove('on');
+        chk.innerHTML = '';
+    }
+    document.getElementById('lembrar-input').value = state.remember ? '1' : '0';
+}
+
+/* ── Resend timer ── */
+function startResend() {
+    stopResendTimer();
+    resendSecs = 60;
+    document.getElementById('resend-secs').textContent = '60';
+    document.getElementById('resend-timer').classList.remove('hidden');
+    document.getElementById('btn-resend').classList.add('hidden');
+    resendTimer = setInterval(() => {
+        resendSecs--;
+        document.getElementById('resend-secs').textContent = String(resendSecs).padStart(2, '0');
+        if (resendSecs <= 0) {
+            stopResendTimer();
+            document.getElementById('resend-timer').classList.add('hidden');
+            document.getElementById('btn-resend').classList.remove('hidden');
+        }
+    }, 1000);
+}
+
+function stopResendTimer() {
+    if (resendTimer) {
+        clearInterval(resendTimer);
+        resendTimer = null;
+    }
+}
+
+document.getElementById('btn-resend').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    clearAlert('otp-err');
+
+    const formData = new FormData();
+    formData.append('action', 'reenviar_otp_email');
+
+    fetch('login.php', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (!data.success) {
+            showAlert('otp-err', esc(data.error));
+            return;
+        }
+
+        state.maskedEmail = data.email_mascarado || state.maskedEmail;
+        if (state.method === 'email') {
+            document.getElementById('otp-desc').innerHTML = 'Enviamos um código de 6 dígitos para <strong>' + esc(state.maskedEmail) + '</strong>. Verifique sua caixa de entrada.';
+        }
+        startResend();
+        showAlert('otp-err', esc(data.message));
+        document.getElementById('otp-err').classList.remove('error');
+        document.getElementById('otp-err').classList.add('info');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        showAlert('otp-err', 'Erro de rede. Tente novamente.');
+    });
+});
+
+/* ── Forgot password ── */
+document.getElementById('btn-forgot').addEventListener('click', () => goTo('forgot'));
+document.getElementById('forgot-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email || !email.includes('@') || !email.includes('.')) {
+        showAlert('forgot-err', 'Informe um e-mail válido.');
+        return;
+    }
+    const btn = document.getElementById('btn-forgot-submit');
+    setLoading(btn, true, 'Enviando…');
+    clearAlert('forgot-err');
+    fetch('login.php', { method: 'POST', body: new FormData(this) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Enviar instruções ' + iconArrow();
+        document.getElementById('sent-email').textContent = data.email_mascarado || email;
+        goTo('forgot-sent');
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Enviar instruções ' + iconArrow();
+        showAlert('forgot-err', 'Erro de rede. Tente novamente.');
+    });
+});
+
+/* ── Helpers ── */
+function setLoading(btn, on, label) {
+    btn.disabled = on;
+    if (on) btn.innerHTML = '<span class="spinner"></span>' + (label || '');
+}
+
+function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    const span = el.querySelector('[data-msg]');
+    if (span) span.innerHTML = msg;
+    el.classList.remove('info');
+    el.classList.add('error');
+    el.classList.remove('hidden');
+}
+
+function clearAlert(id) { document.getElementById(id).classList.add('hidden'); }
+
+function showFieldError(field, msg) {
+    document.getElementById('wrap-' + field)?.classList.add('has-error');
+    const err = document.getElementById('err-' + field);
+    if (err) { err.querySelector('span').textContent = msg; err.classList.remove('hidden'); }
+}
+
+function clearFieldError(field) {
+    document.getElementById('wrap-' + field)?.classList.remove('has-error');
+    document.getElementById('err-' + field)?.classList.add('hidden');
+}
+
+function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function iconArrow() {
+    return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+}
+</script>
 </body>
 </html>
