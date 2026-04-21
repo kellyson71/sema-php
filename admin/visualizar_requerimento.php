@@ -1159,6 +1159,68 @@ include 'header.php';
         background: var(--primary-600);
     }
 
+    .detail-actions-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .detail-actions-primary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .detail-actions-secondary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .detail-actions-toolbar .btn {
+        border-radius: 12px;
+        min-height: 42px;
+        font-weight: 600;
+        box-shadow: none !important;
+    }
+
+    .detail-actions-primary .btn {
+        padding-inline: 1rem;
+    }
+
+    .detail-actions-highlight {
+        border-radius: 16px;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f5f9ff 0%, #eef4ff 100%);
+        border: 1px solid #dbe7ff;
+    }
+
+    .documents-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .documents-toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .documents-empty {
+        padding: 1.5rem;
+        border: 1px dashed var(--gray-300);
+        border-radius: 12px;
+        text-align: center;
+        color: var(--gray-500);
+        background: #fafafa;
+    }
+
     /* Estilos específicos para o modal de pré-visualização de email */
     #emailPreviewModal .modal-dialog {
         max-width: 800px;
@@ -1348,6 +1410,11 @@ include 'header.php';
              min-width: auto;
              flex: 1;
          }
+
+         .detail-actions-primary,
+         .detail-actions-secondary {
+             flex-direction: column;
+         }
      }
 
      /* Estilos para a mensagem tutorial discreta */
@@ -1445,6 +1512,11 @@ include 'header.php';
 $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
 $isIndeferido = (strtolower($requerimento['status']) === 'indeferido');
 $isBlocked = $isFinalized || $isIndeferido;
+$activeTab = $_GET['tab'] ?? 'informacoes';
+$tabsPermitidas = ['informacoes', 'documentos', 'historico'];
+if (!in_array($activeTab, $tabsPermitidas, true)) {
+    $activeTab = 'informacoes';
+}
 ?>
 
 <div class="container-fluid px-4">
@@ -1507,20 +1579,25 @@ $isBlocked = $isFinalized || $isIndeferido;
     <!-- ABAS DE INFORMAÇÕES -->
     <ul class="nav nav-tabs mb-3" id="requerimentoTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab">
-                Informações Completas
+            <button class="nav-link <?= $activeTab === 'informacoes' ? 'active' : '' ?>" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab">
+                <i class="fas fa-circle-info me-1"></i>Informações
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab">
-                Histórico
+            <button class="nav-link <?= $activeTab === 'documentos' ? 'active' : '' ?>" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab">
+                <i class="fas fa-folder-open me-1"></i>Documentos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $activeTab === 'historico' ? 'active' : '' ?>" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab">
+                <i class="fas fa-clock-rotate-left me-1"></i>Histórico
             </button>
         </li>
     </ul>
 
     <div class="tab-content" id="requerimentoTabsContent">
         <!-- Aba: Informações Completas -->
-        <div class="tab-pane fade show active" id="informacoes" role="tabpanel">
+        <div class="tab-pane fade <?= $activeTab === 'informacoes' ? 'show active' : '' ?>" id="informacoes" role="tabpanel">
             <!-- Dados do Requerimento -->
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
@@ -1879,20 +1956,29 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
             </div>
 
-            <!-- Documentos -->
+        </div>
+
+        <div class="tab-pane fade <?= $activeTab === 'documentos' ? 'show active' : '' ?>" id="documentos" role="tabpanel">
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
                     <i class="fas fa-folder-open icon"></i>
-                    <h6>Documentos (<?php echo count($documentos); ?>)</h6>
-                    <div class="ms-auto">
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="window.open('protocolo-capa.php?id=<?php echo $id; ?>', '_blank')" title="Baixar capa do processo">
-                            <i class="fas fa-file-alt me-1"></i>Baixar Capa
-                        </button>
-                        <?php if (count($documentos) > 0): ?>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadAllFiles()" title="Baixar todos os documentos">
-                                <i class="fas fa-download me-1"></i>Baixar Todos
+                    <h6>Documentos do Processo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="documents-toolbar">
+                        <div class="text-muted small">
+                            <?php echo count($documentos); ?> documento(s) anexado(s) neste processo.
+                        </div>
+                        <div class="documents-toolbar-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.open('protocolo-capa.php?id=<?php echo $id; ?>', '_blank')" title="Baixar capa do processo">
+                                <i class="fas fa-file-alt me-1"></i>Baixar Capa
                             </button>
-                        <?php endif; ?>
+                            <?php if (count($documentos) > 0): ?>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="downloadAllFiles()" title="Baixar todos os documentos">
+                                    <i class="fas fa-download me-1"></i>Baixar Todos
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -1951,20 +2037,29 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Nenhum documento anexado a este requerimento.
-                            </div>
+                        <div class="documents-empty">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhum documento anexado a este requerimento.
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
 
+            <div class="modern-card mb-3" id="secao-docs-assinados" style="display:none">
+                <div class="modern-card-header">
+                    <i class="fas fa-file-signature icon"></i>
+                    <h6>Documentos Assinados Digitalmente</h6>
+                    <span class="badge ms-auto" id="badge-docs-count"
+                          style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="docs-assinados-grid" class="p-3" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Aba: Histórico -->
-        <div class="tab-pane fade" id="historico" role="tabpanel">
+        <div class="tab-pane fade <?= $activeTab === 'historico' ? 'show active' : '' ?>" id="historico" role="tabpanel">
 
             <!-- Tempo por Etapa -->
             <div class="modern-card mb-3">
@@ -2180,16 +2275,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                                          <?php else: ?>
                           <!-- Barra de Ações Modernas -->
                           <div class="p-4">
-                              <p class="text-muted small mb-3 d-flex align-items-center gap-2">
-                                  <i class="fas fa-info-circle text-primary"></i>
-                                  Selecione a ação desejada para este processo:
-                              </p>
+                              <div class="detail-actions-toolbar">
                               
                               <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
 
                               <?php if ($_SESSION['admin_nivel'] === 'fiscal'): ?>
                               <!-- Destaque principal para o fiscal: concluir análise -->
-                              <div class="mb-3 pb-3 border-bottom">
+                              <div class="detail-actions-highlight">
                                   <form method="post" action="">
                                       <button type="submit" name="enviar_secretario" class="btn btn-lg fw-semibold text-white w-100 shadow" style="background:#8b5cf6;" onclick="return confirm('Confirmar conclusão da análise e envio ao Secretário para emissão do alvará?')">
                                           <i class="fas fa-paper-plane me-2"></i>Concluir análise e enviar ao Secretário
@@ -2201,7 +2293,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                               </div>
                               <?php endif; ?>
 
-                              <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                              <div class="detail-actions-primary">
                                   <!-- Botão envio analista -> fiscal -->
                                   <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
                                       <form method="post" action="" style="display: inline;">
@@ -2221,7 +2313,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                   <?php endif; ?>
                               </div>
 
-                              <div class="d-flex flex-wrap gap-2">
+                              <div class="detail-actions-secondary">
                                   <button type="button" class="btn btn-sky fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#boletoModal">
                                       <i class="fas fa-file-invoice me-2"></i>Enviar Boleto
@@ -2254,6 +2346,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                       <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
                                   </a>
                               </div>
+                              </div>
                           </div>
                           <!-- Pareceres já gerados -->
                           <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
@@ -2263,22 +2356,6 @@ $isBlocked = $isFinalized || $isIndeferido;
         </div>
     </div>
 
-    <!-- Documentos Assinados -->
-    <div class="row mt-4" id="secao-docs-assinados" style="display:none">
-        <div class="col-12">
-            <div class="modern-card">
-                <div class="modern-card-header">
-                    <i class="fas fa-file-signature icon"></i>
-                    <h6>Documentos Assinados Digitalmente</h6>
-                    <span class="badge ms-auto" id="badge-docs-count"
-                          style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
-                </div>
-                <div class="card-body p-0">
-                    <div id="docs-assinados-grid" class="p-3" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════

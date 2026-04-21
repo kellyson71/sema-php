@@ -136,6 +136,9 @@ $dataPainelLabel = sprintf(
 );
 
 $rotaFiscal = $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php';
+$ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
+$ctaFilaHref = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
+$ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
 ?>
 
 <style>
@@ -145,8 +148,12 @@ $rotaFiscal = $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.ph
     .hero-title { margin:0 0 8px; font-size:2rem; font-weight:800; color:var(--ink); line-height:1.05; }
     .hero-subtitle { margin:0 0 18px; max-width:760px; color:var(--muted); font-size:1rem; line-height:1.5; }
     .hero-actions { display:flex; flex-wrap:wrap; gap:10px; }
-    .hero-actions .btn { border-radius:14px; min-height:42px; padding:0 16px; font-weight:700; }
-    .hero-actions .btn-primary { background:var(--primary); border-color:var(--primary); }
+    .hero-cta { border-radius:14px; min-height:44px; padding:0 18px; font-weight:700; border:1px solid var(--primary-soft-2); background:var(--primary); color:#fff; display:inline-flex; align-items:center; gap:8px; box-shadow:0 10px 18px rgba(20,83,45,.12); }
+    .hero-cta:hover { background:var(--primary-strong); color:#fff; transform:translateY(-1px); }
+    .hero-cta-secondary { border-radius:14px; min-height:44px; padding:0 16px; font-weight:700; border:1px solid var(--line); background:#fff; color:var(--ink); display:inline-flex; align-items:center; gap:8px; }
+    .hero-cta-secondary:hover { border-color:var(--primary-soft-2); color:var(--primary); }
+    .hero-helper { margin-top:12px; display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 12px; border-radius:999px; background:var(--surface-soft); color:var(--muted); font-size:.8rem; font-weight:600; }
+    .hero-helper i { color:var(--primary); }
     .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
     .metric-card, .panel-card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:var(--card-shadow); }
     .metric-card { padding:22px; }
@@ -188,7 +195,12 @@ $rotaFiscal = $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.ph
         <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?>.</h2>
         <p class="hero-subtitle">Você tem <strong><?= $naoVisualizados ?></strong> requerimentos novos e <strong><?= $emAnalise ?></strong> em análise hoje.</p>
         <div class="hero-actions">
-            <a href="requerimentos.php?nao_visualizados=1" class="btn btn-primary">Abrir fila não lida</a>
+            <a href="<?= htmlspecialchars($ctaFilaHref) ?>" class="hero-cta"><i class="fas <?= htmlspecialchars($ctaFilaIcon) ?>"></i><?= htmlspecialchars($ctaFilaLabel) ?></a>
+            <a href="requerimentos.php" class="hero-cta-secondary"><i class="fas fa-list"></i>Ver todos os requerimentos</a>
+        </div>
+        <div class="hero-helper">
+            <i class="fas fa-arrow-rotate-left"></i>
+            A fila rápida abre só os não vistos. Na listagem, há um atalho para voltar ao total.
         </div>
     </section>
 

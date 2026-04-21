@@ -141,11 +141,12 @@ $tipoSiglas = [
 ];
 
 $statusCards = [
-    ['label' => 'Todos', 'value' => (int) $estatisticas['total'], 'status' => ''],
-    ['label' => 'Em análise', 'value' => (int) $estatisticas['em_analise'], 'status' => 'Em análise'],
-    ['label' => 'Pendente', 'value' => (int) $estatisticas['pendentes'], 'status' => 'Pendente'],
-    ['label' => 'Finalizado', 'value' => (int) $estatisticas['finalizados'], 'status' => 'Finalizado'],
-    ['label' => 'Indeferido', 'value' => (int) $estatisticas['indeferidos'], 'status' => 'Indeferido'],
+    ['label' => 'Todos', 'value' => (int) $estatisticas['total'], 'status' => '', 'icon' => 'fa-layer-group'],
+    ['label' => 'Não vistos', 'value' => (int) $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
+    ['label' => 'Em análise', 'value' => (int) $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
+    ['label' => 'Pendente', 'value' => (int) $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
+    ['label' => 'Finalizado', 'value' => (int) $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
+    ['label' => 'Indeferido', 'value' => (int) $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
 
 function buildReqUrl(array $overrides = []): string
@@ -189,9 +190,17 @@ include 'header.php';
 
         <section class="req-summary-strip">
             <?php foreach ($statusCards as $card): ?>
-                <?php $isActive = $filtroStatus === $card['status'] || ($card['status'] === '' && $filtroStatus === ''); ?>
-                <a href="<?= htmlspecialchars(buildReqUrl(['status' => $card['status'], 'pagina' => 1])) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?>">
-                    <span><?= htmlspecialchars($card['label']) ?></span>
+                <?php
+                $isUnreadCard = !empty($card['unread']);
+                $isActive = $isUnreadCard
+                    ? $filtroNaoVisualizados
+                    : ($filtroStatus === $card['status'] || ($card['status'] === '' && $filtroStatus === '' && !$filtroNaoVisualizados));
+                $summaryUrl = $isUnreadCard
+                    ? buildReqUrl(['nao_visualizados' => 1, 'status' => '', 'pagina' => 1])
+                    : buildReqUrl(['status' => $card['status'], 'nao_visualizados' => '', 'pagina' => 1]);
+                ?>
+                <a href="<?= htmlspecialchars($summaryUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?> <?= $isUnreadCard ? 'summary-chip-unread' : '' ?>">
+                    <span><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i><?= htmlspecialchars($card['label']) ?></span>
                     <strong><?= (int) $card['value'] ?></strong>
                 </a>
             <?php endforeach; ?>
@@ -221,7 +230,20 @@ include 'header.php';
                 </select>
                 <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
                 <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+                <?php if ($filtroNaoVisualizados): ?>
+                    <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
+                        <i class="fas fa-eye"></i> Ver todos novamente
+                    </a>
+                <?php endif; ?>
             </form>
+            <?php if ($filtroNaoVisualizados): ?>
+                <div class="active-filter-row">
+                    <span class="active-filter-chip">
+                        <span class="active-filter-dot"></span>
+                        Mostrando apenas não visualizados
+                    </span>
+                </div>
+            <?php endif; ?>
         </section>
 
         <!-- Alertas -->
@@ -244,11 +266,14 @@ include 'header.php';
                         ];
                         $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
                         ?>
-                        <article class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?>">
+                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?>">
                             <div class="req-list-main">
                                 <div class="req-list-top">
                                     <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                                     <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                                    <?php if ($req['visualizado'] == 0): ?>
+                                        <span class="req-unread-pill"><span class="req-unread-dot"></span>Não visto</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="req-name"><?= htmlspecialchars($req['requerente']) ?></div>
                                 <div class="req-type-row">
@@ -258,9 +283,9 @@ include 'header.php';
                             </div>
                             <div class="req-list-side">
                                 <div class="req-date"><?= formataDataBR($req['data_envio']) ?></div>
-                                <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="req-open-button">Abrir</a>
+                                <span class="req-open-button">Abrir <i class="fas fa-arrow-right"></i></span>
                             </div>
-                        </article>
+                        </a>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <div class="req-empty">
