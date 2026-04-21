@@ -407,7 +407,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
         .sidebar-utility {
             margin-top: 0;
-            padding: 12px 14px 14px;
+            padding: 12px 0 0;
             border-radius: 0;
             border-top: 1px solid rgba(255,255,255,.10);
             background: rgba(0,0,0,.12);
@@ -418,7 +418,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             color: rgba(255,255,255,.55);
             text-transform: uppercase;
             letter-spacing: .08em;
-            margin-bottom: 8px;
+            margin: 0 14px 8px;
         }
 
         /* Botões pastel reutilizáveis */
@@ -438,12 +438,18 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: flex;
             align-items: center;
             gap: 10px;
-            width: 100%;
+            width: calc(100% - 28px);
+            margin: 0 14px;
             color: rgba(255,255,255,.8);
             padding: 10px 12px;
             border-radius: 14px;
             font-size: .84rem;
             transition: background-color .2s ease, color .2s ease;
+        }
+
+        .sidebar-utility-link + .sidebar-utility-action,
+        .sidebar-utility-action + .sidebar-utility-action {
+            margin-top: 8px;
         }
 
         .sidebar-utility-link:hover,
@@ -453,7 +459,8 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .sidebar-footer {
-            padding: 14px 10px 4px;
+            padding: 14px 14px 12px;
+            background: rgba(0,0,0,.12);
         }
 
         .sidebar-version {

@@ -332,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     echo json_encode([
         'success' => true,
         'email_mascarado' => $emailMascarado,
-        'message' => 'A redefinição online ainda não está disponível. Entre em contato com o setor de TI pelo ramal 2104 para recuperar seu acesso.'
+        'message' => 'A redefinição online ainda não está disponível. Entre em contato com o desenvolvedor para recuperar seu acesso.'
     ]);
     exit;
 }
@@ -350,23 +350,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <style>
         :root {
-            --ph: 225;
-            --primary:     oklch(0.48 0.16 var(--ph));
-            --primary-600: oklch(0.42 0.17 var(--ph));
-            --primary-700: oklch(0.36 0.17 var(--ph));
-            --primary-50:  oklch(0.97 0.02 var(--ph));
-            --primary-100: oklch(0.94 0.04 var(--ph));
-            --ink:   oklch(0.20 0.02 260);
-            --ink-2: oklch(0.40 0.02 260);
-            --ink-3: oklch(0.60 0.015 260);
-            --line:  oklch(0.92 0.008 260);
-            --line-2:oklch(0.86 0.012 260);
-            --bg:    oklch(0.985 0.004 260);
+            --primary: #009851;
+            --primary-600: #007840;
+            --primary-700: #0b5d38;
+            --primary-50: #e6f7ef;
+            --primary-100: #cfeedd;
+            --ink: #10233d;
+            --ink-2: #475569;
+            --ink-3: #64748b;
+            --line: #e2e8f0;
+            --line-2: #cbd5e1;
+            --bg: #f8fafc;
             --card:  #ffffff;
-            --danger:    oklch(0.55 0.19 28);
-            --danger-bg: oklch(0.97 0.03 28);
-            --success:    oklch(0.58 0.14 155);
-            --success-bg: oklch(0.97 0.03 155);
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --success: #16a34a;
+            --success-bg: #f0fdf4;
             --radius:    10px;
             --radius-lg: 14px;
             --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.10);
@@ -433,21 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         .brand-middle p {
             font-size: 15px; line-height: 1.6; max-width: 460px;
-            color: rgba(255,255,255,.82); margin-bottom: 24px;
+            color: rgba(255,255,255,.82);
         }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 500px; }
-        .stat-card {
-            padding: 13px 16px; border-radius: 10px;
-            background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
-        }
-        .stat-value { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
-        .stat-label { font-size: 11.5px; opacity: .72; margin-top: 2px; }
-        .brand-footer {
-            position: relative; z-index: 1; margin-top: 32px;
-            display: flex; gap: 16px; align-items: center;
-            font-size: 12px; color: rgba(255,255,255,.65);
-        }
-        .brand-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.4); }
 
         /* ── Form Panel ── */
         .form-panel {
@@ -676,32 +662,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="brand-middle">
             <h1 class="display">Secretaria Municipal<br>de Meio Ambiente</h1>
             <p>Painel de gestão de alvarás, pareceres técnicos e licenciamento ambiental do município de Pau dos Ferros/RN.</p>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value display">1.248</div>
-                    <div class="stat-label">Processos ativos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value display">3.612</div>
-                    <div class="stat-label">Pareceres emitidos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value display">24</div>
-                    <div class="stat-label">Analistas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value display">4.2 dias</div>
-                    <div class="stat-label">Tempo médio</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="brand-footer">
-            <span class="mono">v2.4.1</span>
-            <span class="brand-dot"></span>
-            <span class="mono">ISO 27001</span>
-            <span class="brand-dot"></span>
-            <span class="mono">LGPD</span>
         </div>
     </aside>
 
@@ -930,8 +890,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                         </div>
                         <div>
-                            Não tem acesso ao e-mail cadastrado? Entre em contato com o setor de TI pelo ramal
-                            <strong class="mono" style="color:var(--ink)">2104</strong>.
+                            Não tem acesso ao e-mail cadastrado? Entre em contato com o desenvolvedor.
                         </div>
                     </div>
 
@@ -955,15 +914,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Solicitação registrada</h2>
                 <p style="font-size:14px;color:var(--ink-2);line-height:1.6;margin-bottom:16px">
                     Recebemos a solicitação vinculada a <strong style="color:var(--ink)" id="sent-email"></strong>.
-                    A recuperação será orientada pelo suporte interno.
+                    A recuperação será orientada pelo desenvolvedor.
                 </p>
                 <div class="alert info" style="margin-bottom:16px">
                     <div class="alert-icon">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                     </div>
                     <div>
-                        No momento, a redefinição de senha é feita com apoio do
-                        <strong style="color:var(--ink)"> setor de TI (ramal 2104)</strong>.
+                        No momento, a redefinição de senha é feita diretamente com o desenvolvedor.
                     </div>
                 </div>
                 <button type="button" class="btn-back" onclick="goTo('login')">
