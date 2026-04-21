@@ -2,6 +2,7 @@
 require_once 'conexao.php';
 require_once 'helpers.php';
 require_once '../includes/email_service.php';
+require_once '../includes/pagamento_helpers.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
 
@@ -74,6 +75,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
     } catch (PDOException $e) {
         $mensagem = "Erro ao marcar como não lido: " . $e->getMessage();
         $mensagemTipo = "danger";
+    }
+}
+
+// Processar envio manual de boleto
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamento'])) {
+    $boletoUrl = trim($_POST['boleto_url'] ?? '');
+    $instrucoesBoleto = trim($_POST['instrucoes_boleto'] ?? '');
+    $arquivoBoleto = $_FILES['boleto_pdf'] ?? null;
+    $arquivoFoiEnviado = $arquivoBoleto && ($arquivoBoleto['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+    if ($boletoUrl === '' && !$arquivoFoiEnviado) {
+        $mensagem = "Informe um link do boleto ou anexe o PDF do boleto.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $pagamentoAtual = buscarPagamentoRequerimento($pdo, $id);
+            if ($pagamentoAtual) {
+                $stmt = $pdo->prepare("
+                    UPDATE requerimento_pagamentos
+                    SET boleto_url = ?, instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?, data_atualizacao = NOW()
+                    WHERE requerimento_id = ?
+                ");
+                $stmt->execute([
+                    $boletoUrl ?: null,
+                    $instrucoesBoleto ?: null,
+                    $_SESSION['admin_id'],
+                    $id
+                ]);
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO requerimento_pagamentos (requerimento_id, boleto_url, instrucoes, enviado_em, admin_envio_id)
+                    VALUES (?, ?, ?, NOW(), ?)
+                ");
+                $stmt->execute([
+                    $id,
+                    $boletoUrl ?: null,
+                    $instrucoesBoleto ?: null,
+                    $_SESSION['admin_id']
+                ]);
+            }
+
+            if ($arquivoFoiEnviado) {
+                removerDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
+                $salvouArquivo = salvarDocumentoPagamento($pdo, $id, $requerimento['protocolo'], $arquivoBoleto, 'boleto_pagamento_admin');
+                if ($salvouArquivo === false) {
+                    throw new RuntimeException('Não foi possível salvar o PDF do boleto. Envie um arquivo PDF válido.');
+                }
+            }
+
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $acao = "Enviou boleto para pagamento";
+            if ($boletoUrl !== '') {
+                $acao .= " com link externo";
+            }
+            if ($arquivoFoiEnviado) {
+                $acao .= " e PDF do boleto";
+            }
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+            $pdo->commit();
+
+            $emailService = new EmailService();
+            $emailEnviado = $emailService->enviarEmailBoleto(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
+                gerarUrlPagamento($id, $requerimento['protocolo']),
+                $instrucoesBoleto,
+                $id
+            );
+
+            $requerimento = buscarDadosRequerimento($pdo, $id);
+            $mensagem = $emailEnviado
+                ? "✅ Boleto enviado para pagamento com sucesso."
+                : "⚠️ Boleto registrado no sistema, mas houve falha no envio do email. O link pode ser reenviado depois.";
+            $mensagemTipo = $emailEnviado ? "success" : "warning";
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $mensagem = "Erro ao enviar boleto: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
     }
 }
 
@@ -386,6 +476,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario']))
 $stmt = $pdo->prepare("SELECT * FROM documentos WHERE requerimento_id = ? ORDER BY id");
 $stmt->execute([$id]);
 $documentos = $stmt->fetchAll();
+
+$pagamento = buscarPagamentoRequerimento($pdo, $id);
+$documentoBoleto = buscarDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
+$documentoComprovanteBoleto = buscarDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
 
 // Buscar histórico de ações
 $stmt = $pdo->prepare("
@@ -1716,6 +1810,71 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
             <?php endif; ?>
 
+            <div class="modern-card mb-3">
+                <div class="modern-card-header">
+                    <i class="fas fa-receipt icon"></i>
+                    <h6>Pagamento por Boleto</h6>
+                </div>
+                <div class="card-body">
+                    <?php if ($pagamento): ?>
+                        <div class="data-row">
+                            <div class="data-label">Status do pagamento:</div>
+                            <div class="data-value">
+                                <?php echo !empty($documentoComprovanteBoleto) ? 'Comprovante enviado pelo requerente' : 'Boleto enviado e aguardando pagamento'; ?>
+                            </div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Enviado em:</div>
+                            <div class="data-value"><?php echo !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : 'Não informado'; ?></div>
+                        </div>
+                        <?php if (!empty($pagamento['boleto_url'])): ?>
+                            <div class="data-row">
+                                <div class="data-label">Link do boleto:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo htmlspecialchars($pagamento['boleto_url']); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
+                                        Abrir boleto externo
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($pagamento['instrucoes'])): ?>
+                            <div class="data-row">
+                                <div class="data-label">Instruções:</div>
+                                <div class="data-value"><?php echo nl2br(htmlspecialchars($pagamento['instrucoes'])); ?></div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($documentoBoleto): ?>
+                            <div class="data-row">
+                                <div class="data-label">PDF do boleto:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
+                                        <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($documentoComprovanteBoleto): ?>
+                            <div class="data-row">
+                                <div class="data-label">Comprovante enviado:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo '../uploads/' . ltrim($documentoComprovanteBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#059669;">
+                                        <?php echo htmlspecialchars($documentoComprovanteBoleto['nome_original']); ?>
+                                    </a>
+                                    <div class="text-muted small mt-1">
+                                        Recebido em <?php echo formataData($documentoComprovanteBoleto['data_upload']); ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhum boleto foi enviado para este requerimento até o momento.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <!-- Documentos -->
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
@@ -1738,6 +1897,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <?php
                             $iconClass = "fas fa-file";
                             $iconColor = "#6b7280";
+                            $tituloDocumento = $doc['nome_original'];
+
+                            if ($doc['campo_formulario'] === 'boleto_pagamento_admin') {
+                                $tituloDocumento = 'Boleto enviado pela equipe';
+                            } elseif ($doc['campo_formulario'] === 'comprovante_pagamento_boleto') {
+                                $tituloDocumento = 'Comprovante de pagamento do requerente';
+                            }
 
                             if (strpos($doc['tipo_arquivo'], 'pdf') !== false) {
                                 $iconClass = "fas fa-file-pdf";
@@ -1758,7 +1924,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     <i class="<?php echo $iconClass; ?>" style="color: <?php echo $iconColor; ?>; font-size: 20px;"></i>
                                 </div>
                                 <div class="data-value">
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($doc['nome_original']); ?></div>
+                                    <div class="fw-semibold"><?php echo htmlspecialchars($tituloDocumento); ?></div>
+                                    <?php if ($tituloDocumento !== $doc['nome_original']): ?>
+                                        <div class="text-muted small"><?php echo htmlspecialchars($doc['nome_original']); ?></div>
+                                    <?php endif; ?>
                                     <div class="text-muted small"><?php echo number_format($doc['tamanho'] / 1024, 2) . ' KB'; ?></div>
                                 </div>
                                 <div class="data-actions">
@@ -2049,6 +2218,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                               </div>
 
                               <div class="d-flex flex-wrap gap-2">
+                                  <button type="button" class="btn btn-outline-warning fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#boletoModal">
+                                      <i class="fas fa-receipt me-2"></i>Enviar Boleto para Pagamento
+                                  </button>
 
                                   <button type="button" class="btn btn-outline-primary fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
@@ -2108,6 +2281,57 @@ $isBlocked = $isFinalized || $isIndeferido;
      MODAIS DE AÇÕES ADMINISTRATIVAS
 ══════════════════════════════════════════════════ -->
 
+<!-- Modal: Enviar Boleto -->
+<div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-warning">
+                    <i class="fas fa-receipt me-2"></i>Enviar Boleto para Pagamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning mb-4">
+                        O requerente receberá um email com um link seguro para acessar esta etapa de pagamento.
+                    </div>
+                    <div class="mb-3">
+                        <label for="boleto_url" class="form-label fw-semibold">Link do boleto</label>
+                        <input type="url" class="form-control" id="boleto_url" name="boleto_url"
+                               value="<?= htmlspecialchars($pagamento['boleto_url'] ?? '') ?>"
+                               placeholder="https://...">
+                        <small class="text-muted">Use quando o boleto estiver hospedado externamente.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="boleto_pdf" class="form-label fw-semibold">PDF do boleto</label>
+                        <input type="file" class="form-control" id="boleto_pdf" name="boleto_pdf" accept="application/pdf,.pdf">
+                        <small class="text-muted">Envie um PDF se quiser disponibilizar download direto na página de pagamento.</small>
+                        <?php if ($documentoBoleto): ?>
+                            <div class="mt-2 small">
+                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener">
+                                    <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="mb-0">
+                        <label for="instrucoes_boleto" class="form-label fw-semibold">Instruções para o requerente</label>
+                        <textarea class="form-control" id="instrucoes_boleto" name="instrucoes_boleto" rows="4"
+                                  placeholder="Prazo, observações ou orientações complementares..."><?= htmlspecialchars($pagamento['instrucoes'] ?? '') ?></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-warning fw-semibold px-4">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar boleto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Atualizar Status -->
 <div class="modal fade" id="atualizarStatusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -2134,6 +2358,8 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <option value="Aprovado"   <?= $requerimento['status']=='Aprovado'  ?'selected':'' ?>>Aprovado</option>
                             <option value="Reprovado"  <?= $requerimento['status']=='Reprovado' ?'selected':'' ?>>Reprovado</option>
                             <option value="Pendente"   <?= $requerimento['status']=='Pendente'  ?'selected':'' ?>>Pendente</option>
+                            <option value="Aguardando boleto" <?= $requerimento['status']=='Aguardando boleto'?'selected':'' ?>>Aguardando boleto</option>
+                            <option value="Boleto pago" <?= $requerimento['status']=='Boleto pago'?'selected':'' ?>>Boleto pago</option>
                             <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
                             <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
                             <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
@@ -3022,6 +3248,10 @@ function getStatusClass($status)
             return 'warning';
         case 'Pendente':
             return 'info';
+        case 'Aguardando boleto':
+            return 'warning';
+        case 'Boleto pago':
+            return 'success';
         case 'Cancelado':
             return 'secondary';
         default:
@@ -3036,6 +3266,10 @@ function getStatusDotColor($status)
             return '#f59e0b'; // amarelo
         case 'aprovado':
             return '#10b981'; // verde
+        case 'aguardando boleto':
+            return '#f59e0b'; // âmbar
+        case 'boleto pago':
+            return '#0f766e'; // teal escuro
         case 'finalizado':
             return '#8b5cf6'; // roxo
         case 'indeferido':
@@ -3139,6 +3373,3 @@ function getStatusDotColor($status)
 </script>
 
 <?php include 'footer.php'; ?>
-
-
-

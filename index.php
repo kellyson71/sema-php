@@ -139,6 +139,14 @@ include_once 'enquadramento_conema.php';
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
 
+                <div style="max-width:800px;margin:18px auto 0;padding:14px 16px;border-radius:10px;background:rgba(245,158,11,0.16);border:1px solid rgba(245,158,11,0.32);color:#fef3c7;display:flex;gap:12px;align-items:flex-start;">
+                    <i class="fas fa-envelope-open-text" style="margin-top:2px;color:#fbbf24;"></i>
+                    <div style="line-height:1.55;font-size:0.95rem;">
+                        <strong style="color:#fff7ed;">Aviso sobre pagamento:</strong>
+                        após a análise inicial, o boleto será enviado para o email informado no requerimento. O pagamento e o envio do comprovante serão feitos depois, por um link seguro enviado pela equipe.
+                    </div>
+                </div>
+
                 <?php
                 // DEBUG: Verificar conteúdo da sessão
                 if (MODO_TESTE) {
@@ -398,10 +406,8 @@ include_once 'enquadramento_conema.php';
                 
                 if (tiposAmbientais.includes(tipoAlvara)) {
                     const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
-                    const comprovantePag = document.querySelector('input[name="comprovante_pagamento"]')?.value.trim();
                     
                     if (!publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
-                    if (!comprovantePag) erros.push('Comprovante de pagamento é obrigatório');
                     
                     // Validar estudo ambiental
                     const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
@@ -901,7 +907,10 @@ include_once 'enquadramento_conema.php';
                             </div>
                             <div class="form-grid-2">
                                 <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
-                                <input required name="comprovante_pagamento" placeholder="Comprovante de pagamento do boleto (código/recibo) *">
+                                <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
+                            </div>
+                            <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
+                                O boleto será enviado posteriormente para o email informado. Não é necessário anexar comprovante nesta etapa.
                             </div>
                             <div class="form-grid-2">
                                 <label class="form-toggle">

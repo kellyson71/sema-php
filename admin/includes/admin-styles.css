@@ -87,6 +87,15 @@ body {
   border-left: 3px solid var(--primary);
 }
 
+.modern-table tr.payment-ready-row td {
+  background: linear-gradient(90deg, rgba(13, 148, 136, 0.08), rgba(20, 184, 166, 0.02));
+  border-bottom-color: rgba(13, 148, 136, 0.2);
+}
+
+.modern-table tr.payment-ready-row:hover td {
+  background: linear-gradient(90deg, rgba(13, 148, 136, 0.12), rgba(20, 184, 166, 0.05));
+}
+
 /* Badges de tipo */
 .type-badge {
   background: var(--gray-100);

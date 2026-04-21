@@ -257,6 +257,11 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                     <span>Este é um <strong>registro de entrada interno</strong>. O protocolo oficial para acompanhamento no portal da prefeitura será enviado ao seu e-mail em até <strong>7 dias úteis</strong>.</span>
                 </div>
 
+                <div class="aviso" style="background:#ecfeff;border-left-color:#0891b2;color:#164e63;">
+                    <i class="fas fa-receipt" style="color:#0891b2;"></i>
+                    <span>Se houver cobrança, o <strong>boleto será enviado para o seu e-mail</strong> com um link seguro para pagamento e envio do comprovante.</span>
+                </div>
+
                 <ul class="passos">
                     <li>
                         <span class="num">1</span>
@@ -264,11 +269,11 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                     </li>
                     <li>
                         <span class="num">2</span>
-                        <span>Aguarde o e-mail com o protocolo oficial — verifique também a caixa de spam.</span>
+                        <span>Aguarde os e-mails da equipe. Se houver cobrança, o boleto chegará por email antes da conclusão do processo.</span>
                     </li>
                     <li>
                         <span class="num">3</span>
-                        <span>Use o protocolo oficial recebido por e-mail para acompanhar o andamento no portal do contribuinte.</span>
+                        <span>Depois, use o protocolo oficial recebido por e-mail para acompanhar o andamento no portal do contribuinte.</span>
                     </li>
                     <li>
                         <span class="num">4</span>

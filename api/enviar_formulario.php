@@ -132,7 +132,6 @@ try {
     if (in_array($tipoAlvara, $tiposAmbientais)) {
         $erros_ambientais = [];
         if (empty($publicacao_diario_oficial)) $erros_ambientais[] = 'Dados da publicação em Diário Oficial';
-        if (empty($comprovante_pagamento)) $erros_ambientais[] = 'Comprovante de pagamento';
         
         if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) 
             $erros_ambientais[] = 'Número do CTF';

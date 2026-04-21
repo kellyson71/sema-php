@@ -122,6 +122,7 @@ $estatisticas = [
     'aprovados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
     'finalizados' => $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn()
 ];
+$pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
 
 // Listas para filtros
 $tiposAlvara = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
@@ -174,7 +175,7 @@ include 'header.php';
         <?php renderFiltros($statusList, $tiposAlvara, $filtroStatus, $filtroTipo, $filtroBusca, $filtroNaoVisualizados); ?>
 
         <!-- Alertas -->
-        <?php renderAlertas(); ?>
+        <?php renderAlertas($pagamentosPendentesConclusao); ?>
 
         <!-- Tabela de Requerimentos -->
         <div class="modern-table">

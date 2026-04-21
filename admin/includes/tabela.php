@@ -7,6 +7,10 @@ function getStatusColor($status)
             return ['color' => '#f59e0b', 'textClass' => 'text-yellow-700'];
         case 'aprovado':
             return ['color' => '#10b981', 'textClass' => 'text-green-700'];
+        case 'aguardando boleto':
+            return ['color' => '#f59e0b', 'textClass' => 'text-amber-700'];
+        case 'boleto pago':
+            return ['color' => '#0f766e', 'textClass' => 'text-teal-800'];
         case 'finalizado':
         case 'indeferido':
             return ['color' => '#6b7280', 'textClass' => 'text-gray-500'];
@@ -104,9 +108,11 @@ function renderTabela($requerimentos)
             <?php foreach ($requerimentos as $req): ?>
                 <?php
                 $isCompleted = (strtolower($req['status']) === 'finalizado' || strtolower($req['status']) === 'indeferido');
+                $isPagamentoRecebido = strtolower($req['status']) === 'boleto pago';
                 $rowClasses = '';
                 $rowClasses .= $req['visualizado'] == 0 ? 'unread ' : '';
                 $rowClasses .= $isCompleted ? 'opacity-60 ' : '';
+                $rowClasses .= $isPagamentoRecebido ? 'payment-ready-row ' : '';
                 $rowClasses .= 'transition-all hover:bg-gray-50 requerimento-row';
                 $statusData = getStatusColor($req['status']);
                 ?>

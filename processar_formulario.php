@@ -173,12 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php');
         }
 
-        if (empty($comprovante_pagamento)) {
-            $_SESSION['form_data'] = $_POST;
-            setMensagem('erro', 'Informe o comprovante de pagamento.');
-            redirect('index.php');
-        }
-
         if ($exigeCTF && empty($ctf_numero)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe o número do Cadastro Técnico Federal (CTF).');

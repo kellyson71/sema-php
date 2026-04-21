@@ -34,6 +34,55 @@ function gerarProtocolo()
 }
 
 /**
+ * Gera um token estável para acesso à página pública de pagamento.
+ *
+ * @param int $requerimentoId ID do requerimento
+ * @param string $protocolo Protocolo interno do requerimento
+ * @return string Token assinado
+ */
+function gerarTokenPagamento(int $requerimentoId, string $protocolo): string
+{
+    $assinatura = hash_hmac('sha256', $requerimentoId . '|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
+    return $requerimentoId . '.' . substr($assinatura, 0, 32);
+}
+
+/**
+ * Valida o token público de pagamento.
+ *
+ * @param string $token Token recebido pela URL
+ * @param int $requerimentoId ID do requerimento
+ * @param string $protocolo Protocolo interno do requerimento
+ * @return bool
+ */
+function validarTokenPagamento(string $token, int $requerimentoId, string $protocolo): bool
+{
+    if ($token === '') {
+        return false;
+    }
+
+    return hash_equals(gerarTokenPagamento($requerimentoId, $protocolo), $token);
+}
+
+/**
+ * Monta a URL pública da página de pagamento.
+ *
+ * @param int $requerimentoId ID do requerimento
+ * @param string $protocolo Protocolo interno do requerimento
+ * @return string
+ */
+function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
+{
+    $base = rtrim(BASE_URL, '/');
+    if (!preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $base = $protocol . '://' . $host . '/' . ltrim($base, '/');
+        $base = rtrim($base, '/');
+    }
+    return $base . '/pagamento.php?token=' . urlencode(gerarTokenPagamento($requerimentoId, $protocolo));
+}
+
+/**
  * Salva um arquivo enviado
  * @param array $arquivo Array $_FILES do arquivo
  * @param string $diretorio Diretório onde o arquivo será salvo

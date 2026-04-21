@@ -18,9 +18,30 @@ function renderMensagens($mensagem, $mensagemErro)
 }
 
 // Função para renderizar alertas
-function renderAlertas()
+function renderAlertas(int $pagamentosPendentes = 0)
 {
 ?>
+    <?php if ($pagamentosPendentes > 0): ?>
+    <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-money-check-alt text-teal-600 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-teal-900">
+                        <span class="font-medium">Pagamento aguardando conclusão:</span>
+                        existem <strong><?php echo $pagamentosPendentes; ?></strong> processo(s) com comprovante enviado e pendentes de conferência/conclusão.
+                    </p>
+                </div>
+            </div>
+            <a href="?status=<?php echo urlencode('Boleto pago'); ?>" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium px-3 py-2 rounded transition-colors duration-200">
+                Ver processos
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Alerta Informativo -->
     <div id="alertaInformativo" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6" style="display: none;">
         <div class="flex items-start justify-between">

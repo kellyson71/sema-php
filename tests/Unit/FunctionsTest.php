@@ -43,6 +43,29 @@ class FunctionsTest extends TestCase
             'Muitas colisões de protocolo geradas em sequência.');
     }
 
+    #[Test]
+    public function gerarTokenPagamentoRetornaFormatoEsperado(): void
+    {
+        $token = gerarTokenPagamento(42, '20260420000123456');
+        $this->assertMatchesRegularExpression('/^42\.[a-f0-9]{32}$/', $token);
+    }
+
+    #[Test]
+    public function validarTokenPagamentoAceitaTokenCorretoERejeitaAlterado(): void
+    {
+        $token = gerarTokenPagamento(42, '20260420000123456');
+        $this->assertTrue(validarTokenPagamento($token, 42, '20260420000123456'));
+        $this->assertFalse(validarTokenPagamento($token . 'x', 42, '20260420000123456'));
+    }
+
+    #[Test]
+    public function gerarUrlPagamentoIncluiRotaEToken(): void
+    {
+        $url = gerarUrlPagamento(42, '20260420000123456');
+        $this->assertStringContainsString('/pagamento.php?token=', $url);
+        $this->assertStringContainsString('42.', urldecode($url));
+    }
+
     // ─── sanitize ─────────────────────────────────────────────────────────────
 
     #[Test]
