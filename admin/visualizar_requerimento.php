@@ -97,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
             if ($pagamentoAtual) {
                 $stmt = $pdo->prepare("
                     UPDATE requerimento_pagamentos
-                    SET instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?, data_atualizacao = NOW()
+                    SET instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?,
+                        comprovante_enviado_em = NULL, data_atualizacao = NOW()
                     WHERE requerimento_id = ?
                 ");
                 $stmt->execute([
@@ -124,7 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
                 }
             }
 
-            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', data_atualizacao = NOW() WHERE id = ?");
+            // Limpa comprovante anterior para que o cidadão possa reenviar
+            removerDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
+
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', comprovante_pagamento = NULL, data_atualizacao = NOW() WHERE id = ?");
             $stmt->execute([$id]);
 
             $stmt = $pdo->prepare("
