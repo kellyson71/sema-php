@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
 
@@ -203,7 +204,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             object-fit: contain;
             filter: brightness(1.02);
             display: block;
-            margin: 0 auto 10px;
+            margin: 0 auto;
         }
 
         .sidebar-brand-copy {
@@ -1101,6 +1102,15 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             display: none;
         }
 
+        body.sidebar-collapsed .sidebar-logo {
+            height: 38px;
+            max-width: 46px;
+        }
+
+        body.sidebar-collapsed .sidebar-version-bar {
+            display: none;
+        }
+
         @media (max-width: 1199px) {
             .topbar {
                 grid-template-columns: minmax(0, 1fr) auto;
@@ -1169,16 +1179,183 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 align-items: flex-start;
             }
         }
+
+        /* ── Version bar ── */
+        .sidebar-version-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .sidebar-version-tag {
+            font-family: 'Geist Mono', ui-monospace, monospace;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.50);
+            letter-spacing: 0.04em;
+        }
+
+        .sidebar-changelog-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 0;
+            background: transparent;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.60);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 999px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .sidebar-changelog-btn:hover {
+            background: rgba(255, 255, 255, 0.10);
+            color: #fff;
+        }
+
+        .sidebar-new-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4ade80;
+            display: none;
+            flex-shrink: 0;
+            animation: sema-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes sema-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.8); }
+        }
+
+        /* ── Changelog modal ── */
+        .changelog-modal .modal-content {
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            overflow: hidden;
+            box-shadow: 0 28px 52px rgba(16, 33, 23, 0.18);
+        }
+
+        .changelog-modal-header {
+            background: linear-gradient(135deg, var(--primary) 0%, #0f4425 100%);
+            color: #fff;
+            border-bottom: none;
+            padding: 22px 24px 20px;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .changelog-modal-header .modal-title {
+            color: #fff;
+            font-size: 1.08rem;
+            font-weight: 800;
+        }
+
+        .changelog-modal-header p {
+            color: rgba(255, 255, 255, 0.66);
+            font-size: 0.82rem;
+            margin: 0;
+        }
+
+        .changelog-modal-header .btn-close {
+            filter: invert(1) brightness(2);
+            opacity: 0.75;
+            flex-shrink: 0;
+        }
+
+        .changelog-version-hero {
+            font-family: 'Geist Mono', ui-monospace, monospace;
+            font-size: 0.74rem;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.88);
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .changelog-date-hero {
+            font-size: 0.76rem;
+            color: rgba(255, 255, 255, 0.52);
+        }
+
+        .changelog-entry {
+            padding: 18px 24px;
+        }
+
+        .changelog-entry + .changelog-entry {
+            border-top: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        .changelog-entry-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 7px;
+        }
+
+        .changelog-entry-tags {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .changelog-entry-version {
+            font-family: 'Geist Mono', ui-monospace, monospace;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .changelog-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.66rem;
+            font-weight: 800;
+        }
+
+        .changelog-entry-date {
+            font-size: 0.72rem;
+            color: var(--muted-2);
+        }
+
+        .changelog-entry-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--ink);
+            margin: 0 0 10px;
+        }
+
+        .changelog-changes {
+            margin: 0;
+            padding-left: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .changelog-changes li {
+            font-size: 0.83rem;
+            color: var(--muted);
+            line-height: 1.45;
+        }
     </style>
 </head>
 <body class="<?= (defined('MODO_HOMOLOG') && MODO_HOMOLOG) ? 'env-homolog' : '' ?>">
     <aside class="sidebar" id="adminSidebar">
         <div class="sidebar-header">
-            <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA">
-                <span class="sidebar-brand-copy">
-                    <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
-                    <span class="sidebar-brand-subtitle">Painel Administrativo</span>
-                </span>
+            <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA — Painel Administrativo">
+                <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
             </a>
         </div>
 
@@ -1361,6 +1538,13 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         </div>
 
         <div class="sidebar-utility">
+            <div class="sidebar-version-bar">
+                <span class="sidebar-version-tag"><i class="fas fa-code-branch me-1"></i>v<?= APP_VERSION ?></span>
+                <button type="button" id="openChangelogBtn" class="sidebar-changelog-btn" title="Histórico de atualizações">
+                    <span class="sidebar-new-dot" id="sidebarNewDot"></span>
+                    Novidades
+                </button>
+            </div>
             <div class="sidebar-utility-label">Ações rápidas</div>
             <a href="https://wa.me/5584981087357" target="_blank" class="sidebar-utility-link" title="Fale conosco no WhatsApp">
                 <i class="fab fa-whatsapp"></i>
@@ -1381,6 +1565,89 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     </aside>
 
     <div class="content-overlay" id="contentOverlay"></div>
+
+    <!-- Modal de changelog -->
+    <div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable changelog-modal" style="max-width:540px;">
+            <div class="modal-content">
+                <div class="modal-header changelog-modal-header">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="changelog-version-hero">v<?= APP_VERSION ?></span>
+                            <span class="changelog-date-hero"><?= APP_VERSION_DATE ?></span>
+                        </div>
+                        <h5 class="modal-title" id="changelogModalLabel">Novidades do sistema</h5>
+                        <p>Acompanhe as últimas atualizações da plataforma SEMA.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="changelog-list">
+                        <?php foreach ($appChangelog as $entry): ?>
+                            <div class="changelog-entry">
+                                <div class="changelog-entry-meta">
+                                    <div class="changelog-entry-tags">
+                                        <span class="changelog-entry-version">v<?= htmlspecialchars($entry['version']) ?></span>
+                                        <span class="changelog-badge" style="background:<?= htmlspecialchars($entry['badge_bg']) ?>;color:<?= htmlspecialchars($entry['badge_color']) ?>;"><?= htmlspecialchars($entry['badge']) ?></span>
+                                    </div>
+                                    <span class="changelog-entry-date"><?= htmlspecialchars($entry['date']) ?></span>
+                                </div>
+                                <h6 class="changelog-entry-title"><?= htmlspecialchars($entry['title']) ?></h6>
+                                <ul class="changelog-changes">
+                                    <?php foreach ($entry['changes'] as $change): ?>
+                                        <li><?= htmlspecialchars($change) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding:16px 24px;">
+                    <button type="button" class="btn btn-primary fw-semibold" data-bs-dismiss="modal">
+                        <i class="fas fa-check me-2"></i>Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var CURRENT = '<?= APP_VERSION ?>';
+        var UID = '<?= (int) ($_SESSION['admin_id'] ?? 0) ?>';
+        var KEY = 'sema_vrseen_' + UID;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var hasSeen = localStorage.getItem(KEY) === CURRENT;
+            var newDot = document.getElementById('sidebarNewDot');
+            var clModal = document.getElementById('changelogModal');
+
+            if (!hasSeen && newDot) {
+                newDot.style.display = 'inline-block';
+            }
+
+            if (!hasSeen && clModal && typeof bootstrap !== 'undefined') {
+                new bootstrap.Modal(clModal).show();
+            }
+
+            if (clModal) {
+                clModal.addEventListener('hidden.bs.modal', function () {
+                    localStorage.setItem(KEY, CURRENT);
+                    if (newDot) newDot.style.display = 'none';
+                });
+            }
+
+            var openBtn = document.getElementById('openChangelogBtn');
+            if (openBtn && clModal) {
+                openBtn.addEventListener('click', function () {
+                    if (typeof bootstrap !== 'undefined') {
+                        new bootstrap.Modal(clModal).show();
+                    }
+                });
+            }
+        });
+    })();
+    </script>
 
     <div class="content-wrapper">
         <div class="topbar">
