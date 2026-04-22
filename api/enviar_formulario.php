@@ -16,6 +16,7 @@ require_once '../includes/database.php'; // Adicionado explícito para garantir 
 require_once '../includes/functions.php';
 require_once '../includes/models.php';
 require_once '../includes/email_service.php';
+require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 
 // Função auxiliar para resposta JSON
@@ -53,6 +54,8 @@ try {
     $proprietarioModel = new Proprietario();
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
+    $database = new Database();
+    $pdo = $database->getConnection();
 
     // 5. Setup de regras (replicado de processar_formulario.php)
     $tiposAmbientais = [
@@ -217,6 +220,7 @@ try {
     if (!$requerimento_id) {
         jsonResponse(false, 'Erro interno ao criar requerimento no banco de dados.');
     }
+    createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
 
     // 13. Processar Uploads
     $diretorio_upload = UPLOAD_DIR . $protocolo; // Definido em config.php/functions.php

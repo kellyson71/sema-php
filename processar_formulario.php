@@ -21,6 +21,7 @@ session_start();
 require_once 'includes/functions.php';
 require_once 'includes/models.php';
 require_once 'includes/email_service.php';
+require_once 'includes/admin_notifications.php';
 
 // Verificar se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $proprietarioModel = new Proprietario();
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
+    $database = new Database();
+    $pdo = $database->getConnection();
 
     // Regras de negócio derivadas da fonte de verdade (tipos_alvara.php)
     $tipoInfo = $tipos_alvara[$_POST['tipo_alvara'] ?? ''] ?? null;
@@ -235,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Salvar requerimento
     $requerimento_id = $requerimentoModel->criar($requerimento);
+    createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
 
     // Diretório para upload dos arquivos
     $diretorio_upload = UPLOAD_DIR . $protocolo;

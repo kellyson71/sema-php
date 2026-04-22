@@ -39,6 +39,8 @@
                 const searchResults = document.getElementById('globalSearchResults');
                 const searchEmpty = document.getElementById('globalSearchEmpty');
                 const searchItems = searchResults ? Array.from(searchResults.querySelectorAll('[data-search-item]')) : [];
+                const notificationTabs = Array.from(document.querySelectorAll('[data-notification-tab]'));
+                const notificationPanels = Array.from(document.querySelectorAll('[data-notification-panel]'));
 
                 const desktopQuery = window.matchMedia('(min-width: 992px)');
                 const collapsedState = localStorage.getItem('adminSidebarCollapsed');
@@ -50,17 +52,19 @@
                 function closeNotifications() {
                     if (!notificationSidebar) return;
                     notificationSidebar.classList.remove('active');
+                    openNotificationBtn?.setAttribute('aria-expanded', 'false');
                     if (!body.classList.contains('sidebar-open')) {
                         contentOverlay?.classList.remove('active');
                     }
-                    body.style.overflow = '';
                 }
 
                 function openNotifications() {
                     if (!notificationSidebar) return;
                     notificationSidebar.classList.add('active');
-                    contentOverlay?.classList.add('active');
-                    body.style.overflow = 'hidden';
+                    openNotificationBtn?.setAttribute('aria-expanded', 'true');
+                    if (!desktopQuery.matches) {
+                        contentOverlay?.classList.add('active');
+                    }
                 }
 
                 function closeMobileSidebar() {
@@ -120,6 +124,24 @@
                     contentOverlay.addEventListener('click', function() {
                         closeNotifications();
                         closeMobileSidebar();
+                    });
+                }
+
+                document.addEventListener('click', function(e) {
+                    if (!notificationSidebar || !openNotificationBtn) return;
+                    if (e.target.closest('.notification-toggle')) return;
+                    if (notificationSidebar.classList.contains('active')) {
+                        closeNotifications();
+                    }
+                });
+
+                if (notificationTabs.length > 0) {
+                    notificationTabs.forEach((tabButton) => {
+                        tabButton.addEventListener('click', function() {
+                            const target = tabButton.dataset.notificationTab;
+                            notificationTabs.forEach((button) => button.classList.toggle('active', button === tabButton));
+                            notificationPanels.forEach((panel) => panel.classList.toggle('active', panel.dataset.notificationPanel === target));
+                        });
                     });
                 }
 

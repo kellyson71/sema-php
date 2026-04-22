@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
 
 // Verificar se recebeu dados via POST
@@ -53,6 +54,12 @@ try {
             $params = array_merge([$novoStatus], $ids);
             $stmt->execute($params);
 
+            if ($novoStatus === 'Indeferido') {
+                foreach ($ids as $id) {
+                    createAdminNotificationForRequerimento($pdo, (int) $id, 'indeferido');
+                }
+            }
+
             $mensagem = count($ids) . ' requerimento(s) alterado(s) para "' . $novoStatus . '" com sucesso!';
             registrarAcao("Alterou status de " . count($ids) . " requerimentos para '$novoStatus'");
             break;
@@ -61,16 +68,16 @@ try {
             $stmt = $pdo->prepare("UPDATE requerimentos SET visualizado = 1 WHERE id IN ($placeholders)");
             $stmt->execute($ids);
 
-            $mensagem = count($ids) . ' requerimento(s) marcado(s) como lido!';
-            registrarAcao("Marcou " . count($ids) . " requerimentos como lidos");
+            $mensagem = count($ids) . ' protocolo(s) marcado(s) como abertos!';
+            registrarAcao("Marcou " . count($ids) . " protocolos como abertos");
             break;
 
         case 'marcar_nao_lido':
             $stmt = $pdo->prepare("UPDATE requerimentos SET visualizado = 0 WHERE id IN ($placeholders)");
             $stmt->execute($ids);
 
-            $mensagem = count($ids) . ' requerimento(s) marcado(s) como não lido!';
-            registrarAcao("Marcou " . count($ids) . " requerimentos como não lidos");
+            $mensagem = count($ids) . ' protocolo(s) devolvido(s) para a fila!';
+            registrarAcao("Devolveu " . count($ids) . " protocolos para a fila");
             break;
 
         default:

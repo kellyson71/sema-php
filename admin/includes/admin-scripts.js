@@ -4,40 +4,9 @@ let currentContextId = null;
 
 // Inicialização do DOM
 document.addEventListener("DOMContentLoaded", function () {
-  initializeAlerts();
-  initializeDataTable();
   initializeAutoMessages();
   initializeClickHandlers();
 });
-
-// Inicializar alertas
-function initializeAlerts() {
-  const alertaFechado = localStorage.getItem("alertaStatusFinalizado");
-  const alerta = document.getElementById("alertaInformativo");
-
-  if (!alertaFechado && alerta) {
-    alerta.style.display = "block";
-  }
-}
-
-// Inicializar DataTable
-function initializeDataTable() {
-  if (document.getElementById("requerimentosTable")) {
-    new simpleDatatables.DataTable("#requerimentosTable", {
-      searchable: true,
-      sortable: true,
-      perPage: 25,
-      perPageSelect: [10, 25, 50, 100],
-      labels: {
-        placeholder: "Pesquisar requerimentos...",
-        perPage: "registros por página",
-        noRows: "Nenhum requerimento encontrado",
-        info: "Mostrando {start} a {end} de {rows} requerimentos",
-        noResults: "Nenhum resultado encontrado para sua pesquisa",
-      },
-    });
-  }
-}
 
 // Auto-dismiss de mensagens
 function initializeAutoMessages() {
@@ -58,6 +27,12 @@ function initializeClickHandlers() {
       hideContextMenu();
     }
 
+    if (!e.target.closest(".req-actions-menu")) {
+      document.querySelectorAll(".req-actions-menu[open]").forEach((menu) => {
+        menu.removeAttribute("open");
+      });
+    }
+
     // Fechar dropdown de status se clicar fora
     if (
       !e.target.closest("[onclick*='toggleDropdownStatus']") &&
@@ -75,25 +50,15 @@ function initializeClickHandlers() {
   });
 }
 
-// Função para fechar alertas
-function fecharAlerta() {
-  const alerta = document.getElementById("alertaInformativo");
-  if (alerta) {
-    alerta.style.opacity = "0";
-    alerta.style.transform = "translateY(-10px)";
-    setTimeout(() => {
-      alerta.style.display = "none";
-    }, 300);
-    localStorage.setItem("alertaStatusFinalizado", "true");
-  }
-}
-
 // Context Menu Functions
 function showContextMenu(event, id) {
   event.preventDefault();
   currentContextId = id;
 
   const contextMenu = document.getElementById("contextMenu");
+  if (!contextMenu) {
+    return;
+  }
   const x = event.clientX;
   const y = event.clientY;
 
@@ -115,6 +80,9 @@ function showContextMenu(event, id) {
 
 function hideContextMenu() {
   const contextMenu = document.getElementById("contextMenu");
+  if (!contextMenu) {
+    return;
+  }
   contextMenu.classList.remove("show");
   currentContextId = null;
 }
@@ -154,9 +122,9 @@ function ativarModoSelecao() {
 
   showAlert("alertaModoSelecao");
 
-  const tabela = document.querySelector("table tbody");
-  if (tabela) {
-    tabela.classList.add("modo-selecao-multipla");
+  const container = document.querySelector("[data-selection-container]");
+  if (container) {
+    container.classList.add("modo-selecao-multipla");
   }
 
   document.querySelectorAll(".checkbox-selecao").forEach((checkbox) => {
@@ -178,9 +146,9 @@ function cancelarSelecaoMultipla() {
 
   hideAlert("alertaModoSelecao");
 
-  const tabela = document.querySelector("table tbody");
-  if (tabela) {
-    tabela.classList.remove("modo-selecao-multipla");
+  const container = document.querySelector("[data-selection-container]");
+  if (container) {
+    container.classList.remove("modo-selecao-multipla");
   }
 
   document.querySelectorAll(".checkbox-selecao").forEach((checkbox) => {
@@ -202,9 +170,11 @@ function updateContadorSelecionados() {
   const count = checkboxes.length;
   const contador = document.getElementById("contadorSelecionados");
 
-  contador.textContent = `${count} ${
-    count === 1 ? "item selecionado" : "itens selecionados"
-  }`;
+  if (contador) {
+    contador.textContent = `${count} ${
+      count === 1 ? "item selecionado" : "itens selecionados"
+    }`;
+  }
 }
 
 function toggleCheckboxById(id) {

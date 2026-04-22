@@ -160,13 +160,7 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .metric-label { display:block; margin-bottom:6px; font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
     .metric-value { display:block; margin-bottom:6px; font-size:1.95rem; font-weight:800; color:var(--ink); line-height:1; }
     .metric-note { display:block; color:var(--muted); font-size:.82rem; }
-    .dashboard-grid { display:grid; grid-template-columns:minmax(0, 300px) minmax(0, 1fr); gap:16px; align-items:start; }
-    .fiscal-card { padding:22px; }
-    .fiscal-kicker { display:block; margin-bottom:8px; font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    .fiscal-title { margin:0 0 8px; font-size:1.15rem; font-weight:800; color:var(--ink); }
-    .fiscal-copy { margin:0 0 16px; color:var(--muted); font-size:.88rem; line-height:1.5; }
-    .fiscal-actions { display:flex; flex-wrap:wrap; gap:10px; }
-    .fiscal-actions .btn { border-radius:12px; font-weight:700; }
+    .dashboard-grid { display:grid; grid-template-columns:minmax(0, 1fr); gap:16px; align-items:start; }
     .queue-card { padding:22px; }
     .section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
     .section-head h2 { margin:0 0 4px; font-size:1.12rem; font-weight:800; color:var(--ink); }
@@ -228,16 +222,6 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     </section>
 
     <section class="dashboard-grid">
-        <aside class="panel-card fiscal-card">
-            <span class="fiscal-kicker">Acesso de fiscal</span>
-            <h3 class="fiscal-title">Processos aguardando vistoria</h3>
-            <p class="fiscal-copy">Visite as obras, registre relatórios de vistoria e marque processos como aptos ao alvará.</p>
-            <div class="fiscal-actions">
-                <a href="<?= htmlspecialchars($rotaFiscal) ?>" class="btn btn-success btn-sm">Processos para vistoria</a>
-                <a href="estatisticas.php" class="btn btn-outline-secondary btn-sm">Relatórios</a>
-            </div>
-        </aside>
-
         <div class="queue-card">
             <div class="section-head">
                 <div class="section-head-copy">

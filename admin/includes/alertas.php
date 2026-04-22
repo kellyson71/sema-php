@@ -42,37 +42,6 @@ function renderAlertas(int $pagamentosPendentes = 0)
     </div>
     <?php endif; ?>
 
-    <!-- Alerta Informativo -->
-    <div id="alertaInformativo" class="alert-card alert-card-amber" style="display: none;">
-        <div class="alert-card-row">
-            <div class="alert-copy">
-                <div class="alert-icon-wrap">
-                    <i class="fas fa-exclamation-triangle text-amber-500 text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-sm text-amber-800">
-                        <span class="font-medium">Atenção:</span>
-                        Os protocolos que foram finalizados antes da atualização do sistema não estarão marcados automaticamente como "Finalizado" ou "Indeferido".
-                        Para uma melhor organização, recomenda-se atualizar manualmente o status destes protocolos conforme necessário.
-                    </p>
-                    <div class="mt-2 pt-2 border-t border-amber-200">
-                        <p class="text-xs text-amber-700">
-                            <span class="font-medium">💡 Dica:</span>
-                            Use o <strong>botão direito</strong> sobre qualquer protocolo para ações rápidas, ou ative a <strong>seleção múltipla</strong> para alterações em massa de status.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="flex-shrink-0 ml-4">
-                <button
-                    onclick="fecharAlerta()"
-                    class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-medium px-3 py-1 rounded transition-colors duration-200">
-                    OK
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Alerta Modo Seleção Múltipla -->
     <div id="alertaModoSelecao" class="alert-card alert-card-info" style="display: none;">
         <div class="alert-copy">

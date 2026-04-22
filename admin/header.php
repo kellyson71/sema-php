@@ -1,24 +1,20 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
 
 $adminBase = (basename(dirname($_SERVER['SCRIPT_NAME'] ?? '')) !== 'admin') ? '../' : '';
 $adminData = getDadosAdmin($pdo, $_SESSION['admin_id']);
 $currentPage = basename($_SERVER['PHP_SELF']);
 
-$totalNotificacoes = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(NOW(), INTERVAL 24 HOUR)")->fetchColumn();
 $totalNaoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
 $totalAguardandoFiscal = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aguardando Fiscalização'")->fetchColumn();
-
-$stmt = $pdo->prepare("
-    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome AS requerente
-    FROM requerimentos r
-    JOIN requerentes req ON r.requerente_id = req.id
-    ORDER BY r.data_envio DESC
-    LIMIT 20
-");
-$stmt->execute();
-$todasNotificacoes = $stmt->fetchAll();
+ensureAdminNotificationTables($pdo);
+$notificationCounts = fetchAdminNotificationCounts($pdo, (int) $_SESSION['admin_id']);
+$totalNotificacoes = $notificationCounts['total'];
+$notificationTotal = $notificationCounts['unread'];
+$notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'unread', 20, 0);
+$notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'read', 20, 0);
 
 $pageTitles = [
     'index.php' => 'Dashboard',
@@ -36,6 +32,7 @@ $pageTitles = [
     'visualizar_denuncia.php' => 'Detalhes da Denúncia',
     'requerimentos_arquivados.php' => 'Requerimentos Arquivados',
     'logs_email.php' => 'Histórico de Envios',
+    'notificacoes.php' => 'Notificações',
     'testes.php' => 'Painel de Testes',
 ];
 $pageTitle = $pageTitles[$currentPage] ?? 'Painel Administrativo';
@@ -60,11 +57,11 @@ $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../uploads/perfi
 $isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php'], true);
 $isOperacaoSectionOpen = in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php', 'fiscal_dashboard.php'], true)
     || ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente');
-$notificationTotal = $totalNaoVisualizados > 0 ? $totalNaoVisualizados : $totalNotificacoes;
 
 $searchItems = [
     ['label' => 'Dashboard', 'caption' => 'Visão geral do painel', 'url' => $adminBase . 'index.php', 'icon' => 'fa-gauge-high'],
     ['label' => 'Requerimentos', 'caption' => 'Lista principal de protocolos', 'url' => $adminBase . 'requerimentos.php', 'icon' => 'fa-clipboard-list'],
+    ['label' => 'Notificações', 'caption' => 'Central operacional do admin', 'url' => $adminBase . 'notificacoes.php', 'icon' => 'fa-bell'],
     ['label' => 'Denúncias', 'caption' => 'Acompanhar denúncias ambientais', 'url' => $adminBase . 'denuncias.php', 'icon' => 'fa-bullhorn'],
     ['label' => 'Estatísticas', 'caption' => 'Indicadores e relatórios', 'url' => $adminBase . 'estatisticas.php', 'icon' => 'fa-chart-column'],
     ['label' => 'Arquivados', 'caption' => 'Consultar requerimentos arquivados', 'url' => $adminBase . 'requerimentos_arquivados.php', 'icon' => 'fa-box-archive'],
@@ -819,25 +816,29 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         .status-boleto-pago { background-color: #e9f8f0; color: #0f766e; border-color: #9edbcc; }
 
         .notification-sidebar {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            bottom: 16px;
-            width: min(390px, calc(100vw - 32px));
+            position: absolute;
+            top: calc(100% + 14px);
+            right: 0;
+            width: min(430px, calc(100vw - 28px));
+            max-height: min(78vh, 720px);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.98);
+            background: rgba(255, 255, 255, 0.99);
             border: 1px solid var(--line);
-            border-radius: 18px;
-            box-shadow: var(--shell-shadow);
-            transform: translateX(calc(100% + 24px));
-            transition: transform 0.24s ease;
+            border-radius: 24px;
+            box-shadow: 0 22px 48px rgba(16, 33, 23, 0.14);
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
             z-index: 1060;
         }
 
         .notification-sidebar.active {
-            transform: translateX(0);
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
         }
 
         .notification-sidebar-header {
@@ -847,7 +848,9 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             gap: 12px;
             padding: 18px 18px 14px;
             border-bottom: 1px solid var(--line);
-            background: #fff;
+            background:
+                radial-gradient(circle at top right, rgba(20, 83, 45, 0.1), transparent 32%),
+                linear-gradient(180deg, #ffffff 0%, #fbfcfb 100%);
         }
 
         .notification-sidebar-header h5 {
@@ -873,18 +876,98 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
         }
 
         .notification-sidebar-body {
-            padding: 18px;
+            padding: 16px 18px 18px;
             overflow-y: auto;
+        }
+
+        .notification-summary-card {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .notification-summary-item {
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: var(--surface-soft);
+        }
+
+        .notification-summary-item strong {
+            display: block;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .notification-summary-item span {
+            font-size: 0.76rem;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .notification-panel-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .notification-tabs {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fff;
+            gap: 4px;
+        }
+
+        .notification-tab {
+            min-height: 34px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notification-tab.active {
+            background: var(--primary-soft);
+            color: var(--primary-strong);
+        }
+
+        .notification-panel-link {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .notification-tab-panel {
+            display: none;
+        }
+
+        .notification-tab-panel.active {
+            display: block;
         }
 
         .notification-list {
             list-style: none;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .notification-item-sidebar {
-            margin-bottom: 10px;
             border: 1px solid var(--line);
             border-radius: 18px;
             background: #fff;
@@ -897,32 +980,78 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             background: var(--surface-soft);
         }
 
-        .notification-item-sidebar a {
-            display: block;
+        .notification-item-sidebar a,
+        .notification-item-sidebar .notification-empty {
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            gap: 12px;
             padding: 14px;
         }
 
+        .notification-icon-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-tint);
+            color: var(--primary-strong);
+        }
+
+        .notification-icon-badge.accent-blue { background: #e8effd; color: #1d4ed8; }
+        .notification-icon-badge.accent-amber { background: #fff3dc; color: #b45309; }
+        .notification-icon-badge.accent-teal { background: #e6f7f4; color: #0f766e; }
+        .notification-icon-badge.accent-slate { background: #eef2f0; color: #475569; }
+        .notification-icon-badge.accent-green { background: var(--primary-soft); color: var(--primary-strong); }
+
+        .notification-copy {
+            min-width: 0;
+        }
+
         .notification-title {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-size: 0.9rem;
             font-weight: 700;
             color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 7px;
         }
 
         .notification-content {
             margin-bottom: 6px;
             font-size: 0.8rem;
             color: var(--muted);
+            line-height: 1.45;
         }
 
         .notification-time {
             font-size: 0.74rem;
             color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .notification-unread {
-            background: #f8fbf9;
-            border-color: rgba(13, 84, 51, 0.14);
+            background: #fbfdfb;
+            border-color: rgba(20, 83, 45, 0.16);
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+
+        .notification-unread-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .notification-empty {
+            color: var(--muted);
+            align-items: center;
         }
 
         .content-overlay {
@@ -1052,10 +1181,10 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             }
 
             .notification-sidebar {
-                top: 10px;
-                right: 10px;
-                bottom: 10px;
-                width: calc(100vw - 20px);
+                top: calc(100% + 10px);
+                right: -8px;
+                width: min(430px, calc(100vw - 20px));
+                max-height: min(76vh, 620px);
             }
 
             .simulation-banner {
@@ -1357,12 +1486,121 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
 
             <div class="topbar-right">
                 <div class="notification-toggle">
-                    <button type="button" class="icon-button" id="openNotificationSidebar" aria-label="Abrir notificações">
+                    <button type="button" class="icon-button" id="openNotificationSidebar" aria-label="Abrir notificações" aria-expanded="false">
                         <i class="fas fa-bell"></i>
                         <?php if ($notificationTotal > 0): ?>
                             <span class="notification-badge"><?= $notificationTotal > 9 ? '9+' : $notificationTotal ?></span>
                         <?php endif; ?>
                     </button>
+
+                    <div class="notification-sidebar" id="notificationSidebar">
+                        <div class="notification-sidebar-header">
+                            <div>
+                                <h5><i class="fas fa-bell me-2"></i>Notificações</h5>
+                                <p>Central do admin com eventos operacionais recentes.</p>
+                            </div>
+                            <button class="notification-sidebar-close" id="closeNotificationSidebar" type="button" aria-label="Fechar notificações">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="notification-sidebar-body">
+                            <div class="notification-summary-card">
+                                <div class="notification-summary-item">
+                                    <strong><?= (int) $notificationCounts['unread'] ?></strong>
+                                    <span>Notificações não lidas</span>
+                                </div>
+                                <div class="notification-summary-item">
+                                    <strong><?= (int) $totalNaoVisualizados ?></strong>
+                                    <span>Protocolos ainda não abertos</span>
+                                </div>
+                            </div>
+
+                            <div class="notification-panel-actions">
+                                <div class="notification-tabs" id="notificationTabs">
+                                    <button type="button" class="notification-tab active" data-notification-tab="unread">Não lidas <span><?= (int) $notificationCounts['unread'] ?></span></button>
+                                    <button type="button" class="notification-tab" data-notification-tab="read">Lidas <span><?= (int) $notificationCounts['read'] ?></span></button>
+                                </div>
+                                <a href="<?= $adminBase ?>notificacoes.php?acao=marcar_todas" class="notification-panel-link">Marcar todas</a>
+                            </div>
+
+                            <?php if ($totalNaoVisualizados > 0): ?>
+                                <div class="alert alert-info border-0 mb-3" style="border-radius:16px;background:#eff6ff;color:#1d4ed8;">
+                                    <i class="fas fa-circle-info me-2"></i>
+                                    Você tem <?= $totalNaoVisualizados ?> protocolo(s) ainda não abertos.
+                                    <a href="<?= $adminBase ?>requerimentos.php?nao_visualizados=1" class="alert-link d-block mt-2">Abrir fila de protocolos</a>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="notification-tab-panel active" data-notification-panel="unread">
+                                <ul class="notification-list">
+                                    <?php if ($notificacoesNaoLidas): ?>
+                                        <?php foreach ($notificacoesNaoLidas as $notif): ?>
+                                            <li class="notification-item-sidebar notification-unread">
+                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                    <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
+                                                        <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
+                                                    </span>
+                                                    <span class="notification-copy">
+                                                        <span class="notification-title">
+                                                            <span class="notification-unread-dot"></span>
+                                                            <?= htmlspecialchars($notif['titulo']) ?>
+                                                        </span>
+                                                        <span class="notification-content"><?= htmlspecialchars($notif['descricao']) ?></span>
+                                                        <span class="notification-time"><i class="far fa-clock"></i><?= formataData($notif['criado_em']) ?></span>
+                                                    </span>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <li class="notification-item-sidebar">
+                                            <div class="notification-empty">
+                                                <span class="notification-icon-badge accent-green"><i class="fas fa-check"></i></span>
+                                                <span class="notification-copy">
+                                                    <span class="notification-title">Sem notificações não lidas</span>
+                                                    <span class="notification-content">As novas entradas vão aparecer aqui primeiro.</span>
+                                                </span>
+                                            </div>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+
+                            <div class="notification-tab-panel" data-notification-panel="read">
+                                <ul class="notification-list">
+                                    <?php if ($notificacoesLidas): ?>
+                                        <?php foreach ($notificacoesLidas as $notif): ?>
+                                            <li class="notification-item-sidebar">
+                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                    <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
+                                                        <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
+                                                    </span>
+                                                    <span class="notification-copy">
+                                                        <span class="notification-title"><?= htmlspecialchars($notif['titulo']) ?></span>
+                                                        <span class="notification-content"><?= htmlspecialchars($notif['descricao']) ?></span>
+                                                        <span class="notification-time"><i class="far fa-clock"></i><?= formataData($notif['criado_em']) ?></span>
+                                                    </span>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <li class="notification-item-sidebar">
+                                            <div class="notification-empty">
+                                                <span class="notification-icon-badge accent-green"><i class="fas fa-check"></i></span>
+                                                <span class="notification-copy">
+                                                    <span class="notification-title">Nenhuma notificação lida</span>
+                                                    <span class="notification-content">Ao abrir uma notificação, ela passa a aparecer aqui.</span>
+                                                </span>
+                                            </div>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+
+                            <div class="mt-3">
+                                <a href="<?= $adminBase ?>notificacoes.php" class="notification-panel-link">Abrir página completa</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="dropdown topbar-profile">
@@ -1396,56 +1634,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         </a>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="notification-sidebar" id="notificationSidebar">
-            <div class="notification-sidebar-header">
-                <div>
-                    <h5><i class="fas fa-bell me-2"></i>Notificações</h5>
-                    <p>Atualizações recentes de protocolos e filas internas.</p>
-                </div>
-                <button class="notification-sidebar-close" id="closeNotificationSidebar" type="button" aria-label="Fechar notificações">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="notification-sidebar-body">
-                <?php if ($totalNaoVisualizados > 0): ?>
-                    <div class="alert alert-info border-0" style="border-radius:16px;background:#eff6ff;color:#1d4ed8;">
-                        <i class="fas fa-circle-info me-2"></i>
-                        Você tem <?= $totalNaoVisualizados ?> requerimentos não visualizados.
-                        <a href="<?= $adminBase ?>requerimentos.php?nao_visualizados=1" class="alert-link d-block mt-2">Abrir fila não visualizada</a>
-                    </div>
-                <?php endif; ?>
-
-                <h6 class="mb-3" style="font-weight:700;color:var(--ink);">Requerimentos recentes</h6>
-
-                <ul class="notification-list">
-                    <?php if ($todasNotificacoes): ?>
-                        <?php foreach ($todasNotificacoes as $notif): ?>
-                            <?php $statusSlug = strtolower(str_replace([' ', 'ã', 'á'], ['-', 'a', 'a'], $notif['status'])); ?>
-                            <li class="notification-item-sidebar <?= $notif['visualizado'] ? '' : 'notification-unread' ?>">
-                                <a href="<?= $adminBase ?>visualizar_requerimento.php?id=<?= (int) $notif['id'] ?>">
-                                    <div class="notification-title">
-                                        <?php if (!$notif['visualizado']): ?>
-                                            <i class="fas fa-circle me-1" style="font-size:.55rem;color:var(--primary);"></i>
-                                        <?php endif; ?>
-                                        Requerimento #<?= htmlspecialchars($notif['protocolo']) ?>
-                                    </div>
-                                    <div class="notification-content"><?= htmlspecialchars($notif['requerente']) ?> · <?= htmlspecialchars($notif['tipo_alvara']) ?></div>
-                                    <div class="notification-content">
-                                        <span class="badge badge-status status-<?= htmlspecialchars($statusSlug) ?>"><?= htmlspecialchars($notif['status']) ?></span>
-                                    </div>
-                                    <div class="notification-time"><i class="far fa-clock me-1"></i><?= formataData($notif['data_envio']) ?></div>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <li class="notification-item-sidebar">
-                            <div class="notification-content">Nenhuma notificação disponível.</div>
-                        </li>
-                    <?php endif; ?>
-                </ul>
             </div>
         </div>
 
