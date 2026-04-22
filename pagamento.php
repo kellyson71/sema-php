@@ -80,9 +80,9 @@ try {
             $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (NULL, ?, ?)");
             $stmt->execute([(int) $requerimento['id'], 'Enviou comprovante de pagamento pela página pública']);
 
-            createAdminNotificationForRequerimento($pdo, (int) $requerimento['id'], 'comprovante_enviado');
-
             $pdo->commit();
+
+            createAdminNotificationForRequerimento($pdo, (int) $requerimento['id'], 'comprovante_enviado');
 
             $pagamento = buscarPagamentoRequerimento($pdo, (int) $requerimento['id']);
             $documentoComprovante = buscarDocumentoPorCampo($pdo, (int) $requerimento['id'], 'comprovante_pagamento_boleto');
