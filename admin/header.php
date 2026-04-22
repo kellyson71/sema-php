@@ -1040,7 +1040,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
             inset: 0;
             background: rgba(11, 31, 23, 0.38);
             display: none;
-            z-index: 1050;
+            z-index: 1035;
         }
 
         .content-overlay.active {
