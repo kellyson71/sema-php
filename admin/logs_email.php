@@ -4,478 +4,311 @@ require_once 'conexao.php';
 
 verificaLogin();
 
-// Paginação
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$per_page = 20;
-$offset = ($page - 1) * $per_page;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$perPage = 20;
+$offset = ($page - 1) * $perPage;
 
-// Filtros
-$filtro_status = $_GET['status'] ?? '';
-$filtro_email = $_GET['email'] ?? '';
-$filtro_data_inicio = $_GET['data_inicio'] ?? '';
-$filtro_data_fim = $_GET['data_fim'] ?? '';
+$filtroStatus = $_GET['status'] ?? '';
+$filtroEmail = trim($_GET['email'] ?? '');
+$filtroDataInicio = $_GET['data_inicio'] ?? '';
+$filtroDataFim = $_GET['data_fim'] ?? '';
 
-// Construir query
-$where_conditions = [];
+$whereConditions = [];
 $params = [];
 
-if (!empty($filtro_status)) {
-    $where_conditions[] = "el.status = ?";
-    $params[] = $filtro_status;
+if ($filtroStatus !== '') {
+    $whereConditions[] = "el.status = ?";
+    $params[] = $filtroStatus;
 }
 
-if (!empty($filtro_email)) {
-    $where_conditions[] = "el.email_destino LIKE ?";
-    $params[] = "%{$filtro_email}%";
+if ($filtroEmail !== '') {
+    $whereConditions[] = "el.email_destino LIKE ?";
+    $params[] = '%' . $filtroEmail . '%';
 }
 
-if (!empty($filtro_data_inicio)) {
-    $where_conditions[] = "DATE(el.data_envio) >= ?";
-    $params[] = $filtro_data_inicio;
+if ($filtroDataInicio !== '') {
+    $whereConditions[] = "DATE(el.data_envio) >= ?";
+    $params[] = $filtroDataInicio;
 }
 
-if (!empty($filtro_data_fim)) {
-    $where_conditions[] = "DATE(el.data_envio) <= ?";
-    $params[] = $filtro_data_fim;
+if ($filtroDataFim !== '') {
+    $whereConditions[] = "DATE(el.data_envio) <= ?";
+    $params[] = $filtroDataFim;
 }
 
-$where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+$whereClause = $whereConditions ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
-// Query principal
 $sql = "
-    SELECT 
+    SELECT
         el.*,
         r.protocolo,
-        req.nome as requerente_nome
+        req.nome AS requerente_nome
     FROM email_logs el
     LEFT JOIN requerimentos r ON el.requerimento_id = r.id
     LEFT JOIN requerentes req ON r.requerente_id = req.id
-    {$where_clause}
+    {$whereClause}
     ORDER BY el.data_envio DESC
-    LIMIT {$per_page} OFFSET {$offset}
+    LIMIT {$perPage} OFFSET {$offset}
 ";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $logs = $stmt->fetchAll();
 
-// Contar total para paginação
-$count_sql = "
-    SELECT COUNT(*) as total
+$countSql = "
+    SELECT COUNT(*) AS total
     FROM email_logs el
     LEFT JOIN requerimentos r ON el.requerimento_id = r.id
     LEFT JOIN requerentes req ON r.requerente_id = req.id
-    {$where_clause}
+    {$whereClause}
 ";
 
-$count_stmt = $pdo->prepare($count_sql);
-$count_stmt->execute($params);
-$total_logs = $count_stmt->fetch()['total'];
-$total_pages = ceil($total_logs / $per_page);
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute($params);
+$totalLogs = (int) ($countStmt->fetch()['total'] ?? 0);
+$totalPages = max(1, (int) ceil($totalLogs / $perPage));
 
-// Estatísticas Rápidas
-$stats_sql = "
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'SUCESSO' THEN 1 ELSE 0 END) as sucessos,
-        SUM(CASE WHEN status = 'ERRO' THEN 1 ELSE 0 END) as erros,
-        SUM(CASE WHEN DATE(data_envio) = CURDATE() THEN 1 ELSE 0 END) as hoje
+$statsSql = "
+    SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'SUCESSO' THEN 1 ELSE 0 END) AS sucessos,
+        SUM(CASE WHEN status = 'ERRO' THEN 1 ELSE 0 END) AS erros,
+        SUM(CASE WHEN DATE(data_envio) = CURDATE() THEN 1 ELSE 0 END) AS hoje
     FROM email_logs
 ";
-$stats_stmt = $pdo->query($stats_sql);
-$stats = $stats_stmt->fetch();
+$statsStmt = $pdo->query($statsSql);
+$stats = $statsStmt->fetch();
+
+$taxaEntrega = ((int) ($stats['total'] ?? 0)) > 0
+    ? round(((int) ($stats['sucessos'] ?? 0) / (int) $stats['total']) * 100, 1)
+    : 0;
+
+function buildLogsUrl(array $overrides = []): string
+{
+    $params = array_merge($_GET, $overrides);
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null) {
+            unset($params[$key]);
+        }
+    }
+    return 'logs_email.php' . ($params ? '?' . http_build_query($params) : '');
+}
 
 include 'header.php';
 ?>
-
 <style>
-    :root {
-        --primary-600: #059669;
-        --secondary-color: #134E5E;
+    .logs-shell { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .logs-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+    .logs-metric-card, .logs-block { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--card-shadow); }
+    .logs-metric-card { padding: 22px; }
+    .logs-metric-label { display: block; margin-bottom: 6px; font-size: .76rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .logs-metric-value { display: block; margin-bottom: 6px; font-size: 1.9rem; font-weight: 800; color: var(--ink); line-height: 1; }
+    .logs-metric-note { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .82rem; }
+    .logs-filter-bar { padding: 18px; border-bottom: 1px solid var(--line); }
+    .logs-filter-form { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+    .logs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .logs-field label { color: var(--muted); font-size: .78rem; font-weight: 700; }
+    .logs-field input, .logs-field select {
+        min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); font-size: .9rem;
     }
-    
-    .modern-card {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border: 1px solid rgba(0,0,0,0.05);
-        margin-bottom: 25px;
-        overflow: hidden;
-    }
-
-    .modern-card-header {
-        background: white;
-        padding: 20px 25px;
-        border-bottom: 1px solid #f0f0f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modern-card-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--secondary-color);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-        border: 1px solid #f0f0f0;
-        transition: transform 0.2s;
-        height: 100%;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-    }
-
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 5px;
-    }
-
-    .stat-label {
-        color: #6c757d;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .table-custom th {
-        background-color: #f8f9fa;
-        color: #495057;
-        font-weight: 600;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-top: none;
-        padding: 15px;
-    }
-
-    .table-custom td {
-        vertical-align: middle;
-        padding: 15px;
-        font-size: 0.9rem;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    .table-custom tr:hover {
-        background-color: #fcfcfc;
-    }
-
-    .badge-status {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .badge-success-soft {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-
-    .badge-danger-soft {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-
-    .filter-section {
-        background-color: #f9fafb;
-        padding: 20px;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    .form-control-sm, .form-select-sm {
-        border-radius: 6px;
-        border-color: #dee2e6;
-        padding: 8px 12px;
-    }
-
-    .form-control-sm:focus, .form-select-sm:focus {
-        border-color: var(--primary-600);
-        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
-    }
-
-    .btn-action {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s;
-    }
-    
-    .pagination-container {
-        padding: 20px;
-        border-top: 1px solid #f0f0f0;
+    .logs-field.wide { flex: 1 1 260px; }
+    .logs-field.compact { width: 170px; }
+    .logs-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .logs-table-wrap { overflow: auto; }
+    .logs-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .logs-table th { padding: 14px 18px; background: var(--surface-soft); color: var(--muted); font-size: .77rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .logs-table td { padding: 16px 18px; border-bottom: 1px solid #edf2ee; vertical-align: middle; }
+    .logs-table tr:hover td { background: #fafcfb; }
+    .logs-stack { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .logs-main { font-size: .9rem; font-weight: 700; color: var(--ink); }
+    .logs-sub { font-size: .78rem; color: var(--muted); }
+    .logs-sub a { color: var(--primary); }
+    .logs-protocol { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-strong); font-size: .72rem; font-weight: 800; }
+    .logs-subject { max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .logs-empty { padding: 48px 24px; text-align: center; color: var(--muted); }
+    .logs-empty i { display: block; margin-bottom: 12px; font-size: 2.5rem; color: #c4d0c8; }
+    .logs-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px; }
+    .logs-pagination-copy { color: var(--muted); font-size: .82rem; }
+    .logs-pagination-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .logs-page-link { min-width: 38px; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; }
+    .logs-page-link.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    @media (max-width: 1100px) { .logs-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 767px) {
+        .logs-metric-grid { grid-template-columns: 1fr; }
+        .logs-filter-form, .logs-pagination { flex-direction: column; align-items: stretch; }
+        .logs-field.compact, .logs-field.wide { width: 100%; flex: 1 1 100%; }
     }
 </style>
 
-<div class="container-fluid py-4">
-    <!-- Header Page -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1 fw-bold text-dark">Histórico de Envios de Email</h4>
-            <p class="text-muted mb-0">Rastreamento de todas as comunicações oficiais enviadas</p>
+<div class="admin-page-shell logs-shell">
+    <section class="page-hero page-hero-compact">
+        <div class="page-hero-copy">
+            <h1 class="page-title">Histórico de Emails</h1>
+            <p class="page-subtitle">Comunicações oficiais enviadas pelo sistema, com filtros e consulta rápida de falhas.</p>
         </div>
-        <div>
-            <button class="btn btn-light border" onclick="window.location.reload()">
-                <i class="fas fa-sync-alt me-2"></i>Atualizar
+        <div class="page-toolbar">
+            <button class="toolbar-button" type="button" onclick="window.location.reload()">
+                <i class="fas fa-rotate-right"></i> Atualizar
             </button>
         </div>
-    </div>
+    </section>
 
-    <!-- Stats Row -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card border-start border-4 border-primary">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value text-primary"><?php echo number_format($stats['total']); ?></div>
-                        <div class="stat-label">Total Enviados</div>
-                    </div>
-                    <div class="text-primary opacity-25">
-                        <i class="fas fa-paper-plane fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card border-start border-4 border-success">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value text-success"><?php echo number_format($stats['sucessos']); ?></div>
-                        <div class="stat-label">Entregues com Sucesso</div>
-                    </div>
-                    <div class="text-success opacity-25">
-                        <i class="fas fa-check-circle fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card border-start border-4 border-danger">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value text-danger"><?php echo number_format($stats['erros']); ?></div>
-                        <div class="stat-label">Falhas no Envio</div>
-                    </div>
-                    <div class="text-danger opacity-25">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card border-start border-4 border-info">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value text-info"><?php echo number_format($stats['hoje']); ?></div>
-                        <div class="stat-label">Enviados Hoje</div>
-                    </div>
-                    <div class="text-info opacity-25">
-                        <i class="fas fa-calendar-day fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <section class="logs-metric-grid">
+        <article class="logs-metric-card">
+            <span class="logs-metric-label">Total</span>
+            <strong class="logs-metric-value"><?= number_format((int) ($stats['total'] ?? 0)) ?></strong>
+            <span class="logs-metric-note"><i class="fas fa-paper-plane"></i> histórico completo</span>
+        </article>
+        <article class="logs-metric-card">
+            <span class="logs-metric-label">Sucesso</span>
+            <strong class="logs-metric-value"><?= number_format((int) ($stats['sucessos'] ?? 0)) ?></strong>
+            <span class="logs-metric-note"><i class="fas fa-check-circle"></i> taxa de entrega <?= $taxaEntrega ?>%</span>
+        </article>
+        <article class="logs-metric-card">
+            <span class="logs-metric-label">Falhas</span>
+            <strong class="logs-metric-value"><?= number_format((int) ($stats['erros'] ?? 0)) ?></strong>
+            <span class="logs-metric-note"><i class="fas fa-triangle-exclamation"></i> acompanhar detalhes e retries</span>
+        </article>
+        <article class="logs-metric-card">
+            <span class="logs-metric-label">Hoje</span>
+            <strong class="logs-metric-value"><?= number_format((int) ($stats['hoje'] ?? 0)) ?></strong>
+            <span class="logs-metric-note"><i class="fas fa-calendar-day"></i> envios do dia atual</span>
+        </article>
+    </section>
 
-    <div class="modern-card">
-        <!-- Filtros -->
-        <div class="filter-section">
-            <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-2">
-                    <label class="form-label text-muted small fw-bold mb-1">Status</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <option value="">Todos os Status</option>
-                        <option value="SUCESSO" <?php echo $filtro_status === 'SUCESSO' ? 'selected' : ''; ?>>Sucesso</option>
-                        <option value="ERRO" <?php echo $filtro_status === 'ERRO' ? 'selected' : ''; ?>>Erro</option>
+    <section class="logs-block">
+        <div class="logs-filter-bar">
+            <form method="GET" class="logs-filter-form">
+                <div class="logs-field compact">
+                    <label for="status">Status</label>
+                    <select name="status" id="status">
+                        <option value="">Todos</option>
+                        <option value="SUCESSO" <?= $filtroStatus === 'SUCESSO' ? 'selected' : '' ?>>Sucesso</option>
+                        <option value="ERRO" <?= $filtroStatus === 'ERRO' ? 'selected' : '' ?>>Erro</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">Destinatário (Email)</label>
-                    <input type="text" name="email" class="form-control form-control-sm" value="<?php echo htmlspecialchars($filtro_email); ?>" placeholder="Ex: joao@email.com">
+                <div class="logs-field wide">
+                    <label for="email">Destinatário</label>
+                    <input type="text" name="email" id="email" value="<?= htmlspecialchars($filtroEmail) ?>" placeholder="Buscar por email">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-muted small fw-bold mb-1">De</label>
-                    <input type="date" name="data_inicio" class="form-control form-control-sm" value="<?php echo $filtro_data_inicio; ?>">
+                <div class="logs-field compact">
+                    <label for="data_inicio">De</label>
+                    <input type="date" name="data_inicio" id="data_inicio" value="<?= htmlspecialchars($filtroDataInicio) ?>">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-muted small fw-bold mb-1">Até</label>
-                    <input type="date" name="data_fim" class="form-control form-control-sm" value="<?php echo $filtro_data_fim; ?>">
+                <div class="logs-field compact">
+                    <label for="data_fim">Até</label>
+                    <input type="date" name="data_fim" id="data_fim" value="<?= htmlspecialchars($filtroDataFim) ?>">
                 </div>
-                <div class="col-md-3">
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm px-3 w-100">
-                            <i class="fas fa-filter me-1"></i> Filtrar
-                        </button>
-                        <a href="logs_email.php" class="btn btn-outline-secondary btn-sm px-3 w-100">
-                            <i class="fas fa-times me-1"></i> Limpar
-                        </a>
-                    </div>
+                <div class="logs-actions">
+                    <button type="submit" class="toolbar-button toolbar-button-primary"><i class="fas fa-filter"></i> Filtrar</button>
+                    <a href="logs_email.php" class="toolbar-button">Limpar</a>
                 </div>
             </form>
         </div>
 
-        <!-- Tabela -->
-        <div class="table-responsive">
-            <table class="table table-custom mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-4" width="70">ID</th>
-                        <th width="100">Status</th>
-                        <th width="180">Data/Hora</th>
-                        <th>Destinatário</th>
-                        <th>Assunto</th>
-                        <th width="150">Usuário</th>
-                        <th class="text-end pe-4" width="100">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($logs)): ?>
+        <?php if ($logs): ?>
+            <div class="logs-table-wrap">
+                <table class="logs-table">
+                    <thead>
                         <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
-                                    <p class="mb-0">Nenhum registro encontrado para os filtros selecionados.</p>
-                                </div>
-                            </td>
+                            <th>Status</th>
+                            <th>Envio</th>
+                            <th>Destinatário</th>
+                            <th>Assunto</th>
+                            <th>Origem</th>
+                            <th class="text-end">Ação</th>
                         </tr>
-                    <?php else: ?>
+                    </thead>
+                    <tbody>
                         <?php foreach ($logs as $log): ?>
                             <tr>
-                                <td class="ps-4 text-muted">#<?php echo $log['id']; ?></td>
                                 <td>
-                                    <?php if ($log['status'] === 'SUCESSO'): ?>
-                                        <span class="badge badge-status badge-success-soft">
-                                            <i class="fas fa-check me-1"></i> Sucesso
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="badge badge-status badge-danger-soft">
-                                            <i class="fas fa-times-circle me-1"></i> Erro
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column">
-                                        <span class="fw-bold text-dark"><?php echo date('d/m/Y', strtotime($log['data_envio'])); ?></span>
-                                        <span class="text-muted small"><?php echo date('H:i:s', strtotime($log['data_envio'])); ?></span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column">
-                                        <span class="fw-medium text-dark"><?php echo htmlspecialchars($log['email_destino']); ?></span>
-                                        <?php if ($log['requerente_nome']): ?>
-                                            <span class="text-muted small">
-                                                <i class="fas fa-user me-1" style="font-size: 0.7rem;"></i> 
-                                                <?php echo htmlspecialchars($log['requerente_nome']); ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="text-break" style="max-width: 300px;">
-                                        <?php if ($log['protocolo']): ?>
-                                            <a href="visualizar_requerimento.php?id=<?php echo $log['requerimento_id']; ?>" class="badge bg-light text-dark text-decoration-none border mb-1">
-                                                Proto: <?php echo htmlspecialchars($log['protocolo']); ?>
-                                            </a>
-                                            <br>
-                                        <?php endif; ?>
-                                        <span class="text-dark" title="<?php echo htmlspecialchars($log['assunto']); ?>">
-                                            <?php echo htmlspecialchars(mb_strimwidth($log['assunto'], 0, 50, '...')); ?>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-secondary border">
-                                        <?php echo htmlspecialchars($log['usuario_envio'] ?? 'Sistema'); ?>
+                                    <span class="badge badge-status <?= $log['status'] === 'SUCESSO' ? 'status-aprovado' : 'status-reprovado' ?>">
+                                        <?= $log['status'] === 'SUCESSO' ? 'Sucesso' : 'Erro' ?>
                                     </span>
                                 </td>
-                                <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2" onclick="showLogDetails(<?php echo $log['id']; ?>)">
-                                        <i class="fas fa-info-circle"></i> Ver Detalhes
+                                <td>
+                                    <div class="logs-stack">
+                                        <span class="logs-main"><?= date('d/m/Y', strtotime($log['data_envio'])) ?></span>
+                                        <span class="logs-sub"><?= date('H:i:s', strtotime($log['data_envio'])) ?></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="logs-stack">
+                                        <span class="logs-main"><?= htmlspecialchars($log['email_destino']) ?></span>
+                                        <?php if (!empty($log['requerente_nome'])): ?>
+                                            <span class="logs-sub"><?= htmlspecialchars($log['requerente_nome']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="logs-stack">
+                                        <?php if (!empty($log['protocolo'])): ?>
+                                            <span>
+                                                <a href="visualizar_requerimento.php?id=<?= (int) $log['requerimento_id'] ?>" class="logs-protocol">
+                                                    <i class="fas fa-barcode"></i><?= htmlspecialchars($log['protocolo']) ?>
+                                                </a>
+                                            </span>
+                                        <?php endif; ?>
+                                        <span class="logs-main logs-subject" title="<?= htmlspecialchars($log['assunto']) ?>"><?= htmlspecialchars($log['assunto']) ?></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="logs-stack">
+                                        <span class="logs-main"><?= htmlspecialchars($log['usuario_envio'] ?? 'Sistema') ?></span>
+                                        <?php if (!empty($log['erro']) && $log['status'] !== 'SUCESSO'): ?>
+                                            <span class="logs-sub" title="<?= htmlspecialchars($log['erro']) ?>">falha registrada</span>
+                                        <?php else: ?>
+                                            <span class="logs-sub">origem do disparo</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <button class="toolbar-button" type="button" onclick="showLogDetails(<?= (int) $log['id'] ?>)">
+                                        <i class="fas fa-circle-info"></i> Ver detalhes
                                     </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Paginação -->
-        <?php if ($total_pages > 1): ?>
-            <div class="pagination-container">
-                <nav>
-                    <ul class="pagination justify-content-center mb-0">
-                        <?php if ($page > 1): ?>
-                            <li class="page-item">
-                                <a class="page-link" href="?page=<?php echo $page - 1; ?>&status=<?php echo urlencode($filtro_status); ?>&email=<?php echo urlencode($filtro_email); ?>&data_inicio=<?php echo urlencode($filtro_data_inicio); ?>&data_fim=<?php echo urlencode($filtro_data_fim); ?>">
-                                    <i class="fas fa-chevron-left"></i>
-                                </a>
-                            </li>
-                        <?php endif; ?>
-
-                        <?php
-                        $start = max(1, $page - 2);
-                        $end = min($total_pages, $page + 2);
-
-                        if ($start > 1) {
-                            echo '<li class="page-item"><a class="page-link" href="?page=1&status=' . urlencode($filtro_status) . '&email=' . urlencode($filtro_email) . '...">1</a></li>';
-                            if ($start > 2) {
-                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                            }
-                        }
-
-                        for ($i = $start; $i <= $end; $i++):
-                        ?>
-                            <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
-                                <a class="page-link" href="?page=<?php echo $i; ?>&status=<?php echo urlencode($filtro_status); ?>&email=<?php echo urlencode($filtro_email); ?>&data_inicio=<?php echo urlencode($filtro_data_inicio); ?>&data_fim=<?php echo urlencode($filtro_data_fim); ?>">
-                                    <?php echo $i; ?>
-                                </a>
-                            </li>
-                        <?php endfor; ?>
-
-                        <?php
-                        if ($end < $total_pages) {
-                            if ($end < $total_pages - 1) {
-                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                            }
-                            echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&status=' . urlencode($filtro_status) . '&email=' . urlencode($filtro_email) . '...">' . $total_pages . '</a></li>';
-                        }
-                        ?>
-
-                        <?php if ($page < $total_pages): ?>
-                            <li class="page-item">
-                                <a class="page-link" href="?page=<?php echo $page + 1; ?>&status=<?php echo urlencode($filtro_status); ?>&email=<?php echo urlencode($filtro_email); ?>&data_inicio=<?php echo urlencode($filtro_data_inicio); ?>&data_fim=<?php echo urlencode($filtro_data_fim); ?>">
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            </li>
-                        <?php endif; ?>
-                    </ul>
-                </nav>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="logs-empty">
+                <i class="fas fa-inbox"></i>
+                <p class="mb-0">Nenhum log encontrado para os filtros atuais.</p>
             </div>
         <?php endif; ?>
-    </div>
+
+        <?php if ($totalPages > 1): ?>
+            <div class="logs-pagination">
+                <div class="logs-pagination-copy">
+                    Página <?= $page ?> de <?= $totalPages ?> · <?= $totalLogs ?> registro(s)
+                </div>
+                <div class="logs-pagination-links">
+                    <?php if ($page > 1): ?>
+                        <a href="<?= htmlspecialchars(buildLogsUrl(['page' => 1])) ?>" class="logs-page-link">«</a>
+                        <a href="<?= htmlspecialchars(buildLogsUrl(['page' => $page - 1])) ?>" class="logs-page-link">‹</a>
+                    <?php endif; ?>
+                    <?php
+                    $start = max(1, $page - 2);
+                    $end = min($totalPages, $page + 2);
+                    for ($i = $start; $i <= $end; $i++):
+                    ?>
+                        <a href="<?= htmlspecialchars(buildLogsUrl(['page' => $i])) ?>" class="logs-page-link <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                    <?php endfor; ?>
+                    <?php if ($page < $totalPages): ?>
+                        <a href="<?= htmlspecialchars(buildLogsUrl(['page' => $page + 1])) ?>" class="logs-page-link">›</a>
+                        <a href="<?= htmlspecialchars(buildLogsUrl(['page' => $totalPages])) ?>" class="logs-page-link">»</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </section>
 </div>
 
-<!-- Modal para detalhes do log -->
 <style>
-    #logDetailsContent, #logDetailsContent * {
-        max-width: none !important;
-    }
+    #logDetailsContent, #logDetailsContent * { max-width: none !important; }
 </style>
 <div class="modal fade" id="logDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -486,9 +319,7 @@ include 'header.php';
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4" id="logDetailsContent">
-                <!-- Conteúdo carregado via AJAX -->
-            </div>
+            <div class="modal-body p-4" id="logDetailsContent"></div>
             <div class="modal-footer border-top-0 bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
@@ -500,7 +331,6 @@ include 'header.php';
     let logDetailsModal = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Mover o modal para o body para evitar conflitos de layout (z-index/position)
         const modalEl = document.getElementById('logDetailsModal');
         if (modalEl) {
             document.body.appendChild(modalEl);
@@ -510,17 +340,17 @@ include 'header.php';
 
     function showLogDetails(logId) {
         const content = document.getElementById('logDetailsContent');
-        
+
         content.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-primary mb-3" role="status"></div>
                 <p class="text-muted mb-0">Carregando detalhes...</p>
             </div>
         `;
-        
+
         logDetailsModal.show();
 
-        fetch(`ajax_log_details.php?id=${logId}`)
+        fetch(\`ajax_log_details.php?id=\${logId}\`)
             .then(response => {
                 if (!response.ok) throw new Error('Erro na requisição');
                 return response.text();
@@ -528,8 +358,7 @@ include 'header.php';
             .then(data => {
                 content.innerHTML = data;
             })
-            .catch(error => {
-                console.error('Erro:', error);
+            .catch(() => {
                 content.innerHTML = `
                     <div class="alert alert-danger d-flex align-items-center">
                         <i class="fas fa-exclamation-circle fa-2x me-3"></i>
