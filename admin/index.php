@@ -162,28 +162,26 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .queue-open:hover { border-color:var(--primary-soft-2); color:var(--primary); }
     .queue-date { color:var(--muted); font-size:.76rem; }
     .queue-empty { padding:24px; border:1px dashed var(--line-strong); border-radius:18px; color:var(--muted); text-align:center; }
-    .release-modal-dialog { max-width: 760px; }
-    .release-modal-content { border: 0; border-radius: 28px; overflow: hidden; box-shadow: 0 32px 80px rgba(16, 33, 23, 0.16); }
-    .release-modal-hero { padding: 28px 28px 22px; background: linear-gradient(135deg, #14532d 0%, #1f7a45 100%); color: #fff; }
-    .release-modal-kicker { display:inline-flex; align-items:center; gap:8px; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(255,255,255,.12); font-size:.76rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-    .release-modal-title { margin:16px 0 10px; font-size:2rem; font-weight:800; line-height:1.04; }
-    .release-modal-copy { margin:0; max-width:560px; color:rgba(255,255,255,.84); line-height:1.65; }
-    .release-modal-body { padding: 26px 28px 28px; background:#fff; }
-    .release-highlights { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin-bottom:20px; }
-    .release-highlight { border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); padding:16px; }
-    .release-highlight-icon { width:40px; height:40px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; background:var(--primary-soft); color:var(--primary); }
-    .release-highlight h3 { margin:0 0 6px; font-size:1rem; font-weight:800; color:var(--ink); }
-    .release-highlight p { margin:0; font-size:.88rem; line-height:1.55; color:var(--muted); }
-    .release-support { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:18px; border:1px solid var(--line); border-radius:18px; background:#f8faf8; }
-    .release-support h4 { margin:0 0 6px; font-size:1rem; font-weight:800; color:var(--ink); }
+    .release-modal-dialog { max-width: 620px; }
+    .release-modal-content { border: 0; border-radius: 24px; overflow: hidden; box-shadow: 0 24px 64px rgba(16, 33, 23, 0.14); }
+    .release-modal-hero { padding: 24px 24px 18px; background: #fff; border-bottom: 1px solid var(--line); color: var(--ink); }
+    .release-modal-kicker { display:inline-flex; align-items:center; gap:8px; min-height:28px; padding:0 11px; border-radius:999px; background:var(--primary-soft); color:var(--primary); font-size:.74rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .release-modal-title { margin:14px 0 8px; font-size:1.55rem; font-weight:800; line-height:1.12; }
+    .release-modal-copy { margin:0; color:var(--muted); line-height:1.6; }
+    .release-modal-body { padding: 20px 24px 24px; background:#fff; }
+    .release-points { display:flex; flex-direction:column; gap:12px; margin-bottom:18px; }
+    .release-point { padding:14px 16px; border:1px solid var(--line); border-radius:16px; background:var(--surface-soft); }
+    .release-point h3 { margin:0 0 5px; font-size:.98rem; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:10px; }
+    .release-point p { margin:0; font-size:.9rem; line-height:1.55; color:var(--muted); }
+    .release-support { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; border:1px solid var(--line); border-radius:16px; background:#f8faf8; }
     .release-support p { margin:0; color:var(--muted); line-height:1.55; }
-    .release-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:20px; }
+    .release-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:18px; }
     .release-link { display:inline-flex; align-items:center; gap:8px; min-height:42px; padding:0 16px; border-radius:14px; border:1px solid var(--line); color:var(--ink); font-weight:700; background:#fff; }
     .release-link:hover { border-color:var(--primary-soft-2); color:var(--primary); }
     .release-close { display:inline-flex; align-items:center; gap:8px; min-height:42px; padding:0 18px; border-radius:14px; border:1px solid var(--primary-soft-2); color:#fff; font-weight:800; background:var(--primary); }
     .release-close:hover { background:var(--primary-strong); color:#fff; }
     @media (max-width: 1199px) { .metric-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .dashboard-grid { grid-template-columns:1fr; } }
-    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid, .release-highlights { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head, .release-support, .release-actions { flex-direction:column; align-items:flex-start; } .release-modal-hero, .release-modal-body { padding:20px; } .release-modal-title { font-size:1.55rem; } }
+    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head, .release-support, .release-actions { flex-direction:column; align-items:flex-start; } .release-modal-hero, .release-modal-body { padding:18px; } .release-modal-title { font-size:1.35rem; } .release-link, .release-close { width:100%; justify-content:center; } }
 </style>
 
 <div class="dashboard-shell">
@@ -267,38 +265,28 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     </section>
 </div>
 
-<div class="modal fade" id="releaseUpdateModal" tabindex="-1" aria-hidden="true" data-release-version="admin-release-2026-04-22">
+<div class="modal fade" id="releaseUpdateModal" tabindex="-1" aria-hidden="true" data-release-version="admin-release-2026-04-22-v2">
     <div class="modal-dialog modal-dialog-centered release-modal-dialog">
         <div class="modal-content release-modal-content">
             <div class="release-modal-hero">
-                <span class="release-modal-kicker"><i class="fas fa-sparkles"></i> Atualização do painel</span>
-                <h2 class="release-modal-title">O painel foi reestruturado e o fluxo ficou mais direto.</h2>
-                <p class="release-modal-copy">Esta atualização traz visual novo no admin, ajustes no formulário de ambientação e um fluxo de boleto mais simples para acompanhamento do pagamento.</p>
+                <span class="release-modal-kicker"><i class="fas fa-bell"></i> Atualização do painel</span>
+                <h2 class="release-modal-title">O painel administrativo foi atualizado.</h2>
+                <p class="release-modal-copy">As mudanças desta versão acompanham a reestruturação do sistema e atualizações feitas conforme demandas mais recentes.</p>
             </div>
             <div class="release-modal-body">
-                <div class="release-highlights">
-                    <article class="release-highlight">
-                        <span class="release-highlight-icon"><i class="fas fa-panels-top-left"></i></span>
-                        <h3>Visual mais limpo</h3>
-                        <p>As telas principais foram reorganizadas para dar mais foco na operação e reduzir excesso de informação.</p>
+                <div class="release-points">
+                    <article class="release-point">
+                        <h3><i class="fas fa-panels-top-left"></i> Reestruturação visual</h3>
+                        <p>Como várias partes do fluxo precisaram ser refeitas, o visual do painel também foi reorganizado e atualizado.</p>
                     </article>
-                    <article class="release-highlight">
-                        <span class="release-highlight-icon"><i class="fas fa-leaf"></i></span>
-                        <h3>Ambientação atualizada</h3>
-                        <p>O formulário de ambientação foi revisado para refletir a nova estrutura e melhorar a leitura dos dados.</p>
-                    </article>
-                    <article class="release-highlight">
-                        <span class="release-highlight-icon"><i class="fas fa-file-invoice-dollar"></i></span>
-                        <h3>Novo fluxo de boleto</h3>
-                        <p>Agora o usuário recebe um e-mail com acesso ao boleto, realiza o pagamento e envia o comprovante pela página pública para conferência.</p>
+                    <article class="release-point">
+                        <h3><i class="fas fa-file-pen"></i> Formulário e envio atualizados</h3>
+                        <p>O formulário de ambientação foi atualizado, assim como o envio de informações do processo. Entre as mudanças, agora há envio de boleto ao usuário e registro da localização pelo Google, de acordo com demandas mais atuais.</p>
                     </article>
                 </div>
 
                 <div class="release-support">
-                    <div>
-                        <h4>Precisa de ajuda com a atualização?</h4>
-                        <p>Se surgir alguma dúvida operacional ou dificuldade de acesso, use os canais oficiais de suporte do sistema.</p>
-                    </div>
+                    <p>Em caso de dúvida operacional ou dificuldade de acesso, use os canais oficiais de suporte do sistema.</p>
                     <a href="../suporte.php" class="release-link">
                         <i class="fas fa-life-ring"></i> Abrir suporte
                     </a>
