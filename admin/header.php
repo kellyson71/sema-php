@@ -2,6 +2,7 @@
 require_once 'conexao.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
+require_once __DIR__ . '/../includes/admin_release_reads.php';
 verificaLogin();
 
 $adminBase = (basename(dirname($_SERVER['SCRIPT_NAME'] ?? '')) !== 'admin') ? '../' : '';
@@ -10,7 +11,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
 $totalNaoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
 ensureAdminNotificationTables($pdo);
+ensureAdminReleaseReadTable($pdo);
 $notificationCounts = fetchAdminNotificationCounts($pdo, (int) $_SESSION['admin_id']);
+$hasSeenCurrentRelease = hasAdminSeenReleaseVersion($pdo, (int) $_SESSION['admin_id'], APP_VERSION);
 $totalNotificacoes = $notificationCounts['total'];
 $notificationTotal = $notificationCounts['unread'];
 $notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'unread', 20, 0);
@@ -1614,25 +1617,52 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
     <script>
     (function () {
         var CURRENT = '<?= APP_VERSION ?>';
-        var UID = '<?= (int) ($_SESSION['admin_id'] ?? 0) ?>';
-        var KEY = 'sema_vrseen_' + UID;
+        var HAS_SEEN = <?= $hasSeenCurrentRelease ? 'true' : 'false' ?>;
+        var MARK_URL = '<?= $adminBase ?>ajax/marcar_release_lida.php';
 
         document.addEventListener('DOMContentLoaded', function () {
-            var hasSeen = localStorage.getItem(KEY) === CURRENT;
             var newDot = document.getElementById('sidebarNewDot');
             var clModal = document.getElementById('changelogModal');
+            var releaseMarked = HAS_SEEN;
 
-            if (!hasSeen && newDot) {
+            function markReleaseAsSeen() {
+                if (releaseMarked) {
+                    return;
+                }
+
+                var body = new URLSearchParams();
+                body.set('version', CURRENT);
+
+                fetch(MARK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body.toString()
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('request_failed');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data && data.success) {
+                        releaseMarked = true;
+                    }
+                })
+                .catch(function () {});
+            }
+
+            if (!HAS_SEEN && newDot) {
                 newDot.style.display = 'inline-block';
             }
 
-            if (!hasSeen && clModal && typeof bootstrap !== 'undefined') {
+            if (!HAS_SEEN && clModal && typeof bootstrap !== 'undefined') {
                 new bootstrap.Modal(clModal).show();
             }
 
             if (clModal) {
                 clModal.addEventListener('hidden.bs.modal', function () {
-                    localStorage.setItem(KEY, CURRENT);
+                    markReleaseAsSeen();
                     if (newDot) newDot.style.display = 'none';
                 });
             }

@@ -122,6 +122,15 @@ CREATE TABLE IF NOT EXISTS admin_notification_reads (
     FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS admin_release_reads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    lida_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_admin_release_read (admin_id, version),
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
+);
+
 -- Tabela de histórico de ações
 CREATE TABLE IF NOT EXISTS historico_acoes (
     id INT AUTO_INCREMENT PRIMARY KEY,
