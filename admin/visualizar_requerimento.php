@@ -6,6 +6,7 @@ require_once '../includes/pagamento_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
+ensureAdminNotificationTables($pdo);
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -416,66 +417,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     $novoStatus = $_POST['status'];
     $observacoes = $_POST['observacoes'];
 
-    try {
-        $pdo->beginTransaction();
-
-        // Atualizar status e observações do requerimento
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = ?, observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$novoStatus, $observacoes, $id]);
-
-        // Registrar no histórico de ações
-        $acao = "Alterou status para '{$novoStatus}'";
-        if (!empty($observacoes)) {
-            $acao .= " com a observação: {$observacoes}";
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
-
-        $pdo->commit();
-
-        // Recarregar dados do requerimento para refletir as mudanças
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-
-        $mensagem = "Status do requerimento atualizado com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        $mensagem = "Erro ao atualizar status: " . $e->getMessage();
+    if (!adminStatusPermitidoParaOperacao($novoStatus)) {
+        $mensagem = "Este status não está disponível na operação atual.";
         $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // Atualizar status e observações do requerimento
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = ?, observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$novoStatus, $observacoes, $id]);
+
+            // Registrar no histórico de ações
+            $acao = "Alterou status para '{$novoStatus}'";
+            if (!empty($observacoes)) {
+                $acao .= " com a observação: {$observacoes}";
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+            $pdo->commit();
+
+            // Recarregar dados do requerimento para refletir as mudanças
+            $requerimento = buscarDadosRequerimento($pdo, $id);
+
+            $mensagem = "Status do requerimento atualizado com sucesso!";
+            $mensagemTipo = "success";
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            $mensagem = "Erro ao atualizar status: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
     }
 }
 
 // Processar envio para fiscalizacao
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_fiscalizacao'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Fiscalização', data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$id]);
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, "Enviou processo para Fiscalização de Obras"]);
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo enviado para fiscalização de obras com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
+    $mensagem = "O encaminhamento para fiscalização está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
 // Processar envio para secretario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Apto a gerar alvará', data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$id]);
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, "Concluiu a vistoria técnica e enviou para o Secretário"]);
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo enviado para assinatura do Secretário com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
+    $mensagem = "O encaminhamento para assinatura do secretário está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
 // Buscar documentos do requerimento
@@ -1178,6 +1164,19 @@ include 'header.php';
         display: flex;
         flex-wrap: wrap;
         gap: 0.75rem;
+    }
+
+    .detail-actions-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 0.92rem;
+        font-weight: 600;
     }
 
     .detail-actions-secondary {
@@ -2305,40 +2304,11 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                           <div class="p-4">
                               <div class="detail-actions-toolbar">
                               
-                              <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
-
-                              <?php if ($_SESSION['admin_nivel'] === 'fiscal'): ?>
-                              <!-- Destaque principal para o fiscal: concluir análise -->
-                              <div class="detail-actions-highlight">
-                                  <form method="post" action="">
-                                      <button type="submit" name="enviar_secretario" class="btn btn-lg fw-semibold text-white w-100 shadow" style="background:#8b5cf6;" onclick="return confirm('Confirmar conclusão da análise e envio ao Secretário para emissão do alvará?')">
-                                          <i class="fas fa-paper-plane me-2"></i>Concluir análise e enviar ao Secretário
-                                      </button>
-                                  </form>
-                                  <p class="text-muted small mt-2 mb-0 text-center">
-                                      <i class="fas fa-info-circle me-1"></i>Use este botão após gerar e assinar o parecer técnico.
-                                  </p>
-                              </div>
-                              <?php endif; ?>
-
                               <div class="detail-actions-primary">
-                                  <!-- Botão envio analista -> fiscal -->
-                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
-                                      <form method="post" action="" style="display: inline;">
-                                          <button type="submit" name="enviar_fiscalizacao" class="btn fw-medium text-white shadow-sm" style="background:#0284c7;" onclick="return confirm('Confirmar envio para a Fiscalização de Obras?')">
-                                              <i class="fas fa-hard-hat me-2"></i>Enviar p/ Fiscalização de Obras
-                                          </button>
-                                      </form>
-                                  <?php endif; ?>
-
-                                  <!-- Botão envio fiscal -> secretario (visível para admin também) -->
-                                  <?php if ($_SESSION['admin_nivel'] === 'admin'): ?>
-                                      <form method="post" action="" style="display: inline;">
-                                          <button type="submit" name="enviar_secretario" class="btn fw-medium text-white shadow-sm" style="background:#8b5cf6;" onclick="return confirm('Confirmar envio para assinatura do Secretário?')">
-                                              <i class="fas fa-paper-plane me-2"></i>Enviar p/ Secretário (Apto a Gerar Alvará)
-                                          </button>
-                                      </form>
-                                  <?php endif; ?>
+                                  <div class="detail-actions-note">
+                                      <i class="fas fa-circle-info me-2"></i>
+                                      O fluxo complementar por fiscalização e secretário está temporariamente desativado nesta atualização.
+                                  </div>
                               </div>
 
                               <div class="detail-actions-secondary">
@@ -2478,8 +2448,6 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                             <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
                             <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
                             <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
-                            <option value="Apto a gerar alvará" <?= $requerimento['status']=='Apto a gerar alvará'?'selected':'' ?>>Apto a gerar alvará</option>
-                            <option value="Alvará Emitido"      <?= $requerimento['status']=='Alvará Emitido'    ?'selected':'' ?>>Alvará Emitido</option>
                         </select>
                     </div>
                     <div>

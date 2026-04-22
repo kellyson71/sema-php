@@ -12,16 +12,6 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 }
 verificaLogin();
 
-if ((isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'secretario') || (isset($_SESSION['admin_email']) && $_SESSION['admin_email'] === 'secretario@sema.rn.gov.br')) {
-    header("Location: secretario_dashboard.php");
-    exit;
-}
-
-if (isset($_SESSION['admin_nivel']) && $_SESSION['admin_nivel'] === 'fiscal') {
-    header("Location: fiscal_dashboard.php");
-    exit;
-}
-
 $totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
 $emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
 $naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
@@ -74,9 +64,6 @@ $statusMeta = [
     'Pendente' => ['class' => 'status-pendente', 'label' => 'Pendente'],
     'Cancelado' => ['class' => 'status-cancelado', 'label' => 'Cancelado'],
     'Indeferido' => ['class' => 'status-indeferido', 'label' => 'Indeferido'],
-    'Apto a gerar alvará' => ['class' => 'status-apto-a-gerar-alvara', 'label' => 'Apto a gerar alvará'],
-    'Alvará Emitido' => ['class' => 'status-alvara-emitido', 'label' => 'Alvará emitido'],
-    'Aguardando Fiscalização' => ['class' => 'status-aguardando-fiscalizacao', 'label' => 'Aguardando fiscalização'],
     'Aguardando boleto' => ['class' => 'status-aguardando-boleto', 'label' => 'Aguardando boleto'],
     'Boleto pago' => ['class' => 'status-boleto-pago', 'label' => 'Boleto pago'],
 ];
@@ -87,9 +74,6 @@ if ($emAnalise > 0) {
 }
 if ($naoVisualizados > 0) {
     $resumoOperacional[] = $naoVisualizados . ' não visualizados';
-}
-if (($totalAguardandoFiscal ?? 0) > 0) {
-    $resumoOperacional[] = $totalAguardandoFiscal . ' aguardando fiscalização';
 }
 if (!$resumoOperacional) {
     $resumoOperacional[] = 'sem filas críticas no momento';
@@ -135,7 +119,6 @@ $dataPainelLabel = sprintf(
     $meses[(int) $dataPainel->format('n')] ?? $dataPainel->format('m')
 );
 
-$rotaFiscal = $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php';
 $ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
 $ctaFilaHref = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
 $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
@@ -179,8 +162,28 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .queue-open:hover { border-color:var(--primary-soft-2); color:var(--primary); }
     .queue-date { color:var(--muted); font-size:.76rem; }
     .queue-empty { padding:24px; border:1px dashed var(--line-strong); border-radius:18px; color:var(--muted); text-align:center; }
+    .release-modal-dialog { max-width: 760px; }
+    .release-modal-content { border: 0; border-radius: 28px; overflow: hidden; box-shadow: 0 32px 80px rgba(16, 33, 23, 0.16); }
+    .release-modal-hero { padding: 28px 28px 22px; background: linear-gradient(135deg, #14532d 0%, #1f7a45 100%); color: #fff; }
+    .release-modal-kicker { display:inline-flex; align-items:center; gap:8px; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(255,255,255,.12); font-size:.76rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .release-modal-title { margin:16px 0 10px; font-size:2rem; font-weight:800; line-height:1.04; }
+    .release-modal-copy { margin:0; max-width:560px; color:rgba(255,255,255,.84); line-height:1.65; }
+    .release-modal-body { padding: 26px 28px 28px; background:#fff; }
+    .release-highlights { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin-bottom:20px; }
+    .release-highlight { border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); padding:16px; }
+    .release-highlight-icon { width:40px; height:40px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; background:var(--primary-soft); color:var(--primary); }
+    .release-highlight h3 { margin:0 0 6px; font-size:1rem; font-weight:800; color:var(--ink); }
+    .release-highlight p { margin:0; font-size:.88rem; line-height:1.55; color:var(--muted); }
+    .release-support { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:18px; border:1px solid var(--line); border-radius:18px; background:#f8faf8; }
+    .release-support h4 { margin:0 0 6px; font-size:1rem; font-weight:800; color:var(--ink); }
+    .release-support p { margin:0; color:var(--muted); line-height:1.55; }
+    .release-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:20px; }
+    .release-link { display:inline-flex; align-items:center; gap:8px; min-height:42px; padding:0 16px; border-radius:14px; border:1px solid var(--line); color:var(--ink); font-weight:700; background:#fff; }
+    .release-link:hover { border-color:var(--primary-soft-2); color:var(--primary); }
+    .release-close { display:inline-flex; align-items:center; gap:8px; min-height:42px; padding:0 18px; border-radius:14px; border:1px solid var(--primary-soft-2); color:#fff; font-weight:800; background:var(--primary); }
+    .release-close:hover { background:var(--primary-strong); color:#fff; }
     @media (max-width: 1199px) { .metric-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .dashboard-grid { grid-template-columns:1fr; } }
-    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head { flex-direction:column; align-items:flex-start; } }
+    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid, .release-highlights { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head, .release-support, .release-actions { flex-direction:column; align-items:flex-start; } .release-modal-hero, .release-modal-body { padding:20px; } .release-modal-title { font-size:1.55rem; } }
 </style>
 
 <div class="dashboard-shell">
@@ -215,9 +218,9 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
             <span class="metric-note">precisam revisão</span>
         </article>
         <article class="metric-card">
-            <span class="metric-label">Em fiscalização</span>
-            <strong class="metric-value"><?= (int) $totalAguardandoFiscal ?></strong>
-            <span class="metric-note">campo ativo</span>
+            <span class="metric-label">Novos na semana</span>
+            <strong class="metric-value"><?= $novosSemana ?></strong>
+            <span class="metric-note">entradas recentes</span>
         </article>
     </section>
 
@@ -262,6 +265,53 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
         </div>
 
     </section>
+</div>
+
+<div class="modal fade" id="releaseUpdateModal" tabindex="-1" aria-hidden="true" data-release-version="admin-release-2026-04-22">
+    <div class="modal-dialog modal-dialog-centered release-modal-dialog">
+        <div class="modal-content release-modal-content">
+            <div class="release-modal-hero">
+                <span class="release-modal-kicker"><i class="fas fa-sparkles"></i> Atualização do painel</span>
+                <h2 class="release-modal-title">O painel foi reestruturado e o fluxo ficou mais direto.</h2>
+                <p class="release-modal-copy">Esta atualização traz visual novo no admin, ajustes no formulário de ambientação e um fluxo de boleto mais simples para acompanhamento do pagamento.</p>
+            </div>
+            <div class="release-modal-body">
+                <div class="release-highlights">
+                    <article class="release-highlight">
+                        <span class="release-highlight-icon"><i class="fas fa-panels-top-left"></i></span>
+                        <h3>Visual mais limpo</h3>
+                        <p>As telas principais foram reorganizadas para dar mais foco na operação e reduzir excesso de informação.</p>
+                    </article>
+                    <article class="release-highlight">
+                        <span class="release-highlight-icon"><i class="fas fa-leaf"></i></span>
+                        <h3>Ambientação atualizada</h3>
+                        <p>O formulário de ambientação foi revisado para refletir a nova estrutura e melhorar a leitura dos dados.</p>
+                    </article>
+                    <article class="release-highlight">
+                        <span class="release-highlight-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <h3>Novo fluxo de boleto</h3>
+                        <p>Agora o usuário recebe um e-mail com acesso ao boleto, realiza o pagamento e envia o comprovante pela página pública para conferência.</p>
+                    </article>
+                </div>
+
+                <div class="release-support">
+                    <div>
+                        <h4>Precisa de ajuda com a atualização?</h4>
+                        <p>Se surgir alguma dúvida operacional ou dificuldade de acesso, use os canais oficiais de suporte do sistema.</p>
+                    </div>
+                    <a href="../suporte.php" class="release-link">
+                        <i class="fas fa-life-ring"></i> Abrir suporte
+                    </a>
+                </div>
+
+                <div class="release-actions">
+                    <button type="button" class="release-close" data-bs-dismiss="modal">
+                        <i class="fas fa-check"></i> Entendi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php include 'footer.php'; ?>

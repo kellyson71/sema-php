@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once 'helpers.php';
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
@@ -142,6 +143,8 @@ function buildReqUrl(array $overrides = []): string
 }
 
 include 'header.php';
+
+$statusOperacionais = adminStatusFluxoPrincipal();
 ?>
 <link rel="stylesheet" href="includes/admin-styles.css">
 
@@ -235,7 +238,7 @@ include 'header.php';
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
                         <div id="dropdownStatus" class="req-inline-dropdown" style="display: none;">
-                            <?php foreach (['Em análise', 'Aprovado', 'Pendente', 'Reprovado', 'Apto a gerar alvará', 'Finalizado', 'Indeferido', 'Cancelado'] as $statusAcao): ?>
+                            <?php foreach ($statusOperacionais as $statusAcao): ?>
                                 <button type="button" onclick="alterarStatusMultiplo('<?= htmlspecialchars($statusAcao) ?>')" class="req-inline-dropdown-item"><?= htmlspecialchars($statusAcao) ?></button>
                             <?php endforeach; ?>
                         </div>
@@ -308,7 +311,7 @@ include 'header.php';
                                         <i class="fas fa-pen"></i>Alterar status
                                     </button>
                                     <div class="req-actions-submenu-panel">
-                                        <?php foreach (['Em análise', 'Aprovado', 'Reprovado', 'Pendente', 'Apto a gerar alvará', 'Finalizado', 'Indeferido', 'Cancelado'] as $statusAcao): ?>
+                                        <?php foreach ($statusOperacionais as $statusAcao): ?>
                                             <button type="button" class="req-actions-item" onclick="event.stopPropagation(); alterarStatusUnico(<?= (int) $req['id'] ?>, '<?= htmlspecialchars($statusAcao) ?>');">
                                                 <?= htmlspecialchars($statusAcao) ?>
                                             </button>

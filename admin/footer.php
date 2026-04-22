@@ -41,6 +41,7 @@
                 const searchItems = searchResults ? Array.from(searchResults.querySelectorAll('[data-search-item]')) : [];
                 const notificationTabs = Array.from(document.querySelectorAll('[data-notification-tab]'));
                 const notificationPanels = Array.from(document.querySelectorAll('[data-notification-panel]'));
+                const releaseModalElement = document.getElementById('releaseUpdateModal');
 
                 const desktopQuery = window.matchMedia('(min-width: 992px)');
                 const collapsedState = localStorage.getItem('adminSidebarCollapsed');
@@ -189,6 +190,20 @@
                                 closeMobileSidebar();
                             }
                         });
+                    });
+                }
+
+                if (releaseModalElement && window.bootstrap?.Modal) {
+                    const releaseVersion = releaseModalElement.dataset.releaseVersion || 'admin-release-current';
+                    const dismissedVersion = localStorage.getItem('adminReleaseSeen');
+                    const releaseModal = new bootstrap.Modal(releaseModalElement);
+
+                    if (dismissedVersion !== releaseVersion) {
+                        releaseModal.show();
+                    }
+
+                    releaseModalElement.addEventListener('hidden.bs.modal', function() {
+                        localStorage.setItem('adminReleaseSeen', releaseVersion);
                     });
                 }
             });

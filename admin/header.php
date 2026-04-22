@@ -8,7 +8,6 @@ $adminData = getDadosAdmin($pdo, $_SESSION['admin_id']);
 $currentPage = basename($_SERVER['PHP_SELF']);
 
 $totalNaoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
-$totalAguardandoFiscal = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aguardando Fiscalização'")->fetchColumn();
 ensureAdminNotificationTables($pdo);
 $notificationCounts = fetchAdminNotificationCounts($pdo, (int) $_SESSION['admin_id']);
 $totalNotificacoes = $notificationCounts['total'];
@@ -24,9 +23,6 @@ $pageTitles = [
     'visualizar_requerimento.php' => 'Detalhes do Requerimento',
     'perfil.php' => 'Meu Perfil',
     'administradores.php' => 'Gerenciar Usuários',
-    'secretario_dashboard.php' => 'Aprovação de Alvarás',
-    'revisao_secretario.php' => 'Revisão e Assinatura',
-    'fiscal_dashboard.php' => 'Fiscalização de Obras',
     'denuncias.php' => 'Denúncias',
     'nova_denuncia.php' => 'Nova Denúncia',
     'visualizar_denuncia.php' => 'Detalhes da Denúncia',
@@ -49,14 +45,11 @@ $labelSetor = [
 $nivelAtual = $_SESSION['admin_nivel'] ?? 'operador';
 $roleLabel = $labelSetor[$nivelAtual] ?? ucfirst($nivelAtual);
 $isAdmin = in_array($nivelAtual, ['admin', 'admin_geral'], true);
-$isSecretario = ($nivelAtual === 'secretario' || $isAdmin);
 $isAnalista = ($nivelAtual === 'analista' || $isAdmin);
-$isFiscal = ($nivelAtual === 'fiscal' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
 $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../uploads/perfil/' . $adminData['foto_perfil'] : null;
 $isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php'], true);
-$isOperacaoSectionOpen = in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php', 'fiscal_dashboard.php'], true)
-    || ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente');
+$isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente';
 
 $searchItems = [
     ['label' => 'Dashboard', 'caption' => 'Visão geral do painel', 'url' => $adminBase . 'index.php', 'icon' => 'fa-gauge-high'],
@@ -73,28 +66,12 @@ $searchItems = [
 if ($isAdmin) {
     $searchItems[] = ['label' => 'Gerenciar Usuários', 'caption' => 'Administradores e acessos', 'url' => $adminBase . 'administradores.php', 'icon' => 'fa-users-gear'];
 }
-if ($isSecretario) {
-    $searchItems[] = [
-        'label' => 'Aprovação de Alvarás',
-        'caption' => 'Fluxo do secretário',
-        'url' => $adminBase . ($isAdmin ? 'simular_perfil.php?role=secretario' : 'secretario_dashboard.php'),
-        'icon' => 'fa-signature',
-    ];
-}
 if ($isAnalista) {
     $searchItems[] = [
         'label' => 'Triagem de Protocolos',
         'caption' => 'Fila de análise inicial',
         'url' => $adminBase . ($isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente'),
         'icon' => 'fa-magnifying-glass',
-    ];
-}
-if ($isFiscal) {
-    $searchItems[] = [
-        'label' => 'Fiscalização de Obras',
-        'caption' => 'Acompanhar vistorias e pendências',
-        'url' => $adminBase . ($isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php'),
-        'icon' => 'fa-hard-hat',
     ];
 }
 if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
@@ -1262,19 +1239,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         </a>
                         <div class="collapse <?= $isOperacaoSectionOpen ? 'show' : '' ?>" id="submenuOperacao">
                             <ul class="sidebar-submenu">
-                                <?php if ($isSecretario): ?>
-                                    <li>
-                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=secretario' : 'secretario_dashboard.php' ?>" class="sidebar-link <?= in_array($currentPage, ['secretario_dashboard.php', 'revisao_secretario.php'], true) ? 'active' : '' ?>" title="Aprovação de Alvarás">
-                                            <span class="sidebar-link-icon"><i class="fas fa-signature" style="color:#c084fc;"></i></span>
-                                            <span class="sidebar-link-content">
-                                                <span class="sidebar-link-text">
-                                                    <span class="sidebar-link-title">Aprovação de Alvarás</span>
-                                                </span>
-                                            </span>
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
-
                                 <?php if ($isAnalista): ?>
                                     <li>
                                         <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
@@ -1288,21 +1252,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if ($isFiscal): ?>
-                                    <li>
-                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=fiscal' : 'fiscal_dashboard.php' ?>" class="sidebar-link <?= $currentPage === 'fiscal_dashboard.php' ? 'active' : '' ?>" title="Fiscalização de Obras">
-                                            <span class="sidebar-link-icon"><i class="fas fa-hard-hat" style="color:#86efac;"></i></span>
-                                            <span class="sidebar-link-content">
-                                                <span class="sidebar-link-text">
-                                                    <span class="sidebar-link-title">Fiscalização de Obras</span>
-                                                </span>
-                                                <?php if ($totalAguardandoFiscal > 0): ?>
-                                                    <span class="badge sidebar-link-badge" style="background:rgba(134,239,172,.18);color:#86efac;border:1px solid rgba(134,239,172,.3);"><?= $totalAguardandoFiscal > 99 ? '99+' : $totalAguardandoFiscal ?></span>
-                                                <?php endif; ?>
-                                            </span>
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
                             </ul>
                         </div>
                     </li>
@@ -1643,9 +1592,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                     <strong>Modo simulação ativo:</strong>
                     <?php
                     $labelSetorSimulacao = [
-                        'secretario' => 'Secretário(a) — Aprovação de Alvarás',
                         'analista' => 'Analista — Triagem de Protocolos',
-                        'fiscal' => 'Fiscal de Obras',
                     ];
                     echo $labelSetorSimulacao[$_SESSION['admin_nivel']] ?? ucfirst($_SESSION['admin_nivel']);
                     ?>

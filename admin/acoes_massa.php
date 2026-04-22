@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once 'helpers.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
 
@@ -48,6 +49,9 @@ try {
             $novoStatus = $_POST['status'] ?? '';
             if (empty($novoStatus)) {
                 throw new Exception('Status não informado');
+            }
+            if (!adminStatusPermitidoParaOperacao($novoStatus)) {
+                throw new Exception('Status não disponível na operação atual');
             }
 
             $stmt = $pdo->prepare("UPDATE requerimentos SET status = ? WHERE id IN ($placeholders)");

@@ -120,7 +120,7 @@ $mediaAnaliseFiscal = $qtdAnaliseFiscal > 0 ? $somaAnaliseFiscal / $qtdAnaliseFi
 $mediaFiscalSecretario = $qtdFiscalSecretario > 0 ? $somaFiscalSecretario / $qtdFiscalSecretario : 0;
 $mediaTempoTotal = $qtdTempoTotal > 0 ? $somaTempoTotal / $qtdTempoTotal : 0;
 
-$statusSucesso = ['Aprovado', 'Finalizado', 'Apto a gerar alvará', 'Alvará Emitido'];
+$statusSucesso = ['Aprovado', 'Finalizado'];
 $statusFalha = ['Reprovado', 'Indeferido', 'Cancelado'];
 $totalAprovados = 0;
 $totalRejeitados = 0;
@@ -224,14 +224,14 @@ include 'header.php';
             <div class="time-copy">em análise → pendente</div>
         </article>
         <article class="stats-card time-card">
-            <div class="time-title"><i class="fas fa-hard-hat"></i> Análise</div>
+            <div class="time-title"><i class="fas fa-list-check"></i> Encaminhamentos legados</div>
             <div class="time-value"><?= formatarTempoEstatisticas($mediaAnaliseFiscal) ?></div>
-            <div class="time-copy">pendente → fiscalização</div>
+            <div class="time-copy">média histórica até etapas extras desativadas</div>
         </article>
         <article class="stats-card time-card">
-            <div class="time-title"><i class="fas fa-file-signature"></i> Fiscalização</div>
+            <div class="time-title"><i class="fas fa-box-archive"></i> Fluxo complementar</div>
             <div class="time-value"><?= formatarTempoEstatisticas($mediaFiscalSecretario) ?></div>
-            <div class="time-copy">fiscal → secretário</div>
+            <div class="time-copy">tempo histórico entre etapas extras</div>
         </article>
         <article class="stats-card time-card">
             <div class="time-title"><i class="fas fa-clock"></i> Tempo total</div>
@@ -377,9 +377,6 @@ include 'header.php';
             'Cancelado': 'rgba(100, 116, 139, 0.8)',
             'Finalizado': 'rgba(13, 84, 51, 0.8)',
             'Indeferido': 'rgba(71, 85, 105, 0.8)',
-            'Aguardando Fiscalização': 'rgba(2, 132, 199, 0.8)',
-            'Apto a gerar alvará': 'rgba(109, 40, 217, 0.8)',
-            'Alvará Emitido': 'rgba(4, 120, 87, 0.8)',
             'Aguardando boleto': 'rgba(180, 83, 9, 0.8)',
             'Boleto pago': 'rgba(15, 118, 110, 0.8)'
         };
