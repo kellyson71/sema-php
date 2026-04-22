@@ -31,6 +31,11 @@ class Database
         }
     }
 
+    public function getConnection(): PDO
+    {
+        return $this->conn;
+    }
+
     /**
      * Executa uma consulta SQL
      * @param string $sql A consulta SQL

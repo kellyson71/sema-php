@@ -21,6 +21,7 @@ session_start();
 require_once 'includes/functions.php';
 require_once 'includes/models.php';
 require_once 'includes/email_service.php';
+require_once 'includes/admin_notifications.php';
 
 // Verificar se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $proprietarioModel = new Proprietario();
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
+    $database = new Database();
+    $pdo = $database->getConnection();
 
     // Regras de negócio derivadas da fonte de verdade (tipos_alvara.php)
     $tipoInfo = $tipos_alvara[$_POST['tipo_alvara'] ?? ''] ?? null;
@@ -114,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
     $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
     $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
+    $enquadramento_atividade = trim($_POST['enquadramento_atividade'] ?? '');
+    $localizacao_google_maps = trim($_POST['localizacao_google_maps'] ?? '');
     
     // Campos adicionais dos templates
     $area_construcao = trim($_POST['area_construcao'] ?? '');
@@ -151,6 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
         'especificacao' => $descricao_atividade ?: null,
         'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
+        'enquadramento_atividade' => $enquadramento_atividade ?: null,
+        'localizacao_google_maps' => $localizacao_google_maps ?: null,
         'status' => 'Em análise'
     ];
 
@@ -166,12 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($publicacao_diario_oficial)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
-            redirect('index.php');
-        }
-
-        if (empty($comprovante_pagamento)) {
-            $_SESSION['form_data'] = $_POST;
-            setMensagem('erro', 'Informe o comprovante de pagamento.');
             redirect('index.php');
         }
 
@@ -237,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Salvar requerimento
     $requerimento_id = $requerimentoModel->criar($requerimento);
+    createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
 
     // Diretório para upload dos arquivos
     $diretorio_upload = UPLOAD_DIR . $protocolo;

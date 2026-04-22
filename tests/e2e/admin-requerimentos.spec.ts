@@ -53,6 +53,12 @@ test.describe('Admin Requerimentos - Estrutura da Página', () => {
     const response = await page.goto('/consultar/');
     expect(response?.status()).toBe(200);
   });
+
+  test('página pública de pagamento responde sem erro interno', async ({ page }) => {
+    const response = await page.goto('/pagamento.php?token=invalido');
+    expect(response?.status()).not.toBe(500);
+    expect(response?.status()).not.toBe(404);
+  });
 });
 
 test.describe('Admin Requerimentos - Com Autenticação', () => {

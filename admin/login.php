@@ -13,10 +13,24 @@
             exit();
         }
 
+// Garante que a tabela de dispositivos confiáveis exista
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS dispositivos_confiados (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT NOT NULL,
+        token_hash VARCHAR(64) NOT NULL,
+        ip_address VARCHAR(45) DEFAULT NULL,
+        user_agent VARCHAR(500) DEFAULT NULL,
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expira_em DATETIME NOT NULL,
+        INDEX idx_token (token_hash),
+        INDEX idx_admin (admin_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Exception $e) {}
+
 // Valida que o redirect é relativo (sem protocolo/domínio externo)
 function sanitizarRedirect($url, $fallback = 'index.php') {
     $url = trim($url ?? '');
-    // Rejeita qualquer URL com protocolo ou que comece com //
     if (preg_match('#^(https?:)?//#i', $url) || strpos($url, ':') !== false) {
         return $fallback;
     }
@@ -55,12 +69,92 @@ if ($_SESSION['login_attempts'] >= 5) {
     }
 }
 
-// Processar formulário de login via AJAX (etapas ou login tradicional com redirecionamento ajustado)
+/**
+ * Verifica se o dispositivo atual é confiável (cookie + DB).
+ */
+function verificarDispositivoConfiavel($pdo) {
+    $token = $_COOKIE['sema_trusted_device'] ?? '';
+    if (empty($token) || strlen($token) !== 64) return false;
+
+    $hash = hash('sha256', $token);
+    $stmt = $pdo->prepare("SELECT admin_id FROM dispositivos_confiados WHERE token_hash = ? AND expira_em > NOW() LIMIT 1");
+    $stmt->execute([$hash]);
+    $row = $stmt->fetch();
+    return $row ? (int)$row['admin_id'] : false;
+}
+
+/**
+ * Registra o dispositivo como confiável por 30 dias.
+ */
+function registrarDispositivoConfiavel($pdo, $adminId) {
+    $token = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $token);
+    $expira = date('Y-m-d H:i:s', time() + 30 * 24 * 3600);
+
+    $stmt = $pdo->prepare("INSERT INTO dispositivos_confiados (admin_id, token_hash, ip_address, user_agent, expira_em) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$adminId, $hash, $_SERVER['REMOTE_ADDR'] ?? '', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), $expira]);
+
+    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    setcookie('sema_trusted_device', $token, [
+        'expires'  => time() + 30 * 24 * 3600,
+        'path'     => '/',
+        'secure'   => $isSecure,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+
+    $pdo->exec("DELETE FROM dispositivos_confiados WHERE expira_em < NOW()");
+}
+
+/**
+ * Cria a sessão de admin.
+ */
+function criarSessaoAdmin($pdo, $admin) {
+    session_regenerate_id(true);
+    $_SESSION['login_attempts'] = 0;
+    $_SESSION['admin_id'] = $admin['id'];
+    $_SESSION['admin_nome'] = $admin['nome'];
+    $_SESSION['admin_nome_completo'] = $admin['nome_completo'] ?? $admin['nome'];
+    $_SESSION['admin_email'] = $admin['email'];
+    $_SESSION['admin_nivel'] = $admin['nivel'];
+    $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
+    $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
+    $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
+    $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
+    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+    $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
+
+    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    setcookie('sema_auth_persist', hash('sha256', $admin['id'] . $_SERVER['HTTP_USER_AGENT']), [
+        'expires'  => time() + 43200,
+        'path'     => '/',
+        'secure'   => $isSecure,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+
+    $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
+    $stmt->execute([$admin['id']]);
+}
+
+function mascararEmail($email) {
+    return preg_replace('/(?<=.).(?=.*@)/', '*', $email ?? '');
+}
+
+function enviarCodigoLoginPorEmail($admin, $codigo) {
+    if (empty($admin['email'])) {
+        return false;
+    }
+
+    $emailService = new EmailService();
+    return $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
+}
+
+// Processar formulário de login via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     if (isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
-        // Exigência ajax para etapas
         header('Content-Type: application/json');
-        
+
         $usuario = trim($_POST['usuario'] ?? '');
         $senha = trim($_POST['senha'] ?? '');
         $recaptcha_token = $_POST['recaptcha_token'] ?? '';
@@ -82,13 +176,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             exit;
         }
 
-        // Verificar credenciais no banco pelo nome do usuário
         $stmt = $pdo->prepare("SELECT * FROM administradores WHERE nome = ? AND ativo = 1");
         $stmt->execute([$usuario]);
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            // Se tiver secret salva, flag para o frontend
+            $trustedAdminId = verificarDispositivoConfiavel($pdo);
+            if ($trustedAdminId === (int)$admin['id']) {
+                criarSessaoAdmin($pdo, $admin);
+                $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
+                unset($_SESSION['login_redirect_url']);
+                if (ob_get_length()) ob_clean();
+                echo json_encode(['success' => true, 'skip_2fa' => true, 'redirect' => $redirectUrl]);
+                exit;
+            }
+
             $hasTotp = !empty($admin['totp_secret']);
 
             if (!$hasTotp && empty($admin['email'])) {
@@ -97,23 +199,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
                 exit;
             }
 
-            // Gerar código de 6 dígitos para o e-mail (fallback ou primário)
             $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-            
-            // Salvar na sessão temporária
             $_SESSION['2fa_admin_data'] = $admin;
             $_SESSION['2fa_otp_code'] = $codigo;
             $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
 
             $emailMascarado = '';
             if (!empty($admin['email'])) {
-                // Enviar email
-                $emailService = new EmailService();
-                $enviado = $emailService->enviarEmailCodigoVerificacao($admin['email'], $admin['nome'], $codigo);
-
+                $enviado = enviarCodigoLoginPorEmail($admin, $codigo);
                 if ($enviado) {
-                    // Mascarar email para exibir no frontend
-                    $emailMascarado = preg_replace('/(?<=.).(?=.*@)/', '*', $admin['email']);
+                    $emailMascarado = mascararEmail($admin['email']);
                 } else if (!$hasTotp) {
                     if (ob_get_length()) ob_clean();
                     echo json_encode(['success' => false, 'error' => "Erro ao enviar e-mail de código de verificação."]);
@@ -123,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
 
             if (ob_get_length()) ob_clean();
             echo json_encode([
-                'success' => true, 
+                'success' => true,
                 'email_mascarado' => $emailMascarado,
                 'has_totp' => $hasTotp
             ]);
@@ -139,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     if (isset($_POST['action']) && $_POST['action'] === 'validar_otp') {
         header('Content-Type: application/json');
         $codigoRecebido = trim($_POST['codigo'] ?? '');
+        $lembrarDispositivo = ($_POST['lembrar_dispositivo'] ?? '') === '1';
 
         if (!isset($_SESSION['2fa_admin_data'])) {
             if (ob_get_length()) ob_clean();
@@ -150,7 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $codigoValido = false;
         $erroMsg = 'Código incorreto.';
 
-        // 1. Tentar validar via App Autenticador (TOTP)
         if (!empty($admin['totp_secret'])) {
             require_once 'MultiFactorService.php';
             $twoFactorService = new \Admin\Services\TwoFactorService();
@@ -159,54 +254,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             }
         }
 
-        // 2. Se não validou pelo app, tentar pelo código de e-mail (fallback)
         if (!$codigoValido && isset($_SESSION['2fa_otp_code'])) {
             if (time() > $_SESSION['2fa_otp_expires']) {
                 $erroMsg = 'Código expirado. Volte e faça login novamente.';
-                // Não expira a sessão inteira pois ele ainda pode usar o TOTP
             } else if ($codigoRecebido === $_SESSION['2fa_otp_code']) {
                 $codigoValido = true;
             }
         }
 
         if ($codigoValido) {
-            // Regenera o ID da sessão para prevenir session fixation
-            session_regenerate_id(true);
+            criarSessaoAdmin($pdo, $admin);
 
-            $_SESSION['login_attempts'] = 0;
-            $_SESSION['admin_id'] = $admin['id'];
-            $_SESSION['admin_nome'] = $admin['nome'];
-            $_SESSION['admin_nome_completo'] = $admin['nome_completo'] ?? $admin['nome'];
-            $_SESSION['admin_email'] = $admin['email'];
-            $_SESSION['admin_nivel'] = $admin['nivel'];
-            $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
-            $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
-            $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
+            if ($lembrarDispositivo) {
+                registrarDispositivoConfiavel($pdo, $admin['id']);
+            }
 
-            // Segurança da Sessão
-            $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
-            $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-
-            // Cookie Extra (Fallback opcional)
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            setcookie('sema_auth_persist', hash('sha256', $admin['id'] . $_SERVER['HTTP_USER_AGENT']), [
-                'expires'  => time() + 43200,
-                'path'     => '/',
-                'secure'   => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Strict',
-            ]);
-
-            // Sessão para assinaturas liberada indefinidamente via login
-            $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
-
-            $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
-            $stmt->execute([$admin['id']]);
-
-            // Limpar sessões 2FA
-            unset($_SESSION['2fa_admin_data']);
-            unset($_SESSION['2fa_otp_code']);
-            unset($_SESSION['2fa_otp_expires']);
+            unset($_SESSION['2fa_admin_data'], $_SESSION['2fa_otp_code'], $_SESSION['2fa_otp_expires']);
 
             $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
             unset($_SESSION['login_redirect_url']);
@@ -219,432 +282,1026 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         }
         exit;
     }
+
+    if (isset($_POST['action']) && $_POST['action'] === 'reenviar_otp_email') {
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['2fa_admin_data'])) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Sessão de verificação expirada. Faça login novamente.']);
+            exit;
+        }
+
+        $admin = $_SESSION['2fa_admin_data'];
+        if (empty($admin['email'])) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Este usuário não possui e-mail cadastrado para reenvio do código.']);
+            exit;
+        }
+
+        $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $_SESSION['2fa_otp_code'] = $codigo;
+        $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
+
+        if (!enviarCodigoLoginPorEmail($admin, $codigo)) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Não foi possível reenviar o código agora. Tente novamente em instantes.']);
+            exit;
+        }
+
+        if (ob_get_length()) ob_clean();
+        echo json_encode([
+            'success' => true,
+            'email_mascarado' => mascararEmail($admin['email']),
+            'message' => 'Enviamos um novo código para o seu e-mail institucional.'
+        ]);
+        exit;
+    }
+}
+
+// Recuperação de senha (placeholder institucional)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'recuperar_senha') {
+    header('Content-Type: application/json');
+    $email = trim($_POST['email'] ?? '');
+    $emailMascarado = '';
+
+    if ($email !== '' && strpos($email, '@') !== false) {
+        $emailMascarado = mascararEmail($email);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'email_mascarado' => $emailMascarado,
+        'message' => 'A redefinição online ainda não está disponível. Entre em contato com o desenvolvedor para recuperar seu acesso.'
+    ]);
+    exit;
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Painel Administrativo SEMA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Login — SEMA Painel Administrativo</title>
+    <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <style>
         :root {
-            --primary-color: #009851;
-            --primary-dark: #007840;
-            --primary-light: #e6f7ef;
-            --secondary-color: #333;
-            --accent-color: #47AF8C;
-            --background: 0 0% 100%;
-            --foreground: 222.2 47.4% 11.2%;
-            --card: 0 0% 100%;
-            --card-foreground: 222.2 47.4% 11.2%;
-            --border: 214.3 31.8% 91.4%;
-            --input: 214.3 31.8% 91.4%;
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --ring: 222.2 84% 4.9%;
+            --primary: #009851;
+            --primary-600: #007840;
+            --primary-700: #0b5d38;
+            --primary-50: #e6f7ef;
+            --primary-100: #cfeedd;
+            --ink: #10233d;
+            --ink-2: #475569;
+            --ink-3: #64748b;
+            --line: #e2e8f0;
+            --line-2: #cbd5e1;
+            --bg: #f8fafc;
+            --card:  #ffffff;
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --success: #16a34a;
+            --success-bg: #f0fdf4;
+            --radius:    10px;
+            --radius-lg: 14px;
+            --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.10);
         }
-
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
         body {
-            background: linear-gradient(135deg, #1e3c72, #2a5298, #4a90e2, #87ceeb);
-            background-size: 400% 400%;
-            animation: gradientShift 8s ease infinite;
-            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            padding: 1rem;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .display { font-family: 'Inter Tight', sans-serif; letter-spacing: -0.02em; }
+        .mono    { font-family: 'JetBrains Mono', monospace; }
+        button, input { font-family: inherit; }
+        ::selection { background: var(--primary-100); color: var(--ink); }
+
+        /* ── Layout ── */
+        .layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: minmax(380px, 1.1fr) 1fr;
         }
 
-        @keyframes gradientShift {
-            0% {
-                background-position: 0% 50%;
-            }
-
-            50% {
-                background-position: 100% 50%;
-            }
-
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-
-        .login-container {
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 16px;
-            padding: 2.5rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            width: 400px;
-            max-width: 100%;
+        /* ── Brand Panel ── */
+        .brand-panel {
             position: relative;
+            background: linear-gradient(160deg, var(--primary-700) 0%, var(--primary) 60%, var(--primary-600) 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 44px 48px;
             overflow: hidden;
         }
-
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        .brand-grid-bg {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            opacity: .10; pointer-events: none;
+        }
+        .brand-glow {
+            position: absolute; right: -100px; top: -100px;
+            width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,.13), transparent 70%);
+            filter: blur(20px);
+        }
+        .brand-top { position: relative; z-index: 1; }
+        .brand-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 5px 12px; border-radius: 999px;
+            background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.20);
+            font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+        }
+        .brand-logo {
+            margin-top: 44px; width: 180px; display: block;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,.20));
+        }
+        .brand-middle { position: relative; z-index: 1; margin-top: 32px; }
+        .brand-middle h1 {
+            font-size: 40px; font-weight: 700; line-height: 1.07;
+            letter-spacing: -.025em; margin-bottom: 14px;
+        }
+        .brand-middle p {
+            font-size: 15px; line-height: 1.6; max-width: 460px;
+            color: rgba(255,255,255,.82);
         }
 
-        .login-logo {
-            text-align: center;
-            margin-bottom: 2rem;
+        /* ── Form Panel ── */
+        .form-panel {
+            display: flex; align-items: center; justify-content: center;
+            padding: 60px 32px; background: var(--bg);
+        }
+        .login-card {
+            width: 100%; max-width: 420px;
+            padding: 36px 36px 32px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
         }
 
-        .login-logo img {
-            max-width: 180px;
-            height: auto;
+        /* ── Form fields ── */
+        .field { margin-bottom: 16px; }
+        .field-label {
+            display: block; font-size: 11.5px; font-weight: 600;
+            letter-spacing: .05em; color: var(--ink-2);
+            text-transform: uppercase; margin-bottom: 7px;
+        }
+        .field-wrap {
+            position: relative; display: flex; align-items: center;
+            border: 1px solid var(--line-2); border-radius: var(--radius);
+            background: var(--card); transition: border-color .15s, box-shadow .15s;
+        }
+        .field-wrap:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+        }
+        .field-wrap.has-error { border-color: var(--danger); }
+        .field-wrap.has-error:focus-within {
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--danger) 16%, transparent);
+        }
+        .field-icon { padding-left: 12px; display: flex; align-items: center; color: var(--ink-3); flex-shrink: 0; }
+        .field-wrap.has-error .field-icon { color: var(--danger); }
+        .field-input {
+            flex: 1; border: none; outline: none; background: transparent;
+            padding: 13px 12px; font-size: 14.5px; color: var(--ink); font-weight: 500;
+        }
+        .field-input::placeholder { color: var(--ink-3); opacity: .7; }
+        .field-trail { padding-right: 6px; display: flex; align-items: center; }
+        .field-error {
+            margin-top: 6px; font-size: 12.5px; color: var(--danger);
+            display: flex; align-items: center; gap: 5px;
         }
 
-        .login-title {
-            color: var(--primary-color);
-            margin-bottom: 2rem;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .login-form {
-            margin-top: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            color: var(--secondary-color);
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-control-wrapper {
-            position: relative;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.875rem 1rem 0.875rem 2.75rem;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-            background-color: #fff;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 152, 81, 0.1);
-            outline: none;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--secondary-color);
-            opacity: 0.5;
-            font-size: 1rem;
-        }
-
+        /* ── Buttons ── */
         .btn-primary {
-            width: 100%;
-            padding: 0.875rem;
-            background-color: var(--primary-color);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-            margin-top: 1rem;
+            width: 100%; border: none; border-radius: var(--radius);
+            background: var(--primary); color: #fff;
+            padding: 13.5px 16px; font-size: 14.5px; font-weight: 600;
+            display: inline-flex; gap: 8px; align-items: center; justify-content: center;
+            cursor: pointer; transition: background .15s, transform .05s;
+            box-shadow: 0 1px 0 rgba(255,255,255,.14) inset,
+                        0 4px 12px -4px color-mix(in oklab, var(--primary) 55%, transparent);
+            margin-top: 4px;
         }
-
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-1px);
+        .btn-primary:hover:not(:disabled) { background: var(--primary-600); }
+        .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+        .btn-primary:disabled { opacity: .8; cursor: progress; }
+        .btn-icon {
+            border: none; background: transparent; color: var(--ink-3);
+            padding: 8px; cursor: pointer; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
         }
-
-        .btn-primary:active {
-            transform: translateY(0);
+        .btn-icon:hover { color: var(--ink-2); }
+        .btn-back {
+            background: none; border: none; color: var(--ink-2); font-size: 13px;
+            font-weight: 500; cursor: pointer; padding: 0;
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
         }
+        .btn-back:hover { color: var(--primary); }
+        .btn-link {
+            background: none; border: none; font-size: 13px;
+            color: var(--primary); font-weight: 500; cursor: pointer; padding: 0;
+        }
+        .btn-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
+        /* ── Alerts ── */
         .alert {
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            padding: 11px 14px; border-radius: 10px;
+            display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px;
+        }
+        .alert-icon { flex-shrink: 0; margin-top: 1px; }
+        .alert.error {
+            background: var(--danger-bg);
+            border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+            color: var(--danger); font-size: 13.5px;
+        }
+        .alert.info {
+            background: var(--primary-50); border: 1px solid var(--line);
+            color: var(--ink-2); font-size: 12.5px;
+        }
+        .alert.info .alert-icon { color: var(--primary); }
+
+        /* ── Method cards ── */
+        .method-card {
+            border: 1.5px solid var(--line-2); border-radius: 10px; padding: 14px 16px;
+            cursor: pointer; background: var(--card); transition: all .15s;
+            display: flex; gap: 12px; align-items: flex-start; width: 100%;
+            text-align: left; margin-bottom: 10px;
+        }
+        .method-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 12%, transparent);
+        }
+        .method-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: var(--primary-50); color: var(--primary);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .method-title { font-weight: 600; font-size: 14px; color: var(--ink); }
+        .method-desc  { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+
+        /* ── OTP inputs ── */
+        .otp-grid { display: flex; gap: 8px; margin-bottom: 6px; }
+        .otp-digit {
+            width: 100%; height: 54px; border-radius: 10px;
+            border: 1.5px solid var(--line-2); background: var(--card);
+            text-align: center; font-family: 'Inter Tight', sans-serif;
+            font-size: 22px; font-weight: 600; color: var(--ink);
+            outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        .otp-digit:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+        }
+        .otp-digit.has-error { border-color: var(--danger); }
+
+        /* ── Remember device ── */
+        .remember-wrap {
+            display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+            padding: 11px 13px; border-radius: 10px;
+            background: var(--bg); border: 1px solid var(--line); margin-bottom: 4px;
+        }
+        .custom-check {
+            width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; margin-top: 1px;
+            border: 1.5px solid var(--line-2); background: var(--card);
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s; cursor: pointer;
+        }
+        .custom-check.on { border-color: var(--primary); background: var(--primary); }
+        .remember-title {
+            font-size: 13.5px; font-weight: 500; color: var(--ink);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .remember-desc { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: inline-block; width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin .65s linear infinite;
         }
 
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 2rem;
-            }
+        /* ── Animations ── */
+        @keyframes spin     { to { transform: rotate(360deg); } }
+        @keyframes fade-in  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes fill-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .fade-in { animation: fade-in .2s ease both; }
+
+        /* ── Footer ── */
+        .login-footer {
+            padding: 16px 28px; border-top: 1px solid var(--line);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3);
+            background: var(--bg);
         }
+        .footer-links { display: flex; gap: 20px; }
+        .footer-links a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 12px; }
+        .footer-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+        /* ── Homolog banner ── */
+        .homolog-banner {
+            background: repeating-linear-gradient(45deg, #ff9800, #ff9800 10px, #f57c00 10px, #f57c00 20px);
+            color: #fff; text-align: center; padding: 8px; font-weight: 700;
+            font-size: .9rem; text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .brand-panel { display: none; }
+            .form-panel { padding: 40px 20px; }
+        }
+        @media (max-width: 480px) {
+            .login-card { padding: 24px 18px; }
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
-
 <body>
-    <div class="login-container">
-        <div class="login-logo">
-            <img src="../assets/SEMA/PNG/Azul/Logo SEMA Vertical.png" alt="Logo SEMA">
-        </div>
-        <h2 class="login-title">Acesso Administrativo</h2>
 
-        <?php if ($erro): ?>
-            <div class="alert alert-danger" role="alert">
-                <i class="fas fa-exclamation-circle"></i>
-                <?php echo $erro; ?>
+<?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
+<div class="homolog-banner">Ambiente de Homologação / Testes</div>
+<?php endif; ?>
+
+<div class="layout">
+
+    <!-- ══ Brand Panel ══ -->
+    <aside class="brand-panel">
+        <svg class="brand-grid-bg" aria-hidden="true">
+            <defs>
+                <pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width=".6"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#g1)"/>
+        </svg>
+        <div class="brand-glow"></div>
+
+        <div class="brand-top">
+            <div class="brand-badge">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                Acesso Institucional
             </div>
-        <?php endif; ?> 
-        
-        <div id="login-etapa-1">
-            <form class="login-form" id="loginForm">
-                <!-- Erro dinâmico JS -->
-                <div class="alert alert-danger d-none" role="alert" id="js-erro-1">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
+            <img src="../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png"
+                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
+                 class="brand-logo">
+        </div>
+
+        <div class="brand-middle">
+            <h1 class="display">Secretaria Municipal<br>de Meio Ambiente</h1>
+            <p>Painel de gestão de alvarás, pareceres técnicos e licenciamento ambiental do município de Pau dos Ferros/RN.</p>
+        </div>
+    </aside>
+
+    <!-- ══ Form Panel ══ -->
+    <section class="form-panel">
+        <div class="login-card">
+
+            <!-- ── STEP: LOGIN ── -->
+            <div id="step-login" class="fade-in">
+                <div style="margin-bottom:22px">
+                    <div class="mono" style="font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase">Painel Administrativo</div>
+                    <h2 class="display" style="margin:6px 0 0;font-size:28px;font-weight:700">Bem-vindo de volta</h2>
+                    <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Informe suas credenciais institucionais.</p>
                 </div>
-                
-                <input type="hidden" name="recaptcha_token" id="recaptchaToken">
-                <input type="hidden" name="action" value="validar_credenciais">
-                
-                <div class="form-group">
-                    <label class="form-label" for="usuario">Usuário</label>
-                    <div class="form-control-wrapper">
-                        <i class="fas fa-user input-icon"></i> <input type="text"
-                            class="form-control"
-                            id="usuario"
-                            name="usuario"
-                            required
-                            placeholder="Digite seu usuário">
+
+                <?php if ($erro): ?>
+                <div class="alert error" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span><strong>Acesso bloqueado.</strong> <?= htmlspecialchars($erro) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <div id="login-err" class="alert error hidden" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="login-form" novalidate>
+                    <input type="hidden" name="action" value="validar_credenciais">
+                    <input type="hidden" name="recaptcha_token" id="recaptcha-token">
+
+                    <div class="field">
+                        <label class="field-label" for="usuario">Usuário</label>
+                        <div class="field-wrap" id="wrap-usuario">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+                            </div>
+                            <input type="text" id="usuario" name="usuario" class="field-input"
+                                   placeholder="nome.sobrenome" autocomplete="username" required>
+                        </div>
+                        <div class="field-error hidden" id="err-usuario">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="senha">Senha</label>
+                        <div class="field-wrap" id="wrap-senha">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                            </div>
+                            <input type="password" id="senha" name="senha" class="field-input"
+                                   placeholder="••••••••" autocomplete="current-password" required>
+                            <div class="field-trail">
+                                <button type="button" class="btn-icon" id="toggle-senha" aria-label="Mostrar senha">
+                                    <svg id="eye-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="field-error hidden" id="err-senha">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;margin-top:-8px;margin-bottom:16px">
+                        <button type="button" class="btn-link" id="btn-forgot">Esqueci minha senha</button>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btn-login">
+                        Entrar no painel
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+
+                    <div class="alert info" style="margin-top:14px;margin-bottom:0">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                        </div>
+                        <div>
+                            <strong style="color:var(--ink);font-weight:600">Aviso de segurança.</strong>
+                            Acesso restrito a servidores autorizados. Em dispositivos compartilhados, encerre a sessão ao terminar.
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ── STEP: 2FA METHOD SELECTION ── -->
+            <div id="step-method" class="hidden">
+                <div style="margin-bottom:18px">
+                    <div style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                    </div>
+                    <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Verificação em duas etapas</h2>
+                    <p style="font-size:14px;color:var(--ink-2);line-height:1.55">
+                        Como deseja receber seu código, <strong style="color:var(--ink)" id="method-user"></strong>?
+                    </p>
+                </div>
+
+                <button type="button" class="method-card" id="mc-email" onclick="selectMethod('email')">
+                    <div class="method-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                    </div>
+                    <div>
+                        <div class="method-title">E-mail institucional</div>
+                        <div class="method-desc">Enviar código para <strong id="method-email-masked"></strong></div>
+                    </div>
+                </button>
+
+                <button type="button" class="method-card hidden" id="mc-app" onclick="selectMethod('app')">
+                    <div class="method-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>
+                    </div>
+                    <div>
+                        <div class="method-title">Aplicativo autenticador</div>
+                        <div class="method-desc">Usar código do Google Authenticator ou similar</div>
+                    </div>
+                </button>
+
+                <button type="button" class="btn-back" onclick="goTo('login')">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
+                </button>
+            </div>
+
+            <!-- ── STEP: OTP ENTRY ── -->
+            <div id="step-otp" class="hidden">
+                <div style="margin-bottom:16px">
+                    <div id="otp-icon" style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px"></div>
+                    <h2 class="display" id="otp-title" style="font-size:24px;font-weight:700;margin-bottom:7px"></h2>
+                    <p id="otp-desc" style="font-size:13.5px;color:var(--ink-2);line-height:1.55"></p>
+                </div>
+
+                <div id="otp-err" class="alert error hidden" style="margin-bottom:12px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="otp-form" novalidate>
+                    <input type="hidden" name="action" value="validar_otp">
+                    <input type="hidden" name="lembrar_dispositivo" id="lembrar-input" value="0">
+                    <input type="hidden" name="codigo" id="codigo-hidden">
+
+                    <div class="otp-grid">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="0" aria-label="Dígito 1">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="1" aria-label="Dígito 2">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="2" aria-label="Dígito 3">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="3" aria-label="Dígito 4">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="4" aria-label="Dígito 5">
+                        <input type="text" class="otp-digit" inputmode="numeric" maxlength="1" data-i="5" aria-label="Dígito 6">
+                    </div>
+
+                    <label class="remember-wrap" style="margin-top:12px" onclick="toggleRemember()">
+                        <div class="custom-check" id="remember-check"></div>
+                        <div>
+                            <div class="remember-title">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 2v2h4V2"/></svg>
+                                Lembrar este dispositivo por 30 dias
+                            </div>
+                            <div class="remember-desc">Não solicitar verificação em duas etapas neste dispositivo.</div>
+                        </div>
+                    </label>
+
+                    <button type="submit" class="btn-primary" id="btn-otp" style="margin-top:12px">
+                        Verificar código
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:12px">
+                    <button type="button" class="btn-back" id="btn-other-method" style="margin-top:0" onclick="backFromOtp()">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                        <span id="btn-other-method-label">Outro método</span>
+                    </button>
+                    <div id="resend-wrap" class="hidden">
+                        <span id="resend-timer" style="color:var(--ink-3)">
+                            Reenviar em <span class="mono" id="resend-secs">60</span>s
+                        </span>
+                        <button type="button" class="btn-link hidden" id="btn-resend" onclick="startResend()">
+                            Reenviar código
+                        </button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="senha">Senha</label>
-                    <div class="form-control-wrapper">
-                        <i class="fas fa-lock input-icon"></i> <input type="password"
-                            class="form-control"
-                            id="senha"
-                            name="senha"
-                            required
-                            placeholder="Digite sua senha">
+            </div>
+
+            <!-- ── STEP: FORGOT PASSWORD ── -->
+            <div id="step-forgot" class="hidden">
+                <div style="margin-bottom:16px">
+                    <div style="display:inline-flex;padding:10px;border-radius:10px;background:var(--primary-50);color:var(--primary);margin-bottom:12px">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3"/><path d="M18 5l2 2"/></svg>
+                    </div>
+                    <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Recuperar acesso</h2>
+                    <p style="font-size:14px;color:var(--ink-2);line-height:1.55">
+                        Informe seu e-mail institucional. Enviaremos as instruções de recuperação.
+                    </p>
+                </div>
+
+                <div id="forgot-err" class="alert error hidden" style="margin-bottom:12px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+                    </div>
+                    <span data-msg></span>
+                </div>
+
+                <form id="forgot-form" novalidate>
+                    <input type="hidden" name="action" value="recuperar_senha">
+                    <div class="field">
+                        <label class="field-label" for="forgot-email">E-mail institucional</label>
+                        <div class="field-wrap">
+                            <div class="field-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                            </div>
+                            <input type="email" id="forgot-email" name="email" class="field-input"
+                                   placeholder="nome@pauferros.rn.gov.br" autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div class="alert info" style="margin-bottom:14px">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        </div>
+                        <div>
+                            Não tem acesso ao e-mail cadastrado? Entre em contato com o desenvolvedor.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btn-forgot-submit">
+                        Enviar instruções
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+
+                <button type="button" class="btn-back" onclick="goTo('login')" style="margin-top:12px">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
+                </button>
+            </div>
+
+            <!-- ── STEP: FORGOT SENT ── -->
+            <div id="step-forgot-sent" class="hidden">
+                <div style="display:inline-flex;padding:12px;border-radius:50%;background:var(--success-bg);color:var(--success);margin-bottom:16px">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                </div>
+                <h2 class="display" style="font-size:26px;font-weight:700;margin-bottom:8px">Solicitação registrada</h2>
+                <p style="font-size:14px;color:var(--ink-2);line-height:1.6;margin-bottom:16px">
+                    Recebemos a solicitação vinculada a <strong style="color:var(--ink)" id="sent-email"></strong>.
+                    A recuperação será orientada pelo desenvolvedor.
+                </p>
+                <div class="alert info" style="margin-bottom:16px">
+                    <div class="alert-icon">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    </div>
+                    <div>
+                        No momento, a redefinição de senha é feita diretamente com o desenvolvedor.
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary" id="btn-submit-1">
-                    <i class="fas fa-sign-in-alt me-2"></i>
-                    Avançar
-                </button>
-            </form>
-        </div>
-
-        <div id="login-etapa-2" style="display: none; margin-top: 1.5rem; text-align: center;">
-            <div id="totp-header-msg">
-                <i class="fas fa-envelope fa-2x text-primary mb-3" id="totp-icon"></i>
-                <p class="text-muted mb-4" id="totp-text">Para sua segurança, informe o código enviado para <strong id="email-mascarado-display">...</strong></p>
-            </div>
-            
-            <form class="login-form" id="otpForm">
-                <!-- Erro dinâmico JS -->
-                <div class="alert alert-danger d-none" role="alert" id="js-erro-2">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
-
-                <input type="hidden" name="action" value="validar_otp">
-                
-                <div class="form-group mb-4">
-                    <input type="text" id="codigo" name="codigo" class="form-control fw-bold letter-spacing-lg" placeholder="000 000" maxlength="6" style="letter-spacing: 5px; font-size: 24px; text-align: center;" required autocomplete="off">
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-lg rounded-3 mb-2" id="btn-submit-2">
-                    <i class="fas fa-check-circle me-2"></i> Entrar
-                </button>
-                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" onclick="voltarParaLogin()">
-                    Voltar e tentar outro usuário
-                </button>
-            </form>
-            
-            <!-- Opção de usar o Autenticador -->
-            <div id="totp-option-container" style="display: none;">
-                <div class="d-flex align-items-center my-4">
-                    <hr class="flex-grow-1 opacity-25">
-                    <span class="mx-3 text-muted small fw-bold">OU</span>
-                    <hr class="flex-grow-1 opacity-25">
-                </div>
-                <button type="button" class="btn btn-outline-primary rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-medium shadow-sm transition" onclick="toggleTotpMethod()" id="btn-switch-totp">
-                    <i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador
+                <button type="button" class="btn-back" onclick="goTo('login')">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+                    Voltar ao login
                 </button>
             </div>
 
-            <!-- Divulgação do Autenticador para quem não tem -->
-            <div id="totp-setup-prompt" style="display: none;">
-                <div class="d-flex align-items-center my-4">
-                    <hr class="flex-grow-1 opacity-25">
-                    <span class="mx-3 text-muted small fw-bold"><i class="fas fa-shield-alt text-primary"></i> MAIS SEGURANÇA</span>
-                    <hr class="flex-grow-1 opacity-25">
-                </div>
-                <button type="button" class="btn btn-light rounded-pill w-100 d-flex align-items-center justify-content-center py-2 border fw-medium shadow-sm" onclick="alert('Após entrar, acesse Meu Perfil para configurar o App Autenticador!')">
-                    <i class="fas fa-qrcode me-2 text-primary"></i> Configurar App Autenticador
-                </button>
-            </div>
-        </div>
+        </div><!-- /.login-card -->
+    </section>
+</div><!-- /.layout -->
+
+<footer class="login-footer">
+    <div style="display:flex;gap:16px;align-items:center">
+        <span class="mono" style="letter-spacing:.02em">SEMA · PAU DOS FERROS/RN</span>
+        <span style="opacity:.5">•</span>
+        <span>© <?= date('Y') ?> Secretaria Municipal de Meio Ambiente</span>
     </div>
+    <div class="footer-links">
+        <a href="../suporte.php">Suporte</a>
+        <a href="../privacidade.php">Privacidade</a>
+        <a href="../acessibilidade.php">Acessibilidade</a>
+    </div>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelector('.login-container').style.opacity = '0';
-            setTimeout(() => {
-                document.querySelector('.login-container').style.transition = 'opacity 0.5s ease';
-                document.querySelector('.login-container').style.opacity = '1';
-            }, 100);
+<script>
+/* ── State ── */
+const state = { maskedEmail: '', hasTotp: false, method: 'email', remember: false, user: '' };
+let resendTimer = null, resendSecs = 60;
+const ALL_STEPS = ['login','method','otp','forgot','forgot-sent'];
 
-            const loginForm = document.getElementById('loginForm');
-            const otpForm = document.getElementById('otpForm');
+/* ── Navigation ── */
+function goTo(name) {
+    ALL_STEPS.forEach(s => {
+        const el = document.getElementById('step-' + s);
+        if (el) el.classList.add('hidden');
+    });
+    const target = document.getElementById('step-' + name);
+    if (!target) return;
+    target.classList.remove('hidden');
+    target.classList.remove('fade-in');
+    void target.offsetWidth;
+    target.classList.add('fade-in');
 
-            loginForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const btn = document.getElementById('btn-submit-1');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Aguarde...';
+    // Reset passwords on back-to-login
+    if (name === 'login') {
+        document.getElementById('senha').value = '';
+        clearAlert('login-err');
+        clearFieldError('usuario');
+        clearFieldError('senha');
+        stopResendTimer();
+        clearAlert('otp-err');
+        clearAlert('forgot-err');
+        document.getElementById('forgot-email').value = '';
+        document.getElementById('mc-app').classList.add('hidden');
+        document.getElementById('method-email-masked').textContent = '';
+        document.getElementById('method-user').textContent = '';
+        state.maskedEmail = '';
+        state.hasTotp = false;
+        state.method = 'email';
+        state.remember = false;
+        state.user = '';
+    }
+}
 
-                grecaptcha.ready(function() {
-                    grecaptcha.execute('<?php echo RECAPTCHA_SITE_KEY; ?>', {action: 'login'}).then(function(token) {
-                        document.getElementById('recaptchaToken').value = token;
-                        
-                        const formData = new FormData(loginForm);
-                        fetch('login.php', {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            btn.disabled = false;
-                            btn.innerHTML = originalText;
-                            if (data.success) {
-                                window.maskedEmail = data.email_mascarado || '...';
-                                window.currentAuthMethod = data.has_totp ? 'totp' : 'email';
-                                document.getElementById('js-erro-1').classList.add('d-none');
-                                
-                                // Atualiza a UI baseada no estado do usuário
-                                if (window.currentAuthMethod === 'totp') {
-                                    renderTotpUI();
-                                    document.getElementById('totp-option-container').style.display = 'block';
-                                    document.getElementById('totp-setup-prompt').style.display = 'none';
-                                } else {
-                                    renderEmailUI();
-                                    document.getElementById('totp-option-container').style.display = 'none';
-                                    document.getElementById('totp-setup-prompt').style.display = 'block';
-                                }
-                                
-                                document.getElementById('login-etapa-1').style.display = 'none';
-                                document.getElementById('login-etapa-2').style.display = 'block';
-                            } else {
-                                const errBox = document.getElementById('js-erro-1');
-                                errBox.querySelector('span').textContent = data.error;
-                                errBox.classList.remove('d-none');
-                            }
-                        })
-                        .catch(err => {
-                            btn.disabled = false;
-                            btn.innerHTML = originalText;
-                            const errBox = document.getElementById('js-erro-1');
-                            errBox.querySelector('span').textContent = 'Erro de rede. Tente novamente.';
-                            errBox.classList.remove('d-none');
-                        });
-                    });
-                });
-            });
+/* ── Toggle password visibility ── */
+const senhaInput = document.getElementById('senha');
+const eyeIcon    = document.getElementById('eye-icon');
+document.getElementById('toggle-senha').addEventListener('click', () => {
+    const show = senhaInput.type === 'password';
+    senhaInput.type = show ? 'text' : 'password';
+    eyeIcon.innerHTML = show
+        ? '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a18.6 18.6 0 0 1-2.16 3.19"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M2 2l20 20"/>'
+        : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+});
 
-            otpForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const btn = document.getElementById('btn-submit-2');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Validando...';
+/* ── Login form ── */
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const usuario = document.getElementById('usuario').value.trim();
+    const senha   = document.getElementById('senha').value;
 
-                const formData = new FormData(otpForm);
-                fetch('login.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(res => res.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    if (data.success) {
-                        window.location.href = data.redirect || 'index.php';
+    let ok = true;
+    if (usuario.length < 3) { showFieldError('usuario', 'Usuário inválido (mín. 3 caracteres)'); ok = false; }
+    else clearFieldError('usuario');
+    if (senha.length < 6)   { showFieldError('senha', 'A senha deve ter no mínimo 6 caracteres');  ok = false; }
+    else clearFieldError('senha');
+    if (!ok) return;
+
+    const btn = document.getElementById('btn-login');
+    setLoading(btn, true, 'Verificando…');
+    clearAlert('login-err');
+
+    grecaptcha.ready(() => {
+        grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', { action: 'login' }).then(token => {
+            document.getElementById('recaptcha-token').value = token;
+            fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
+            .then(r => r.json())
+            .then(data => {
+                setLoading(btn, false);
+                btn.innerHTML = 'Entrar no painel ' + iconArrow();
+                if (data.success) {
+                    if (data.skip_2fa) { window.location.href = data.redirect || 'index.php'; return; }
+                    state.user = usuario;
+                    state.maskedEmail = data.email_mascarado || '';
+                    state.hasTotp     = !!data.has_totp;
+                    document.getElementById('mc-app').classList.add('hidden');
+
+                    if (state.hasTotp && state.maskedEmail) {
+                        // Both methods — show selector
+                        document.getElementById('method-user').textContent = usuario;
+                        document.getElementById('method-email-masked').textContent = state.maskedEmail;
+                        document.getElementById('mc-app').classList.remove('hidden');
+                        goTo('method');
                     } else {
-                        const errBox = document.getElementById('js-erro-2');
-                        errBox.querySelector('span').textContent = data.error;
-                        errBox.classList.remove('d-none');
+                        state.method = state.hasTotp ? 'app' : 'email';
+                        renderOtp();
+                        goTo('otp');
+                        setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
                     }
-                })
-                .catch(err => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    const errBox = document.getElementById('js-erro-2');
-                    errBox.querySelector('span').textContent = 'Erro de rede. Tente novamente.';
-                    errBox.classList.remove('d-none');
-                });
+                } else {
+                    showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+                }
+            })
+            .catch(() => {
+                setLoading(btn, false);
+                btn.innerHTML = 'Entrar no painel ' + iconArrow();
+                showAlert('login-err', 'Erro de rede. Tente novamente.');
             });
         });
+    });
+});
 
-        function voltarParaLogin() {
-            document.getElementById('login-etapa-2').style.display = 'none';
-            document.getElementById('login-etapa-1').style.display = 'block';
-            document.getElementById('senha').value = '';
-            document.getElementById('codigo').value = '';
-            document.getElementById('js-erro-1').classList.add('d-none');
-            document.getElementById('js-erro-2').classList.add('d-none');
+/* ── 2FA method selection ── */
+function selectMethod(method) {
+    state.method = method;
+    renderOtp();
+    goTo('otp');
+    setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
+}
+
+function renderOtp() {
+    const isApp = state.method === 'app';
+    const icon  = document.getElementById('otp-icon');
+    const title = document.getElementById('otp-title');
+    const desc  = document.getElementById('otp-desc');
+    const resendWrap = document.getElementById('resend-wrap');
+    const resendTimerEl = document.getElementById('resend-timer');
+    const resendButton = document.getElementById('btn-resend');
+    const otherMethodButton = document.getElementById('btn-other-method');
+    const otherMethodLabel = document.getElementById('btn-other-method-label');
+    const hasMultipleMethods = state.hasTotp && !!state.maskedEmail;
+
+    if (isApp) {
+        icon.innerHTML  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>';
+        title.textContent = 'Código do autenticador';
+        desc.innerHTML    = 'Abra seu aplicativo autenticador e informe o código de 6 dígitos gerado para <strong>SEMA/Pau dos Ferros</strong>.';
+        resendWrap.classList.add('hidden');
+        stopResendTimer();
+    } else {
+        icon.innerHTML  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>';
+        title.textContent = 'Código por e-mail';
+        desc.innerHTML    = 'Enviamos um código de 6 dígitos para <strong>' + esc(state.maskedEmail) + '</strong>. Verifique sua caixa de entrada.';
+        resendWrap.classList.remove('hidden');
+        resendTimerEl.classList.remove('hidden');
+        resendButton.classList.add('hidden');
+        startResend();
+    }
+
+    otherMethodLabel.textContent = hasMultipleMethods ? 'Outro método' : 'Voltar ao login';
+    otherMethodButton.classList.remove('hidden');
+
+    document.querySelectorAll('.otp-digit').forEach(d => { d.value = ''; d.classList.remove('has-error'); });
+    clearAlert('otp-err');
+    // Reset remember device
+    state.remember = false;
+    const chk = document.getElementById('remember-check');
+    chk.classList.remove('on'); chk.innerHTML = '';
+    document.getElementById('lembrar-input').value = '0';
+}
+
+function backFromOtp() {
+    stopResendTimer();
+    if (state.hasTotp && state.maskedEmail) {
+        goTo('method');
+    } else {
+        goTo('login');
+    }
+}
+
+/* ── OTP digit inputs ── */
+const digits = document.querySelectorAll('.otp-digit');
+digits.forEach((inp, i) => {
+    inp.addEventListener('input', e => {
+        const v = e.target.value.replace(/\D/g, '').slice(-1);
+        e.target.value = v;
+        e.target.classList.remove('has-error');
+        if (v && i < 5) digits[i + 1].focus();
+    });
+    inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) digits[i - 1].focus();
+        if (e.key === 'ArrowLeft'  && i > 0) { e.preventDefault(); digits[i - 1].focus(); }
+        if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); digits[i + 1].focus(); }
+    });
+    inp.addEventListener('paste', e => {
+        const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+        if (!t) return;
+        e.preventDefault();
+        [...t].forEach((c, j) => { if (digits[j]) digits[j].value = c; });
+        digits[Math.min(t.length, 5)].focus();
+    });
+});
+
+/* ── OTP submit ── */
+document.getElementById('otp-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const code = [...digits].map(d => d.value).join('');
+    if (code.length < 6) {
+        digits.forEach(d => { if (!d.value) d.classList.add('has-error'); });
+        showAlert('otp-err', 'Informe os 6 dígitos do código.');
+        return;
+    }
+    document.getElementById('codigo-hidden').value = code;
+
+    const btn = document.getElementById('btn-otp');
+    setLoading(btn, true, 'Validando…');
+    clearAlert('otp-err');
+
+    fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('otp-form')) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Verificar código ' + iconArrow();
+        if (data.success) {
+            window.location.href = data.redirect || 'index.php';
+        } else {
+            digits.forEach(d => d.classList.add('has-error'));
+            showAlert('otp-err', esc(data.error));
+        }
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Verificar código ' + iconArrow();
+        showAlert('otp-err', 'Erro de rede. Tente novamente.');
+    });
+});
+
+/* ── Remember device ── */
+function toggleRemember() {
+    state.remember = !state.remember;
+    const chk = document.getElementById('remember-check');
+    if (state.remember) {
+        chk.classList.add('on');
+        chk.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    } else {
+        chk.classList.remove('on');
+        chk.innerHTML = '';
+    }
+    document.getElementById('lembrar-input').value = state.remember ? '1' : '0';
+}
+
+/* ── Resend timer ── */
+function startResend() {
+    stopResendTimer();
+    resendSecs = 60;
+    document.getElementById('resend-secs').textContent = '60';
+    document.getElementById('resend-timer').classList.remove('hidden');
+    document.getElementById('btn-resend').classList.add('hidden');
+    resendTimer = setInterval(() => {
+        resendSecs--;
+        document.getElementById('resend-secs').textContent = String(resendSecs).padStart(2, '0');
+        if (resendSecs <= 0) {
+            stopResendTimer();
+            document.getElementById('resend-timer').classList.add('hidden');
+            document.getElementById('btn-resend').classList.remove('hidden');
+        }
+    }, 1000);
+}
+
+function stopResendTimer() {
+    if (resendTimer) {
+        clearInterval(resendTimer);
+        resendTimer = null;
+    }
+}
+
+document.getElementById('btn-resend').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    clearAlert('otp-err');
+
+    const formData = new FormData();
+    formData.append('action', 'reenviar_otp_email');
+
+    fetch('login.php', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (!data.success) {
+            showAlert('otp-err', esc(data.error));
+            return;
         }
 
-        function toggleTotpMethod() {
-            if (window.currentAuthMethod === 'totp') {
-                window.currentAuthMethod = 'email';
-                renderEmailUI();
-            } else {
-                window.currentAuthMethod = 'totp';
-                renderTotpUI();
-            }
+        state.maskedEmail = data.email_mascarado || state.maskedEmail;
+        if (state.method === 'email') {
+            document.getElementById('otp-desc').innerHTML = 'Enviamos um código de 6 dígitos para <strong>' + esc(state.maskedEmail) + '</strong>. Verifique sua caixa de entrada.';
         }
+        startResend();
+        showAlert('otp-err', esc(data.message));
+        document.getElementById('otp-err').classList.remove('error');
+        document.getElementById('otp-err').classList.add('info');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        showAlert('otp-err', 'Erro de rede. Tente novamente.');
+    });
+});
 
-        function renderTotpUI() {
-            document.getElementById('totp-icon').className = 'fas fa-mobile-alt fa-3x text-primary mb-3 mt-2';
-            document.getElementById('totp-text').innerHTML = `Abra seu <strong>App Autenticador</strong> e informe o código gerado.`;
-            const btn = document.getElementById('btn-switch-totp');
-            if (btn) btn.innerHTML = `<i class="fas fa-envelope me-2"></i> Usar código por E-mail`;
-        }
+/* ── Forgot password ── */
+document.getElementById('btn-forgot').addEventListener('click', () => goTo('forgot'));
+document.getElementById('forgot-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email || !email.includes('@') || !email.includes('.')) {
+        showAlert('forgot-err', 'Informe um e-mail válido.');
+        return;
+    }
+    const btn = document.getElementById('btn-forgot-submit');
+    setLoading(btn, true, 'Enviando…');
+    clearAlert('forgot-err');
+    fetch('login.php', { method: 'POST', body: new FormData(this) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Enviar instruções ' + iconArrow();
+        document.getElementById('sent-email').textContent = data.email_mascarado || email;
+        goTo('forgot-sent');
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Enviar instruções ' + iconArrow();
+        showAlert('forgot-err', 'Erro de rede. Tente novamente.');
+    });
+});
 
-        function renderEmailUI() {
-            document.getElementById('totp-icon').className = 'fas fa-envelope-open-text fa-3x text-primary mb-3 mt-2';
-            document.getElementById('totp-text').innerHTML = `Para sua segurança, informe o código enviado para <strong class="text-dark">${window.maskedEmail}</strong>`;
-            const btn = document.getElementById('btn-switch-totp');
-            if (btn) btn.innerHTML = `<i class="fas fa-mobile-alt me-2"></i> Usar App Autenticador`;
-        }
-    </script>
+/* ── Helpers ── */
+function setLoading(btn, on, label) {
+    btn.disabled = on;
+    if (on) btn.innerHTML = '<span class="spinner"></span>' + (label || '');
+}
+
+function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    const span = el.querySelector('[data-msg]');
+    if (span) span.innerHTML = msg;
+    el.classList.remove('info');
+    el.classList.add('error');
+    el.classList.remove('hidden');
+}
+
+function clearAlert(id) { document.getElementById(id).classList.add('hidden'); }
+
+function showFieldError(field, msg) {
+    document.getElementById('wrap-' + field)?.classList.add('has-error');
+    const err = document.getElementById('err-' + field);
+    if (err) { err.querySelector('span').textContent = msg; err.classList.remove('hidden'); }
+}
+
+function clearFieldError(field) {
+    document.getElementById('wrap-' + field)?.classList.remove('has-error');
+    document.getElementById('err-' + field)?.classList.add('hidden');
+}
+
+function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function iconArrow() {
+    return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+}
+</script>
 </body>
-
 </html>

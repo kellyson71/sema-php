@@ -7,6 +7,10 @@ function getStatusColor($status)
             return ['color' => '#f59e0b', 'textClass' => 'text-yellow-700'];
         case 'aprovado':
             return ['color' => '#10b981', 'textClass' => 'text-green-700'];
+        case 'aguardando boleto':
+            return ['color' => '#f59e0b', 'textClass' => 'text-amber-700'];
+        case 'boleto pago':
+            return ['color' => '#0f766e', 'textClass' => 'text-teal-800'];
         case 'finalizado':
         case 'indeferido':
             return ['color' => '#6b7280', 'textClass' => 'text-gray-500'];
@@ -37,18 +41,18 @@ function renderTabela($requerimentos)
     }
 ?>
     <!-- Barra de Ações Múltiplas (oculta por padrão) -->
-    <div id="acoesMultiplas" class="bg-blue-50 border-b border-blue-200 px-6 py-4" style="display: none;">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center">
+    <div id="acoesMultiplas" class="bulk-actions-bar" style="display: none;">
+        <div class="bulk-actions-inner">
+            <div class="bulk-actions-copy">
                 <span id="contadorSelecionados" class="text-sm text-blue-800 mr-4">0 itens selecionados</span>
                 <button onclick="cancelarSelecaoMultipla()" class="text-sm text-blue-600 hover:text-blue-800">
                     <i class="fas fa-times mr-1"></i>Cancelar
                 </button>
             </div>
-            <div class="flex gap-2">
+            <div class="bulk-actions-controls">
                 <!-- Dropdown para alterar status -->
                 <div class="relative">
-                    <button onclick="toggleDropdownStatus()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center">
+                    <button onclick="toggleDropdownStatus()" class="bulk-action-button bulk-action-button-primary">
                         <i class="fas fa-edit mr-1"></i>Alterar Status
                         <i class="fas fa-chevron-down ml-1 text-xs"></i>
                     </button>
@@ -80,7 +84,7 @@ function renderTabela($requerimentos)
                     </div>
                 </div>
 
-                <button onclick="confirmarExclusaoMultipla()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+                <button onclick="confirmarExclusaoMultipla()" class="bulk-action-button bulk-action-button-danger">
                     <i class="fas fa-trash mr-1"></i>Excluir
                 </button>
             </div>
@@ -104,9 +108,11 @@ function renderTabela($requerimentos)
             <?php foreach ($requerimentos as $req): ?>
                 <?php
                 $isCompleted = (strtolower($req['status']) === 'finalizado' || strtolower($req['status']) === 'indeferido');
+                $isPagamentoRecebido = strtolower($req['status']) === 'boleto pago';
                 $rowClasses = '';
                 $rowClasses .= $req['visualizado'] == 0 ? 'unread ' : '';
                 $rowClasses .= $isCompleted ? 'opacity-60 ' : '';
+                $rowClasses .= $isPagamentoRecebido ? 'payment-ready-row ' : '';
                 $rowClasses .= 'transition-all hover:bg-gray-50 requerimento-row';
                 $statusData = getStatusColor($req['status']);
                 ?>
@@ -163,11 +169,11 @@ function renderTabelaVazia()
 {
 ?>
     <div class="text-center py-16">
-        <div class="text-6xl text-gray-300 mb-4">
+        <div class="empty-state-icon">
             <i class="fas fa-search"></i>
         </div>
-        <h4 class="text-xl font-semibold text-gray-700 mb-2">Nenhum requerimento encontrado</h4>
-        <p class="text-gray-500">Tente ajustar os filtros de pesquisa ou verificar se há requerimentos cadastrados.</p>
+        <h4 class="empty-state-title">Nenhum requerimento encontrado</h4>
+        <p class="empty-state-copy">Tente ajustar os filtros de pesquisa ou verificar se há requerimentos cadastrados.</p>
     </div>
 <?php
 }

@@ -2,8 +2,11 @@
 require_once 'conexao.php';
 require_once 'helpers.php';
 require_once '../includes/email_service.php';
+require_once '../includes/pagamento_helpers.php';
+require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
+ensureAdminNotificationTables($pdo);
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -77,6 +80,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
     }
 }
 
+// Processar envio manual de boleto
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamento'])) {
+    $instrucoesBoleto = trim($_POST['instrucoes_boleto'] ?? '');
+    $arquivoBoleto = $_FILES['boleto_pdf'] ?? null;
+    $arquivoFoiEnviado = $arquivoBoleto && ($arquivoBoleto['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+    if (!$arquivoFoiEnviado) {
+        $mensagem = "Anexe o PDF do boleto para prosseguir.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $pagamentoAtual = buscarPagamentoRequerimento($pdo, $id);
+            if ($pagamentoAtual) {
+                $stmt = $pdo->prepare("
+                    UPDATE requerimento_pagamentos
+                    SET instrucoes = ?, enviado_em = NOW(), admin_envio_id = ?,
+                        comprovante_enviado_em = NULL, data_atualizacao = NOW()
+                    WHERE requerimento_id = ?
+                ");
+                $stmt->execute([
+                    $instrucoesBoleto ?: null,
+                    $_SESSION['admin_id'],
+                    $id
+                ]);
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO requerimento_pagamentos (requerimento_id, instrucoes, enviado_em, admin_envio_id)
+                    VALUES (?, ?, NOW(), ?)
+                ");
+                $stmt->execute([
+                    $id,
+                    $instrucoesBoleto ?: null,
+                    $_SESSION['admin_id']
+                ]);
+            }
+
+            if ($arquivoFoiEnviado) {
+                $salvouArquivo = salvarDocumentoPagamento($pdo, $id, $requerimento['protocolo'], $arquivoBoleto, 'boleto_pagamento_admin');
+                if ($salvouArquivo === false) {
+                    throw new RuntimeException('Não foi possível salvar o PDF do boleto. Envie um arquivo PDF válido.');
+                }
+            }
+
+            // Limpa comprovante anterior para que o cidadão possa reenviar
+            removerDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
+
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', comprovante_pagamento = NULL, data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO requerimento_pagamento_historico (requerimento_id, documento_id, instrucoes, admin_envio_id)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $id,
+                $salvouArquivo['documento_id'] ?? null,
+                $instrucoesBoleto ?: null,
+                $_SESSION['admin_id'],
+            ]);
+
+            $acao = "Enviou nova versão do boleto para pagamento";
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+            createAdminNotificationForRequerimento($pdo, $id, 'boleto_enviado');
+
+            $pdo->commit();
+
+            $emailService = new EmailService();
+            $emailEnviado = $emailService->enviarEmailBoleto(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
+                gerarUrlPagamento($id, $requerimento['protocolo']),
+                $instrucoesBoleto,
+                $id
+            );
+
+            $requerimento = buscarDadosRequerimento($pdo, $id);
+            $mensagem = $emailEnviado
+                ? "✅ Boleto enviado para pagamento com sucesso."
+                : "⚠️ Boleto registrado no sistema, mas houve falha no envio do email. O link pode ser reenviado depois.";
+            $mensagemTipo = $emailEnviado ? "success" : "warning";
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $mensagem = "Erro ao enviar boleto: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
+    }
+}
+
 // Processar indeferimento de processo
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])) {
     $motivoIndeferimento = trim($_POST['motivo_indeferimento']);
@@ -118,6 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     $acao = "Indeferiu o processo e enviou email de notificação - Motivo: {$motivoIndeferimento}";
                     $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
                     $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+                    createAdminNotificationForRequerimento($pdo, $id, 'indeferido');
 
                     $pdo->commit();
 
@@ -320,72 +421,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     $novoStatus = $_POST['status'];
     $observacoes = $_POST['observacoes'];
 
-    try {
-        $pdo->beginTransaction();
-
-        // Atualizar status e observações do requerimento
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = ?, observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$novoStatus, $observacoes, $id]);
-
-        // Registrar no histórico de ações
-        $acao = "Alterou status para '{$novoStatus}'";
-        if (!empty($observacoes)) {
-            $acao .= " com a observação: {$observacoes}";
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
-
-        $pdo->commit();
-
-        // Recarregar dados do requerimento para refletir as mudanças
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-
-        $mensagem = "Status do requerimento atualizado com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        $mensagem = "Erro ao atualizar status: " . $e->getMessage();
+    if (!adminStatusPermitidoParaOperacao($novoStatus)) {
+        $mensagem = "Este status não está disponível na operação atual.";
         $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // Atualizar status e observações do requerimento
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = ?, observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$novoStatus, $observacoes, $id]);
+
+            // Registrar no histórico de ações
+            $acao = "Alterou status para '{$novoStatus}'";
+            if (!empty($observacoes)) {
+                $acao .= " com a observação: {$observacoes}";
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+            $pdo->commit();
+
+            // Recarregar dados do requerimento para refletir as mudanças
+            $requerimento = buscarDadosRequerimento($pdo, $id);
+
+            $mensagem = "Status do requerimento atualizado com sucesso!";
+            $mensagemTipo = "success";
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            $mensagem = "Erro ao atualizar status: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
     }
 }
 
 // Processar envio para fiscalizacao
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_fiscalizacao'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Fiscalização', data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$id]);
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, "Enviou processo para Fiscalização de Obras"]);
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo enviado para fiscalização de obras com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
+    $mensagem = "O encaminhamento para fiscalização está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
 // Processar envio para secretario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Apto a gerar alvará', data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$id]);
-        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-        $stmt->execute([$_SESSION['admin_id'], $id, "Concluiu a vistoria técnica e enviou para o Secretário"]);
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo enviado para assinatura do Secretário com sucesso!";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $mensagem = "Erro ao enviar processo: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
+    $mensagem = "O encaminhamento para assinatura do secretário está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
 // Buscar documentos do requerimento
 $stmt = $pdo->prepare("SELECT * FROM documentos WHERE requerimento_id = ? ORDER BY id");
 $stmt->execute([$id]);
 $documentos = $stmt->fetchAll();
+
+$pagamento = buscarPagamentoRequerimento($pdo, $id);
+$documentoBoleto = buscarDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
+$documentoComprovanteBoleto = buscarDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
 
 // Buscar histórico de ações
 $stmt = $pdo->prepare("
@@ -1068,6 +1158,81 @@ include 'header.php';
         background: var(--primary-600);
     }
 
+    .detail-actions-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .detail-actions-primary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .detail-actions-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 0.92rem;
+        font-weight: 600;
+    }
+
+    .detail-actions-secondary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .detail-actions-toolbar .btn {
+        border-radius: 12px;
+        min-height: 42px;
+        font-weight: 600;
+        box-shadow: none !important;
+    }
+
+    .detail-actions-primary .btn {
+        padding-inline: 1rem;
+    }
+
+    .detail-actions-highlight {
+        border-radius: 16px;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f5f9ff 0%, #eef4ff 100%);
+        border: 1px solid #dbe7ff;
+    }
+
+    .documents-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .documents-toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .documents-empty {
+        padding: 1.5rem;
+        border: 1px dashed var(--gray-300);
+        border-radius: 12px;
+        text-align: center;
+        color: var(--gray-500);
+        background: #fafafa;
+    }
+
     /* Estilos específicos para o modal de pré-visualização de email */
     #emailPreviewModal .modal-dialog {
         max-width: 800px;
@@ -1257,6 +1422,11 @@ include 'header.php';
              min-width: auto;
              flex: 1;
          }
+
+         .detail-actions-primary,
+         .detail-actions-secondary {
+             flex-direction: column;
+         }
      }
 
      /* Estilos para a mensagem tutorial discreta */
@@ -1354,6 +1524,11 @@ include 'header.php';
 $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
 $isIndeferido = (strtolower($requerimento['status']) === 'indeferido');
 $isBlocked = $isFinalized || $isIndeferido;
+$activeTab = $_GET['tab'] ?? 'informacoes';
+$tabsPermitidas = ['informacoes', 'documentos', 'historico'];
+if (!in_array($activeTab, $tabsPermitidas, true)) {
+    $activeTab = 'informacoes';
+}
 ?>
 
 <div class="container-fluid px-4">
@@ -1416,20 +1591,25 @@ $isBlocked = $isFinalized || $isIndeferido;
     <!-- ABAS DE INFORMAÇÕES -->
     <ul class="nav nav-tabs mb-3" id="requerimentoTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab">
-                Informações Completas
+            <button class="nav-link <?= $activeTab === 'informacoes' ? 'active' : '' ?>" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab">
+                <i class="fas fa-circle-info me-1"></i>Informações
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab">
-                Histórico
+            <button class="nav-link <?= $activeTab === 'documentos' ? 'active' : '' ?>" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab">
+                <i class="fas fa-folder-open me-1"></i>Documentos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $activeTab === 'historico' ? 'active' : '' ?>" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab">
+                <i class="fas fa-clock-rotate-left me-1"></i>Histórico
             </button>
         </li>
     </ul>
 
     <div class="tab-content" id="requerimentoTabsContent">
         <!-- Aba: Informações Completas -->
-        <div class="tab-pane fade show active" id="informacoes" role="tabpanel">
+        <div class="tab-pane fade <?= $activeTab === 'informacoes' ? 'show active' : '' ?>" id="informacoes" role="tabpanel">
             <!-- Dados do Requerimento -->
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
@@ -1530,6 +1710,47 @@ $isBlocked = $isFinalized || $isIndeferido;
                         <div class="data-row">
                             <div class="data-label">Composição do Imóvel:</div>
                             <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['especificacao'])); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
+                        <div class="data-row">
+                            <div class="data-label">Enquadramento CONEMA:</div>
+                            <div class="data-value">
+                                <?php
+                                    include_once __DIR__ . '/../enquadramento_conema.php';
+                                    $nomeAtividade = $requerimento['enquadramento_atividade'];
+                                    foreach ($enquadramento_conema as $cat) {
+                                        if (isset($cat['atividades'][$nomeAtividade])) {
+                                            $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome']
+                                                . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
+                                            break;
+                                        }
+                                    }
+                                    echo htmlspecialchars($nomeAtividade);
+                                ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
+                        <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
+                        <div class="data-row">
+                            <div class="data-label">Localização:</div>
+                            <div class="data-value">
+                                <?php if ($mapsIsUrl): ?>
+                                    <a href="<?= htmlspecialchars($mapsVal) ?>" target="_blank" rel="noopener"
+                                       style="color:#009640;display:inline-flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-map-marker-alt"></i>Ver no Google Maps
+                                        <i class="fas fa-external-link-alt" style="font-size:.7rem;opacity:.6;"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <span><?= htmlspecialchars($mapsVal) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="data-actions">
+                                <button class="copy-btn" onclick="copyToClipboard('<?= htmlspecialchars($mapsVal, ENT_QUOTES) ?>', this)" title="Copiar link">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
                         </div>
                     <?php endif; ?>
                     <?php if (!empty($requerimento['ctf_numero'])): ?>
@@ -1682,20 +1903,94 @@ $isBlocked = $isFinalized || $isIndeferido;
                 </div>
             <?php endif; ?>
 
-            <!-- Documentos -->
+            <div class="modern-card mb-3">
+                <div class="modern-card-header">
+                    <i class="fas fa-receipt icon"></i>
+                    <h6>Pagamento por Boleto</h6>
+                </div>
+                <div class="card-body">
+                    <?php if ($pagamento): ?>
+                        <div class="data-row">
+                            <div class="data-label">Status do pagamento:</div>
+                            <div class="data-value">
+                                <?php echo !empty($documentoComprovanteBoleto) ? 'Comprovante enviado pelo requerente' : 'Boleto enviado e aguardando pagamento'; ?>
+                            </div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Enviado em:</div>
+                            <div class="data-value"><?php echo !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : 'Não informado'; ?></div>
+                        </div>
+                        <?php if (!empty($pagamento['boleto_url'])): ?>
+                            <div class="data-row">
+                                <div class="data-label">Link do boleto:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo htmlspecialchars($pagamento['boleto_url']); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
+                                        Abrir boleto externo
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($pagamento['instrucoes'])): ?>
+                            <div class="data-row">
+                                <div class="data-label">Instruções:</div>
+                                <div class="data-value"><?php echo nl2br(htmlspecialchars($pagamento['instrucoes'])); ?></div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($documentoBoleto): ?>
+                            <div class="data-row">
+                                <div class="data-label">PDF do boleto:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
+                                        <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($documentoComprovanteBoleto): ?>
+                            <div class="data-row">
+                                <div class="data-label">Comprovante enviado:</div>
+                                <div class="data-value">
+                                    <a href="<?php echo '../uploads/' . ltrim($documentoComprovanteBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#059669;">
+                                        <?php echo htmlspecialchars($documentoComprovanteBoleto['nome_original']); ?>
+                                    </a>
+                                    <div class="text-muted small mt-1">
+                                        Recebido em <?php echo formataData($documentoComprovanteBoleto['data_upload']); ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhum boleto foi enviado para este requerimento até o momento.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="tab-pane fade <?= $activeTab === 'documentos' ? 'show active' : '' ?>" id="documentos" role="tabpanel">
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
                     <i class="fas fa-folder-open icon"></i>
-                    <h6>Documentos (<?php echo count($documentos); ?>)</h6>
-                    <div class="ms-auto">
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="window.open('protocolo-capa.php?id=<?php echo $id; ?>', '_blank')" title="Baixar capa do processo">
-                            <i class="fas fa-file-alt me-1"></i>Baixar Capa
-                        </button>
-                        <?php if (count($documentos) > 0): ?>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadAllFiles()" title="Baixar todos os documentos">
-                                <i class="fas fa-download me-1"></i>Baixar Todos
+                    <h6>Documentos do Processo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="documents-toolbar">
+                        <div class="text-muted small">
+                            <?php echo count($documentos); ?> documento(s) anexado(s) neste processo.
+                        </div>
+                        <div class="documents-toolbar-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.open('protocolo-capa.php?id=<?php echo $id; ?>', '_blank')" title="Baixar capa do processo">
+                                <i class="fas fa-file-alt me-1"></i>Baixar Capa
                             </button>
-                        <?php endif; ?>
+                            <?php if (count($documentos) > 0): ?>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="downloadAllFiles()" title="Baixar todos os documentos">
+                                    <i class="fas fa-download me-1"></i>Baixar Todos
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -1704,6 +1999,13 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <?php
                             $iconClass = "fas fa-file";
                             $iconColor = "#6b7280";
+                            $tituloDocumento = $doc['nome_original'];
+
+                            if ($doc['campo_formulario'] === 'boleto_pagamento_admin') {
+                                $tituloDocumento = 'Boleto enviado pela equipe';
+                            } elseif ($doc['campo_formulario'] === 'comprovante_pagamento_boleto') {
+                                $tituloDocumento = 'Comprovante de pagamento do requerente';
+                            }
 
                             if (strpos($doc['tipo_arquivo'], 'pdf') !== false) {
                                 $iconClass = "fas fa-file-pdf";
@@ -1724,7 +2026,10 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     <i class="<?php echo $iconClass; ?>" style="color: <?php echo $iconColor; ?>; font-size: 20px;"></i>
                                 </div>
                                 <div class="data-value">
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($doc['nome_original']); ?></div>
+                                    <div class="fw-semibold"><?php echo htmlspecialchars($tituloDocumento); ?></div>
+                                    <?php if ($tituloDocumento !== $doc['nome_original']): ?>
+                                        <div class="text-muted small"><?php echo htmlspecialchars($doc['nome_original']); ?></div>
+                                    <?php endif; ?>
                                     <div class="text-muted small"><?php echo number_format($doc['tamanho'] / 1024, 2) . ' KB'; ?></div>
                                 </div>
                                 <div class="data-actions">
@@ -1744,20 +2049,29 @@ $isBlocked = $isFinalized || $isIndeferido;
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Nenhum documento anexado a este requerimento.
-                            </div>
+                        <div class="documents-empty">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhum documento anexado a este requerimento.
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
 
+            <div class="modern-card mb-3" id="secao-docs-assinados" style="display:none">
+                <div class="modern-card-header">
+                    <i class="fas fa-file-signature icon"></i>
+                    <h6>Documentos Assinados Digitalmente</h6>
+                    <span class="badge ms-auto" id="badge-docs-count"
+                          style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="docs-assinados-grid" class="p-3" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Aba: Histórico -->
-        <div class="tab-pane fade" id="historico" role="tabpanel">
+        <div class="tab-pane fade <?= $activeTab === 'historico' ? 'show active' : '' ?>" id="historico" role="tabpanel">
 
             <!-- Tempo por Etapa -->
             <div class="modern-card mb-3">
@@ -1847,14 +2161,19 @@ $isBlocked = $isFinalized || $isIndeferido;
             </div>
 
             <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <i class="fas fa-history icon"></i>
-                    <h6>Histórico de Ações</h6>
+                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-history icon"></i>
+                        <h6 class="mb-0">Histórico de Ações</h6>
+                    </div>
+                    <?php if (count($historico) > 0): ?>
+                    <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
+                    <?php endif; ?>
                 </div>
                 <div class="card-body p-0">
                     <?php if (count($historico) > 0): ?>
-                        <?php foreach ($historico as $h): ?>
-                            <div class="data-row">
+                        <?php foreach ($historico as $idx => $h): ?>
+                            <div class="data-row" data-historico-item="<?php echo $idx; ?>">
                                 <div class="data-label" style="min-width: 140px;">
                                     <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome'] ?? 'Sistema'); ?></div>
                                     <div class="text-muted small"><?php echo formataData($h['data_acao']); ?></div>
@@ -1863,12 +2182,26 @@ $isBlocked = $isFinalized || $isIndeferido;
                                     <?php echo htmlspecialchars($h['acao']); ?>
                                 </div>
                                 <div class="data-actions">
-                                    <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($h['acao']); ?>', this)" title="Copiar ação">
+                                    <button class="copy-btn" onclick="copyToClipboard('<?php echo addslashes(htmlspecialchars($h['acao'])); ?>', this)" title="Copiar ação">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
+
+                        <!-- Paginação do Histórico -->
+                        <?php if (count($historico) > 10): ?>
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light" id="historico-pagination">
+                            <button class="btn btn-sm btn-outline-secondary" id="historico-prev" onclick="historicoChangePage(-1)" disabled>
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </button>
+                            <span class="text-muted small" id="historico-page-info">Página 1 de <?php echo ceil(count($historico)/10); ?></span>
+                            <button class="btn btn-sm btn-outline-secondary" id="historico-next" onclick="historicoChangePage(1)">
+                                Próximo<i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <div class="card-body">
                             <div class="text-center text-muted py-3">
@@ -1973,48 +2306,20 @@ $isBlocked = $isFinalized || $isIndeferido;
                                          <?php else: ?>
                           <!-- Barra de Ações Modernas -->
                           <div class="p-4">
-                              <p class="text-muted small mb-3 d-flex align-items-center gap-2">
-                                  <i class="fas fa-info-circle text-primary"></i>
-                                  Selecione a ação desejada para este processo:
-                              </p>
+                              <div class="detail-actions-toolbar">
                               
-                              <!-- Botões do Novo Fluxo de Trabalho (Analista -> Fiscal -> Secretário) -->
-
-                              <?php if ($_SESSION['admin_nivel'] === 'fiscal'): ?>
-                              <!-- Destaque principal para o fiscal: concluir análise -->
-                              <div class="mb-3 pb-3 border-bottom">
-                                  <form method="post" action="">
-                                      <button type="submit" name="enviar_secretario" class="btn btn-lg fw-semibold text-white w-100 shadow" style="background:#8b5cf6;" onclick="return confirm('Confirmar conclusão da análise e envio ao Secretário para emissão do alvará?')">
-                                          <i class="fas fa-paper-plane me-2"></i>Concluir análise e enviar ao Secretário
-                                      </button>
-                                  </form>
-                                  <p class="text-muted small mt-2 mb-0 text-center">
-                                      <i class="fas fa-info-circle me-1"></i>Use este botão após gerar e assinar o parecer técnico.
-                                  </p>
-                              </div>
-                              <?php endif; ?>
-
-                              <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
-                                  <!-- Botão envio analista -> fiscal -->
-                                  <?php if ($_SESSION['admin_nivel'] === 'admin' || $_SESSION['admin_nivel'] === 'analista'): ?>
-                                      <form method="post" action="" style="display: inline;">
-                                          <button type="submit" name="enviar_fiscalizacao" class="btn fw-medium text-white shadow-sm" style="background:#0284c7;" onclick="return confirm('Confirmar envio para a Fiscalização de Obras?')">
-                                              <i class="fas fa-hard-hat me-2"></i>Enviar p/ Fiscalização de Obras
-                                          </button>
-                                      </form>
-                                  <?php endif; ?>
-
-                                  <!-- Botão envio fiscal -> secretario (visível para admin também) -->
-                                  <?php if ($_SESSION['admin_nivel'] === 'admin'): ?>
-                                      <form method="post" action="" style="display: inline;">
-                                          <button type="submit" name="enviar_secretario" class="btn fw-medium text-white shadow-sm" style="background:#8b5cf6;" onclick="return confirm('Confirmar envio para assinatura do Secretário?')">
-                                              <i class="fas fa-paper-plane me-2"></i>Enviar p/ Secretário (Apto a Gerar Alvará)
-                                          </button>
-                                      </form>
-                                  <?php endif; ?>
+                              <div class="detail-actions-primary">
+                                  <div class="detail-actions-note">
+                                      <i class="fas fa-circle-info me-2"></i>
+                                      O fluxo complementar por fiscalização e secretário está temporariamente desativado nesta atualização.
+                                  </div>
                               </div>
 
-                              <div class="d-flex flex-wrap gap-2">
+                              <div class="detail-actions-secondary">
+                                  <button type="button" class="btn btn-sky fw-medium"
+                                      data-bs-toggle="modal" data-bs-target="#boletoModal">
+                                      <i class="fas fa-file-invoice me-2"></i>Enviar Boleto
+                                  </button>
 
                                   <button type="button" class="btn btn-outline-primary fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
@@ -2043,6 +2348,7 @@ $isBlocked = $isFinalized || $isIndeferido;
                                       <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
                                   </a>
                               </div>
+                              </div>
                           </div>
                           <!-- Pareceres já gerados -->
                           <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
@@ -2052,27 +2358,68 @@ $isBlocked = $isFinalized || $isIndeferido;
         </div>
     </div>
 
-    <!-- Documentos Assinados -->
-    <div class="row mt-4" id="secao-docs-assinados" style="display:none">
-        <div class="col-12">
-            <div class="modern-card">
-                <div class="modern-card-header">
-                    <i class="fas fa-file-signature icon"></i>
-                    <h6>Documentos Assinados Digitalmente</h6>
-                    <span class="badge ms-auto" id="badge-docs-count"
-                          style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
-                </div>
-                <div class="card-body p-0">
-                    <div id="docs-assinados-grid" class="p-3" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════
      MODAIS DE AÇÕES ADMINISTRATIVAS
 ══════════════════════════════════════════════════ -->
+
+<!-- Modal: Enviar Boleto -->
+<div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width:36px;height:36px;border-radius:10px;background:var(--sky-soft);border:1px solid var(--sky-mid);display:inline-flex;align-items:center;justify-content:center;color:var(--sky-text);">
+                        <i class="fas fa-file-invoice"></i>
+                    </span>
+                    <h5 class="modal-title fw-bold mb-0" style="color:var(--sky-text);">Enviar Boleto</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="" enctype="multipart/form-data">
+                <div class="modal-body px-4 pt-3 pb-2">
+                    <p class="text-muted small mb-4" style="line-height:1.55;">
+                        O requerente receberá um e-mail com um link seguro para acessar a página de pagamento e baixar a versão mais recente do boleto.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="boleto_pdf" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Arquivo PDF do boleto <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="boleto_pdf" name="boleto_pdf"
+                               accept="application/pdf,.pdf" required>
+                        <?php if ($documentoBoleto): ?>
+                            <div class="mt-2 d-flex align-items-center gap-2 small" style="color:var(--teal-text);">
+                                <i class="fas fa-file-pdf"></i>
+                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>"
+                                          target="_blank" rel="noopener" style="color:inherit;">
+                                    <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
+                                </a>
+                                <span class="text-muted">(uma nova versão será registrada ao reenviar)</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="instrucoes_boleto" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Observações <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <textarea class="form-control" id="instrucoes_boleto" name="instrucoes_boleto" rows="3"
+                                  style="font-size:.875rem;resize:none;"
+                                  placeholder="Prazo de vencimento, orientações complementares..."><?= htmlspecialchars($pagamento['instrucoes'] ?? '') ?></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
+                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-sky px-4">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar boleto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Modal: Atualizar Status -->
 <div class="modal fade" id="atualizarStatusModal" tabindex="-1" aria-hidden="true">
@@ -2100,11 +2447,11 @@ $isBlocked = $isFinalized || $isIndeferido;
                             <option value="Aprovado"   <?= $requerimento['status']=='Aprovado'  ?'selected':'' ?>>Aprovado</option>
                             <option value="Reprovado"  <?= $requerimento['status']=='Reprovado' ?'selected':'' ?>>Reprovado</option>
                             <option value="Pendente"   <?= $requerimento['status']=='Pendente'  ?'selected':'' ?>>Pendente</option>
+                            <option value="Aguardando boleto" <?= $requerimento['status']=='Aguardando boleto'?'selected':'' ?>>Aguardando boleto</option>
+                            <option value="Boleto pago" <?= $requerimento['status']=='Boleto pago'?'selected':'' ?>>Boleto pago</option>
                             <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
                             <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
                             <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
-                            <option value="Apto a gerar alvará" <?= $requerimento['status']=='Apto a gerar alvará'?'selected':'' ?>>Apto a gerar alvará</option>
-                            <option value="Alvará Emitido"      <?= $requerimento['status']=='Alvará Emitido'    ?'selected':'' ?>>Alvará Emitido</option>
                         </select>
                     </div>
                     <div>
@@ -2481,6 +2828,50 @@ $isBlocked = $isFinalized || $isIndeferido;
             }, 2000);
         });
     }
+
+    // === Paginação do Histórico de Ações ===
+    (function () {
+        const PER_PAGE = 10;
+        let currentPage = 0;
+
+        function getItems() {
+            return document.querySelectorAll('[data-historico-item]');
+        }
+
+        function getTotalPages() {
+            return Math.ceil(getItems().length / PER_PAGE);
+        }
+
+        function renderPage(page) {
+            const items = getItems();
+            if (!items.length) return;
+
+            const total = Math.ceil(items.length / PER_PAGE);
+            currentPage = Math.max(0, Math.min(page, total - 1));
+
+            items.forEach(function (el, idx) {
+                const start = currentPage * PER_PAGE;
+                el.style.display = (idx >= start && idx < start + PER_PAGE) ? '' : 'none';
+            });
+
+            const info = document.getElementById('historico-page-info');
+            const prev = document.getElementById('historico-prev');
+            const next = document.getElementById('historico-next');
+
+            if (info) info.textContent = 'Página ' + (currentPage + 1) + ' de ' + total;
+            if (prev) prev.disabled = currentPage === 0;
+            if (next) next.disabled = currentPage >= total - 1;
+        }
+
+        window.historicoChangePage = function (delta) {
+            renderPage(currentPage + delta);
+        };
+
+        // Inicializar ao carregar
+        document.addEventListener('DOMContentLoaded', function () {
+            renderPage(0);
+        });
+    })();
 
     // Função para baixar todos os arquivos
     function downloadAllFiles() {
@@ -2988,6 +3379,10 @@ function getStatusClass($status)
             return 'warning';
         case 'Pendente':
             return 'info';
+        case 'Aguardando boleto':
+            return 'warning';
+        case 'Boleto pago':
+            return 'success';
         case 'Cancelado':
             return 'secondary';
         default:
@@ -3002,6 +3397,10 @@ function getStatusDotColor($status)
             return '#f59e0b'; // amarelo
         case 'aprovado':
             return '#10b981'; // verde
+        case 'aguardando boleto':
+            return '#f59e0b'; // âmbar
+        case 'boleto pago':
+            return '#0f766e'; // teal escuro
         case 'finalizado':
             return '#8b5cf6'; // roxo
         case 'indeferido':
@@ -3105,6 +3504,3 @@ function getStatusDotColor($status)
 </script>
 
 <?php include 'footer.php'; ?>
-
-
-

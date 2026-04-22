@@ -16,6 +16,7 @@ require_once '../includes/database.php'; // Adicionado explícito para garantir 
 require_once '../includes/functions.php';
 require_once '../includes/models.php';
 require_once '../includes/email_service.php';
+require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 
 // Função auxiliar para resposta JSON
@@ -53,6 +54,8 @@ try {
     $proprietarioModel = new Proprietario();
     $requerimentoModel = new Requerimento();
     $documentoModel = new Documento();
+    $database = new Database();
+    $pdo = $database->getConnection();
 
     // 5. Setup de regras (replicado de processar_formulario.php)
     $tiposAmbientais = [
@@ -125,12 +128,13 @@ try {
     $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
     $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
     $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
+    $enquadramento_atividade = trim($_POST['enquadramento_atividade'] ?? '');
+    $localizacao_google_maps = trim($_POST['localizacao_google_maps'] ?? '');
     $observacoes = '';
 
     if (in_array($tipoAlvara, $tiposAmbientais)) {
         $erros_ambientais = [];
         if (empty($publicacao_diario_oficial)) $erros_ambientais[] = 'Dados da publicação em Diário Oficial';
-        if (empty($comprovante_pagamento)) $erros_ambientais[] = 'Comprovante de pagamento';
         
         if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) 
             $erros_ambientais[] = 'Número do CTF';
@@ -206,6 +210,8 @@ try {
         'comprovante_pagamento' => $comprovante_pagamento ?: null,
         'possui_estudo_ambiental' => $possui_estudo,
         'tipo_estudo_ambiental' => $tipo_estudo_ambiental ?: null,
+        'enquadramento_atividade' => $enquadramento_atividade ?: null,
+        'localizacao_google_maps' => $localizacao_google_maps ?: null,
         'status' => 'Em análise',
         'observacoes' => isset($observacoes) && !empty($observacoes) ? $observacoes : null
     ];
@@ -214,6 +220,7 @@ try {
     if (!$requerimento_id) {
         jsonResponse(false, 'Erro interno ao criar requerimento no banco de dados.');
     }
+    createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
 
     // 13. Processar Uploads
     $diretorio_upload = UPLOAD_DIR . $protocolo; // Definido em config.php/functions.php

@@ -1,5 +1,7 @@
 # Fluxo de Usuários — SEMA
 
+> Atualização: este documento permanece como referência histórica. A documentação funcional principal para Obsidian agora está em `docs/obsidian/00-Mapa-da-Vault.md` e adota o modelo atual de atores `Cidadão`, `Analista`, `Fiscal`, `Secretário` e `Admin / Admin Geral`.
+
 Este documento descreve os três perfis de usuário do sistema SEMA, o que cada um faz, suas permissões e como o fluxo de um requerimento avança de ponta a ponta.
 
 ---

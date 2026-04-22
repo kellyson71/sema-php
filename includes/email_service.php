@@ -343,6 +343,33 @@ class EmailService
     }
 
     /**
+     * Enviar email com instruções de pagamento por boleto.
+     *
+     * @param string $to_email
+     * @param string $to_name
+     * @param string $protocolo
+     * @param string $tipo_alvara
+     * @param string $url_pagamento
+     * @param string $instrucoes
+     * @param int|null $requerimento_id
+     * @return bool
+     */
+    public function enviarEmailBoleto($to_email, $to_name, $protocolo, $tipo_alvara, $url_pagamento, $instrucoes = '', $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Boleto disponível para pagamento";
+
+            $nome_destinatario = $to_name;
+            $body = $this->carregarTemplateBoleto($nome_destinatario, $protocolo, $tipo_alvara, $url_pagamento, $instrucoes);
+
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Throwable $e) {
+            error_log("Erro ao enviar email de boleto: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Carregar template de email para aprovação técnica
      */
     private function carregarTemplateAprovado($nome_destinatario, $protocolo, $tipo_alvara)
@@ -369,6 +396,16 @@ class EmailService
     {
         ob_start();
         include __DIR__ . '/../templates/email_reenvio.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Carregar template de email para envio do boleto.
+     */
+    private function carregarTemplateBoleto($nome_destinatario, $protocolo, $tipo_alvara, $url_pagamento, $instrucoes)
+    {
+        ob_start();
+        include __DIR__ . '/../templates/email_boleto.php';
         return ob_get_clean();
     }
 

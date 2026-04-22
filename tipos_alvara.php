@@ -27,7 +27,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -63,7 +63,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -93,7 +93,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -126,7 +126,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -156,7 +156,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -187,7 +187,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -211,7 +211,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -234,7 +234,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -262,7 +262,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -299,7 +299,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'A qualquer momento a Prefeitura Municipal de Pau dos Ferros poderá exigir a apresentação de documentos adicionais, para melhor instrumentalizar o processo de análise e avaliação do projeto.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -323,7 +323,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -350,7 +350,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -378,7 +378,7 @@ $tipos_alvara = [
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
-            'O arquivo enviado não pode ultrapassar 10MB.',
+            'O arquivo enviado não pode ultrapassar 100MB.',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -388,6 +388,7 @@ $tipos_alvara = [
     'licenca_previa_ambiental' => [
         'nome' => 'LP — LICENÇA PRÉVIA AMBIENTAL',
         'categoria' => 'ambiental',
+        'oculto' => true, // Removido para novos protocolos (licenciamento ambiental 2026-04)
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
         'documentos' => [
@@ -440,6 +441,7 @@ $tipos_alvara = [
     'licenca_instalacao_operacao' => [
         'nome' => 'LI/LO — LICENÇA DE INSTALAÇÃO + OPERAÇÃO',
         'categoria' => 'ambiental',
+        'oculto' => true, // Removido para novos protocolos (licenciamento ambiental 2026-04)
         'exige_ctf' => true,
         'exige_licenca_anterior' => true,
         'documentos' => [
@@ -569,8 +571,29 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
+    'lac' => [
+        'nome' => 'LAC — LICENÇA POR ADESÃO E COMPROMISSO',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Requerimento de licença;',
+            '2. Documentos pessoais (PF/PJ);',
+            '3. Procuração (quando for o caso);',
+            '4. Certidão do município;',
+            '5. Documento da área (comprovação de uso/posse);',
+            '6. Contrato de arrendamento (quando aplicável);',
+            '7. Relatório de Caracterização do Empreendimento (RCE);',
+            '8. ARTs;',
+            '9. Comprovante de pagamento.'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
     'autorizacao_supressao' => [
-        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL',
+        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL (ainda não disponível no momento)',
         'categoria' => 'ambiental',
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,

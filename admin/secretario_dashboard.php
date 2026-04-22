@@ -1,5 +1,7 @@
 <?php
 require_once 'conexao.php';
+header("Location: index.php");
+exit;
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 

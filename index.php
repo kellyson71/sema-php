@@ -14,6 +14,8 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
+// Inclui tabela de enquadramento CONEMA para licenciamento ambiental
+include_once 'enquadramento_conema.php';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -75,26 +77,24 @@ include_once 'tipos_alvara.php';
     <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
     <!-- Banner de Homologação -->
     <div style="
-        background: repeating-linear-gradient(45deg, #ff9800, #ff9800 10px, #f57c00 10px, #f57c00 20px);
-        color: white;
+        background: #f59e0b;
+        color: #1f2937;
         text-align: center;
-        padding: 10px;
-        font-weight: bold;
-        font-size: 1.2rem;
+        padding: 4px 12px;
+        font-weight: 600;
+        font-size: 0.72rem;
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         z-index: 9999;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
         pointer-events: none;
-        opacity: 0.9;
     ">
-        Ambiente de Homologação / Testes
+        Ambiente de Homologação
     </div>
-    <div style="height: 44px;"></div> <!-- Espaçador para o banner fixo -->
+    <div style="height: 22px;"></div> <!-- Espaçador para o banner fixo -->
     <?php endif; ?>
     <header>
         <nav>
@@ -137,6 +137,14 @@ include_once 'tipos_alvara.php';
                     <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
+                </div>
+
+                <div style="max-width:800px;margin:18px auto 0;padding:14px 16px;border-radius:10px;background:rgba(245,158,11,0.16);border:1px solid rgba(245,158,11,0.32);color:#fef3c7;display:flex;gap:12px;align-items:flex-start;">
+                    <i class="fas fa-envelope-open-text" style="margin-top:2px;color:#fbbf24;"></i>
+                    <div style="line-height:1.55;font-size:0.95rem;">
+                        <strong style="color:#fff7ed;">Aviso sobre pagamento:</strong>
+                        após a análise inicial, o boleto será enviado para o email informado no requerimento. O pagamento e o envio do comprovante serão feitos depois, por um link seguro enviado pela equipe.
+                    </div>
                 </div>
 
                 <?php
@@ -299,7 +307,7 @@ include_once 'tipos_alvara.php';
                                         'outro' => 'Outros Serviços',
                                     ];
                                     foreach ($categorias as $catSlug => $catNome):
-                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug);
+                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
                                         if (empty($tiposDaCategoria)) continue;
                                     ?>
                                     <optgroup label="<?= htmlspecialchars($catNome) ?>">
@@ -398,10 +406,8 @@ include_once 'tipos_alvara.php';
                 
                 if (tiposAmbientais.includes(tipoAlvara)) {
                     const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
-                    const comprovantePag = document.querySelector('input[name="comprovante_pagamento"]')?.value.trim();
                     
                     if (!publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
-                    if (!comprovantePag) erros.push('Comprovante de pagamento é obrigatório');
                     
                     // Validar estudo ambiental
                     const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
@@ -873,13 +879,38 @@ include_once 'tipos_alvara.php';
                         `;
                     } else if (tiposAmbientais.includes(tipo)) {
                         campos = `
+                            <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
+                                <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">
+                                    <i class="fas fa-clipboard-check" style="margin-right:6px;"></i>Enquadramento Ambiental (Resolução CONEMA 04/2009)
+                                </div>
+                                <select required name="enquadramento_atividade" style="padding:10px; border:1px solid #ddd; border-radius:4px; width:100%; margin-bottom:8px;">
+                                    <option value="" hidden>Selecione a atividade do empreendimento *</option>
+                                    <?php foreach ($enquadramento_conema as $cat): ?>
+                                    <optgroup label="<?= htmlspecialchars($cat['titulo']) ?>">
+                                        <?php foreach ($cat['atividades'] as $slug => $ativ): ?>
+                                        <option value="<?= $slug ?>"><?= htmlspecialchars($ativ['nome']) ?> (<?= $ativ['potencial'] ?>)</option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem;">Potencial poluidor: P = Pequeno, M = Médio, G = Grande</small>
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <input name="localizacao_google_maps" placeholder="Link do Google Maps do empreendimento (opcional)" style="width:100%;">
+                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem; display:block; margin-top:4px;">
+                                    Abra o Google Maps, busque o local, clique em "Compartilhar" → "Copiar link" e cole aqui.
+                                </small>
+                            </div>
                             <div class="form-grid-2">
                                 <input ${tiposExigemCTF.includes(tipo) ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${tiposExigemCTF.includes(tipo) ? '*' : '(se houver)'}">
                                 <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
                                 <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
-                                <input required name="comprovante_pagamento" placeholder="Comprovante de pagamento (código/recibo) *">
+                                <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
+                            </div>
+                            <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
+                                O boleto será enviado posteriormente para o email informado. Não é necessário anexar comprovante nesta etapa.
                             </div>
                             <div class="form-grid-2">
                                 <label class="form-toggle">
@@ -960,9 +991,9 @@ include_once 'tipos_alvara.php';
                 return false;
             }
 
-            // Verificar tamanho do arquivo (máximo 10MB)
-            if (file.size > 10485760) {
-                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 10MB.');
+            // Verificar tamanho do arquivo (máximo 100MB)
+            if (file.size > 104857600) {
+                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 100MB.');
                 input.value = '';
                 return false;
             }

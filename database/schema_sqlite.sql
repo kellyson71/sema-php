@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS requerimentos (
     comprovante_pagamento VARCHAR(255),
     possui_estudo_ambiental BOOLEAN,
     tipo_estudo_ambiental VARCHAR(100),
-    status VARCHAR(20) DEFAULT 'Em análise',
+    status VARCHAR(40) DEFAULT 'Em análise',
     observacoes TEXT,
     data_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -56,6 +56,32 @@ CREATE TABLE IF NOT EXISTS documentos (
     FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS requerimento_pagamentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requerimento_id INTEGER NOT NULL UNIQUE,
+    boleto_url TEXT,
+    instrucoes TEXT,
+    enviado_em DATETIME,
+    comprovante_enviado_em DATETIME,
+    admin_envio_id INTEGER,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS requerimento_pagamento_historico (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requerimento_id INTEGER NOT NULL,
+    documento_id INTEGER,
+    instrucoes TEXT,
+    enviado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    admin_envio_id INTEGER,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE,
+    FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
+);
+
 -- Tabela de administradores
 CREATE TABLE IF NOT EXISTS administradores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +92,27 @@ CREATE TABLE IF NOT EXISTS administradores (
     ativo BOOLEAN DEFAULT 1,
     ultimo_acesso DATETIME NULL,
     data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admin_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo VARCHAR(50) NOT NULL,
+    titulo VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    link_url VARCHAR(255),
+    requerimento_id INTEGER,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_notification_reads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    notification_id INTEGER NOT NULL,
+    admin_id INTEGER NOT NULL,
+    lida_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(notification_id, admin_id),
+    FOREIGN KEY (notification_id) REFERENCES admin_notifications(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
 );
 
 -- Tabela de histórico de ações

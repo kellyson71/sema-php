@@ -20,6 +20,41 @@ if (!function_exists('formatarTempoEstatisticas')) {
     }
 }
 
+if (!function_exists('adminStatusFluxoPrincipal')) {
+    function adminStatusFluxoPrincipal(): array
+    {
+        return [
+            'Em análise',
+            'Aprovado',
+            'Reprovado',
+            'Pendente',
+            'Aguardando boleto',
+            'Boleto pago',
+            'Cancelado',
+            'Finalizado',
+            'Indeferido',
+        ];
+    }
+}
+
+if (!function_exists('adminStatusFluxoExtra')) {
+    function adminStatusFluxoExtra(): array
+    {
+        return [
+            'Aguardando Fiscalização',
+            'Apto a gerar alvará',
+            'Alvará Emitido',
+        ];
+    }
+}
+
+if (!function_exists('adminStatusPermitidoParaOperacao')) {
+    function adminStatusPermitidoParaOperacao(string $status): bool
+    {
+        return in_array($status, adminStatusFluxoPrincipal(), true);
+    }
+}
+
 /**
  * Calcula os timestamps de cada etapa a partir do histórico de ações de um requerimento.
  *

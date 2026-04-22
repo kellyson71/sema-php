@@ -1,111 +1,212 @@
         </div>
         </div>
 
-        <!-- Scripts -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
         <script>
-            // Toggle sidebar on mobile
-            document.addEventListener('DOMContentLoaded', function() {
-                const toggleBtn = document.createElement('button');
-                toggleBtn.classList.add('btn', 'btn-sm', 'btn-light', 'd-md-none', 'position-fixed');
-                toggleBtn.style.top = '10px';
-                toggleBtn.style.left = '10px';
-                toggleBtn.style.zIndex = '1050';
-                toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
-                document.body.appendChild(toggleBtn);
-
-                toggleBtn.addEventListener('click', function() {
-                    document.querySelector('.sidebar').classList.toggle('active');
-                    document.querySelector('.content-wrapper').classList.toggle('active');
-                    document.querySelector('.topbar').classList.toggle('active');
-                });
-
-                // Fechar menu ao clicar em um item no mobile
-                const menuItems = document.querySelectorAll('.sidebar-menu a');
-                menuItems.forEach(item => {
-                    item.addEventListener('click', function() {
-                        if (window.innerWidth < 768) {
-                            document.querySelector('.sidebar').classList.remove('active');
-                            document.querySelector('.content-wrapper').classList.remove('active');
-                            document.querySelector('.topbar').classList.remove('active');
-                        }
-                    });
-                });
-            });
-
-            // Formatação de data
             function formatarData(data) {
                 return new Date(data).toLocaleString('pt-BR');
             }
 
-            // Função para exibir alertas
             function mostrarAlerta(mensagem, tipo = 'success') {
                 const alertaDiv = document.createElement('div');
                 alertaDiv.classList.add('alert', `alert-${tipo}`, 'alert-dismissible', 'fade', 'show', 'position-fixed');
                 alertaDiv.setAttribute('role', 'alert');
-                alertaDiv.style.top = '70px';
+                alertaDiv.style.top = '96px';
                 alertaDiv.style.right = '20px';
                 alertaDiv.style.zIndex = '1100';
                 alertaDiv.innerHTML = `
-                ${mensagem}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-            `;
+                    ${mensagem}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                `;
                 document.body.appendChild(alertaDiv);
 
-                // Auto fechar após 5 segundos
                 setTimeout(() => {
                     const bsAlert = new bootstrap.Alert(alertaDiv);
                     bsAlert.close();
                 }, 5000);
             }
 
-            // Controle da sidebar de notificações
             document.addEventListener('DOMContentLoaded', function() {
+                const body = document.body;
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                const sidebar = document.getElementById('adminSidebar');
+                const notificationSidebar = document.getElementById('notificationSidebar');
                 const openNotificationBtn = document.getElementById('openNotificationSidebar');
                 const closeNotificationBtn = document.getElementById('closeNotificationSidebar');
-                const notificationSidebar = document.getElementById('notificationSidebar');
                 const contentOverlay = document.getElementById('contentOverlay');
+                const searchInput = document.getElementById('globalSearchInput');
+                const searchResults = document.getElementById('globalSearchResults');
+                const searchEmpty = document.getElementById('globalSearchEmpty');
+                const searchItems = searchResults ? Array.from(searchResults.querySelectorAll('[data-search-item]')) : [];
+                const notificationTabs = Array.from(document.querySelectorAll('[data-notification-tab]'));
+                const notificationPanels = Array.from(document.querySelectorAll('[data-notification-panel]'));
+                const releaseModalElement = document.getElementById('releaseUpdateModal');
 
-                // Abrir a sidebar de notificações
+                const desktopQuery = window.matchMedia('(min-width: 992px)');
+                const collapsedState = localStorage.getItem('adminSidebarCollapsed');
+
+                if (desktopQuery.matches && collapsedState === 'true') {
+                    body.classList.add('sidebar-collapsed');
+                }
+
+                function closeNotifications() {
+                    if (!notificationSidebar) return;
+                    notificationSidebar.classList.remove('active');
+                    openNotificationBtn?.setAttribute('aria-expanded', 'false');
+                    if (!body.classList.contains('sidebar-open')) {
+                        contentOverlay?.classList.remove('active');
+                    }
+                }
+
+                function openNotifications() {
+                    if (!notificationSidebar) return;
+                    notificationSidebar.classList.add('active');
+                    openNotificationBtn?.setAttribute('aria-expanded', 'true');
+                    if (!desktopQuery.matches) {
+                        contentOverlay?.classList.add('active');
+                    }
+                }
+
+                function closeMobileSidebar() {
+                    body.classList.remove('sidebar-open');
+                    if (!notificationSidebar?.classList.contains('active')) {
+                        contentOverlay?.classList.remove('active');
+                    }
+                }
+
+                function filterSearchResults() {
+                    if (!searchResults || !searchInput) return;
+                    const term = searchInput.value.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    searchItems.forEach((item, index) => {
+                        const matches = !term || item.dataset.searchText.includes(term);
+                        item.classList.toggle('d-none', !matches);
+                        item.classList.toggle('is-highlighted', matches && visibleCount === 0);
+                        if (matches) {
+                            item.dataset.searchIndex = String(visibleCount);
+                            visibleCount += 1;
+                        }
+                    });
+
+                    if (searchEmpty) {
+                        searchEmpty.classList.toggle('d-none', visibleCount > 0);
+                    }
+
+                    searchResults.classList.toggle('active', document.activeElement === searchInput || term.length > 0);
+                }
+
+                if (sidebarToggle) {
+                    sidebarToggle.addEventListener('click', function() {
+                        if (desktopQuery.matches) {
+                            body.classList.toggle('sidebar-collapsed');
+                            localStorage.setItem('adminSidebarCollapsed', body.classList.contains('sidebar-collapsed') ? 'true' : 'false');
+                        } else {
+                            body.classList.toggle('sidebar-open');
+                            contentOverlay?.classList.toggle('active', body.classList.contains('sidebar-open'));
+                        }
+                    });
+                }
+
                 if (openNotificationBtn) {
                     openNotificationBtn.addEventListener('click', function(e) {
                         e.preventDefault();
-                        notificationSidebar.classList.add('active');
-                        contentOverlay.classList.add('active');
-                        document.body.style.overflow = 'hidden'; // Impedir rolagem do body
+                        if (notificationSidebar?.classList.contains('active')) closeNotifications();
+                        else openNotifications();
                     });
                 }
 
-                // Fechar a sidebar de notificações
                 if (closeNotificationBtn) {
-                    closeNotificationBtn.addEventListener('click', function() {
-                        notificationSidebar.classList.remove('active');
-                        contentOverlay.classList.remove('active');
-                        document.body.style.overflow = ''; // Restaurar rolagem do body
-                    });
+                    closeNotificationBtn.addEventListener('click', closeNotifications);
                 }
 
-                // Fechar ao clicar no overlay
                 if (contentOverlay) {
                     contentOverlay.addEventListener('click', function() {
-                        notificationSidebar.classList.remove('active');
-                        contentOverlay.classList.remove('active');
-                        document.body.style.overflow = ''; // Restaurar rolagem do body
+                        closeNotifications();
+                        closeMobileSidebar();
                     });
                 }
 
-                // Fechar ao pressionar ESC
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && notificationSidebar.classList.contains('active')) {
-                        notificationSidebar.classList.remove('active');
-                        contentOverlay.classList.remove('active');
-                        document.body.style.overflow = ''; // Restaurar rolagem do body
+                document.addEventListener('click', function(e) {
+                    if (!notificationSidebar || !openNotificationBtn) return;
+                    if (e.target.closest('.notification-toggle')) return;
+                    if (notificationSidebar.classList.contains('active')) {
+                        closeNotifications();
                     }
                 });
+
+                if (notificationTabs.length > 0) {
+                    notificationTabs.forEach((tabButton) => {
+                        tabButton.addEventListener('click', function() {
+                            const target = tabButton.dataset.notificationTab;
+                            notificationTabs.forEach((button) => button.classList.toggle('active', button === tabButton));
+                            notificationPanels.forEach((panel) => panel.classList.toggle('active', panel.dataset.notificationPanel === target));
+                        });
+                    });
+                }
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeNotifications();
+                        closeMobileSidebar();
+                        searchResults?.classList.remove('active');
+                    }
+
+                    if (e.key === '/' && searchInput && document.activeElement !== searchInput) {
+                        const tagName = document.activeElement ? document.activeElement.tagName : '';
+                        if (!['INPUT', 'TEXTAREA'].includes(tagName)) {
+                            e.preventDefault();
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                    }
+                });
+
+                if (searchInput && searchResults) {
+                    searchInput.addEventListener('focus', filterSearchResults);
+                    searchInput.addEventListener('input', filterSearchResults);
+
+                    document.addEventListener('click', function(e) {
+                        if (!e.target.closest('.topbar-search')) {
+                            searchResults.classList.remove('active');
+                        }
+                    });
+
+                    searchInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            const q = searchInput.value.trim();
+                            if (q.length > 0) {
+                                window.location.href = 'requerimentos.php?busca=' + encodeURIComponent(q) + '&status=&tipo=';
+                            }
+                        }
+                    });
+                }
+
+                if (sidebar) {
+                    sidebar.querySelectorAll('a').forEach(item => {
+                        item.addEventListener('click', function() {
+                            if (!desktopQuery.matches) {
+                                closeMobileSidebar();
+                            }
+                        });
+                    });
+                }
+
+                if (releaseModalElement && window.bootstrap?.Modal) {
+                    const releaseVersion = releaseModalElement.dataset.releaseVersion || 'admin-release-current';
+                    const dismissedVersion = localStorage.getItem('adminReleaseSeen');
+                    const releaseModal = new bootstrap.Modal(releaseModalElement);
+
+                    if (dismissedVersion !== releaseVersion) {
+                        releaseModal.show();
+                    }
+
+                    releaseModalElement.addEventListener('hidden.bs.modal', function() {
+                        localStorage.setItem('adminReleaseSeen', releaseVersion);
+                    });
+                }
             });
         </script>
-        </body>
-
-        </html>
+    </body>
+</html>

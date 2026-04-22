@@ -186,6 +186,7 @@
             <div class="info-title">📋 Próximos Passos:</div>
             <ul>
                 <li>Seu requerimento será analisado pela nossa equipe técnica</li>
+                <li>Se houver cobrança, o <strong>boleto será enviado para este email</strong> com um link seguro para pagamento e envio do comprovante</li>
                 <li>Você receberá um email com o <strong>protocolo oficial da prefeitura</strong> após o processamento</li>
                 <li>Com o protocolo oficial, você poderá acompanhar o status no portal da prefeitura: <a href="https://www.paudosferros.rn.gov.br/" style="color: #009851;">www.paudosferros.rn.gov.br</a></li>
                 <li>Em caso de documentação complementar, entraremos em contato</li>

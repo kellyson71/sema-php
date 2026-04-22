@@ -10,6 +10,33 @@ function gerarProtocolo(): string
     return date('YmdHis') . rand(100, 999);
 }
 
+function gerarTokenPagamento(int $requerimentoId, string $protocolo): string
+{
+    $assinatura = hash_hmac('sha256', $requerimentoId . '|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
+    return $requerimentoId . '.' . substr($assinatura, 0, 32);
+}
+
+function validarTokenPagamento(string $token, int $requerimentoId, string $protocolo): bool
+{
+    if ($token === '') {
+        return false;
+    }
+
+    return hash_equals(gerarTokenPagamento($requerimentoId, $protocolo), $token);
+}
+
+function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
+{
+    $base = rtrim(BASE_URL, '/');
+    if (!preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $base = $protocol . '://' . $host . '/' . ltrim($base, '/');
+        $base = rtrim($base, '/');
+    }
+    return $base . '/pagamento.php?token=' . urlencode(gerarTokenPagamento($requerimentoId, $protocolo));
+}
+
 function sanitize(string $string): string
 {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');

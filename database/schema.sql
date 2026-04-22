@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS requerimentos (
     comprovante_pagamento VARCHAR(255) NULL COMMENT 'Recibo/código do pagamento',
     possui_estudo_ambiental BOOLEAN NULL COMMENT 'Indica se possui estudo ambiental',
     tipo_estudo_ambiental VARCHAR(100) NULL COMMENT 'Tipo de estudo ambiental informado',
-    status ENUM('Em análise', 'Aprovado', 'Reprovado', 'Pendente') DEFAULT 'Em análise',
+    status ENUM('Em análise', 'Aprovado', 'Reprovado', 'Pendente', 'Aguardando Fiscalização', 'Apto a gerar alvará', 'Alvará Emitido', 'Finalizado', 'Indeferido', 'Cancelado', 'Aguardando boleto', 'Boleto pago') DEFAULT 'Em análise',
     observacoes TEXT,
     data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS documentos (
     FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
 );
 
+-- Dados do fluxo de cobrança manual por boleto
 -- Tabela de administradores
 CREATE TABLE IF NOT EXISTS administradores (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,6 +72,54 @@ CREATE TABLE IF NOT EXISTS administradores (
     ativo BOOLEAN DEFAULT TRUE,
     ultimo_acesso TIMESTAMP NULL,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Dados do fluxo de cobrança manual por boleto
+CREATE TABLE IF NOT EXISTS requerimento_pagamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requerimento_id INT NOT NULL UNIQUE,
+    boleto_url TEXT NULL,
+    instrucoes TEXT NULL,
+    enviado_em TIMESTAMP NULL DEFAULT NULL,
+    comprovante_enviado_em TIMESTAMP NULL DEFAULT NULL,
+    admin_envio_id INT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS requerimento_pagamento_historico (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requerimento_id INT NOT NULL,
+    documento_id INT NULL,
+    instrucoes TEXT NULL,
+    enviado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    admin_envio_id INT NULL,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE,
+    FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS admin_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(50) NOT NULL,
+    titulo VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    link_url VARCHAR(255) NULL,
+    requerimento_id INT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_notification_reads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    notification_id INT NOT NULL,
+    admin_id INT NOT NULL,
+    lida_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_notification_admin (notification_id, admin_id),
+    FOREIGN KEY (notification_id) REFERENCES admin_notifications(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
 );
 
 -- Tabela de histórico de ações

@@ -1,5 +1,7 @@
 <?php
 require_once 'conexao.php';
+header("Location: index.php");
+exit;
 verificaLogin();
 
 // Verificar permissão

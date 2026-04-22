@@ -8,7 +8,7 @@ define('DB_NAME', 'sema_db');
 
 // Outras configurações
 define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
-define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB em bytes
+define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB em bytes
 define('BASE_URL', '/sema-php'); // URL base do projeto
 
 // Configurações de Email (modo teste)
