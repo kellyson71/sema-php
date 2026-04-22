@@ -259,7 +259,7 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
 
                 <div class="aviso" style="background:#fef9ec;border-left-color:#d97706;color:#78350f;padding:16px 18px;">
                     <i class="fas fa-receipt" style="color:#d97706;font-size:1.1rem;"></i>
-                    <span>Caso este protocolo exija pagamento de taxa, o <strong>boleto será enviado como anexo diretamente para o seu e-mail</strong>. Você receberá um link seguro para acessar a página de pagamento e enviar o comprovante.</span>
+                    <span>Caso este protocolo exija pagamento de taxa, o <strong>boleto será liberado por um link seguro enviado para o seu e-mail</strong>. Por essa página você poderá acessar o boleto e enviar o comprovante.</span>
                 </div>
 
                 <ul class="passos">

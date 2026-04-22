@@ -89,6 +89,39 @@ CREATE TABLE IF NOT EXISTS requerimento_pagamentos (
     FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS requerimento_pagamento_historico (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requerimento_id INT NOT NULL,
+    documento_id INT NULL,
+    instrucoes TEXT NULL,
+    enviado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    admin_envio_id INT NULL,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE,
+    FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (admin_envio_id) REFERENCES administradores(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS admin_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(50) NOT NULL,
+    titulo VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    link_url VARCHAR(255) NULL,
+    requerimento_id INT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_notification_reads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    notification_id INT NOT NULL,
+    admin_id INT NOT NULL,
+    lida_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_notification_admin (notification_id, admin_id),
+    FOREIGN KEY (notification_id) REFERENCES admin_notifications(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
+);
+
 -- Tabela de histórico de ações
 CREATE TABLE IF NOT EXISTS historico_acoes (
     id INT AUTO_INCREMENT PRIMARY KEY,

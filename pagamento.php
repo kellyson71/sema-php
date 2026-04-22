@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/pagamento_helpers.php';
+require_once __DIR__ . '/includes/admin_notifications.php';
 require_once __DIR__ . '/tipos_alvara.php';
 
 $mensagem = '';
@@ -78,6 +79,8 @@ try {
 
             $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (NULL, ?, ?)");
             $stmt->execute([(int) $requerimento['id'], 'Enviou comprovante de pagamento pela página pública']);
+
+            createAdminNotificationForRequerimento($pdo, (int) $requerimento['id'], 'comprovante_enviado');
 
             $pdo->commit();
 

@@ -3,6 +3,7 @@ require_once 'conexao.php';
 require_once 'helpers.php';
 require_once '../includes/email_service.php';
 require_once '../includes/pagamento_helpers.php';
+require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
 
@@ -116,7 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
             }
 
             if ($arquivoFoiEnviado) {
-                removerDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
                 $salvouArquivo = salvarDocumentoPagamento($pdo, $id, $requerimento['protocolo'], $arquivoBoleto, 'boleto_pagamento_admin');
                 if ($salvouArquivo === false) {
                     throw new RuntimeException('Não foi possível salvar o PDF do boleto. Envie um arquivo PDF válido.');
@@ -126,15 +126,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
             $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', data_atualizacao = NOW() WHERE id = ?");
             $stmt->execute([$id]);
 
-            $acao = "Enviou boleto para pagamento";
-            if ($boletoUrl !== '') {
-                $acao .= " com link externo";
-            }
-            if ($arquivoFoiEnviado) {
-                $acao .= " e PDF do boleto";
-            }
+            $stmt = $pdo->prepare("
+                INSERT INTO requerimento_pagamento_historico (requerimento_id, documento_id, instrucoes, admin_envio_id)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $id,
+                $salvouArquivo['documento_id'] ?? null,
+                $instrucoesBoleto ?: null,
+                $_SESSION['admin_id'],
+            ]);
+
+            $acao = "Enviou nova versão do boleto para pagamento";
             $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
             $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+            createAdminNotificationForRequerimento($pdo, $id, 'boleto_enviado');
 
             $pdo->commit();
 
@@ -205,6 +212,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     $acao = "Indeferiu o processo e enviou email de notificação - Motivo: {$motivoIndeferimento}";
                     $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
                     $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
+
+                    createAdminNotificationForRequerimento($pdo, $id, 'indeferido');
 
                     $pdo->commit();
 
@@ -2397,7 +2406,7 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
             <form method="post" action="" enctype="multipart/form-data">
                 <div class="modal-body px-4 pt-3 pb-2">
                     <p class="text-muted small mb-4" style="line-height:1.55;">
-                        O requerente receberá um e-mail com o arquivo em anexo e um link seguro para acessar a página de pagamento.
+                        O requerente receberá um e-mail com um link seguro para acessar a página de pagamento e baixar a versão mais recente do boleto.
                     </p>
 
                     <div class="mb-3">
@@ -2413,7 +2422,7 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                                           target="_blank" rel="noopener" style="color:inherit;">
                                     <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
                                 </a>
-                                <span class="text-muted">(substituir com novo arquivo)</span>
+                                <span class="text-muted">(uma nova versão será registrada ao reenviar)</span>
                             </div>
                         <?php endif; ?>
                     </div>

@@ -78,6 +78,8 @@ function salvarDocumentoPagamento(PDO $pdo, int $requerimentoId, string $protoco
         $arquivoInfo['tamanho'],
     ]);
 
+    $arquivoInfo['documento_id'] = (int) $pdo->lastInsertId();
+
     return $arquivoInfo;
 }
 
