@@ -96,6 +96,19 @@ test.describe('Admin Requerimentos - Com Autenticação', () => {
     await expect(abaAtiva).toContainText('Abertos');
   });
 
+  test('visão abertos não exibe chip de aprovado', async () => {
+    await irParaRequerimentos(page);
+    const chipsStatus = page.locator('.req-summary-strip').nth(1);
+    await expect(chipsStatus).not.toContainText('Aprovado');
+  });
+
+  test('visão concluídos exibe chip de aprovado', async () => {
+    await page.goto('/admin/requerimentos.php?visao=concluidos');
+    await page.waitForLoadState('networkidle');
+    const chipsStatus = page.locator('.req-summary-strip').nth(1);
+    await expect(chipsStatus).toContainText('Aprovado');
+  });
+
   test('filtro por status funciona via query string', async () => {
     await page.goto('/admin/requerimentos.php?visao=abertos&status=Pendente');
     await page.waitForLoadState('networkidle');
