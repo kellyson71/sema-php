@@ -37,114 +37,9 @@ function formataDataBR($data)
     return date('d/m/Y \à\s H:i', strtotime($data));
 }
 
-function addSqlStatusFilter(string &$sql, string &$sqlCount, array &$params, array $statuses, bool $incluir = true): void
-{
-    if (empty($statuses)) {
-        return;
-    }
-
-    $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-    $operator = $incluir ? 'IN' : 'NOT IN';
-
-    $sql .= " AND r.status {$operator} ($placeholders)";
-    $sqlCount .= " AND r.status {$operator} ($placeholders)";
-
-    foreach ($statuses as $status) {
-        $params[] = $status;
-    }
-}
-
-function montarConsultaRequerimentos(
-    string $visao,
-    string $filtroStatus,
-    string $filtroTipo,
-    string $filtroCategoria,
-    array $tiposPorCategoria,
-    string $filtroBusca,
-    bool $filtroNaoVisualizados,
-    int $itensPorPagina,
-    int $offset
-): array {
-    $sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome AS requerente
-            FROM requerimentos r
-            JOIN requerentes req ON r.requerente_id = req.id
-            WHERE 1=1";
-    $sqlCount = "SELECT COUNT(*) AS total
-                 FROM requerimentos r
-                 JOIN requerentes req ON r.requerente_id = req.id
-                 WHERE 1=1";
-    $params = [];
-
-    if ($visao === 'abertos') {
-        addSqlStatusFilter($sql, $sqlCount, $params, adminStatusConcluidos(), false);
-    } elseif ($visao === 'concluidos') {
-        addSqlStatusFilter($sql, $sqlCount, $params, adminStatusConcluidos(), true);
-    }
-
-    if ($filtroStatus !== '') {
-        $sql .= " AND r.status = ?";
-        $sqlCount .= " AND r.status = ?";
-        $params[] = $filtroStatus;
-    }
-
-    if ($filtroTipo !== '') {
-        $sql .= " AND r.tipo_alvara = ?";
-        $sqlCount .= " AND r.tipo_alvara = ?";
-        $params[] = $filtroTipo;
-    }
-
-    if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
-        $slugsCat = $tiposPorCategoria[$filtroCategoria];
-        $placeholders = implode(',', array_fill(0, count($slugsCat), '?'));
-        $sql .= " AND r.tipo_alvara IN ($placeholders)";
-        $sqlCount .= " AND r.tipo_alvara IN ($placeholders)";
-        foreach ($slugsCat as $s) {
-            $params[] = $s;
-        }
-    }
-
-    if ($filtroBusca !== '') {
-        $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
-        $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
-        $termoBusca = '%' . $filtroBusca . '%';
-        $params[] = $termoBusca;
-        $params[] = $termoBusca;
-        $params[] = $termoBusca;
-    }
-
-    if ($filtroNaoVisualizados) {
-        $sql .= " AND r.visualizado = 0";
-        $sqlCount .= " AND r.visualizado = 0";
-    }
-
-    $sql .= " ORDER BY r.visualizado ASC, r.data_envio DESC LIMIT {$itensPorPagina} OFFSET {$offset}";
-
-    return [$sql, $sqlCount, $params];
-}
-
-function contarResultados(PDO $pdo, string $sqlCount, array $params): int
-{
-    $stmtCount = $pdo->prepare($sqlCount);
-    $stmtCount->execute($params);
-    return (int) ($stmtCount->fetch()['total'] ?? 0);
-}
-
-function listarResultados(PDO $pdo, string $sql, array $params): array
-{
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll();
-}
-
 $itensPorPagina = 25;
 $paginaAtual = max(1, (int) ($_GET['pagina'] ?? 1));
 $offset = ($paginaAtual - 1) * $itensPorPagina;
-
-$visoesPermitidas = ['abertos', 'todos', 'concluidos'];
-$visaoSolicitada = $_GET['visao'] ?? 'abertos';
-if (!in_array($visaoSolicitada, $visoesPermitidas, true)) {
-    $visaoSolicitada = 'abertos';
-}
 
 $filtroStatus = $_GET['status'] ?? '';
 $filtroTipo = $_GET['tipo'] ?? '';
@@ -154,20 +49,6 @@ if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
 }
 $filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
-$statusConcluidos = adminStatusConcluidos();
-$statusOperacionais = adminStatusOperacionaisVisiveis();
-
-if ($filtroStatus !== '') {
-    $statusPermitidosNoFiltro = match ($visaoSolicitada) {
-        'abertos' => $statusOperacionais,
-        'concluidos' => $statusConcluidos,
-        default => adminStatusFluxoPrincipal(),
-    };
-
-    if (!in_array($filtroStatus, $statusPermitidosNoFiltro, true)) {
-        $filtroStatus = '';
-    }
-}
 
 $mensagem = '';
 if (isset($_GET['success'])) {
@@ -202,49 +83,61 @@ if (isset($_GET['error'])) {
     }
 }
 
-[$sql, $sqlCount, $params] = montarConsultaRequerimentos(
-    $visaoSolicitada,
-    $filtroStatus,
-    $filtroTipo,
-    $filtroCategoria,
-    $tiposPorCategoria,
-    $filtroBusca,
-    $filtroNaoVisualizados,
-    $itensPorPagina,
-    $offset
-);
+$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome AS requerente
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        WHERE 1=1";
+$sqlCount = "SELECT COUNT(*) AS total
+             FROM requerimentos r
+             JOIN requerentes req ON r.requerente_id = req.id
+             WHERE 1=1";
+$params = [];
 
-$visaoEfetiva = $visaoSolicitada;
-$buscaExpandida = false;
-$avisoBuscaExpandida = '';
-$totalRequerimentos = contarResultados($pdo, $sqlCount, $params);
+if ($filtroStatus !== '') {
+    $sql .= " AND r.status = ?";
+    $sqlCount .= " AND r.status = ?";
+    $params[] = $filtroStatus;
+}
 
-if ($visaoSolicitada === 'abertos' && $filtroBusca !== '' && $totalRequerimentos === 0 && $filtroStatus === '') {
-    [$sqlTodos, $sqlCountTodos, $paramsTodos] = montarConsultaRequerimentos(
-        'todos',
-        $filtroStatus,
-        $filtroTipo,
-        $filtroCategoria,
-        $tiposPorCategoria,
-        $filtroBusca,
-        $filtroNaoVisualizados,
-        $itensPorPagina,
-        $offset
-    );
+if ($filtroTipo !== '') {
+    $sql .= " AND r.tipo_alvara = ?";
+    $sqlCount .= " AND r.tipo_alvara = ?";
+    $params[] = $filtroTipo;
+}
 
-    $totalBuscaGlobal = contarResultados($pdo, $sqlCountTodos, $paramsTodos);
-    if ($totalBuscaGlobal > 0) {
-        $sql = $sqlTodos;
-        $sqlCount = $sqlCountTodos;
-        $params = $paramsTodos;
-        $totalRequerimentos = $totalBuscaGlobal;
-        $visaoEfetiva = 'todos';
-        $buscaExpandida = true;
-        $avisoBuscaExpandida = 'A busca incluiu processos concluídos para exibir resultados fora da fila de abertos.';
+if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
+    $slugsCat = $tiposPorCategoria[$filtroCategoria];
+    $placeholders = implode(',', array_fill(0, count($slugsCat), '?'));
+    $sql .= " AND r.tipo_alvara IN ($placeholders)";
+    $sqlCount .= " AND r.tipo_alvara IN ($placeholders)";
+    foreach ($slugsCat as $s) {
+        $params[] = $s;
     }
 }
 
-$requerimentos = listarResultados($pdo, $sql, $params);
+if ($filtroBusca !== '') {
+    $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
+    $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
+    $termoBusca = '%' . $filtroBusca . '%';
+    $params[] = $termoBusca;
+    $params[] = $termoBusca;
+    $params[] = $termoBusca;
+}
+
+if ($filtroNaoVisualizados) {
+    $sql .= " AND r.visualizado = 0";
+    $sqlCount .= " AND r.visualizado = 0";
+}
+
+$sql .= " ORDER BY r.visualizado ASC, r.data_envio DESC LIMIT {$itensPorPagina} OFFSET {$offset}";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$requerimentos = $stmt->fetchAll();
+
+$stmtCount = $pdo->prepare($sqlCount);
+$stmtCount->execute($params);
+$totalRequerimentos = (int) ($stmtCount->fetch()['total'] ?? 0);
 $totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
 
 $estatisticas = [
@@ -258,18 +151,6 @@ $estatisticas = [
 ];
 $pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
 
-$visaoCategoriaSql = '';
-$visaoCategoriaParams = [];
-if ($visaoEfetiva === 'abertos') {
-    $placeholdersVisao = implode(',', array_fill(0, count($statusConcluidos), '?'));
-    $visaoCategoriaSql = " AND status NOT IN ($placeholdersVisao)";
-    $visaoCategoriaParams = $statusConcluidos;
-} elseif ($visaoEfetiva === 'concluidos') {
-    $placeholdersVisao = implode(',', array_fill(0, count($statusConcluidos), '?'));
-    $visaoCategoriaSql = " AND status IN ($placeholdersVisao)";
-    $visaoCategoriaParams = $statusConcluidos;
-}
-
 $contagemCategorias = [];
 foreach ($tiposPorCategoria as $cat => $slugs) {
     if (empty($slugs)) {
@@ -277,8 +158,8 @@ foreach ($tiposPorCategoria as $cat => $slugs) {
         continue;
     }
     $placeholders = implode(',', array_fill(0, count($slugs), '?'));
-    $stmtCat = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE tipo_alvara IN ($placeholders){$visaoCategoriaSql}");
-    $stmtCat->execute(array_merge($slugs, $visaoCategoriaParams));
+    $stmtCat = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE tipo_alvara IN ($placeholders)");
+    $stmtCat->execute($slugs);
     $contagemCategorias[$cat] = (int) $stmtCat->fetchColumn();
 }
 
@@ -293,46 +174,18 @@ $tipoSiglas = [
     'desmembramento' => 'DSM',
 ];
 
-$statusCardMap = [
-    'Em análise' => ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
-    'Pendente' => ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
-    'Aprovado' => ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-circle-check'],
-    'Finalizado' => ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
-    'Indeferido' => ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
-];
-
 $statusCards = [
+    ['label' => 'Todos', 'value' => $estatisticas['total'], 'status' => '', 'icon' => 'fa-layer-group'],
     ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
+    ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
+    ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
+    ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
+    ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
-
-$statusCardsVisao = match ($visaoEfetiva) {
-    'concluidos' => ['Finalizado', 'Indeferido'],
-    'todos' => ['Em análise', 'Pendente', 'Aprovado', 'Finalizado', 'Indeferido'],
-    default => ['Em análise', 'Pendente', 'Aprovado'],
-};
-
-foreach ($statusCardsVisao as $statusCard) {
-    if (isset($statusCardMap[$statusCard])) {
-        $statusCards[] = $statusCardMap[$statusCard];
-    }
-}
-
-$visaoTabs = [
-    'abertos' => ['label' => 'Abertos', 'value' => $estatisticas['total'] - $estatisticas['finalizados'] - $estatisticas['indeferidos'], 'icon' => 'fa-inbox'],
-    'todos' => ['label' => 'Todos', 'value' => $estatisticas['total'], 'icon' => 'fa-layer-group'],
-    'concluidos' => ['label' => 'Concluídos', 'value' => $estatisticas['finalizados'] + $estatisticas['indeferidos'], 'icon' => 'fa-box-archive'],
-];
-
-$reqBaseParams = $_GET;
-if ($visaoEfetiva !== $visaoSolicitada) {
-    $reqBaseParams['visao'] = $visaoEfetiva;
-}
 
 function buildReqUrl(array $overrides = []): string
 {
-    global $reqBaseParams;
-
-    $params = array_merge($reqBaseParams, $overrides);
+    $params = array_merge($_GET, $overrides);
     foreach ($params as $key => $value) {
         if ($value === '' || $value === null) {
             unset($params[$key]);
@@ -342,6 +195,8 @@ function buildReqUrl(array $overrides = []): string
 }
 
 include 'header.php';
+
+$statusOperacionais = adminStatusFluxoPrincipal();
 ?>
 <link rel="stylesheet" href="includes/admin-styles.css">
 
@@ -361,27 +216,14 @@ include 'header.php';
     <?php renderMensagens($mensagem, $mensagemErro); ?>
 
     <section class="req-summary-strip">
-        <?php foreach ($visaoTabs as $visaoSlug => $visaoInfo): ?>
-            <?php
-            $isActive = $visaoEfetiva === $visaoSlug;
-            $viewUrl = buildReqUrl(['visao' => $visaoSlug, 'status' => '', 'pagina' => 1]);
-            ?>
-            <a href="<?= htmlspecialchars($viewUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?>">
-                <span><i class="fas <?= htmlspecialchars($visaoInfo['icon']) ?>"></i><?= htmlspecialchars($visaoInfo['label']) ?></span>
-                <strong><?= (int) $visaoInfo['value'] ?></strong>
-            </a>
-        <?php endforeach; ?>
-    </section>
-
-    <section class="req-summary-strip" aria-label="Atalhos por status">
         <?php foreach ($statusCards as $card): ?>
             <?php
             $isUnreadCard = !empty($card['unread']);
             $isActive = $isUnreadCard
                 ? $filtroNaoVisualizados
-                : ($filtroStatus === $card['status']);
+                : ($filtroStatus === $card['status'] || ($card['status'] === '' && $filtroStatus === '' && !$filtroNaoVisualizados));
             $summaryUrl = $isUnreadCard
-                ? buildReqUrl(['nao_visualizados' => 1, 'pagina' => 1])
+                ? buildReqUrl(['nao_visualizados' => 1, 'status' => '', 'pagina' => 1])
                 : buildReqUrl(['status' => $card['status'], 'nao_visualizados' => '', 'pagina' => 1]);
             ?>
             <a href="<?= htmlspecialchars($summaryUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?> <?= $isUnreadCard ? 'summary-chip-unread' : '' ?>">
@@ -415,7 +257,6 @@ include 'header.php';
 
     <section class="req-filter-bar">
         <form method="GET" class="req-filter-form">
-            <input type="hidden" name="visao" value="<?= htmlspecialchars($visaoEfetiva) ?>">
             <?php if ($filtroStatus !== ''): ?>
                 <input type="hidden" name="status" value="<?= htmlspecialchars($filtroStatus) ?>">
             <?php endif; ?>
@@ -439,33 +280,19 @@ include 'header.php';
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
-            <a href="<?= htmlspecialchars(buildReqUrl(['status' => '', 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
                     <i class="fas fa-eye"></i> Ver todos novamente
                 </a>
             <?php endif; ?>
         </form>
-        <?php if ($filtroNaoVisualizados || $buscaExpandida || $visaoEfetiva !== $visaoSolicitada): ?>
+        <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
-                <?php if ($filtroNaoVisualizados): ?>
-                    <span class="active-filter-chip">
-                        <span class="active-filter-dot"></span>
-                        Mostrando apenas protocolos ainda não abertos
-                    </span>
-                <?php endif; ?>
-                <?php if ($buscaExpandida): ?>
-                    <span class="active-filter-chip">
-                        <span class="active-filter-dot"></span>
-                        <?= htmlspecialchars($avisoBuscaExpandida) ?>
-                    </span>
-                <?php endif; ?>
-                <?php if (!$buscaExpandida && $visaoEfetiva !== $visaoSolicitada): ?>
-                    <span class="active-filter-chip">
-                        <span class="active-filter-dot"></span>
-                        Exibindo resultados em <?= htmlspecialchars($visaoTabs[$visaoEfetiva]['label'] ?? ucfirst($visaoEfetiva)) ?>.
-                    </span>
-                <?php endif; ?>
+                <span class="active-filter-chip">
+                    <span class="active-filter-dot"></span>
+                    Mostrando apenas protocolos ainda não abertos
+                </span>
             </div>
         <?php endif; ?>
     </section>

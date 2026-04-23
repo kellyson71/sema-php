@@ -4,21 +4,6 @@ require_once 'helpers.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
 
-function buildRedirectUrl(string $base, array $extras = []): string
-{
-    $params = [];
-    $returnQuery = trim((string) ($_POST['return_query'] ?? ''));
-    if ($returnQuery !== '') {
-        parse_str($returnQuery, $params);
-    }
-
-    foreach ($extras as $key => $value) {
-        $params[$key] = $value;
-    }
-
-    return $base . (!empty($params) ? '?' . http_build_query($params) : '');
-}
-
 // Verificar se recebeu dados via POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: requerimentos.php');
@@ -30,7 +15,7 @@ $ids = $_POST['ids'] ?? [];
 
 // Validar dados
 if (empty($acao) || empty($ids)) {
-    header('Location: ' . buildRedirectUrl('requerimentos.php', ['error' => 'dados_invalidos']));
+    header('Location: requerimentos.php?error=dados_invalidos');
     exit;
 }
 
@@ -41,7 +26,7 @@ $ids = array_filter($ids, function ($id) {
 });
 
 if (empty($ids)) {
-    header('Location: ' . buildRedirectUrl('requerimentos.php', ['error' => 'ids_invalidos']));
+    header('Location: requerimentos.php?error=ids_invalidos');
     exit;
 }
 
@@ -104,10 +89,10 @@ try {
     }
 
     $pdo->commit();
-    header('Location: ' . buildRedirectUrl('requerimentos.php', ['success' => 'acoes_massa', 'msg' => $mensagem]));
+    header('Location: requerimentos.php?success=acoes_massa&msg=' . urlencode($mensagem));
 } catch (Exception $e) {
     $pdo->rollBack();
-    header('Location: ' . buildRedirectUrl('requerimentos.php', ['error' => 'erro_acao', 'details' => $e->getMessage()]));
+    header('Location: requerimentos.php?error=erro_acao&details=' . urlencode($e->getMessage()));
 }
 
 function registrarAcao($descricao)
