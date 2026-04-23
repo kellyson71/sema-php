@@ -258,6 +258,7 @@ function executarAcaoEmMassa(acao, ids, dados = {}) {
   const form = document.createElement("form");
   form.method = "POST";
   form.action = "acoes_massa.php";
+  const returnQuery = window.location.search.replace(/^\?/, "");
 
   // Adicionar ação
   const acaoInput = document.createElement("input");
@@ -283,6 +284,14 @@ function executarAcaoEmMassa(acao, ids, dados = {}) {
     dataInput.value = dados[key];
     form.appendChild(dataInput);
   });
+
+  if (returnQuery.length > 0) {
+    const returnQueryInput = document.createElement("input");
+    returnQueryInput.type = "hidden";
+    returnQueryInput.name = "return_query";
+    returnQueryInput.value = returnQuery;
+    form.appendChild(returnQueryInput);
+  }
 
   document.body.appendChild(form);
   form.submit();

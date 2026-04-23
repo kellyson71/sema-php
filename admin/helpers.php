@@ -37,6 +37,23 @@ if (!function_exists('adminStatusFluxoPrincipal')) {
     }
 }
 
+if (!function_exists('adminStatusConcluidos')) {
+    function adminStatusConcluidos(): array
+    {
+        return [
+            'Finalizado',
+            'Indeferido',
+        ];
+    }
+}
+
+if (!function_exists('adminStatusOperacionaisVisiveis')) {
+    function adminStatusOperacionaisVisiveis(): array
+    {
+        return array_values(array_diff(adminStatusFluxoPrincipal(), adminStatusConcluidos()));
+    }
+}
+
 if (!function_exists('adminStatusFluxoExtra')) {
     function adminStatusFluxoExtra(): array
     {

@@ -84,23 +84,22 @@ test.describe('Admin Requerimentos - Com Autenticação', () => {
     await expect(page).toHaveURL(/requerimentos/);
   });
 
-  test('tabela de requerimentos está presente', async () => {
+  test('lista de requerimentos está presente', async () => {
     await irParaRequerimentos(page);
-    const tabela = page.locator('table, .table, [class*="requerimentos"]');
-    await expect(tabela.first()).toBeVisible();
+    const lista = page.locator('.req-list, .req-empty, [class*="requerimentos"]');
+    await expect(lista.first()).toBeVisible();
   });
 
-  test('filtro por status funciona', async () => {
+  test('visão padrão abre em abertos', async () => {
     await irParaRequerimentos(page);
+    const abaAtiva = page.locator('.req-summary-strip').first().locator('.summary-chip.active');
+    await expect(abaAtiva).toContainText('Abertos');
+  });
 
-    const filtroStatus = page.locator('select[name="status"], #filtro_status');
-    if (await filtroStatus.count() === 0) return;
-
-    await filtroStatus.selectOption('pendente');
-    await page.click('button[type="submit"], input[type="submit"], [type="submit"]');
+  test('filtro por status funciona via query string', async () => {
+    await page.goto('/admin/requerimentos.php?visao=abertos&status=Pendente');
     await page.waitForLoadState('networkidle');
-
-    await expect(page).toHaveURL(/status=pendente|requerimentos/);
+    await expect(page).toHaveURL(/status=Pendente/);
   });
 
   test('campo de busca está presente', async () => {
@@ -124,11 +123,10 @@ test.describe('Admin Requerimentos - Com Autenticação', () => {
   test('link de visualizar requerimento abre a página correta', async () => {
     await irParaRequerimentos(page);
 
-    const linkVisualizar = page.locator('a:has-text("Visualizar"), a[href*="visualizar_requerimento"]').first();
-    if (await linkVisualizar.count() === 0) return; // nenhum requerimento cadastrado
+    const botaoVisualizar = page.locator('.req-list-main, a[href*="visualizar_requerimento"]').first();
+    if (await botaoVisualizar.count() === 0) return; // nenhum requerimento cadastrado
 
-    const href = await linkVisualizar.getAttribute('href');
-    await linkVisualizar.click();
+    await botaoVisualizar.click();
     await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/visualizar_requerimento|id=/);
