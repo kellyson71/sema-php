@@ -2,9 +2,22 @@
 require_once 'conexao.php';
 require_once 'helpers.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
 require_once 'includes/alertas.php';
+
+$categoriasDisponiveis = [
+    'obras'     => ['label' => 'Obras e Construção',  'icon' => 'fa-hard-hat'],
+    'ambiental' => ['label' => 'Licenças Ambientais', 'icon' => 'fa-leaf'],
+    'outro'     => ['label' => 'Outros Serviços',     'icon' => 'fa-folder-open'],
+];
+
+$tiposPorCategoria = [];
+foreach ($tipos_alvara as $slug => $tipo) {
+    $cat = $tipo['categoria'] ?? 'outro';
+    $tiposPorCategoria[$cat][] = $slug;
+}
 
 function formataDataBR($data)
 {
@@ -17,6 +30,10 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 
 $filtroStatus = $_GET['status'] ?? '';
 $filtroTipo = $_GET['tipo'] ?? '';
+$filtroCategoria = $_GET['categoria'] ?? '';
+if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
+    $filtroCategoria = '';
+}
 $filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
 
@@ -75,6 +92,16 @@ if ($filtroTipo !== '') {
     $params[] = $filtroTipo;
 }
 
+if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
+    $slugsCat = $tiposPorCategoria[$filtroCategoria];
+    $placeholders = implode(',', array_fill(0, count($slugsCat), '?'));
+    $sql .= " AND r.tipo_alvara IN ($placeholders)";
+    $sqlCount .= " AND r.tipo_alvara IN ($placeholders)";
+    foreach ($slugsCat as $s) {
+        $params[] = $s;
+    }
+}
+
 if ($filtroBusca !== '') {
     $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
     $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
@@ -110,6 +137,18 @@ $estatisticas = [
     'indeferidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
 ];
 $pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
+
+$contagemCategorias = [];
+foreach ($tiposPorCategoria as $cat => $slugs) {
+    if (empty($slugs)) {
+        $contagemCategorias[$cat] = 0;
+        continue;
+    }
+    $placeholders = implode(',', array_fill(0, count($slugs), '?'));
+    $stmtCat = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE tipo_alvara IN ($placeholders)");
+    $stmtCat->execute($slugs);
+    $contagemCategorias[$cat] = (int) $stmtCat->fetchColumn();
+}
 
 $tiposAlvara = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
 
@@ -181,10 +220,35 @@ $statusOperacionais = adminStatusFluxoPrincipal();
         <?php endforeach; ?>
     </section>
 
+    <section class="req-category-strip" aria-label="Filtros rápidos por categoria de alvará">
+        <?php
+        $totalCategorias = array_sum($contagemCategorias);
+        $allActive = $filtroCategoria === '';
+        $allUrl = buildReqUrl(['categoria' => '', 'pagina' => 1]);
+        ?>
+        <a href="<?= htmlspecialchars($allUrl) ?>" class="category-chip <?= $allActive ? 'active' : '' ?>">
+            <span><i class="fas fa-layer-group"></i>Todas as categorias</span>
+            <strong><?= (int) $totalCategorias ?></strong>
+        </a>
+        <?php foreach ($categoriasDisponiveis as $catSlug => $catInfo): ?>
+            <?php
+            $isActive = $filtroCategoria === $catSlug;
+            $catUrl = buildReqUrl(['categoria' => $catSlug, 'pagina' => 1]);
+            ?>
+            <a href="<?= htmlspecialchars($catUrl) ?>" class="category-chip category-chip-<?= htmlspecialchars($catSlug) ?> <?= $isActive ? 'active' : '' ?>">
+                <span><i class="fas <?= htmlspecialchars($catInfo['icon']) ?>"></i><?= htmlspecialchars($catInfo['label']) ?></span>
+                <strong><?= (int) ($contagemCategorias[$catSlug] ?? 0) ?></strong>
+            </a>
+        <?php endforeach; ?>
+    </section>
+
     <section class="req-filter-bar">
         <form method="GET" class="req-filter-form">
             <?php if ($filtroStatus !== ''): ?>
                 <input type="hidden" name="status" value="<?= htmlspecialchars($filtroStatus) ?>">
+            <?php endif; ?>
+            <?php if ($filtroCategoria !== ''): ?>
+                <input type="hidden" name="categoria" value="<?= htmlspecialchars($filtroCategoria) ?>">
             <?php endif; ?>
             <?php if ($filtroNaoVisualizados): ?>
                 <input type="hidden" name="nao_visualizados" value="1">
