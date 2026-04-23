@@ -252,7 +252,6 @@ $estatisticas = [
     'nao_lidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
     'pendentes' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
     'aprovados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
-    'cancelados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Cancelado'")->fetchColumn(),
     'finalizados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn(),
     'em_analise' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn(),
     'indeferidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
@@ -298,7 +297,6 @@ $statusCardMap = [
     'Em análise' => ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
     'Pendente' => ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
     'Aprovado' => ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-circle-check'],
-    'Cancelado' => ['label' => 'Cancelado', 'value' => $estatisticas['cancelados'], 'status' => 'Cancelado', 'icon' => 'fa-xmark-circle'],
     'Finalizado' => ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
     'Indeferido' => ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
@@ -308,9 +306,9 @@ $statusCards = [
 ];
 
 $statusCardsVisao = match ($visaoEfetiva) {
-    'concluidos' => ['Aprovado', 'Cancelado', 'Finalizado', 'Indeferido'],
-    'todos' => ['Em análise', 'Pendente', 'Aprovado', 'Cancelado', 'Finalizado', 'Indeferido'],
-    default => ['Em análise', 'Pendente'],
+    'concluidos' => ['Finalizado', 'Indeferido'],
+    'todos' => ['Em análise', 'Pendente', 'Aprovado', 'Finalizado', 'Indeferido'],
+    default => ['Em análise', 'Pendente', 'Aprovado'],
 };
 
 foreach ($statusCardsVisao as $statusCard) {
@@ -320,9 +318,9 @@ foreach ($statusCardsVisao as $statusCard) {
 }
 
 $visaoTabs = [
-    'abertos' => ['label' => 'Abertos', 'value' => $estatisticas['total'] - $estatisticas['aprovados'] - $estatisticas['cancelados'] - $estatisticas['finalizados'] - $estatisticas['indeferidos'], 'icon' => 'fa-inbox'],
+    'abertos' => ['label' => 'Abertos', 'value' => $estatisticas['total'] - $estatisticas['finalizados'] - $estatisticas['indeferidos'], 'icon' => 'fa-inbox'],
     'todos' => ['label' => 'Todos', 'value' => $estatisticas['total'], 'icon' => 'fa-layer-group'],
-    'concluidos' => ['label' => 'Concluídos', 'value' => $estatisticas['aprovados'] + $estatisticas['cancelados'] + $estatisticas['finalizados'] + $estatisticas['indeferidos'], 'icon' => 'fa-box-archive'],
+    'concluidos' => ['label' => 'Concluídos', 'value' => $estatisticas['finalizados'] + $estatisticas['indeferidos'], 'icon' => 'fa-box-archive'],
 ];
 
 $reqBaseParams = $_GET;

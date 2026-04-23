@@ -41,8 +41,6 @@ if (!function_exists('adminStatusConcluidos')) {
     function adminStatusConcluidos(): array
     {
         return [
-            'Aprovado',
-            'Cancelado',
             'Finalizado',
             'Indeferido',
         ];
