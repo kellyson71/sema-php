@@ -19,6 +19,19 @@ foreach ($tipos_alvara as $slug => $tipo) {
     $tiposPorCategoria[$cat][] = $slug;
 }
 
+// Slugs legados que não existem mais em tipos_alvara.php (anteriores à refatoração
+// de licenciamento ambiental 2026-04) mas ainda aparecem em requerimentos antigos.
+$slugsLegadosPorCategoria = [
+    'ambiental' => ['licenca_previa'], // antiga "LP — Licença Prévia Ambiental"
+];
+foreach ($slugsLegadosPorCategoria as $cat => $slugs) {
+    foreach ($slugs as $slug) {
+        if (!in_array($slug, $tiposPorCategoria[$cat] ?? [], true)) {
+            $tiposPorCategoria[$cat][] = $slug;
+        }
+    }
+}
+
 function formataDataBR($data)
 {
     return date('d/m/Y \à\s H:i', strtotime($data));
