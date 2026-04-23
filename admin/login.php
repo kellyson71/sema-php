@@ -1007,8 +1007,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     let ok = true;
     if (usuario.length < 3) { showFieldError('usuario', 'Usuário inválido (mín. 3 caracteres)'); ok = false; }
     else clearFieldError('usuario');
-    if (senha.length < 6)   { showFieldError('senha', 'A senha deve ter no mínimo 6 caracteres');  ok = false; }
-    else clearFieldError('senha');
+    clearFieldError('senha');
     if (!ok) return;
 
     const btn = document.getElementById('btn-login');
