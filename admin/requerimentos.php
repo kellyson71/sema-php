@@ -198,7 +198,7 @@ include 'header.php';
 
 $statusOperacionais = adminStatusFluxoPrincipal();
 ?>
-<link rel="stylesheet" href="includes/admin-styles.css">
+<link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
 
 <div class="admin-page-shell requerimentos-page">
     <section class="page-hero page-hero-compact">
@@ -441,5 +441,5 @@ $statusOperacionais = adminStatusFluxoPrincipal();
     <?php endif; ?>
 </div>
 
-<script src="includes/admin-scripts.js"></script>
+<script src="<?= adminAssetUrl('includes/admin-scripts.js') ?>"></script>
 <?php include 'footer.php'; ?>

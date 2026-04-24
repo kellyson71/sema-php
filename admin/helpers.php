@@ -3,6 +3,26 @@
  * Funções utilitárias compartilhadas entre as páginas admin.
  */
 
+if (!function_exists('adminAssetUrl')) {
+    /**
+     * Gera URL de asset local com cache busting automático.
+     * Usa filemtime do arquivo; se indisponível, cai para APP_VERSION.
+     * Evita que navegadores sirvam CSS/JS desatualizados após deploy.
+     */
+    function adminAssetUrl(string $relativePath): string
+    {
+        $clean = ltrim($relativePath, '/');
+        $fsPath = __DIR__ . '/' . $clean;
+        $mtime = @filemtime($fsPath);
+        if ($mtime === false) {
+            $version = defined('APP_VERSION') ? APP_VERSION : '1';
+        } else {
+            $version = (string) $mtime;
+        }
+        return $relativePath . (str_contains($relativePath, '?') ? '&' : '?') . 'v=' . $version;
+    }
+}
+
 if (!function_exists('formatarTempoEstatisticas')) {
     function formatarTempoEstatisticas($segundos) {
         if ($segundos === 0 || $segundos === null) return 'N/A';

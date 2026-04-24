@@ -1,8 +1,19 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 require_once __DIR__ . '/../includes/admin_release_reads.php';
+
+// Impede que navegadores sirvam HTML cacheado do admin — garante que
+// mudanças nos <style> inline deste header cheguem ao usuário sem exigir
+// hard reload. Assets locais (CSS/JS) usam cache busting via filemtime.
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
+
 verificaLogin();
 
 $adminBase = (basename(dirname($_SERVER['SCRIPT_NAME'] ?? '')) !== 'admin') ? '../' : '';
