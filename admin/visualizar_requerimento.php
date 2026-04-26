@@ -1807,58 +1807,58 @@ document.querySelectorAll('.acao-modal-backdrop').forEach(function(el) {
 });
 </script>
 
+<style>
+.proc-header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 18px; background:#fff; border:1px solid #e3e8e4; border-radius:14px; margin-bottom:12px; }
+.proc-header.finalizado { background:#f8f9fa; border-color:#dee2e6; }
+.proc-header.indeferido { background:#fef2f2; border-color:#fecaca; }
+.proc-back { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid #e3e8e4; border-radius:9px; background:#fff; color:#102117; font-size:.82rem; font-weight:700; text-decoration:none; flex-shrink:0; }
+.proc-back:hover { border-color:#14532d; color:#14532d; }
+.proc-divider { width:1px; height:28px; background:#e3e8e4; flex-shrink:0; }
+.proc-protocol { font-size:1.05rem; font-weight:900; color:#14532d; letter-spacing:.02em; flex-shrink:0; }
+.proc-name { font-size:.95rem; font-weight:700; color:#102117; }
+.proc-meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:.78rem; color:#66756d; }
+.proc-tipo { display:inline-flex; padding:2px 9px; border-radius:999px; background:#e6f2ea; color:#0f4425; font-size:.72rem; font-weight:800; letter-spacing:.04em; }
+.proc-status { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:.75rem; font-weight:700; background:#f1f5f0; color:#374151; }
+.proc-status .dot { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.proc-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.btn-nao-visto { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid #e3e8e4; border-radius:9px; background:#fff; color:#66756d; font-size:.78rem; font-weight:700; cursor:pointer; transition:all .15s; }
+.btn-nao-visto:hover { border-color:#b7791f; color:#b7791f; background:#fffbf0; }
+@media (max-width:640px) { .proc-divider,.proc-actions { display:none; } .proc-header { gap:8px; } }
+</style>
+
 <div class="container-fluid px-4">
-    <!-- RESUMO DO REQUERIMENTO -->
-    <div class="card-modern mb-4 <?php echo $isFinalized ? 'finalized-main-card' : ($isIndeferido ? 'indeferido-main-card' : ''); ?>">
-        <div class="card-body d-flex flex-wrap align-items-center justify-content-between">
-            <div>
-                <div class="d-flex align-items-center mb-2">
-                    <h4 class="mb-0 me-3" style="color: var(--gray-800); letter-spacing: 0.5px;">
-                        Protocolo <span class="fw-bold" style="color: var(--primary-600);">#<?php echo $requerimento['protocolo']; ?></span>
-                    </h4>
-                    <!-- Botão Marcar como Não Lido -->
-                    <?php if (!$isBlocked): ?>
-                        <form method="post" action="" class="d-inline">
-                            <button type="submit" name="marcar_nao_lido" class="btn btn-outline-dark btn-sm"
-                                onclick="return confirm('Deseja marcar este requerimento como não lido?')"
-                                style="border-radius: 6px; font-size: 11px; padding: 4px 8px;">
-                                <i class="fas fa-envelope me-1"></i> Marcar como Não Lido
-                            </button>
-                        </form>
-                    <?php endif; ?>
-                </div>
-                <div class="mb-2">
-                    <div class="d-flex align-items-center">
-                        <span class="rounded-circle me-2" style="width: 12px; height: 12px; background-color: <?php echo getStatusDotColor($requerimento['status']); ?>"></span>
-                        <span class="fw-medium" style="color: var(--gray-700);"><?php echo $requerimento['status']; ?></span>
-                    </div>
-                </div>
-                <div class="text-muted small">
-                    <i class="far fa-calendar-alt me-1"></i> Enviado: <?php echo formataData($requerimento['data_envio']); ?>
-                    <span class="mx-2">|</span>
-                    <i class="far fa-calendar-alt me-1"></i> Atualizado: <?php echo formataData($requerimento['data_atualizacao']); ?>
-                </div>
-            </div>
-            <div class="text-end">
-                <div class="mb-2">
-                    <span class="fw-bold" style="color: var(--gray-700);">Tipo:</span>
-                    <span style="color: var(--primary-600);"><?php echo $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])); ?></span>
-                </div>
-                <div>
-                    <span class="fw-bold" style="color: var(--gray-700);">Requerente:</span>
-                    <span style="color: var(--primary-600);"><?php echo $requerimento['requerente_nome']; ?></span>
-                </div>
-            </div>
-            <div>
-                <a href="requerimentos.php" class="btn btn-modern btn-outline-success ms-3">
-                    <i class="fas fa-arrow-left"></i> Voltar
-                </a>
-            </div>
+    <!-- CABEÇALHO COMPACTO DO PROCESSO -->
+    <?php
+    $procStatusCor = getStatusDotColor($requerimento['status']);
+    $procHeaderCls = $isFinalized ? 'finalizado' : ($isIndeferido ? 'indeferido' : '');
+    $nomeAlvaraProc = $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']));
+    ?>
+    <div class="proc-header <?= $procHeaderCls ?>">
+        <a href="requerimentos.php" class="proc-back"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <div class="proc-divider"></div>
+        <div>
+            <div class="proc-protocol">#<?= htmlspecialchars($requerimento['protocolo']) ?></div>
+            <div class="proc-name"><?= htmlspecialchars($requerimento['requerente_nome']) ?></div>
+        </div>
+        <div class="proc-meta">
+            <span class="proc-tipo"><?= htmlspecialchars($nomeAlvaraProc) ?></span>
+            <span class="proc-status"><span class="dot" style="color:<?= $procStatusCor ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
+            <span><i class="far fa-calendar-alt me-1"></i><?= date('d/m/Y', strtotime($requerimento['data_envio'])) ?></span>
+        </div>
+        <div class="proc-actions">
+            <?php if (!$isBlocked): ?>
+                <form method="post" action="" style="display:inline">
+                    <button type="submit" name="marcar_nao_lido" class="btn-nao-visto"
+                        onclick="return confirm('Marcar como não visto?')">
+                        <i class="fas fa-eye-slash"></i> Não visto
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 
     <?php if ($mensagem): ?>
-        <div class="alert alert-<?php echo $mensagemTipo; ?> alert-dismissible fade show" role="alert" style="border-radius: 10px; border: none; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+        <div class="alert alert-<?php echo $mensagemTipo; ?> alert-dismissible fade show mb-3" role="alert" style="border-radius:10px;border:none;box-shadow:0 2px 8px rgba(0,0,0,.07)">
             <?php echo $mensagem; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         </div>
