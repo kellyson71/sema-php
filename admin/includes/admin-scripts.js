@@ -205,6 +205,10 @@ function marcarComoLidoUnico(id) {
   executarAcaoEmMassa("marcar_lido", [id]);
 }
 
+function marcarComoNaoLidoUnico(id) {
+  executarAcaoEmMassa("marcar_nao_lido", [id]);
+}
+
 function confirmarExclusaoUnica(id) {
   if (
     confirm(

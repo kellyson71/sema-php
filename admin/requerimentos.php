@@ -430,9 +430,15 @@ $statusOperacionais = adminStatusFluxoPrincipal();
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
+                                <?php if ($req['visualizado'] == 0): ?>
                                 <button type="button" class="req-actions-item" onclick="event.stopPropagation(); marcarComoLidoUnico(<?= (int) $req['id'] ?>);">
                                     <i class="fas fa-envelope-open"></i>Marcar como aberto
                                 </button>
+                                <?php else: ?>
+                                <button type="button" class="req-actions-item" onclick="event.stopPropagation(); marcarComoNaoLidoUnico(<?= (int) $req['id'] ?>);">
+                                    <i class="fas fa-envelope"></i>Marcar como não lido
+                                </button>
+                                <?php endif; ?>
                                 <button type="button" class="req-actions-item" onclick="event.stopPropagation(); ativarModoSelecao(); toggleCheckboxById(<?= (int) $req['id'] ?>);">
                                     <i class="fas fa-check-double"></i>Selecionar múltiplos
                                 </button>
