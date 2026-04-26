@@ -16,14 +16,7 @@ $setorMeta = [
     'setor3' => ['label' => 'Setor 3', 'sublabel' => 'Revisão Final', 'icon' => 'fa-shield-halved'],
 ];
 
-$acaoLabels = [
-    'triagem_setor1'  => ['label' => 'Triagem pendente',      'cls' => 'acao-triagem'],
-    'boleto_pendente' => ['label' => 'Aguardando boleto',     'cls' => 'acao-boleto'],
-    'analise_setor2'  => ['label' => 'Em análise',            'cls' => 'acao-analise'],
-    'revisao_setor3'  => ['label' => 'Revisão final',         'cls' => 'acao-revisao'],
-    'envio_cidadao'   => ['label' => 'Enviar ao cidadão',     'cls' => 'acao-envio'],
-    'concluido'       => ['label' => 'Concluído',             'cls' => 'acao-concluido'],
-];
+// Labels centralizados via helpers.php (acaoLabel / acaoClass)
 
 $tipoSiglas = [
     'licenca_ambiental_unica'   => 'LAU',
@@ -128,6 +121,7 @@ function tempoEmFila(string $dataEnvio): string
 .fila-item-side { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
 .btn-abrir { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border:1px solid var(--req-line); border-radius:10px; background:#fff; color:var(--req-ink); font-size:.82rem; font-weight:700; text-decoration:none; transition:all .15s; }
 .btn-abrir:hover { border-color:var(--req-primary); color:var(--req-primary); }
+.proxima-acao-hint { font-size:.72rem; font-weight:700; color:var(--req-primary); opacity:.75; white-space:nowrap; }
 .fila-empty { padding:32px; text-align:center; border:1px dashed var(--req-line-strong); border-radius:14px; color:var(--req-muted); }
 .fila-paginacao { display:flex; gap:8px; justify-content:center; margin-top:18px; }
 .fila-paginacao a, .fila-paginacao span { padding:6px 14px; border:1px solid var(--req-line); border-radius:8px; font-size:.82rem; text-decoration:none; color:var(--req-ink); }
@@ -168,11 +162,11 @@ function tempoEmFila(string $dataEnvio): string
         <div class="fila-list">
             <?php foreach ($processos as $p): ?>
                 <?php
-                $acaoInfo = $acaoLabels[$p['aguardando_acao']] ?? ['label' => $p['aguardando_acao'], 'cls' => 'acao-triagem'];
-                $short    = $tipoSiglas[$p['tipo_alvara']] ?? 'ALV';
-                $nomeAlv  = $tipos_alvara[$p['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $p['tipo_alvara']));
-                $destaque = $p['aguardando_acao'] === 'boleto_pendente';
-                $tempo    = tempoEmFila($p['data_envio']);
+                $acao    = $p['aguardando_acao'] ?? 'triagem_setor1';
+                $short   = $tipoSiglas[$p['tipo_alvara']] ?? 'ALV';
+                $nomeAlv = $tipos_alvara[$p['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $p['tipo_alvara']));
+                $destaque = $acao === 'boleto_pendente' || $acao === 'envio_cidadao';
+                $tempo   = tempoEmFila($p['data_envio']);
                 ?>
                 <div class="fila-item <?= $destaque ? 'destaque' : '' ?>">
                     <div>
@@ -181,11 +175,12 @@ function tempoEmFila(string $dataEnvio): string
                         <div class="fila-meta">
                             <span class="tipo-badge"><?= $short ?></span>
                             <span><?= htmlspecialchars($nomeAlv) ?></span>
-                            <span class="acao-badge <?= $acaoInfo['cls'] ?>"><?= $acaoInfo['label'] ?></span>
+                            <span class="acao-badge <?= acaoClass($acao) ?>"><?= acaoLabel($acao) ?></span>
                             <span class="fila-tempo"><i class="far fa-clock me-1"></i><?= $tempo ?> na fila</span>
                         </div>
                     </div>
                     <div class="fila-item-side">
+                        <span class="proxima-acao-hint"><i class="fas fa-bolt me-1"></i><?= acaoLabel($acao) ?></span>
                         <a href="visualizar_requerimento.php?id=<?= (int) $p['id'] ?>" class="btn-abrir">
                             <i class="fas fa-arrow-right"></i> Abrir
                         </a>

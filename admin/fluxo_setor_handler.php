@@ -81,11 +81,6 @@ try {
             registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : ''));
             break;
 
-        case 'marcar_envio_cidadao':
-            atualizaSetor($pdo, $id, 'setor2', 'envio_cidadao');
-            registraHistorico($pdo, $adminId, $id, "Marcou processo como pronto para envio ao cidadão");
-            break;
-
         case 'concluir_setor2':
             atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
