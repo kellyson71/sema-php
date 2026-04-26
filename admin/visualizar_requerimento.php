@@ -1878,17 +1878,18 @@ document.addEventListener('DOMContentLoaded', function() {
             $ni = '<span class="text-muted fst-italic" style="font-size:.82rem">—</span>';
             ?>
             <style>
-            .info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:12px; }
+            .info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
             @media(max-width:640px){ .info-grid { grid-template-columns:1fr; } }
-            .info-card { background:#fff; border:1px solid var(--req-line,#e5e8e6); border-radius:14px; overflow:hidden; }
+            .info-card { background:#fff; border:1px solid #dde8e2; border-radius:12px; overflow:hidden; }
             .info-card-full { grid-column:1/-1; }
-            .info-card-head { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--req-line,#e5e8e6); background:var(--req-primary-soft,#f0f4ff); }
-            .info-card-head i { color:var(--req-primary,#2563eb); font-size:.85rem; }
-            .info-card-head span { font-size:.78rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--req-primary,#2563eb); }
-            .info-kv { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; padding:12px 14px; }
-            .info-k { font-size:.75rem; font-weight:700; color:var(--req-muted,#888); white-space:nowrap; padding:4px 0; }
-            .info-v { font-size:.83rem; color:var(--req-ink,#1a2e1e); padding:4px 0; word-break:break-word; }
-            .info-v a { color:var(--req-primary,#2563eb); text-decoration:none; }
+            .info-card-head { display:flex; align-items:center; gap:7px; padding:8px 14px; border-bottom:1px solid #dde8e2; }
+            .info-card-head i { color:#5a8a6a; font-size:.78rem; }
+            .info-card-head span { font-size:.7rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#5a8a6a; }
+            .info-kv { display:grid; grid-template-columns:auto 1fr; gap:0 12px; padding:10px 14px; }
+            .info-k { font-size:.73rem; font-weight:600; color:#8fa399; white-space:nowrap; padding:4px 0; border-bottom:1px solid #f2f6f4; }
+            .info-v { font-size:.82rem; color:#1a2e1e; padding:4px 0; word-break:break-word; border-bottom:1px solid #f2f6f4; }
+            .info-kv .info-k:last-of-type, .info-kv .info-v:last-of-type { border-bottom:none; }
+            .info-v a { color:#14532d; text-decoration:none; }
             .info-v a:hover { text-decoration:underline; }
             </style>
 
