@@ -50,6 +50,14 @@ if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
 $filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
 
+// Status encerrados: ocultos por padrão, visíveis apenas se filtro explícito ou toggle ativo
+$statusEncerrados = ['Finalizado', 'Indeferido', 'Aprovado', 'Cancelado'];
+$mostrarEncerrados = isset($_GET['encerrados']) && $_GET['encerrados'] === '1';
+// Se filtro de status aponta para um encerrado, mostra encerrados implicitamente
+if (in_array($filtroStatus, $statusEncerrados, true)) {
+    $mostrarEncerrados = true;
+}
+
 $mensagem = '';
 if (isset($_GET['success'])) {
     switch ($_GET['success']) {
@@ -129,6 +137,13 @@ if ($filtroNaoVisualizados) {
     $sqlCount .= " AND r.visualizado = 0";
 }
 
+if (!$mostrarEncerrados && $filtroStatus === '') {
+    $placeholdersEnc = implode(',', array_fill(0, count($statusEncerrados), '?'));
+    $sql .= " AND r.status NOT IN ($placeholdersEnc)";
+    $sqlCount .= " AND r.status NOT IN ($placeholdersEnc)";
+    foreach ($statusEncerrados as $se) { $params[] = $se; }
+}
+
 $sql .= " ORDER BY r.visualizado ASC, r.data_envio DESC LIMIT {$itensPorPagina} OFFSET {$offset}";
 
 $stmt = $pdo->prepare($sql);
@@ -139,6 +154,11 @@ $stmtCount = $pdo->prepare($sqlCount);
 $stmtCount->execute($params);
 $totalRequerimentos = (int) ($stmtCount->fetch()['total'] ?? 0);
 $totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
+
+$statusEncPH = implode(',', array_fill(0, count($statusEncerrados), '?'));
+$stmtEnc = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE status IN ($statusEncPH)");
+$stmtEnc->execute($statusEncerrados);
+$totalEncerrados = (int) $stmtEnc->fetchColumn();
 
 $estatisticas = [
     'total' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn(),
@@ -283,10 +303,23 @@ $statusOperacionais = adminStatusFluxoPrincipal();
             <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
-                    <i class="fas fa-eye"></i> Ver todos novamente
+                    <i class="fas fa-eye"></i> Ver todos
                 </a>
             <?php endif; ?>
         </form>
+        <!-- Toggle encerrados -->
+        <?php if (!$mostrarEncerrados): ?>
+            <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
+               style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px dashed var(--req-line-strong,#ccc);border-radius:10px;font-size:.78rem;font-weight:700;color:var(--req-muted,#888);text-decoration:none;white-space:nowrap;"
+               title="Exibir processos finalizados, indeferidos e arquivados">
+                <i class="fas fa-eye-slash fa-xs"></i>Encerrados (<?= $totalEncerrados ?>)
+            </a>
+        <?php else: ?>
+            <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '', 'pagina' => 1])) ?>"
+               style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--req-primary,#2563eb);border-radius:10px;font-size:.78rem;font-weight:700;color:var(--req-primary,#2563eb);text-decoration:none;white-space:nowrap;">
+                <i class="fas fa-eye fa-xs"></i>Ocultar encerrados
+            </a>
+        <?php endif; ?>
         <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
                 <span class="active-filter-chip">

@@ -11,9 +11,9 @@ if (!in_array($setorParam, ['setor1','setor2','setor3'], true)) {
 }
 
 $setorMeta = [
-    'setor1' => ['label' => 'Setor 1', 'sublabel' => 'Triagem', 'icon' => 'fa-inbox'],
-    'setor2' => ['label' => 'Setor 2', 'sublabel' => 'Análise', 'icon' => 'fa-magnifying-glass'],
-    'setor3' => ['label' => 'Setor 3', 'sublabel' => 'Revisão Final', 'icon' => 'fa-shield-halved'],
+    'setor1' => ['label' => 'Triagem Ambiental',        'sublabel' => 'Setor 1', 'icon' => 'fa-inbox'],
+    'setor2' => ['label' => 'Fiscalização de Obras',    'sublabel' => 'Setor 2', 'icon' => 'fa-helmet-safety'],
+    'setor3' => ['label' => 'Revisão do Secretário',    'sublabel' => 'Setor 3', 'icon' => 'fa-shield-halved'],
 ];
 
 // Labels centralizados via helpers.php (acaoLabel / acaoClass)

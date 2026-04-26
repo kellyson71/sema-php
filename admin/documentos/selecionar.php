@@ -7,10 +7,11 @@ verificaLogin();
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 if (!$requerimento_id) die("Acesso Negado: ID do requerimento não fornecido.");
 
-$stmt = $pdo->prepare("SELECT protocolo, status FROM requerimentos WHERE id = ?");
+$stmt = $pdo->prepare("SELECT protocolo, status, setor_atual FROM requerimentos WHERE id = ?");
 $stmt->execute([$requerimento_id]);
 $req = $stmt->fetch();
 if (!$req) die("Erro: Requerimento não encontrado.");
+$setorReq = $req['setor_atual'] ?? 'setor1';
 
 $titulo_pagina = 'Selecionar Template';
 include '../header.php';
@@ -223,14 +224,16 @@ include '../header.php';
         </span>
     </div>
 
+    <!-- Seção: Meus Modelos (topo, visível apenas se houver) -->
+    <div id="secao-meus-modelos" style="display:none;margin-bottom:24px;">
+        <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
+            <i class="fas fa-bookmark me-1 text-warning"></i>Meus Modelos
+        </p>
+        <div class="row g-3 mb-2" id="lista-meus-templates"></div>
+    </div>
+
     <!-- Abas de navegação -->
     <ul class="nav nav-tabs mb-4" id="tabsTemplates" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold" id="tab-meus" data-bs-toggle="tab"
-                    data-bs-target="#pane-meus" type="button" role="tab">
-                <i class="fas fa-bookmark me-2 text-success"></i> Meus Modelos
-            </button>
-        </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold active" id="tab-todos" data-bs-toggle="tab"
                     data-bs-target="#pane-todos" type="button" role="tab">
@@ -247,26 +250,39 @@ include '../header.php';
 
     <div class="tab-content" id="tabsTemplatesContent">
 
-        <!-- Aba: Meus Modelos -->
-        <div class="tab-pane fade" id="pane-meus" role="tabpanel">
-            <div class="row g-4 mb-4" id="lista-meus-templates">
-                <div class="col-12">
-                    <div class="text-center text-muted py-3">
-                        <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
-                        <small>Carregando seus modelos...</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Aba: Todos os Modelos -->
         <div class="tab-pane fade show active" id="pane-todos" role="tabpanel">
-            <div class="row g-4 mb-4" id="lista-templates">
-                <?php for($i=0;$i<6;$i++): ?>
-                <div class="col-xl-3 col-md-4 col-sm-6">
-                    <div class="skeleton skeleton-card"></div>
+            <!-- Recomendados para o setor -->
+            <div id="secao-recomendados" style="display:none;margin-bottom:24px;">
+                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
+                    <i class="fas fa-bolt me-1" style="color:#f59e0b"></i>Recomendados para este setor
+                </p>
+                <div class="row g-3" id="lista-recomendados"></div>
+            </div>
+            <!-- Grupo: Ambiental / Pareceres -->
+            <div id="secao-ambiental" style="margin-bottom:24px;">
+                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
+                    <i class="fas fa-leaf me-1" style="color:#059669"></i>Ambiental / Pareceres
+                </p>
+                <div class="row g-3" id="lista-ambiental">
+                    <?php for($i=0;$i<4;$i++): ?><div class="col-xl-3 col-md-4 col-sm-6"><div class="skeleton skeleton-card"></div></div><?php endfor; ?>
                 </div>
-                <?php endfor; ?>
+            </div>
+            <!-- Grupo: Alvarás / Obras -->
+            <div id="secao-obras" style="margin-bottom:24px;">
+                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
+                    <i class="fas fa-helmet-safety me-1" style="color:#d97706"></i>Alvarás / Obras
+                </p>
+                <div class="row g-3" id="lista-obras">
+                    <?php for($i=0;$i<4;$i++): ?><div class="col-xl-3 col-md-4 col-sm-6"><div class="skeleton skeleton-card"></div></div><?php endfor; ?>
+                </div>
+            </div>
+            <!-- Outros modelos -->
+            <div id="secao-outros" style="display:none;margin-bottom:24px;">
+                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
+                    <i class="fas fa-file-alt me-1" style="color:#6b7280"></i>Outros
+                </p>
+                <div class="row g-3" id="lista-outros"></div>
             </div>
         </div>
 
@@ -289,7 +305,17 @@ include '../header.php';
     <script>
     const reqId = <?= $requerimento_id ?>;
     const adminNivel = <?= json_encode($_SESSION['admin_nivel'] ?? '') ?>;
-    let favoritosSet = new Set(); // nomes dos templates favoritados
+    const setorReq = <?= json_encode($setorReq) ?>;
+    let favoritosSet = new Set();
+
+    // Templates recomendados por setor (badges que têm prioridade)
+    const recomendadosPorSetor = {
+        'setor1': ['Ambiental', 'Parecer', 'Habite-se', 'Licença'],
+        'setor2': ['Construção', 'Habite-se', 'Desmembramento', 'Licença'],
+        'setor3': [],
+    };
+    const badgesAmbiental = ['Ambiental', 'Parecer', 'Licença', 'Livre'];
+    const badgesObras     = ['Construção', 'Habite-se', 'Desmembramento', 'Econômico'];
 
     /* ─── Helpers de badge ─────────────────────────────────── */
     function badgeClass(badge) {
@@ -531,31 +557,50 @@ include '../header.php';
         })
         .then(res => res.json())
         .then(ret => {
-            const listTpl  = document.getElementById('lista-templates');
-            const listHist = document.getElementById('lista-historico');
-            const listMeus = document.getElementById('lista-meus-templates');
+            const listHist  = document.getElementById('lista-historico');
+            const listMeus  = document.getElementById('lista-meus-templates');
+            const secMeus   = document.getElementById('secao-meus-modelos');
+            const secRec    = document.getElementById('secao-recomendados');
+            const listRec   = document.getElementById('lista-recomendados');
+            const listAmb   = document.getElementById('lista-ambiental');
+            const listObr   = document.getElementById('lista-obras');
+            const listOut   = document.getElementById('lista-outros');
+            const secOut    = document.getElementById('secao-outros');
 
-            // ── Carregar favoritos no Set ────────────────────
+            // ── Favoritos no Set ─────────────────────────────
             if (ret.favoritos) favoritosSet = new Set(ret.favoritos);
 
-            // ── Todos os Modelos ─────────────────────────────
+            // ── Meus Modelos (topo) ──────────────────────────
+            if (ret.user_templates && ret.user_templates.length > 0) {
+                listMeus.innerHTML = ret.user_templates.map((t, i) => buildUserTemplateCard(t, i)).join('');
+                secMeus.style.display = 'block';
+            }
+
+            // ── Todos os Modelos: separar em grupos ──────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
-                listTpl.innerHTML = ret.templates.map((t, i) => buildCardTemplate(t, i)).join('');
+                const recomendados = recomendadosPorSetor[setorReq] || [];
+                const tplsRec  = ret.templates.filter(t => recomendados.includes(t.badge));
+                const tplsAmb  = ret.templates.filter(t => badgesAmbiental.includes(t.badge) && !recomendados.includes(t.badge));
+                const tplsObr  = ret.templates.filter(t => badgesObras.includes(t.badge) && !recomendados.includes(t.badge));
+                const tplsOut  = ret.templates.filter(t => !recomendados.includes(t.badge) && !badgesAmbiental.includes(t.badge) && !badgesObras.includes(t.badge));
+
+                if (tplsRec.length > 0) {
+                    listRec.innerHTML = tplsRec.map((t, i) => buildCardTemplate(t, i)).join('');
+                    secRec.style.display = 'block';
+                }
+                listAmb.innerHTML = tplsAmb.length > 0 ? tplsAmb.map((t, i) => buildCardTemplate(t, i)).join('') : '<div class="col-12"><p class="text-muted small">Nenhum modelo nesta categoria.</p></div>';
+                listObr.innerHTML = tplsObr.length > 0 ? tplsObr.map((t, i) => buildCardTemplate(t, i)).join('') : '<div class="col-12"><p class="text-muted small">Nenhum modelo nesta categoria.</p></div>';
+                if (tplsOut.length > 0) {
+                    listOut.innerHTML = tplsOut.map((t, i) => buildCardTemplate(t, i)).join('');
+                    secOut.style.display = 'block';
+                }
             } else {
-                listTpl.innerHTML = `<div class="col-12"><div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
+                listAmb.innerHTML = `<div class="col-12"><div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
                     <i class="fas fa-triangle-exclamation fs-4"></i>
                     <div><strong>Falha ao carregar os modelos.</strong><br>
                     <small class="text-muted">${ret.error || 'Nenhum template encontrado.'}</small></div>
                 </div></div>`;
-            }
-
-            // ── Meus Modelos (favoritos + personalizados) ───
-            if (ret.user_templates && ret.user_templates.length > 0) {
-                listMeus.innerHTML = ret.user_templates.map((t, i) => buildUserTemplateCard(t, i)).join('');
-                // Ativar a aba "Meus Modelos" como padrão se houver algo
-                document.getElementById('tab-meus').click();
-            } else {
-                listMeus.innerHTML = emptyStateMeusTemplates();
+                listObr.innerHTML = '';
             }
 
             // ── Histórico ────────────────────────────────────
@@ -569,7 +614,7 @@ include '../header.php';
             }
         })
         .catch(err => {
-            document.getElementById('lista-templates').innerHTML = `
+            document.getElementById('lista-ambiental').innerHTML = `
             <div class="col-12"><div class="alert alert-danger rounded-3">
                 <i class="fas fa-wifi-slash me-2"></i>
                 <strong>Falha na conexão.</strong>

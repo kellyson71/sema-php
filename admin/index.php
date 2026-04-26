@@ -202,9 +202,9 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     <section class="setor-hub">
         <?php
         $hubMeta = [
-            'setor1' => ['label' => 'Setor 1', 'sub' => 'Triagem',       'icon' => 'fa-inbox'],
-            'setor2' => ['label' => 'Setor 2', 'sub' => 'Análise',       'icon' => 'fa-magnifying-glass'],
-            'setor3' => ['label' => 'Setor 3', 'sub' => 'Revisão Final', 'icon' => 'fa-shield-halved'],
+            'setor1' => ['label' => 'Triagem Ambiental',     'sub' => 'Setor 1', 'icon' => 'fa-inbox'],
+            'setor2' => ['label' => 'Fiscalização de Obras', 'sub' => 'Setor 2', 'icon' => 'fa-helmet-safety'],
+            'setor3' => ['label' => 'Revisão do Secretário', 'sub' => 'Setor 3', 'icon' => 'fa-shield-halved'],
         ];
         foreach ($hubMeta as $s => $hm):
             $n = $hubSetores[$s];

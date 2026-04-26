@@ -1648,11 +1648,11 @@ $estadoCls = match($aguardandoAcao) {
     $s3cls = $setorAtualIdx > 2 || $isProcessoConcluido ? 'done' : ($setorAtualIdx === 2 ? 'active' : '');
     $fimcls = $isProcessoConcluido ? 'done' : '';
     ?>
-    <span class="caminho-step <?= $s1cls ?>"><span class="cdot"></span> Setor 1 <small style="opacity:.65">Triagem</small></span>
+    <span class="caminho-step <?= $s1cls ?>"><span class="cdot"></span> Triagem Ambiental <small style="opacity:.65">Setor 1</small></span>
     <span class="caminho-sep">→</span>
-    <span class="caminho-step <?= $s2cls ?>"><span class="cdot"></span> Setor 2 <small style="opacity:.65">Fiscalização</small><span class="caminho-opt-tag">opcional</span></span>
+    <span class="caminho-step <?= $s2cls ?>"><span class="cdot"></span> Fiscalização de Obras <small style="opacity:.65">Setor 2</small><span class="caminho-opt-tag">opcional</span></span>
     <span class="caminho-sep">→</span>
-    <span class="caminho-step <?= $s3cls ?>"><span class="cdot"></span> Setor 3 <small style="opacity:.65">Revisão</small><span class="caminho-opt-tag">opcional</span></span>
+    <span class="caminho-step <?= $s3cls ?>"><span class="cdot"></span> Revisão do Secretário <small style="opacity:.65">Setor 3</small><span class="caminho-opt-tag">opcional</span></span>
     <span class="caminho-sep">→</span>
     <span class="caminho-step <?= $fimcls ?>"><span class="cdot"></span> Concluído</span>
     <span class="caminho-estado <?= $estadoCls ?>"><?= htmlspecialchars(acaoLabel($aguardandoAcao)) ?></span>
@@ -1662,9 +1662,9 @@ $estadoCls = match($aguardandoAcao) {
 <!-- MODAIS DE FLUXO (Bootstrap-free, inline) -->
 <div class="fm-backdrop" id="fm-setor2">
   <div class="fm-box">
-    <h3><i class="fas fa-microscope me-2" style="color:#14532d"></i>Enviar para Fiscalização</h3>
-    <p class="fm-sub">O processo passa para o <strong>Setor 2</strong> (Fiscalização). A equipe de análise verá o processo na fila deles.</p>
-    <div class="fm-impact">Destino: <strong>Setor 2 — Fiscalização</strong> · Cidadão <em>não</em> é notificado · Pode ser revertido depois</div>
+    <h3><i class="fas fa-helmet-safety me-2" style="color:#14532d"></i>Enviar para Fiscalização de Obras</h3>
+    <p class="fm-sub">O processo passa para a <strong>Fiscalização de Obras</strong> (Setor 2). A equipe verá o processo na fila deles.</p>
+    <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Pode ser revertido depois</div>
     <form method="post" action="fluxo_setor_handler.php">
       <input type="hidden" name="requerimento_id" value="<?= $id ?>">
       <input type="hidden" name="fluxo_acao" value="enviar_setor2">
@@ -1679,9 +1679,9 @@ $estadoCls = match($aguardandoAcao) {
 
 <div class="fm-backdrop" id="fm-setor3">
   <div class="fm-box">
-    <h3><i class="fas fa-shield-halved me-2" style="color:#7e22ce"></i>Enviar para Revisão Final</h3>
-    <p class="fm-sub">O processo passa para o <strong>Setor 3</strong> (Revisão Final / Assinatura). O Setor 3 pode assinar ou devolver com motivo.</p>
-    <div class="fm-impact">Destino: <strong>Setor 3 — Revisão Final</strong> · Cidadão <em>não</em> é notificado · Após aprovação retorna ao Setor 2</div>
+    <h3><i class="fas fa-shield-halved me-2" style="color:#7e22ce"></i>Enviar para Revisão do Secretário</h3>
+    <p class="fm-sub">O processo passa para a <strong>Revisão do Secretário</strong> (Setor 3). O secretário pode assinar ou devolver com motivo.</p>
+    <div class="fm-impact">Destino: <strong>Revisão do Secretário — Setor 3</strong> · Cidadão <em>não</em> é notificado · Após aprovação retorna à Fiscalização</div>
     <form method="post" action="fluxo_setor_handler.php">
       <input type="hidden" name="requerimento_id" value="<?= $id ?>">
       <input type="hidden" name="fluxo_acao" value="enviar_setor3">
@@ -1730,9 +1730,9 @@ $estadoCls = match($aguardandoAcao) {
 
 <div class="fm-backdrop" id="fm-devolver-s1">
   <div class="fm-box">
-    <h3><i class="fas fa-rotate-left me-2" style="color:#b7791f"></i>Devolver ao Setor 1</h3>
-    <p class="fm-sub">O processo retorna para triagem no Setor 1. Informe o motivo.</p>
-    <div class="fm-impact">Destino: <strong>Setor 1 — Triagem</strong> · Cidadão <em>não</em> é notificado</div>
+    <h3><i class="fas fa-rotate-left me-2" style="color:#b7791f"></i>Devolver à Triagem Ambiental</h3>
+    <p class="fm-sub">O processo retorna para a <strong>Triagem Ambiental</strong> (Setor 1). Informe o motivo.</p>
+    <div class="fm-impact">Destino: <strong>Triagem Ambiental — Setor 1</strong> · Cidadão <em>não</em> é notificado</div>
     <form method="post" action="fluxo_setor_handler.php">
       <input type="hidden" name="requerimento_id" value="<?= $id ?>">
       <input type="hidden" name="fluxo_acao" value="devolver_setor1">
@@ -1747,9 +1747,9 @@ $estadoCls = match($aguardandoAcao) {
 
 <div class="fm-backdrop" id="fm-devolver-s2">
   <div class="fm-box">
-    <h3><i class="fas fa-rotate-left me-2" style="color:#8f2222"></i>Devolver ao Setor 2</h3>
-    <p class="fm-sub">O processo retorna ao Setor 2 com motivo. Este campo é obrigatório e ficará visível no histórico.</p>
-    <div class="fm-impact">Destino: <strong>Setor 2 — Fiscalização</strong> · Cidadão <em>não</em> é notificado · Motivo aparece na fila deles</div>
+    <h3><i class="fas fa-rotate-left me-2" style="color:#8f2222"></i>Devolver à Fiscalização de Obras</h3>
+    <p class="fm-sub">O processo retorna para a <strong>Fiscalização de Obras</strong> (Setor 2) com motivo. Este campo é obrigatório e ficará visível no histórico.</p>
+    <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Motivo aparece na fila deles</div>
     <form method="post" action="fluxo_setor_handler.php">
       <input type="hidden" name="requerimento_id" value="<?= $id ?>">
       <input type="hidden" name="fluxo_acao" value="devolver_setor2">
@@ -1871,362 +1871,184 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="tab-content" id="requerimentoTabsContent">
         <!-- Aba: Informações Completas -->
         <div class="tab-pane fade <?= $activeTab === 'informacoes' ? 'show active' : '' ?>" id="informacoes" role="tabpanel">
-            <!-- Dados do Requerimento -->
-            <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <i class="fas fa-file-alt icon"></i>
-                    <h6>Dados do Requerimento</h6>
+            <?php
+            $tiposComCamposTecnicos = ['construcao', 'habite_se', 'habite_se_simples', 'desmembramento', 'licenca_previa_obras'];
+            $tipoAtual = $requerimento['tipo_alvara'] ?? '';
+            $exibirTecnicos = in_array($tipoAtual, $tiposComCamposTecnicos);
+            $ni = '<span class="text-muted fst-italic" style="font-size:.82rem">—</span>';
+            ?>
+            <style>
+            .info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:12px; }
+            @media(max-width:640px){ .info-grid { grid-template-columns:1fr; } }
+            .info-card { background:#fff; border:1px solid var(--req-line,#e5e8e6); border-radius:14px; overflow:hidden; }
+            .info-card-full { grid-column:1/-1; }
+            .info-card-head { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--req-line,#e5e8e6); background:var(--req-primary-soft,#f0f4ff); }
+            .info-card-head i { color:var(--req-primary,#2563eb); font-size:.85rem; }
+            .info-card-head span { font-size:.78rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--req-primary,#2563eb); }
+            .info-kv { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; padding:12px 14px; }
+            .info-k { font-size:.75rem; font-weight:700; color:var(--req-muted,#888); white-space:nowrap; padding:4px 0; }
+            .info-v { font-size:.83rem; color:var(--req-ink,#1a2e1e); padding:4px 0; word-break:break-word; }
+            .info-v a { color:var(--req-primary,#2563eb); text-decoration:none; }
+            .info-v a:hover { text-decoration:underline; }
+            </style>
+
+            <div class="info-grid">
+                <!-- Processo -->
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-file-alt"></i><span>Processo</span></div>
+                    <div class="info-kv">
+                        <span class="info-k">Protocolo</span>
+                        <span class="info-v" style="font-weight:800;"><?= htmlspecialchars($requerimento['protocolo']) ?> <button class="copy-btn" onclick="copyToClipboard('<?= $requerimento['protocolo'] ?>',this)" style="margin-left:4px"><i class="fas fa-copy"></i></button></span>
+                        <span class="info-k">Status</span>
+                        <span class="info-v"><span class="rounded-circle me-1" style="display:inline-block;width:8px;height:8px;background:<?= getStatusDotColor($requerimento['status']) ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
+                        <span class="info-k">Tipo</span>
+                        <span class="info-v"><?= htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))) ?></span>
+                        <span class="info-k">Enviado em</span>
+                        <span class="info-v"><?= formataData($requerimento['data_envio']) ?></span>
+                        <?php if (!empty($requerimento['endereco_objetivo'])): ?>
+                        <span class="info-k">Endereço</span>
+                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['endereco_objetivo'])) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
+                            <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
+                        <span class="info-k">Mapa</span>
+                        <span class="info-v"><?php if($mapsIsUrl): ?><a href="<?= htmlspecialchars($mapsVal) ?>" target="_blank" rel="noopener"><i class="fas fa-map-marker-alt me-1"></i>Google Maps</a><?php else: ?><?= htmlspecialchars($mapsVal) ?><?php endif; ?></span>
+                        <?php endif; ?>
+                    </div>
                 </div>
-                <div class="card-body p-0">
-                    <div class="data-row">
-                        <div class="data-label">Protocolo:</div>
-                        <div class="data-value">
-                            <span class="fw-bold text-dark"><?php echo $requerimento['protocolo']; ?></span>
-                        </div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['protocolo']; ?>', this)" title="Copiar protocolo">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
+
+                <!-- Requerente -->
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-user"></i><span>Requerente</span></div>
+                    <div class="info-kv">
+                        <span class="info-k">Nome</span>
+                        <span class="info-v" style="font-weight:700;"><?= htmlspecialchars($requerimento['requerente_nome'] ?? '') ?></span>
+                        <span class="info-k">E-mail</span>
+                        <span class="info-v"><a href="mailto:<?= $requerimento['requerente_email'] ?>"><?= htmlspecialchars($requerimento['requerente_email']) ?></a></span>
+                        <span class="info-k">CPF/CNPJ</span>
+                        <span class="info-v"><?= htmlspecialchars($requerimento['requerente_cpf_cnpj']) ?></span>
+                        <span class="info-k">Telefone</span>
+                        <span class="info-v"><a href="tel:<?= $requerimento['requerente_telefone'] ?>"><?= htmlspecialchars($requerimento['requerente_telefone']) ?></a></span>
+                        <?php if (!empty($requerimento['proprietario_id'])): ?>
+                        <span class="info-k" style="padding-top:10px;border-top:1px solid var(--req-line,#e5e8e6);">Proprietário</span>
+                        <span class="info-v" style="padding-top:10px;border-top:1px solid var(--req-line,#e5e8e6);font-weight:700;"><?= htmlspecialchars($requerimento['proprietario_nome'] ?? '') ?></span>
+                        <?php if (!empty($requerimento['proprietario_cpf_cnpj'])): ?>
+                        <span class="info-k">CPF/CNPJ</span>
+                        <span class="info-v"><?= htmlspecialchars($requerimento['proprietario_cpf_cnpj']) ?></span>
+                        <?php endif; ?>
+                        <?php endif; ?>
                     </div>
-                    <div class="data-row">
-                        <div class="data-label">Status:</div>
-                        <div class="data-value">
-                            <div class="d-flex align-items-center">
-                                <span class="rounded-circle me-2" style="width: 8px; height: 8px; background-color: <?php echo getStatusDotColor($requerimento['status']); ?>"></span>
-                                <span class="fw-medium"><?php echo $requerimento['status']; ?></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">Tipo de Alvará:</div>
-                        <div class="data-value"><?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))); ?></div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))); ?>', this)" title="Copiar tipo de alvará">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">Data de Envio:</div>
-                        <div class="data-value"><?php echo formataData($requerimento['data_envio']); ?></div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">Endereço:</div>
-                        <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['endereco_objetivo'] ?? '')); ?></div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['endereco_objetivo'] ?? ''); ?>', this)" title="Copiar endereço">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <?php if (isset($requerimento['notificado_fiscal_obras'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Notificado pelo Fiscal de Obras:</div>
-                            <div class="data-value">
-                                <?php if ($requerimento['notificado_fiscal_obras']): ?>
-                                    <span class="badge bg-warning text-dark"><i class="fas fa-hard-hat me-1"></i>Sim</span>
-                                <?php else: ?>
-                                    <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Não</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    <?php
-                    $tiposComCamposTecnicos = ['construcao', 'habite_se', 'habite_se_simples', 'desmembramento', 'licenca_previa_obras'];
-                    $tipoAtual = $requerimento['tipo_alvara'] ?? '';
-                    $exibirTecnicos = in_array($tipoAtual, $tiposComCamposTecnicos);
-                    $naoinformado = '<span class="text-muted fst-italic">Não informado</span>';
-                    ?>
-                    <?php if ($exibirTecnicos): ?>
+                </div>
+
+                <!-- Imóvel / Objeto -->
+                <?php
+                $temImovel = $exibirTecnicos || !empty($requerimento['especificacao']) || !empty($requerimento['enquadramento_atividade']) || !empty($requerimento['ctf_numero']) || !empty($requerimento['licenca_anterior_numero']) || $requerimento['possui_estudo_ambiental'] !== null;
+                if ($temImovel):
+                ?>
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-building"></i><span>Imóvel / Objeto</span></div>
+                    <div class="info-kv">
                         <?php if ($tipoAtual === 'desmembramento'): ?>
-                            <div class="data-row">
-                                <div class="data-label">Área do Lote:</div>
-                                <div class="data-value"><?php echo !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $naoinformado; ?></div>
-                            </div>
+                            <span class="info-k">Área do Lote</span>
+                            <span class="info-v"><?= !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $ni ?></span>
+                        <?php elseif ($exibirTecnicos): ?>
+                            <span class="info-k">Área Construída</span>
+                            <span class="info-v"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a).' m²' : $ni; ?></span>
+                            <span class="info-k">Pavimentos</span>
+                            <span class="info-v"><?= !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $ni ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['especificacao'])): ?>
+                            <span class="info-k">Composição</span>
+                            <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
+                            <?php
+                            include_once __DIR__ . '/../enquadramento_conema.php';
+                            $nomeAtividade = $requerimento['enquadramento_atividade'];
+                            foreach ($enquadramento_conema as $cat) {
+                                if (isset($cat['atividades'][$nomeAtividade])) {
+                                    $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome'] . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
+                                    break;
+                                }
+                            }
+                            ?>
+                            <span class="info-k">CONEMA</span>
+                            <span class="info-v"><?= htmlspecialchars($nomeAtividade) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['ctf_numero'])): ?>
+                            <span class="info-k">CTF</span>
+                            <span class="info-v"><?= htmlspecialchars($requerimento['ctf_numero']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['licenca_anterior_numero'])): ?>
+                            <span class="info-k">Lic. anterior</span>
+                            <span class="info-v"><?= htmlspecialchars($requerimento['licenca_anterior_numero']) ?></span>
+                        <?php endif; ?>
+                        <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
+                            <span class="info-k">Estudo ambiental</span>
+                            <span class="info-v"><?= $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não' ?><?php if(!empty($requerimento['tipo_estudo_ambiental'])): ?> <span class="text-muted">(<?= htmlspecialchars($requerimento['tipo_estudo_ambiental']) ?>)</span><?php endif; ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Responsável Técnico -->
+                <?php if ($exibirTecnicos && !empty($requerimento['responsavel_tecnico_nome'])): ?>
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-hard-hat"></i><span>Responsável Técnico</span></div>
+                    <div class="info-kv">
+                        <span class="info-k">Nome</span>
+                        <span class="info-v" style="font-weight:700;"><?= htmlspecialchars($requerimento['responsavel_tecnico_nome']) ?></span>
+                        <span class="info-k">Registro</span>
+                        <span class="info-v"><?= !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $ni ?></span>
+                        <span class="info-k"><?= htmlspecialchars($requerimento['responsavel_tecnico_tipo_documento'] ?? 'ART/RRT') ?></span>
+                        <span class="info-v"><?= !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $ni ?></span>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Pagamento -->
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-receipt"></i><span>Pagamento</span></div>
+                    <div class="info-kv">
+                        <?php if ($pagamento): ?>
+                            <span class="info-k">Situação</span>
+                            <span class="info-v"><?= !empty($documentoComprovanteBoleto) ? '<span style="color:#059669;font-weight:700">Comprovante recebido</span>' : 'Aguardando pagamento' ?></span>
+                            <span class="info-k">Enviado em</span>
+                            <span class="info-v"><?= !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : $ni ?></span>
+                            <?php if ($documentoBoleto): ?>
+                            <span class="info-k">Boleto (PDF)</span>
+                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
+                            <?php endif; ?>
+                            <?php if ($documentoComprovanteBoleto): ?>
+                            <span class="info-k">Comprovante</span>
+                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoComprovanteBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
+                            <?php endif; ?>
+                            <?php if (!empty($pagamento['instrucoes'])): ?>
+                            <span class="info-k">Obs.</span>
+                            <span class="info-v"><?= nl2br(htmlspecialchars($pagamento['instrucoes'])) ?></span>
+                            <?php endif; ?>
                         <?php else: ?>
-                            <div class="data-row">
-                                <div class="data-label">Área Construída:</div>
-                                <div class="data-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a) . ' m²' : $naoinformado; ?></div>
-                            </div>
-                            <div class="data-row">
-                                <div class="data-label">Número de Pavimentos:</div>
-                                <div class="data-value"><?php echo !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $naoinformado; ?></div>
-                            </div>
+                            <span class="info-k" style="grid-column:1/-1;color:var(--req-muted);font-size:.8rem;font-style:italic;padding:4px 0;">Nenhum boleto enviado ainda.</span>
                         <?php endif; ?>
-                        <div class="data-row">
-                            <div class="data-label">Responsável Técnico:</div>
-                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_nome']) ? htmlspecialchars($requerimento['responsavel_tecnico_nome']) : $naoinformado; ?></div>
-                        </div>
-                        <div class="data-row">
-                            <div class="data-label">Registro (CREA/CAU):</div>
-                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $naoinformado; ?></div>
-                        </div>
-                        <div class="data-row">
-                            <div class="data-label"><?php echo htmlspecialchars($requerimento['responsavel_tecnico_tipo_documento'] ?? 'ART/RRT'); ?> Nº:</div>
-                            <div class="data-value"><?php echo !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $naoinformado; ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['especificacao'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Composição do Imóvel:</div>
-                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['especificacao'])); ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Enquadramento CONEMA:</div>
-                            <div class="data-value">
-                                <?php
-                                    include_once __DIR__ . '/../enquadramento_conema.php';
-                                    $nomeAtividade = $requerimento['enquadramento_atividade'];
-                                    foreach ($enquadramento_conema as $cat) {
-                                        if (isset($cat['atividades'][$nomeAtividade])) {
-                                            $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome']
-                                                . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
-                                            break;
-                                        }
-                                    }
-                                    echo htmlspecialchars($nomeAtividade);
-                                ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
-                        <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
-                        <div class="data-row">
-                            <div class="data-label">Localização:</div>
-                            <div class="data-value">
-                                <?php if ($mapsIsUrl): ?>
-                                    <a href="<?= htmlspecialchars($mapsVal) ?>" target="_blank" rel="noopener"
-                                       style="color:#009640;display:inline-flex;align-items:center;gap:6px;">
-                                        <i class="fas fa-map-marker-alt"></i>Ver no Google Maps
-                                        <i class="fas fa-external-link-alt" style="font-size:.7rem;opacity:.6;"></i>
-                                    </a>
-                                <?php else: ?>
-                                    <span><?= htmlspecialchars($mapsVal) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="data-actions">
-                                <button class="copy-btn" onclick="copyToClipboard('<?= htmlspecialchars($mapsVal, ENT_QUOTES) ?>', this)" title="Copiar link">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['ctf_numero'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Cadastro Técnico Federal:</div>
-                            <div class="data-value"><?php echo htmlspecialchars($requerimento['ctf_numero']); ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['licenca_anterior_numero'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Licença anterior:</div>
-                            <div class="data-value"><?php echo htmlspecialchars($requerimento['licenca_anterior_numero']); ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['publicacao_diario_oficial'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Publicação em D.O.:</div>
-                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['publicacao_diario_oficial'])); ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['comprovante_pagamento'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Comprovante de pagamento:</div>
-                            <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['comprovante_pagamento'])); ?></div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
-                        <div class="data-row">
-                            <div class="data-label">Estudo ambiental:</div>
-                            <div class="data-value">
-                                <?php echo $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não'; ?>
-                                <?php if (!empty($requerimento['tipo_estudo_ambiental'])): ?>
-                                    <span class="ms-2 text-muted">(<?php echo htmlspecialchars($requerimento['tipo_estudo_ambiental']); ?>)</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($requerimento['observacoes'])): ?>
-                        <div class="data-row">
-                            <div class="data-label">Observações:</div>
-                                                    <div class="data-value"><?php echo nl2br(htmlspecialchars($requerimento['observacoes'] ?? '')); ?></div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['observacoes'] ?? ''); ?>', this)" title="Copiar observações">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Dados do Requerente -->
-            <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <i class="fas fa-user icon"></i>
-                    <h6>Dados do Requerente</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="data-row">
-                        <div class="data-label">Nome:</div>
-                        <div class="data-value">
-                            <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?></span>
-                        </div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>', this)" title="Copiar nome">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">E-mail:</div>
-                        <div class="data-value">
-                            <a href="mailto:<?php echo $requerimento['requerente_email']; ?>" class="text-decoration-none">
-                                <?php echo $requerimento['requerente_email']; ?>
-                            </a>
-                        </div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['requerente_email']; ?>', this)" title="Copiar e-mail">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">CPF/CNPJ:</div>
-                        <div class="data-value"><?php echo $requerimento['requerente_cpf_cnpj']; ?></div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['requerente_cpf_cnpj']; ?>', this)" title="Copiar CPF/CNPJ">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="data-row">
-                        <div class="data-label">Telefone:</div>
-                        <div class="data-value">
-                            <a href="tel:<?php echo $requerimento['requerente_telefone']; ?>" class="text-decoration-none">
-                                <?php echo $requerimento['requerente_telefone']; ?>
-                            </a>
-                        </div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['requerente_telefone']; ?>', this)" title="Copiar telefone">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dados do Proprietário -->
-            <?php if (!empty($requerimento['proprietario_id'])): ?>
-                <div class="modern-card mb-3">
-                    <div class="modern-card-header">
-                        <i class="fas fa-home icon"></i>
-                        <h6>Dados do Proprietário</h6>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="data-row">
-                            <div class="data-label">Nome:</div>
-                                                    <div class="data-value">
-                            <span class="fw-bold text-dark"><?php echo htmlspecialchars($requerimento['proprietario_nome'] ?? ''); ?></span>
-                        </div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo htmlspecialchars($requerimento['proprietario_nome'] ?? ''); ?>', this)" title="Copiar nome do proprietário">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="data-row">
-                            <div class="data-label">CPF/CNPJ:</div>
-                                                    <div class="data-value"><?php echo $requerimento['proprietario_cpf_cnpj'] ?? ''; ?></div>
-                        <div class="data-actions">
-                            <button class="copy-btn" onclick="copyToClipboard('<?php echo $requerimento['proprietario_cpf_cnpj'] ?? ''; ?>', this)" title="Copiar CPF/CNPJ do proprietário">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="modern-card mb-3">
-                    <div class="modern-card-header">
-                        <i class="fas fa-home icon"></i>
-                        <h6>Dados do Proprietário</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="text-center text-muted py-3">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Não há dados de proprietário para este requerimento.
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <i class="fas fa-receipt icon"></i>
-                    <h6>Pagamento por Boleto</h6>
-                </div>
-                <div class="card-body">
-                    <?php if ($pagamento): ?>
-                        <div class="data-row">
-                            <div class="data-label">Status do pagamento:</div>
-                            <div class="data-value">
-                                <?php echo !empty($documentoComprovanteBoleto) ? 'Comprovante enviado pelo requerente' : 'Boleto enviado e aguardando pagamento'; ?>
-                            </div>
-                        </div>
-                        <div class="data-row">
-                            <div class="data-label">Enviado em:</div>
-                            <div class="data-value"><?php echo !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : 'Não informado'; ?></div>
-                        </div>
-                        <?php if (!empty($pagamento['boleto_url'])): ?>
-                            <div class="data-row">
-                                <div class="data-label">Link do boleto:</div>
-                                <div class="data-value">
-                                    <a href="<?php echo htmlspecialchars($pagamento['boleto_url']); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
-                                        Abrir boleto externo
-                                    </a>
-                                </div>
-                            </div>
+                <!-- Publicação / Observações -->
+                <?php if (!empty($requerimento['publicacao_diario_oficial']) || !empty($requerimento['observacoes'])): ?>
+                <div class="info-card info-card-full">
+                    <div class="info-card-head"><i class="fas fa-comment-alt"></i><span>Observações</span></div>
+                    <div class="info-kv">
+                        <?php if (!empty($requerimento['publicacao_diario_oficial'])): ?>
+                        <span class="info-k">Publicação D.O.</span>
+                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['publicacao_diario_oficial'])) ?></span>
                         <?php endif; ?>
-                        <?php if (!empty($pagamento['instrucoes'])): ?>
-                            <div class="data-row">
-                                <div class="data-label">Instruções:</div>
-                                <div class="data-value"><?php echo nl2br(htmlspecialchars($pagamento['instrucoes'])); ?></div>
-                            </div>
+                        <?php if (!empty($requerimento['observacoes'])): ?>
+                        <span class="info-k">Observações</span>
+                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['observacoes'])) ?></span>
                         <?php endif; ?>
-                        <?php if ($documentoBoleto): ?>
-                            <div class="data-row">
-                                <div class="data-label">PDF do boleto:</div>
-                                <div class="data-value">
-                                    <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#0284c7;">
-                                        <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
-                                    </a>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        <?php if ($documentoComprovanteBoleto): ?>
-                            <div class="data-row">
-                                <div class="data-label">Comprovante enviado:</div>
-                                <div class="data-value">
-                                    <a href="<?php echo '../uploads/' . ltrim($documentoComprovanteBoleto['caminho'], '/\\'); ?>" target="_blank" rel="noopener" style="color:#059669;">
-                                        <?php echo htmlspecialchars($documentoComprovanteBoleto['nome_original']); ?>
-                                    </a>
-                                    <div class="text-muted small mt-1">
-                                        Recebido em <?php echo formataData($documentoComprovanteBoleto['data_upload']); ?>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <div class="text-center text-muted py-3">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Nenhum boleto foi enviado para este requerimento até o momento.
-                        </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
+                <?php endif; ?>
             </div>
 
         </div>
@@ -2499,68 +2321,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ($isIndeferido ? 'indeferido-body' : ''); ?>">
                     <?php if ($isFinalized): ?>
-                        <!-- Mensagem para processo finalizado com opção de reabertura -->
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="fas fa-check-circle text-muted" style="font-size: 3rem;"></i>
-                            </div>
-                            <h5 class="text-muted mb-2">Processo Finalizado</h5>
-                            <p class="text-muted mb-4">
-                                Este requerimento já foi finalizado e não permite mais alterações.
-                                <br>
-                                <small>O protocolo oficial já foi enviado ao requerente.</small>
-                            </p>
-
-                            <!-- Botões de ação -->
-                            <div class="mt-4">
-                                <button type="button" class="btn btn-warning btn-sm me-2"
-                                    onclick="showReopenModal()"
-                                    title="Reabrir processo para novas alterações">
-                                    <i class="fas fa-unlock me-2"></i>Reabrir Processo
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm"
-                                    onclick="showArquivarModal()"
-                                    title="Arquivar processo definitivamente">
-                                    <i class="fas fa-archive me-2"></i>Arquivar Processo
-                                </button>
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        Use apenas quando necessário. Arquivamento remove o processo da lista principal.
-                                    </small>
+                        <!-- Processo Finalizado — painel compacto -->
+                        <?php
+                        $ultimaAcaoEnc = '';
+                        foreach (array_reverse($historico) as $h) {
+                            if (stripos($h['acao'],'Finaliz') !== false || stripos($h['acao'],'Concluiu') !== false) {
+                                $ultimaAcaoEnc = $h['acao'];
+                                break;
+                            }
+                        }
+                        if (!$ultimaAcaoEnc && !empty($historico)) $ultimaAcaoEnc = end($historico)['acao'];
+                        ?>
+                        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;">
+                            <span style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-check-circle" style="color:#2e7d32;font-size:1.1rem;"></i>
+                            </span>
+                            <div style="flex:1;min-width:0;">
+                                <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo encerrado</p>
+                                <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">Status: <strong><?= htmlspecialchars($requerimento['status']) ?></strong><?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
+                                        <i class="fas fa-unlock me-1"></i>Reabrir
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm fw-medium" onclick="showArquivarModal()">
+                                        <i class="fas fa-archive me-1"></i>Arquivar
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     <?php elseif ($isIndeferido): ?>
-                        <!-- Mensagem para processo indeferido com opção de reabertura -->
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="fas fa-times-circle text-danger" style="font-size: 3rem;"></i>
-                            </div>
-                            <h5 class="text-danger mb-2">Processo Indeferido</h5>
-                            <p class="text-muted mb-4">
-                                Este requerimento foi indeferido e não permite mais alterações.
-                                <br>
-                                <small>O requerente foi notificado por email sobre o indeferimento.</small>
-                            </p>
-
-                            <!-- Botões de ação -->
-                            <div class="mt-4">
-                                <button type="button" class="btn btn-warning btn-sm me-2"
-                                    onclick="showReopenModal()"
-                                    title="Reabrir processo para novas alterações">
-                                    <i class="fas fa-unlock me-2"></i>Reabrir Processo
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm"
-                                    onclick="showArquivarModal()"
-                                    title="Arquivar processo definitivamente">
-                                    <i class="fas fa-archive me-2"></i>Arquivar Processo
-                                </button>
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        Use apenas quando necessário. Arquivamento remove o processo da lista principal.
-                                    </small>
+                        <!-- Processo Indeferido — painel compacto -->
+                        <?php
+                        $ultimaAcaoEnc = '';
+                        foreach (array_reverse($historico) as $h) {
+                            if (stripos($h['acao'],'Indefer') !== false) { $ultimaAcaoEnc = $h['acao']; break; }
+                        }
+                        if (!$ultimaAcaoEnc && !empty($historico)) $ultimaAcaoEnc = end($historico)['acao'];
+                        ?>
+                        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;">
+                            <span style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-ban" style="color:#b91c1c;font-size:1.1rem;"></i>
+                            </span>
+                            <div style="flex:1;min-width:0;">
+                                <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo indeferido</p>
+                                <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">O requerente foi notificado por e-mail<?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
+                                        <i class="fas fa-unlock me-1"></i>Reabrir
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm fw-medium" onclick="showArquivarModal()">
+                                        <i class="fas fa-archive me-1"></i>Arquivar
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -2599,24 +2410,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                       <?php if ($setorAtual === 'setor1'): ?>
                                           <button type="button" class="btn btn-outline-success btn-sm fw-medium"
                                               onclick="abrirFM('fm-setor2')">
-                                              <i class="fas fa-arrow-right me-1"></i>Enviar para Fiscalização
+                                              <i class="fas fa-arrow-right me-1"></i>Enviar à Fiscalização de Obras
                                           </button>
                                           <button type="button" class="btn btn-outline-primary btn-sm fw-medium"
                                               onclick="abrirFM('fm-finalizar-s1')">
-                                              <i class="fas fa-check me-1"></i>Finalizar no Setor 1
+                                              <i class="fas fa-check me-1"></i>Finalizar na Triagem
                                           </button>
                                       <?php elseif ($setorAtual === 'setor2'): ?>
                                           <button type="button" class="btn btn-outline-success btn-sm fw-medium"
                                               onclick="abrirFM('fm-setor3')">
-                                              <i class="fas fa-arrow-right me-1"></i>Enviar para Revisão Final
+                                              <i class="fas fa-arrow-right me-1"></i>Enviar ao Secretário
                                           </button>
                                           <button type="button" class="btn btn-outline-primary btn-sm fw-medium"
                                               onclick="abrirFM('fm-finalizar-s2')">
-                                              <i class="fas fa-check me-1"></i>Finalizar no Setor 2
+                                              <i class="fas fa-check me-1"></i>Finalizar na Fiscalização
                                           </button>
                                           <button type="button" class="btn btn-outline-secondary btn-sm fw-medium"
                                               onclick="abrirFM('fm-devolver-s1')">
-                                              <i class="fas fa-arrow-left me-1"></i>Devolver ao Setor 1
+                                              <i class="fas fa-arrow-left me-1"></i>Devolver à Triagem
                                           </button>
                                       <?php elseif ($setorAtual === 'setor3'): ?>
                                           <button type="button" class="btn btn-outline-primary btn-sm fw-medium"
@@ -2625,7 +2436,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                           </button>
                                           <button type="button" class="btn btn-outline-secondary btn-sm fw-medium"
                                               onclick="abrirFM('fm-devolver-s2')">
-                                              <i class="fas fa-arrow-left me-1"></i>Devolver ao Setor 2
+                                              <i class="fas fa-arrow-left me-1"></i>Devolver à Fiscalização
                                           </button>
                                       <?php endif; ?>
                                   </div>
