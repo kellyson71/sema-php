@@ -308,18 +308,20 @@ $statusOperacionais = adminStatusFluxoPrincipal();
             <?php endif; ?>
         </form>
         <!-- Toggle encerrados -->
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--req-line,#e5e8e6);">
         <?php if (!$mostrarEncerrados): ?>
             <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
-               style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px dashed var(--req-line-strong,#ccc);border-radius:10px;font-size:.78rem;font-weight:700;color:var(--req-muted,#888);text-decoration:none;white-space:nowrap;"
+               style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px dashed var(--req-line-strong,#ccc);border-radius:8px;font-size:.77rem;font-weight:600;color:var(--req-muted,#888);text-decoration:none;white-space:nowrap;"
                title="Exibir processos finalizados, indeferidos e arquivados">
-                <i class="fas fa-eye-slash fa-xs"></i>Encerrados (<?= $totalEncerrados ?>)
+                <i class="fas fa-eye-slash fa-xs"></i>Mostrar encerrados <span style="opacity:.7">(<?= $totalEncerrados ?>)</span>
             </a>
         <?php else: ?>
             <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '', 'pagina' => 1])) ?>"
-               style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--req-primary,#2563eb);border-radius:10px;font-size:.78rem;font-weight:700;color:var(--req-primary,#2563eb);text-decoration:none;white-space:nowrap;">
+               style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #dde8e2;border-radius:8px;font-size:.77rem;font-weight:600;color:#5a8a6a;text-decoration:none;white-space:nowrap;">
                 <i class="fas fa-eye fa-xs"></i>Ocultar encerrados
             </a>
         <?php endif; ?>
+        </div>
         <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
                 <span class="active-filter-chip">
