@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     }
 
                     // Atualizar status para "Indeferido" automaticamente
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', aguardando_acao = 'concluido', observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
                     $stmt->execute([$observacoesCombinadas, $id]);
 
                     // Registrar no histórico de ações
@@ -386,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
                     $pdo->beginTransaction();
 
                     // Atualizar status para "Finalizado" automaticamente
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?");
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', aguardando_acao = 'concluido', data_atualizacao = NOW() WHERE id = ?");
                     $stmt->execute([$id]);
 
                     // Registrar no histórico de ações
