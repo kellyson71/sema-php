@@ -1531,6 +1531,282 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
 }
 ?>
 
+<?php
+// ---------- Dados do setor para stepper e painel ----------
+$setorAtual    = $requerimento['setor_atual']    ?? 'setor1';
+$aguardandoAcao = $requerimento['aguardando_acao'] ?? 'triagem_setor1';
+$setorOrdem    = ['setor1' => 0, 'setor2' => 1, 'setor3' => 2];
+$setorAtualIdx = $setorOrdem[$setorAtual] ?? 0;
+$isProcessoConcluido = ($aguardandoAcao === 'concluido');
+$acaoLabelsMap = [
+    'triagem_setor1'  => 'Triagem pendente',
+    'boleto_pendente' => 'Aguardando boleto',
+    'analise_setor2'  => 'Em análise — Setor 2',
+    'revisao_setor3'  => 'Revisão final — Setor 3',
+    'envio_cidadao'   => 'Pronto para envio ao cidadão',
+    'concluido'       => 'Processo concluído',
+];
+$acaoAtualLabel = $acaoLabelsMap[$aguardandoAcao] ?? $aguardandoAcao;
+if (isset($_GET['error']) && $_GET['error'] === 'motivo_obrigatorio') {
+    $mensagem = 'O motivo da devolução é obrigatório.';
+    $mensagemTipo = 'danger';
+}
+if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
+    $mensagem = '✅ Fluxo atualizado com sucesso.';
+    $mensagemTipo = 'success';
+}
+?>
+<style>
+/* ---- Stepper de setor ---- */
+.setor-stepper { display:flex; align-items:center; gap:0; background:#fff; border:1px solid #e3e8e4; border-radius:14px; padding:14px 22px; margin-bottom:14px; flex-wrap:wrap; gap:4px; }
+.stepper-step { display:flex; align-items:center; gap:8px; font-size:.82rem; font-weight:600; color:#9ca3af; padding:4px 10px; border-radius:8px; }
+.stepper-step.done { color:#14532d; }
+.stepper-step.active { background:#e6f2ea; color:#0f4425; font-weight:800; }
+.stepper-step.done .step-dot { background:#14532d; }
+.stepper-step.active .step-dot { background:#0f4425; box-shadow:0 0 0 3px rgba(20,83,45,.2); }
+.step-dot { width:10px; height:10px; border-radius:50%; background:#d1d5db; flex-shrink:0; }
+.stepper-sep { width:24px; height:2px; background:#e3e8e4; border-radius:2px; }
+.stepper-sep.done { background:#14532d; }
+.stepper-acao { margin-left:auto; font-size:.78rem; font-weight:700; color:#14532d; background:#e6f2ea; padding:4px 12px; border-radius:999px; }
+.stepper-acao.boleto { background:#fff3dc; color:#b7791f; }
+.stepper-acao.revisao { background:#f3e8ff; color:#7e22ce; }
+.stepper-acao.concluido { background:#f1f5f0; color:#666; }
+
+/* ---- Painel de ações do setor ---- */
+.setor-action-panel { background:#fff; border:1px solid #e3e8e4; border-radius:14px; padding:16px 20px; margin-bottom:14px; display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+.action-panel-label { font-size:.8rem; font-weight:700; color:#66756d; text-transform:uppercase; letter-spacing:.06em; flex-basis:100%; }
+.btn-acao-primary { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; border-radius:12px; background:#14532d; color:#fff; border:none; font-size:.88rem; font-weight:700; cursor:pointer; text-decoration:none; transition:background .15s; }
+.btn-acao-primary:hover { background:#0f4425; color:#fff; }
+.btn-acao-secondary { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:10px; background:#fff; color:#102117; border:1px solid #e3e8e4; font-size:.83rem; font-weight:600; cursor:pointer; text-decoration:none; transition:all .15s; }
+.btn-acao-secondary:hover { border-color:#14532d; color:#14532d; }
+.btn-acao-danger { border-color:#fca5a5; color:#8f2222; }
+.btn-acao-danger:hover { background:#fce8e8; border-color:#8f2222; }
+.btn-acao-warning { border-color:#fde68a; color:#b7791f; }
+.action-panel-sep { width:1px; height:30px; background:#e3e8e4; }
+.aviso-inline { font-size:.78rem; background:#fff3dc; color:#92400e; padding:5px 12px; border-radius:8px; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:6px; }
+/* Modais de confirmação inline */
+.acao-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9000; align-items:center; justify-content:center; }
+.acao-modal-backdrop.open { display:flex; }
+.acao-modal { background:#fff; border-radius:18px; padding:28px; max-width:420px; width:100%; margin:16px; box-shadow:0 20px 60px rgba(0,0,0,.15); }
+.acao-modal h3 { margin:0 0 10px; font-size:1.1rem; font-weight:800; }
+.acao-modal p { margin:0 0 16px; color:#66756d; font-size:.88rem; }
+.acao-modal textarea { width:100%; padding:10px; border:1px solid #e3e8e4; border-radius:10px; font-size:.85rem; resize:vertical; margin-bottom:14px; }
+.acao-modal .modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+</style>
+
+<!-- STEPPER DE SETOR -->
+<div class="container-fluid px-4 pt-3">
+<?php
+$steps = [
+    ['key'=>'setor1','label'=>'Setor 1','sub'=>'Triagem'],
+    ['key'=>'setor2','label'=>'Setor 2','sub'=>'Análise'],
+    ['key'=>'setor3','label'=>'Setor 3','sub'=>'Revisão'],
+    ['key'=>'fim',   'label'=>'Finalizado','sub'=>''],
+];
+$isFim = $isProcessoConcluido;
+?>
+<div class="setor-stepper">
+    <?php foreach ($steps as $i => $step):
+        if ($step['key'] === 'fim') {
+            $cls = $isFim ? 'done' : '';
+        } else {
+            $idx = $setorOrdem[$step['key']] ?? -1;
+            if ($isFim) $cls = 'done';
+            elseif ($idx < $setorAtualIdx) $cls = 'done';
+            elseif ($idx === $setorAtualIdx) $cls = 'active';
+            else $cls = '';
+        }
+        if ($i > 0): $sepCls = ($cls === 'done' || ($setorOrdem[$steps[$i-1]['key'] ?? ''] ?? -1) < $setorAtualIdx || $isFim) ? 'done' : ''; ?>
+            <div class="stepper-sep <?= $sepCls ?>"></div>
+        <?php endif; ?>
+        <div class="stepper-step <?= $cls ?>">
+            <div class="step-dot"></div>
+            <span><?= $step['label'] ?><?= $step['sub'] ? '<br><small style="font-weight:600;opacity:.7">' . $step['sub'] . '</small>' : '' ?></span>
+        </div>
+    <?php endforeach; ?>
+    <?php
+    $acaoCls = '';
+    if ($aguardandoAcao === 'boleto_pendente') $acaoCls = 'boleto';
+    elseif ($aguardandoAcao === 'revisao_setor3') $acaoCls = 'revisao';
+    elseif ($aguardandoAcao === 'concluido') $acaoCls = 'concluido';
+    ?>
+    <span class="stepper-acao <?= $acaoCls ?>"><i class="fas fa-circle-dot me-1"></i><?= htmlspecialchars($acaoAtualLabel) ?></span>
+</div>
+
+<!-- PAINEL DE AÇÕES DO SETOR -->
+<?php if (!$isBlocked): ?>
+<div class="setor-action-panel">
+    <span class="action-panel-label"><i class="fas fa-bolt me-1"></i>Ações do fluxo</span>
+
+    <?php if ($setorAtual === 'setor1'): ?>
+        <!-- Setor 1: ação principal = enviar ao Setor 2 -->
+        <button class="btn-acao-primary" onclick="abrirModal('modal-setor2')">
+            <i class="fas fa-arrow-right"></i> Enviar ao Setor 2
+        </button>
+        <div class="action-panel-sep"></div>
+        <button class="btn-acao-secondary" onclick="abrirModal('modal-concluir-direto')">
+            <i class="fas fa-check"></i> Concluir direto
+        </button>
+        <?php if ($aguardandoAcao !== 'boleto_pendente'): ?>
+            <form method="post" action="fluxo_setor_handler.php" style="display:inline">
+                <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+                <input type="hidden" name="fluxo_acao" value="marcar_envio_cidadao">
+                <button type="submit" class="btn-acao-secondary btn-acao-warning"
+                    onclick="return confirm('Marcar como aguardando boleto?')">
+                    <i class="fas fa-file-invoice-dollar"></i> Aguardar boleto
+                </button>
+            </form>
+        <?php else: ?>
+            <span class="aviso-inline"><i class="fas fa-triangle-exclamation"></i> Boleto pendente</span>
+        <?php endif; ?>
+
+    <?php elseif ($setorAtual === 'setor2'): ?>
+        <!-- Setor 2: ação principal = enviar ao Setor 3 -->
+        <?php if ($aguardandoAcao === 'envio_cidadao'): ?>
+            <span class="aviso-inline"><i class="fas fa-circle-check"></i> Pronto para envio ao cidadão</span>
+            <button class="btn-acao-secondary" onclick="abrirModal('modal-concluir-s2')">
+                <i class="fas fa-check-double"></i> Concluir e finalizar
+            </button>
+        <?php else: ?>
+            <button class="btn-acao-primary" onclick="abrirModal('modal-setor3')">
+                <i class="fas fa-shield-halved"></i> Enviar ao Setor 3
+            </button>
+            <div class="action-panel-sep"></div>
+            <button class="btn-acao-secondary" onclick="abrirModal('modal-concluir-s2')">
+                <i class="fas fa-check-double"></i> Concluir e finalizar
+            </button>
+            <button class="btn-acao-secondary" onclick="abrirModal('modal-devolver-s1')">
+                <i class="fas fa-rotate-left"></i> Devolver ao Setor 1
+            </button>
+        <?php endif; ?>
+
+    <?php elseif ($setorAtual === 'setor3'): ?>
+        <!-- Setor 3: aprovar ou devolver -->
+        <form method="post" action="fluxo_setor_handler.php" style="display:inline">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
+            <button type="submit" class="btn-acao-primary"
+                onclick="return confirm('Aprovar e enviar de volta ao Setor 2 para finalização?')">
+                <i class="fas fa-circle-check"></i> Aprovar e concluir revisão
+            </button>
+        </form>
+        <div class="action-panel-sep"></div>
+        <button class="btn-acao-secondary btn-acao-danger" onclick="abrirModal('modal-devolver-s3')">
+            <i class="fas fa-rotate-left"></i> Devolver ao Setor 2
+        </button>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+</div><!-- /container pré-stepper -->
+
+<!-- MODAIS INLINE DE CONFIRMAÇÃO -->
+<div class="acao-modal-backdrop" id="modal-setor2">
+    <div class="acao-modal">
+        <h3><i class="fas fa-arrow-right me-2" style="color:#14532d"></i>Enviar ao Setor 2</h3>
+        <p>O processo será encaminhado para a fila de análise do Setor 2.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="enviar_setor2">
+            <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+            <?php if (!($requerimento['documentos_count'] ?? 0)): ?>
+                <p class="aviso-inline mb-2"><i class="fas fa-triangle-exclamation"></i> Nenhum documento gerado. Você pode continuar mesmo assim.</p>
+            <?php endif; ?>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-setor2')">Cancelar</button>
+                <button type="submit" class="btn-acao-primary"><i class="fas fa-arrow-right"></i> Confirmar envio</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="acao-modal-backdrop" id="modal-setor3">
+    <div class="acao-modal">
+        <h3><i class="fas fa-shield-halved me-2" style="color:#14532d"></i>Enviar ao Setor 3</h3>
+        <p>O processo será encaminhado para revisão final do Setor 3.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="enviar_setor3">
+            <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-setor3')">Cancelar</button>
+                <button type="submit" class="btn-acao-primary"><i class="fas fa-shield-halved"></i> Confirmar envio</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="acao-modal-backdrop" id="modal-concluir-direto">
+    <div class="acao-modal">
+        <h3><i class="fas fa-check me-2" style="color:#14532d"></i>Concluir diretamente</h3>
+        <p>O processo será finalizado sem passar pelo Setor 2 ou 3.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="concluir_direto">
+            <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-concluir-direto')">Cancelar</button>
+                <button type="submit" class="btn-acao-primary"><i class="fas fa-check"></i> Confirmar conclusão</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="acao-modal-backdrop" id="modal-concluir-s2">
+    <div class="acao-modal">
+        <h3><i class="fas fa-check-double me-2" style="color:#14532d"></i>Concluir e finalizar</h3>
+        <p>O processo será marcado como <strong>Finalizado</strong>.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="concluir_setor2">
+            <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-concluir-s2')">Cancelar</button>
+                <button type="submit" class="btn-acao-primary"><i class="fas fa-check-double"></i> Finalizar processo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="acao-modal-backdrop" id="modal-devolver-s1">
+    <div class="acao-modal">
+        <h3><i class="fas fa-rotate-left me-2" style="color:#b7791f"></i>Devolver ao Setor 1</h3>
+        <p>Informe o motivo da devolução.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="devolver_setor1">
+            <textarea name="motivo" rows="3" placeholder="Motivo..." required></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-devolver-s1')">Cancelar</button>
+                <button type="submit" class="btn-acao-secondary btn-acao-warning"><i class="fas fa-rotate-left"></i> Devolver</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="acao-modal-backdrop" id="modal-devolver-s3">
+    <div class="acao-modal">
+        <h3><i class="fas fa-rotate-left me-2" style="color:#8f2222"></i>Devolver ao Setor 2</h3>
+        <p>Informe o motivo da devolução. Este campo é obrigatório.</p>
+        <form method="post" action="fluxo_setor_handler.php">
+            <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+            <input type="hidden" name="fluxo_acao" value="devolver_setor2">
+            <textarea name="motivo" rows="3" placeholder="Motivo da devolução..." required></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-acao-secondary" onclick="fecharModal('modal-devolver-s3')">Cancelar</button>
+                <button type="submit" class="btn-acao-secondary btn-acao-danger"><i class="fas fa-rotate-left"></i> Devolver com motivo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.acao-modal-backdrop').forEach(function(el) {
+    el.addEventListener('click', function(e) { if (e.target === el) el.classList.remove('open'); });
+});
+</script>
+
 <div class="container-fluid px-4">
     <!-- RESUMO DO REQUERIMENTO -->
     <div class="card-modern mb-4 <?php echo $isFinalized ? 'finalized-main-card' : ($isIndeferido ? 'indeferido-main-card' : ''); ?>">

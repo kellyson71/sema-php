@@ -17,6 +17,14 @@ $emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status 
 $naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
 $novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
 
+// Contagens para o hub de setores
+$hubSetores = [];
+foreach (['setor1','setor2','setor3'] as $s) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND aguardando_acao != 'concluido'");
+    $st->execute([$s]);
+    $hubSetores[$s] = (int) $st->fetchColumn();
+}
+
 $stmt = $pdo->query("
     SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
     FROM requerimentos r
@@ -137,6 +145,16 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .hero-cta-secondary:hover { border-color:var(--primary-soft-2); color:var(--primary); }
     .hero-helper { margin-top:12px; display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 12px; border-radius:999px; background:var(--surface-soft); color:var(--muted); font-size:.8rem; font-weight:600; }
     .hero-helper i { color:var(--primary); }
+    /* Hub de setores */
+    .setor-hub { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+    .setor-hub-card { display:flex; flex-direction:column; gap:6px; padding:18px 20px; background:#fff; border:2px solid var(--line); border-radius:18px; text-decoration:none; color:var(--ink); transition:border-color .15s, background .15s; }
+    .setor-hub-card:hover { border-color:var(--primary); background:var(--surface-soft); color:var(--primary); }
+    .setor-hub-num { font-size:1.9rem; font-weight:800; color:var(--ink); line-height:1; }
+    .setor-hub-num.alerta { color:#d97706; }
+    .setor-hub-label { font-size:.9rem; font-weight:800; }
+    .setor-hub-sub { font-size:.78rem; color:var(--muted); }
+    .setor-hub-cta { margin-top:4px; font-size:.78rem; font-weight:700; color:var(--primary); }
+    @media (max-width:767px) { .setor-hub { grid-template-columns:1fr; } }
     .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
     .metric-card, .panel-card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:var(--card-shadow); }
     .metric-card { padding:22px; }
@@ -179,6 +197,25 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
             <i class="fas fa-arrow-rotate-left"></i>
             A fila rápida abre só os não vistos. Na listagem, há um atalho para voltar ao total.
         </div>
+    </section>
+
+    <section class="setor-hub">
+        <?php
+        $hubMeta = [
+            'setor1' => ['label' => 'Setor 1', 'sub' => 'Triagem',       'icon' => 'fa-inbox'],
+            'setor2' => ['label' => 'Setor 2', 'sub' => 'Análise',       'icon' => 'fa-magnifying-glass'],
+            'setor3' => ['label' => 'Setor 3', 'sub' => 'Revisão Final', 'icon' => 'fa-shield-halved'],
+        ];
+        foreach ($hubMeta as $s => $hm):
+            $n = $hubSetores[$s];
+        ?>
+            <a href="fila_setor.php?setor=<?= $s ?>" class="setor-hub-card">
+                <strong class="setor-hub-num <?= $n > 0 ? 'alerta' : '' ?>"><?= $n ?></strong>
+                <span class="setor-hub-label"><i class="fas <?= $hm['icon'] ?> me-1"></i><?= $hm['label'] ?></span>
+                <span class="setor-hub-sub"><?= $hm['sub'] ?></span>
+                <span class="setor-hub-cta">Abrir fila <i class="fas fa-arrow-right fa-xs"></i></span>
+            </a>
+        <?php endforeach; ?>
     </section>
 
     <section class="metric-grid">
