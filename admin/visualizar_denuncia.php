@@ -31,7 +31,10 @@ $anexos = $stmtAnexos->fetchAll();
 $mensagem = '';
 if (isset($_GET['success'])) {
     if ($_GET['success'] == 'atualizada') $mensagem = "✅ Status atualizado com sucesso!";
+    if ($_GET['success'] == 'editada')    $mensagem = "✅ Denúncia atualizada com sucesso!";
 }
+$erroEdicao = '';
+if (isset($_GET['error']) && $_GET['error'] == 'vazio') $erroEdicao = "⚠️ Nome e relato são obrigatórios.";
 
 include 'header.php';
 ?>
@@ -77,6 +80,10 @@ include 'header.php';
                    class="bg-white border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
                     <i class="fas fa-file-signature mr-2"></i> Gerar Documento
                 </a>
+                <button type="button" onclick="toggleEdicao()" id="btnEditar"
+                        class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                    <i class="fas fa-edit mr-2"></i> Editar
+                </button>
                 <form action="processar_denuncia.php" method="POST" class="d-inline" onsubmit="return confirm('ATENÇÃO: Esta ação é irreversível e excluirá todos os dados e arquivos anexados desta denúncia. Deseja continuar?')">
                     <input type="hidden" name="acao" value="excluir">
                     <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
@@ -104,16 +111,27 @@ include 'header.php';
                 <?php echo $mensagem; ?>
             </div>
         <?php endif; ?>
+        <?php if ($erroEdicao): ?>
+            <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+                <?php echo $erroEdicao; ?>
+            </div>
+        <?php endif; ?>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Coluna Principal (Dados) -->
             <div class="lg:col-span-2 space-y-6">
                 
+                <!-- Formulário de edição (agrupa os dois cards editáveis) -->
+                <form id="formEdicao" action="processar_denuncia.php" method="POST">
+                    <input type="hidden" name="acao" value="editar">
+                    <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
+
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
                         <i class="fas fa-user-tag text-gray-400 mr-2"></i> Informações da Denúncia
                     </h3>
-                    <div class="space-y-4">
+                    <!-- Modo visualização -->
+                    <div id="viewInfos" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <span class="block text-sm text-gray-500 mb-1">Nome/Razão Social:</span>
@@ -129,16 +147,62 @@ include 'header.php';
                             <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['infrator_endereco'] ?: 'Não informado'); ?></span>
                         </div>
                     </div>
+                    <!-- Modo edição -->
+                    <div id="editInfos" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome/Razão Social <span class="text-red-500">*</span></label>
+                                <input type="text" name="infrator_nome" required
+                                       value="<?php echo htmlspecialchars($denuncia['infrator_nome']); ?>"
+                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ</label>
+                                <input type="text" name="infrator_cpf_cnpj"
+                                       value="<?php echo htmlspecialchars($denuncia['infrator_cpf_cnpj']); ?>"
+                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Endereço da Ocorrência</label>
+                                <input type="text" name="infrator_endereco"
+                                       value="<?php echo htmlspecialchars($denuncia['infrator_endereco']); ?>"
+                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center text-red-600">
                         <i class="fas fa-exclamation-triangle mr-2"></i> Relato e Detalhes
                     </h3>
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed"><?php echo htmlspecialchars($denuncia['observacoes']); ?></p>
+                    <!-- Modo visualização -->
+                    <div id="viewRelato">
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <p class="text-gray-800 whitespace-pre-wrap leading-relaxed"><?php echo htmlspecialchars($denuncia['observacoes']); ?></p>
+                        </div>
+                    </div>
+                    <!-- Modo edição -->
+                    <div id="editRelato" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Relato e Observações <span class="text-red-500">*</span></label>
+                        <textarea name="observacoes" rows="6" required
+                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"><?php echo htmlspecialchars($denuncia['observacoes']); ?></textarea>
                     </div>
                 </div>
+
+                <!-- Botões salvar/cancelar (apenas no modo edição) -->
+                <div id="botoesEdicao" class="hidden bg-white rounded-xl shadow-sm border border-blue-100 p-4 flex justify-end gap-3">
+                    <button type="button" onclick="toggleEdicao()"
+                            class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                        <i class="fas fa-times mr-2"></i> Cancelar
+                    </button>
+                    <button type="submit"
+                            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-colors">
+                        <i class="fas fa-save mr-2"></i> Salvar Alterações
+                    </button>
+                </div>
+
+                </form>
 
                 <!-- Histórico de Ações -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -315,6 +379,30 @@ include 'header.php';
         </div>
 
     </div>
+    <script>
+        function toggleEdicao() {
+            const editando = document.getElementById('editInfos').classList.contains('hidden');
+
+            document.getElementById('viewInfos').classList.toggle('hidden', editando);
+            document.getElementById('editInfos').classList.toggle('hidden', !editando);
+            document.getElementById('viewRelato').classList.toggle('hidden', editando);
+            document.getElementById('editRelato').classList.toggle('hidden', !editando);
+            document.getElementById('botoesEdicao').classList.toggle('hidden', !editando);
+
+            const btn = document.getElementById('btnEditar');
+            if (editando) {
+                btn.innerHTML = '<i class="fas fa-times mr-2"></i> Cancelar';
+                btn.classList.replace('border-blue-200', 'border-gray-200');
+                btn.classList.replace('text-blue-600', 'text-gray-600');
+                btn.classList.replace('hover:bg-blue-50', 'hover:bg-gray-50');
+            } else {
+                btn.innerHTML = '<i class="fas fa-edit mr-2"></i> Editar';
+                btn.classList.replace('border-gray-200', 'border-blue-200');
+                btn.classList.replace('text-gray-600', 'text-blue-600');
+                btn.classList.replace('hover:bg-gray-50', 'hover:bg-blue-50');
+            }
+        }
+    </script>
 </body>
 </html>
 <?php include 'footer.php'; ?>

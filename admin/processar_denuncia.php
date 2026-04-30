@@ -85,6 +85,25 @@ if ($acao === 'cadastrar') {
         header("Location: denuncias.php?error=criacao");
         exit;
     }
+} elseif ($acao === 'editar') {
+    $denunciaId = (int)$_POST['id'];
+    $infrator_nome    = trim($_POST['infrator_nome'] ?? '');
+    $infrator_cpf_cnpj = trim($_POST['infrator_cpf_cnpj'] ?? '');
+    $infrator_endereco = trim($_POST['infrator_endereco'] ?? '');
+    $observacoes      = trim($_POST['observacoes'] ?? '');
+
+    if (empty($infrator_nome) || empty($observacoes)) {
+        header("Location: visualizar_denuncia.php?id=$denunciaId&error=vazio");
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE denuncias SET infrator_nome=?, infrator_cpf_cnpj=?, infrator_endereco=?, observacoes=? WHERE id=?");
+    $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $denunciaId]);
+
+    registrarHistoricoDenuncia($pdo, $denunciaId, 'Edição', 'Dados da denúncia atualizados.');
+
+    header("Location: visualizar_denuncia.php?id=$denunciaId&success=editada");
+    exit;
 } elseif ($acao === 'alterar_status') {
     $denunciaId = (int)$_POST['id'];
     $novoStatus = $_POST['status'];
