@@ -22,7 +22,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
 // Slugs legados que não existem mais em tipos_alvara.php (anteriores à refatoração
 // de licenciamento ambiental 2026-04) mas ainda aparecem em requerimentos antigos.
 $slugsLegadosPorCategoria = [
-    'ambiental' => ['licenca_previa'], // antiga "LP — Licença Prévia Ambiental"
+    'obras' => ['licenca_previa'], // slug legado de LP anterior à refatoração 2026-04; não é licença ambiental
 ];
 foreach ($slugsLegadosPorCategoria as $cat => $slugs) {
     foreach ($slugs as $slug) {

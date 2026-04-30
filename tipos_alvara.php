@@ -357,6 +357,12 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
+    'licenca_previa' => [
+        'nome'      => 'LP — Licença Prévia (legado)',
+        'categoria' => 'obras',
+        'oculto'    => true,
+        'documentos' => [],
+    ],
     'licenca_previa_obras' => [
         'nome' => 'LICENÇA PRÉVIA DE OBRAS (NÃO AMBIENTAL)',
         'categoria' => 'obras',
