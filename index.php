@@ -446,9 +446,41 @@ include_once 'enquadramento_conema.php';
                     return false;
                 }
                 
-                // Mostrar loading
+                // Coletar arquivos selecionados para exibir no overlay
+                const arquivosInfo = [];
+                let totalBytes = 0;
+                document.querySelectorAll('input[type="file"]').forEach(input => {
+                    Array.from(input.files).forEach(f => {
+                        arquivosInfo.push(f.name);
+                        totalBytes += f.size;
+                    });
+                });
+
+                const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+                const listaHTML = arquivosInfo.map(nome =>
+                    `<li style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
+                        <i class="fas fa-file-pdf" style="color:#ff6b6b;flex-shrink:0;"></i>
+                        <span style="font-size:0.82rem;word-break:break-all;">${nome}</span>
+                     </li>`
+                ).join('');
+
+                document.getElementById('upload-lista').innerHTML = listaHTML || '<li style="color:rgba(255,255,255,0.6);font-size:0.82rem;">Nenhum arquivo adicional</li>';
+                document.getElementById('upload-total').textContent = arquivosInfo.length
+                    ? `${arquivosInfo.length} arquivo(s) · ${totalMB} MB`
+                    : '';
+
                 document.getElementById('loading').style.display = 'flex';
                 document.getElementById('botao').disabled = true;
+
+                // Bloquear saída acidental enquanto envia
+                window._enviando = true;
+            });
+
+            window.addEventListener('beforeunload', function(e) {
+                if (window._enviando) {
+                    e.preventDefault();
+                    e.returnValue = 'Seu requerimento ainda está sendo enviado. Sair agora irá cancelar o envio.';
+                }
             });
             </script>
         </section>
@@ -715,9 +747,32 @@ include_once 'enquadramento_conema.php';
     <!-- Faixa gráfica institucional -->
     <div style="width:100%; height:50px; background:url('./assets/img/faixa.png') repeat-x center / auto 100%; line-height:0; font-size:0;"></div>
 
-    <!-- Loading Spinner -->
-    <div id="loading" class="loading" style="display: none;">
-        <div class="loading-spinner"></div>
+    <!-- Overlay de envio -->
+    <div id="loading" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
+        <div style="background:#1a472a;border-radius:16px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.5);color:#fff;text-align:center;">
+
+            <!-- Ícone animado -->
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+                <i class="fas fa-cloud-upload-alt" style="font-size:1.8rem;animation:pulseUp 1.4s ease-in-out infinite;"></i>
+            </div>
+
+            <h2 style="margin:0 0 6px;font-size:1.2rem;font-weight:700;">Enviando seu requerimento…</h2>
+            <p style="margin:0 0 4px;font-size:0.85rem;color:rgba(255,255,255,0.75);">Aguarde enquanto os documentos são enviados ao servidor.</p>
+            <p id="upload-total" style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin:0 0 20px;"></p>
+
+            <!-- Barra de progresso indeterminada -->
+            <div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden;margin-bottom:20px;">
+                <div style="height:100%;width:40%;background:#4ade80;border-radius:2px;animation:slide 1.6s ease-in-out infinite;"></div>
+            </div>
+
+            <!-- Lista de arquivos -->
+            <?php /* lista preenchida pelo JS */ ?>
+            <ul id="upload-lista" style="list-style:none;padding:0;margin:0 0 20px;max-height:160px;overflow-y:auto;text-align:left;"></ul>
+
+            <p style="font-size:0.75rem;color:rgba(255,255,255,0.45);margin:0;">
+                <i class="fas fa-lock" style="margin-right:4px;"></i>Não feche nem recarregue esta página
+            </p>
+        </div>
     </div>
 
     <script>
@@ -1216,6 +1271,16 @@ include_once 'enquadramento_conema.php';
 
         @keyframes spinner-border {
             to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulseUp {
+            0%, 100% { transform: translateY(0); opacity: 1; }
+            50%       { transform: translateY(-6px); opacity: 0.7; }
+        }
+
+        @keyframes slide {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(350%); }
         }
     </style>
 </body>
