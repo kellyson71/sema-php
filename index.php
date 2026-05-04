@@ -1046,9 +1046,8 @@ include_once 'enquadramento_conema.php';
                 return false;
             }
 
-            // Verificar tamanho do arquivo (máximo 100MB)
-            if (file.size > 104857600) {
-                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 100MB.');
+            // Verificar tamanho do arquivo (máximo 10MB)
+            if (file.size > 10485760) {
                 input.value = '';
                 return false;
             }

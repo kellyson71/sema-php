@@ -12,73 +12,67 @@ if (!isset($_POST['tipo']) || !isset($tipos_alvara[$_POST['tipo']])) {
 $tipo = $_POST['tipo'];
 $alvara = $tipos_alvara[$tipo];
 
-echo '<div class="documentos-lista">';
-echo '<h3>' . $alvara['nome'] . '</h3>';
+function renderFileInput($id, $documento, $required = true) {
+    $req = $required ? ' required' : '';
+    echo '<div class="file-input-container">';
+    echo '<label for="' . htmlspecialchars($id) . '">' . htmlspecialchars($documento) . ($required ? ' <span class="obrigatorio">*</span>' : '') . '</label>';
+    echo '<div class="file-drop-zone">';
+    echo '<input type="file" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($id) . '" accept=".pdf"' . $req . '>';
+    echo '<div class="file-drop-content">';
+    echo '<i class="fas fa-cloud-upload-alt file-upload-icon"></i>';
+    echo '<span class="file-drop-text">Clique ou arraste o PDF aqui</span>';
+    echo '<span class="file-drop-hint"><i class="fas fa-file-pdf"></i> PDF &middot; máximo 10 MB</span>';
+    echo '</div>';
+    echo '<div class="file-selected-info">';
+    echo '<i class="fas fa-file-pdf file-pdf-icon"></i>';
+    echo '<div class="file-sel-details"><span class="file-sel-name"></span><span class="file-sel-size"></span></div>';
+    echo '<button type="button" class="file-remove-btn" title="Remover arquivo"><i class="fas fa-times"></i></button>';
+    echo '</div>';
+    echo '<span class="file-error-msg"></span>';
+    echo '</div>';
+    echo '</div>';
+}
 
-// Tratamento especial para alvará de funcionamento
+echo '<div class="documentos-lista">';
+echo '<h3>' . htmlspecialchars($alvara['nome']) . '</h3>';
+
 if ($tipo === 'funcionamento') {
-    // Documentos para Pessoa Física
     if (isset($alvara['pessoa_fisica'])) {
         echo '<div class="documentos-section">';
         echo '<h4>Documentos para Pessoa Física</h4>';
         foreach ($alvara['pessoa_fisica'] as $index => $documento) {
-            $id = 'doc_pf_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. 100MB)</small>';
-            echo '</div>';
+            renderFileInput('doc_pf_' . $tipo . '_' . $index, $documento, true);
         }
         echo '</div>';
     }
-
-    // Documentos para Pessoa Jurídica
     if (isset($alvara['pessoa_juridica'])) {
         echo '<div class="documentos-section">';
         echo '<h4>Documentos para Pessoa Jurídica</h4>';
         foreach ($alvara['pessoa_juridica'] as $index => $documento) {
-            $id = 'doc_pj_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. 100MB)</small>';
-            echo '</div>';
+            renderFileInput('doc_pj_' . $tipo . '_' . $index, $documento, true);
         }
         echo '</div>';
     }
 } else {
-    // Documentos obrigatórios para outros tipos de alvará
     if (isset($alvara['documentos'])) {
         echo '<div class="documentos-section">';
         echo '<h4>Documentos Obrigatórios</h4>';
         foreach ($alvara['documentos'] as $index => $documento) {
-            $id = 'doc_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. 100MB)</small>';
-            echo '</div>';
+            renderFileInput('doc_' . $tipo . '_' . $index, $documento, true);
         }
         echo '</div>';
     }
 }
 
-// Documentos opcionais
 if (isset($alvara['documentos_opcionais'])) {
     echo '<div class="documentos-section">';
     echo '<h4>Documentos Opcionais</h4>';
     foreach ($alvara['documentos_opcionais'] as $index => $documento) {
-        $id = 'doc_opcional_' . $tipo . '_' . $index;
-        echo '<div class="file-input-container">';
-        echo '<label for="' . $id . '">' . $documento . '</label>';
-        echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf">';
-        echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. 100MB)</small>';
-        echo '</div>';
+        renderFileInput('doc_opcional_' . $tipo . '_' . $index, $documento, false);
     }
     echo '</div>';
 }
 
-// Observações
 if (isset($alvara['observacoes'])) {
     echo '<div class="documentos-section">';
     echo '<h4>Observações</h4>';
@@ -90,7 +84,6 @@ if (isset($alvara['observacoes'])) {
     echo '</div>';
 }
 
-// Contato
 if (isset($alvara['contato'])) {
     echo '<div class="documentos-section">';
     echo '<h4>Contato</h4>';
@@ -103,8 +96,6 @@ if (isset($alvara['contato'])) {
 }
 
 echo '</div>';
-
-// Estilos específicos para a lista de documentos
 ?>
 <style>
 .documentos-lista {
@@ -124,67 +115,208 @@ echo '</div>';
 
 .documentos-section h4 {
     color: #009640;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
     margin-bottom: 15px;
     border-bottom: 2px solid #e9ecef;
     padding-bottom: 8px;
 }
 
 .file-input-container {
-    margin-bottom: 15px;
+    margin-bottom: 16px;
 }
 
-.file-input-container label {
+.file-input-container > label {
     display: block;
-    margin-bottom: 8px;
-    color: #495057;
+    margin-bottom: 7px;
+    color: #334155;
+    font-weight: 500;
+    font-size: 0.88rem;
+}
+
+.file-input-container > label .obrigatorio {
+    color: #dc3545;
+    margin-left: 2px;
+}
+
+/* Drop zone base */
+.file-drop-zone {
+    position: relative;
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+}
+
+.file-drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+}
+
+/* Conteúdo padrão (sem arquivo) */
+.file-drop-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 22px 16px;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.file-upload-icon {
+    font-size: 2rem;
+    color: #94a3b8;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.file-drop-text {
+    font-size: 0.88rem;
+    color: #475569;
     font-weight: 500;
 }
 
-.file-input-container input[type="file"] {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 5px;
-    background: #f8f9fa;
+.file-drop-hint {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Hover */
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+    border-color: #009640;
+    background: #f0fdf4;
+    box-shadow: 0 0 0 3px rgba(0,150,64,0.08);
+}
+
+.file-drop-zone:hover .file-upload-icon,
+.file-drop-zone.drag-over .file-upload-icon {
+    color: #009640;
+    transform: translateY(-3px);
+}
+
+.file-drop-zone.drag-over {
+    border-style: solid;
+    background: #dcfce7;
+}
+
+/* Tem arquivo */
+.file-drop-zone.has-file {
+    border: 2px solid #009640;
+    border-left: 4px solid #009640;
+    background: #fff;
+    cursor: default;
+}
+
+.file-selected-info {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    pointer-events: none;
+}
+
+.file-drop-zone.has-file .file-drop-content {
+    display: none;
+}
+
+.file-drop-zone.has-file .file-selected-info {
+    display: flex;
+    pointer-events: auto;
+}
+
+.file-pdf-icon {
+    font-size: 1.6rem;
+    color: #dc3545;
+    flex-shrink: 0;
+}
+
+.file-sel-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.file-sel-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-sel-size {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.file-remove-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    position: relative;
+    z-index: 3;
 }
 
-.file-input-container input[type="file"]:hover {
-    border-color: #009640;
+.file-remove-btn:hover {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: #fff5f5;
 }
 
-.file-input-container input[type="file"]:focus {
-    outline: none;
-    border-color: #009640;
-    box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
+/* Estado de erro */
+.file-drop-zone.error {
+    border: 2px solid #dc3545;
+    background: #fff5f5;
 }
 
-.observacoes-section,
-.contato-section {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 20px;
+.file-drop-zone.error .file-upload-icon {
+    color: #dc3545;
 }
 
-.observacoes-section h4,
-.contato-section h4 {
-    color: #495057;
-    font-size: 1.1rem;
-    margin-bottom: 10px;
+.file-error-msg {
+    display: none;
+    font-size: 0.78rem;
+    color: #dc3545;
+    padding: 0 16px 10px;
+    font-weight: 500;
 }
 
-.observacoes-section ul,
-.contato-section ul {
+.file-drop-zone.error .file-error-msg {
+    display: block;
+}
+
+/* Seções de observações */
+.observacoes-lista {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.observacoes-section li,
-.contato-section li {
+.observacoes-lista li {
     margin-bottom: 8px;
     color: #6c757d;
     font-size: 14px;
@@ -192,30 +324,103 @@ echo '</div>';
     position: relative;
 }
 
-.observacoes-section li:before {
+.observacoes-lista li::before {
     content: "•";
     position: absolute;
     left: 0;
     color: #009640;
 }
 
-.contato-section li:before {
-    content: "📞";
-    position: absolute;
-    left: 0;
-}
-
 @media (max-width: 768px) {
-    .documentos-lista {
-        padding: 15px;
-    }
-
-    .documentos-lista h3 {
-        font-size: 1.3rem;
-    }
-
-    .documentos-section h4 {
-        font-size: 1.1rem;
-    }
+    .documentos-lista { padding: 15px; }
+    .documentos-lista h3 { font-size: 1.3rem; }
+    .documentos-section h4 { font-size: 1rem; }
+    .file-drop-content { padding: 18px 12px; }
 }
 </style>
+<script>
+(function () {
+    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+
+    function formatSize(bytes) {
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function initZone(zone) {
+        const input    = zone.querySelector('input[type="file"]');
+        const content  = zone.querySelector('.file-drop-content');
+        const info     = zone.querySelector('.file-selected-info');
+        const nameEl   = zone.querySelector('.file-sel-name');
+        const sizeEl   = zone.querySelector('.file-sel-size');
+        const removeBtn= zone.querySelector('.file-remove-btn');
+        const errorEl  = zone.querySelector('.file-error-msg');
+
+        function showFile(file) {
+            nameEl.textContent = file.name;
+            sizeEl.textContent = formatSize(file.size);
+            zone.classList.remove('error');
+            zone.classList.add('has-file');
+            errorEl.textContent = '';
+        }
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            zone.classList.add('error');
+            zone.classList.remove('has-file');
+            input.value = '';
+        }
+
+        function clearFile() {
+            input.value = '';
+            zone.classList.remove('has-file', 'error');
+            errorEl.textContent = '';
+        }
+
+        function validate(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showError('Apenas arquivos PDF são aceitos.');
+                return false;
+            }
+            if (file.size > MAX_SIZE) {
+                showError('Arquivo excede o limite de 10 MB. Reduza o PDF e tente novamente.');
+                return false;
+            }
+            return true;
+        }
+
+        input.addEventListener('change', function () {
+            if (!this.files || !this.files[0]) return;
+            if (validate(this.files[0])) showFile(this.files[0]);
+        });
+
+        zone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+
+        zone.addEventListener('dragleave', function (e) {
+            if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+        });
+
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            if (!validate(file)) return;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            showFile(file);
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearFile();
+        });
+    }
+
+    document.querySelectorAll('.file-drop-zone').forEach(initZone);
+})();
+</script>
