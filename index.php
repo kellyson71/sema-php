@@ -478,10 +478,15 @@ include_once 'enquadramento_conema.php';
                 // e o browser exibe "sair?" mesmo os dados já tendo sido salvos.
                 e.preventDefault();
                 var formEl = document.getElementById('form');
-                fetch(formEl.action, { method: 'POST', body: new FormData(formEl) })
-                    .then(function(response) {
+                fetch(formEl.action, {
+                    method: 'POST',
+                    body: new FormData(formEl),
+                    headers: { 'X-Requested-With': 'fetch' }
+                })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
                         window._enviando = false;
-                        window.location.href = response.url;
+                        window.location.href = data.redirect;
                     })
                     .catch(function() {
                         window._enviando = false;

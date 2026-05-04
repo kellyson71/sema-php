@@ -190,6 +190,14 @@ function getMensagem()
  */
 function redirect($url)
 {
+    // Quando chamada via fetch (X-Requested-With: fetch), devolve JSON com a URL
+    // para que o JS navegue manualmente — evita que o fetch consuma a sessão antes
+    // do browser chegar em sucesso.php.
+    if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'fetch') {
+        header('Content-Type: application/json');
+        echo json_encode(['redirect' => $url]);
+        exit;
+    }
     header("Location: {$url}");
     exit;
 }
