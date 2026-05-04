@@ -814,13 +814,13 @@ include_once 'enquadramento_conema.php';
                         .then(data => {
                             documentosDiv.innerHTML = data;
 
-                            // Adicionamos os novos campos para o formulário principal
+                            // Inicializa drop zones (scripts do innerHTML não executam)
+                            initDropZones(documentosDiv);
+
+                            // Vincula inputs ao form principal
                             const inputsFile = documentosDiv.querySelectorAll('input[type="file"]');
                             inputsFile.forEach(input => {
                                 input.setAttribute('form', 'form');
-                                input.addEventListener('change', function() {
-                                    validarArquivoPDF(this);
-                                });
                             });
                         })
                         .catch(error => {
@@ -1031,28 +1031,99 @@ include_once 'enquadramento_conema.php';
             }
         });
 
-        // Função para validar que apenas arquivos PDF sejam enviados
+        // Função para validar que apenas arquivos PDF sejam enviados (fallback silencioso)
         function validarArquivoPDF(input) {
-            if (!input.files || input.files.length === 0) {
-                return true; // Se não há arquivo, não precisa validar
-            }
-
+            if (!input.files || input.files.length === 0) return true;
             var file = input.files[0];
-            var fileName = file.name.toLowerCase();
-
-            if (!fileName.endsWith('.pdf')) {
-                alert('Por favor, selecione apenas arquivos em formato PDF.');
+            if (!file.name.toLowerCase().endsWith('.pdf') || file.size > 10485760) {
                 input.value = '';
                 return false;
             }
-
-            // Verificar tamanho do arquivo (máximo 10MB)
-            if (file.size > 10485760) {
-                input.value = '';
-                return false;
-            }
-
             return true;
+        }
+
+        // Inicializa drop zones carregadas via AJAX
+        function initDropZones(container) {
+            var MAX_SIZE = 10 * 1024 * 1024;
+
+            function formatSize(bytes) {
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            container.querySelectorAll('.file-drop-zone').forEach(function(zone) {
+                var input     = zone.querySelector('input[type="file"]');
+                var nameEl    = zone.querySelector('.file-sel-name');
+                var sizeEl    = zone.querySelector('.file-sel-size');
+                var removeBtn = zone.querySelector('.file-remove-btn');
+                var errorEl   = zone.querySelector('.file-error-msg');
+
+                if (!input) return;
+
+                function showFile(file) {
+                    nameEl.textContent = file.name;
+                    sizeEl.textContent = formatSize(file.size);
+                    errorEl.textContent = '';
+                    zone.classList.remove('has-file', 'error');
+                    void zone.offsetWidth;
+                    zone.classList.add('has-file');
+                }
+
+                function showError(msg) {
+                    errorEl.textContent = msg;
+                    zone.classList.remove('has-file');
+                    zone.classList.add('error');
+                    input.value = '';
+                }
+
+                function clearFile() {
+                    input.value = '';
+                    zone.classList.remove('has-file', 'error');
+                    errorEl.textContent = '';
+                }
+
+                function validate(file) {
+                    if (!file.name.toLowerCase().endsWith('.pdf')) {
+                        showError('Apenas arquivos PDF são aceitos.');
+                        return false;
+                    }
+                    if (file.size > MAX_SIZE) {
+                        showError('Arquivo excede o limite de 10 MB. Reduza o PDF e tente novamente.');
+                        return false;
+                    }
+                    return true;
+                }
+
+                input.addEventListener('change', function() {
+                    if (!this.files || !this.files[0]) return;
+                    if (validate(this.files[0])) showFile(this.files[0]);
+                });
+
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', function(e) {
+                    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    var file = e.dataTransfer.files[0];
+                    if (!file || !validate(file)) return;
+                    var dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                    showFile(file);
+                });
+
+                removeBtn && removeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    clearFile();
+                });
+            });
         }
 
     </script>
