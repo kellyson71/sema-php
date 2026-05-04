@@ -24,8 +24,9 @@ function renderFileInput($id, $documento, $required = true) {
     echo '<span class="file-drop-hint"><i class="fas fa-file-pdf"></i> PDF &middot; máximo 10 MB</span>';
     echo '</div>';
     echo '<div class="file-selected-info">';
+    echo '<div class="file-success-check"><i class="fas fa-check"></i></div>';
     echo '<i class="fas fa-file-pdf file-pdf-icon"></i>';
-    echo '<div class="file-sel-details"><span class="file-sel-name"></span><span class="file-sel-size"></span></div>';
+    echo '<div class="file-sel-details"><span class="file-sel-name"></span><span class="file-sel-meta"><span class="file-sel-size"></span><span class="file-sel-badge">Pronto para envio</span></span></div>';
     echo '<button type="button" class="file-remove-btn" title="Remover arquivo"><i class="fas fa-times"></i></button>';
     echo '</div>';
     echo '<span class="file-error-msg"></span>';
@@ -211,11 +212,24 @@ echo '</div>';
 }
 
 /* Tem arquivo */
+@keyframes filePopIn {
+    0%   { opacity: 0; transform: scale(0.96) translateY(4px); }
+    60%  { transform: scale(1.01) translateY(-1px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes checkPop {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.25); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 .file-drop-zone.has-file {
     border: 2px solid #009640;
-    border-left: 4px solid #009640;
-    background: #fff;
+    border-left: 5px solid #009640;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%);
     cursor: default;
+    box-shadow: 0 2px 10px rgba(0, 150, 64, 0.12);
 }
 
 .file-selected-info {
@@ -224,6 +238,7 @@ echo '</div>';
     gap: 12px;
     padding: 14px 16px;
     pointer-events: none;
+    animation: filePopIn 0.28s ease both;
 }
 
 .file-drop-zone.has-file .file-drop-content {
@@ -235,8 +250,29 @@ echo '</div>';
     pointer-events: auto;
 }
 
+/* Badge de check de sucesso */
+.file-success-check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #009640;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    animation: checkPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    animation-delay: 0.1s;
+    opacity: 0;
+}
+
+.file-drop-zone.has-file .file-success-check {
+    opacity: 1;
+}
+
 .file-pdf-icon {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     color: #dc3545;
     flex-shrink: 0;
 }
@@ -246,7 +282,7 @@ echo '</div>';
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 
 .file-sel-name {
@@ -258,9 +294,28 @@ echo '</div>';
     text-overflow: ellipsis;
 }
 
+.file-sel-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .file-sel-size {
     font-size: 0.75rem;
     color: #64748b;
+}
+
+.file-sel-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #009640;
+    background: #dcfce7;
+    padding: 2px 7px;
+    border-radius: 20px;
+    border: 1px solid #bbf7d0;
 }
 
 .file-remove-btn {
@@ -359,9 +414,11 @@ echo '</div>';
         function showFile(file) {
             nameEl.textContent = file.name;
             sizeEl.textContent = formatSize(file.size);
-            zone.classList.remove('error');
-            zone.classList.add('has-file');
             errorEl.textContent = '';
+            // Reinicia animação removendo e re-adicionando a classe
+            zone.classList.remove('has-file', 'error');
+            void zone.offsetWidth; // força reflow para reiniciar keyframes
+            zone.classList.add('has-file');
         }
 
         function showError(msg) {
