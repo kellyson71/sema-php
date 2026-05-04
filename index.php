@@ -471,15 +471,30 @@ include_once 'enquadramento_conema.php';
 
                 document.getElementById('loading').style.display = 'flex';
                 document.getElementById('botao').disabled = true;
-
-                // Bloquear saída acidental enquanto envia
                 window._enviando = true;
+
+                // Envia via fetch para controlar a navegação manualmente.
+                // Com submit normal, o beforeunload dispara no redirect do servidor
+                // e o browser exibe "sair?" mesmo os dados já tendo sido salvos.
+                e.preventDefault();
+                var formEl = document.getElementById('form');
+                fetch(formEl.action, { method: 'POST', body: new FormData(formEl) })
+                    .then(function(response) {
+                        window._enviando = false;
+                        window.location.href = response.url;
+                    })
+                    .catch(function() {
+                        window._enviando = false;
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('botao').disabled = false;
+                        alert('Erro de conexão ao enviar o requerimento. Verifique sua internet e tente novamente.');
+                    });
             });
 
             window.addEventListener('beforeunload', function(e) {
                 if (window._enviando) {
                     e.preventDefault();
-                    e.returnValue = 'Seu requerimento ainda está sendo enviado. Sair agora irá cancelar o envio.';
+                    e.returnValue = '';
                 }
             });
             </script>
