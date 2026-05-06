@@ -97,6 +97,9 @@ if ($filtroStatus !== '') {
     $sql .= " AND r.status = ?";
     $sqlCount .= " AND r.status = ?";
     $params[] = $filtroStatus;
+} else {
+    $sql .= " AND r.status != 'Finalizado'";
+    $sqlCount .= " AND r.status != 'Finalizado'";
 }
 
 if ($filtroTipo !== '') {
