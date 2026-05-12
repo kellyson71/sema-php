@@ -80,16 +80,17 @@ $tipos_alvara = [
             '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
             '3. Comprovante de residência do proprietário e do requerente;',
             '4. Documento do terreno e Cadastro imobiliário;',
-            '5. ART ou RRT do projetos e execução (assinada pelo responsável técnico e contratante);',
-            '6. Projetos arquitetônicos: (assinados pelo responsável técnico e proprietário)
+            '5. Alvará de construção vigente;',
+            '6. ART ou RRT do projetos e execução (assinada pelo responsável técnico e contratante);',
+            '7. Projetos arquitetônicos: (assinados pelo responsável técnico e proprietário)
                - Planta de situação com coordenada geográfica indicando os nomes das ruas e distância das esquinas mais próximas;
                - Planta de locação da construção no terreno e coberta;
                - Planta baixa e cortes.',
-            '7. Projetos complementares: (assinados pelo responsável técnico e proprietário)
+            '8. Projetos complementares: (assinados pelo responsável técnico e proprietário)
                - Projeto sanitário com locação da fossa e sumidouro com cotas legíveis. Caso exista coleta pública de esgoto na rua, é necessário apresentar além do projeto sanitário um documento que comprove (conta de água ou declaração de viabilidade técnica);',
-            '8. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
-            '9. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
-            '10. Projeto de Calçada com Detalhamento;',
+            '9. Cópia do Atestado de Vistoria do Corpo de Bombeiros (para construções acima de 930 m²);',
+            '10. Cópia da Licença solicitada junto ao IDEMA (nos casos de acordo com a Resolução nº 02/2014 do Conselho Estadual do Meio Ambiente – CONEMA).',
+            '11. Projeto de Calçada com Detalhamento;',
         ],
         'observacoes' => [
             'Documentações complementares podem ser exigidas pela secretaria do meio ambiente (SEMA) caso ache pertinente para o andamento do processo.',
