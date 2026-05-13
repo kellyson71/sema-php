@@ -47,7 +47,6 @@ $filtroCategoria = $_GET['categoria'] ?? '';
 if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
     $filtroCategoria = '';
 }
-$filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
 
 $mensagem = '';
@@ -118,15 +117,6 @@ if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
     }
 }
 
-if ($filtroBusca !== '') {
-    $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
-    $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
-    $termoBusca = '%' . $filtroBusca . '%';
-    $params[] = $termoBusca;
-    $params[] = $termoBusca;
-    $params[] = $termoBusca;
-}
-
 if ($filtroNaoVisualizados) {
     $sql .= " AND r.visualizado = 0";
     $sqlCount .= " AND r.visualizado = 0";
@@ -182,6 +172,7 @@ $statusCards = [
     ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
     ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
     ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
+    ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-thumbs-up'],
     ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
     ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
@@ -269,10 +260,6 @@ $statusOperacionais = adminStatusFluxoPrincipal();
             <?php if ($filtroNaoVisualizados): ?>
                 <input type="hidden" name="nao_visualizados" value="1">
             <?php endif; ?>
-            <div class="req-filter-search">
-                <i class="fas fa-magnifying-glass"></i>
-                <input type="text" name="busca" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Buscar por protocolo, nome ou CPF/CNPJ">
-            </div>
             <label class="req-filter-label" for="tipoFiltro">Tipo:</label>
             <select id="tipoFiltro" name="tipo" class="req-filter-select">
                 <option value="">Todos</option>
@@ -283,7 +270,7 @@ $statusOperacionais = adminStatusFluxoPrincipal();
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
-            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
                     <i class="fas fa-eye"></i> Ver todos novamente
