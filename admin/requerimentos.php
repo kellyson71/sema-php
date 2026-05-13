@@ -5,6 +5,14 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
+// Fiscal (setor2) e secretário (setor3) enxergam apenas seu setor
+$nivelAdmin = $_SESSION['admin_nivel'] ?? '';
+$setorFiltro = match($nivelAdmin) {
+    'fiscal'     => 'setor2',
+    'secretario' => 'setor3',
+    default      => null,
+};
+
 require_once 'includes/alertas.php';
 
 $categoriasDisponiveis = [
@@ -101,6 +109,12 @@ $sqlCount = "SELECT COUNT(*) AS total
              WHERE 1=1";
 $params = [];
 
+if ($setorFiltro) {
+    $sql      .= " AND r.setor_atual = ?";
+    $sqlCount .= " AND r.setor_atual = ?";
+    $params[]  = $setorFiltro;
+}
+
 if ($filtroStatus !== '') {
     $sql .= " AND r.status = ?";
     $sqlCount .= " AND r.status = ?";
@@ -156,20 +170,27 @@ $totalRequerimentos = (int) ($stmtCount->fetch()['total'] ?? 0);
 $totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
 
 $statusEncPH = implode(',', array_fill(0, count($statusEncerrados), '?'));
-$stmtEnc = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE status IN ($statusEncPH)");
-$stmtEnc->execute($statusEncerrados);
+
+if ($setorFiltro) {
+    $stmtEnc = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND status IN ($statusEncPH)");
+    $stmtEnc->execute(array_merge([$setorFiltro], $statusEncerrados));
+} else {
+    $stmtEnc = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE status IN ($statusEncPH)");
+    $stmtEnc->execute($statusEncerrados);
+}
 $totalEncerrados = (int) $stmtEnc->fetchColumn();
 
+$sfWhere = $setorFiltro ? "setor_atual = '$setorFiltro' AND" : '';
 $estatisticas = [
-    'total' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn(),
-    'nao_lidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
-    'pendentes' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
-    'aprovados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
-    'finalizados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn(),
-    'em_analise' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn(),
-    'indeferidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
+    'total'      => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere 1=1")->fetchColumn(),
+    'nao_lidos'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere visualizado = 0")->fetchColumn(),
+    'pendentes'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Pendente'")->fetchColumn(),
+    'aprovados'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Aprovado'")->fetchColumn(),
+    'finalizados'=> (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Finalizado'")->fetchColumn(),
+    'em_analise' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Em análise'")->fetchColumn(),
+    'indeferidos'=> (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Indeferido'")->fetchColumn(),
 ];
-$pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
+$pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Boleto pago'")->fetchColumn();
 
 $contagemCategorias = [];
 foreach ($tiposPorCategoria as $cat => $slugs) {
@@ -178,12 +199,16 @@ foreach ($tiposPorCategoria as $cat => $slugs) {
         continue;
     }
     $placeholders = implode(',', array_fill(0, count($slugs), '?'));
-    $stmtCat = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE tipo_alvara IN ($placeholders)");
-    $stmtCat->execute($slugs);
+    $args = $setorFiltro ? array_merge([$setorFiltro], $slugs) : $slugs;
+    $setorCond = $setorFiltro ? "setor_atual = ? AND " : '';
+    $stmtCat = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE {$setorCond}tipo_alvara IN ($placeholders)");
+    $stmtCat->execute($args);
     $contagemCategorias[$cat] = (int) $stmtCat->fetchColumn();
 }
 
-$tiposAlvara = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
+$tiposAlvara = $setorFiltro
+    ? $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos WHERE setor_atual = '$setorFiltro' ORDER BY tipo_alvara")->fetchAll()
+    : $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
 
 $tipoSiglas = [
     'licenca_ambiental_unica' => 'LAU',

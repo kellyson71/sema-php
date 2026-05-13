@@ -5,7 +5,15 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
-$setorParam = $_GET['setor'] ?? 'setor1';
+// Fiscal e secretário são travados no próprio setor
+$nivelAdmin = $_SESSION['admin_nivel'] ?? '';
+$setorForcado = match($nivelAdmin) {
+    'fiscal'     => 'setor2',
+    'secretario' => 'setor3',
+    default      => null,
+};
+
+$setorParam = $setorForcado ?? ($_GET['setor'] ?? 'setor1');
 if (!in_array($setorParam, ['setor1','setor2','setor3'], true)) {
     $setorParam = 'setor1';
 }
@@ -136,6 +144,7 @@ function tempoEmFila(string $dataEnvio): string
 <div class="fila-shell">
     <nav class="setor-tabs">
         <?php foreach ($setorMeta as $s => $sm): ?>
+            <?php if ($setorForcado && $s !== $setorForcado) continue; ?>
             <a href="fila_setor.php?setor=<?= $s ?>" class="setor-tab <?= $s === $setorParam ? 'active' : '' ?>">
                 <span class="setor-tab-label"><i class="fas <?= $sm['icon'] ?> me-1"></i><?= $sm['label'] ?></span>
                 <span class="setor-tab-sublabel"><?= $sm['sublabel'] ?></span>
