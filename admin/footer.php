@@ -151,14 +151,7 @@
                         searchResults?.classList.remove('active');
                     }
 
-                    if (e.key === '/' && searchInput && document.activeElement !== searchInput) {
-                        const tagName = document.activeElement ? document.activeElement.tagName : '';
-                        if (!['INPUT', 'TEXTAREA'].includes(tagName)) {
-                            e.preventDefault();
-                            searchInput.focus();
-                            searchInput.select();
-                        }
-                    }
+
                 });
 
                 if (searchInput && searchResults) {
