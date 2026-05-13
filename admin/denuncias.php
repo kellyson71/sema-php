@@ -169,7 +169,8 @@ include 'header.php';
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php if (count($denuncias) > 0): ?>
                             <?php foreach ($denuncias as $denuncia): ?>
-                                <tr class="hover:bg-gray-50 transition-colors">
+                                <tr class="hover:bg-blue-50 transition-colors cursor-pointer"
+                                    onclick="window.location='visualizar_denuncia.php?id=<?php echo $denuncia['id']; ?>'">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <?php echo date('d/m/Y H:i', strtotime($denuncia['data_registro'])); ?>
                                     </td>
@@ -180,7 +181,7 @@ include 'header.php';
                                         <?php echo htmlspecialchars($denuncia['responsavel'] ?? 'Sistema'); ?>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <?php 
+                                        <?php
                                             $classeBadge = 'status-pendente';
                                             if ($denuncia['status'] == 'Em Análise') $classeBadge = 'status-em-analise';
                                             if ($denuncia['status'] == 'Concluída') $classeBadge = 'status-concluida';
@@ -190,9 +191,9 @@ include 'header.php';
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="visualizar_denuncia.php?id=<?php echo $denuncia['id']; ?>" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md transition-colors inline-block">
-                                            <i class="fas fa-eye mr-1"></i> Ver Mais
-                                        </a>
+                                        <span class="text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-flex items-center gap-1">
+                                            <i class="fas fa-arrow-right fa-xs"></i> Abrir
+                                        </span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
