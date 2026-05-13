@@ -12,10 +12,36 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 }
 verificaLogin();
 
-$totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
-$emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
-$naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
-$novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
+// Restrição de setor para fiscal (setor2) e secretario (setor3)
+$nivelAdmin = $_SESSION['admin_nivel'] ?? '';
+$setorFiltro = match($nivelAdmin) {
+    'fiscal'    => 'setor2',
+    'secretario' => 'setor3',
+    default     => null,
+};
+
+if ($setorFiltro) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ?");
+    $st->execute([$setorFiltro]);
+    $totalRequerimentos = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND status = 'Em análise'");
+    $st->execute([$setorFiltro]);
+    $emAnalise = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND visualizado = 0");
+    $st->execute([$setorFiltro]);
+    $naoVisualizados = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)");
+    $st->execute([$setorFiltro]);
+    $novosSemana = (int) $st->fetchColumn();
+} else {
+    $totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
+    $emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
+    $naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
+    $novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
+}
 
 // Contagens para o hub de setores
 $hubSetores = [];
@@ -25,14 +51,27 @@ foreach (['setor1','setor2','setor3'] as $s) {
     $hubSetores[$s] = (int) $st->fetchColumn();
 }
 
-$stmt = $pdo->query("
-    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
-    FROM requerimentos r
-    JOIN requerentes req ON r.requerente_id = req.id
-    ORDER BY r.data_envio DESC
-    LIMIT 10
-");
-$ultimosRequerimentos = $stmt->fetchAll();
+if ($setorFiltro) {
+    $st = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        WHERE r.setor_atual = ?
+        ORDER BY r.data_envio DESC
+        LIMIT 10
+    ");
+    $st->execute([$setorFiltro]);
+    $ultimosRequerimentos = $st->fetchAll();
+} else {
+    $stmt = $pdo->query("
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        ORDER BY r.data_envio DESC
+        LIMIT 10
+    ");
+    $ultimosRequerimentos = $stmt->fetchAll();
+}
 
 $stmt = $pdo->query("
     SELECT ha.acao, ha.data_acao, a.nome AS admin_nome, r.protocolo
@@ -127,9 +166,15 @@ $dataPainelLabel = sprintf(
     $meses[(int) $dataPainel->format('n')] ?? $dataPainel->format('m')
 );
 
-$ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
-$ctaFilaHref = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
-$ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
+if ($setorFiltro) {
+    $ctaFilaLabel = 'Abrir minha fila';
+    $ctaFilaHref  = 'fila_setor.php?setor=' . $setorFiltro;
+    $ctaFilaIcon  = 'fa-inbox';
+} else {
+    $ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
+    $ctaFilaHref  = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
+    $ctaFilaIcon  = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
+}
 ?>
 
 <style>
