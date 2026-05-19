@@ -108,11 +108,17 @@ if (!function_exists('adminNotificationIcon')) {
     function adminNotificationIcon(string $tipo): string
     {
         return match ($tipo) {
-            'novo_protocolo' => 'fa-inbox',
-            'boleto_enviado' => 'fa-file-invoice-dollar',
-            'comprovante_enviado' => 'fa-money-check-dollar',
-            'indeferido' => 'fa-ban',
-            default => 'fa-bell',
+            'novo_protocolo'       => 'fa-inbox',
+            'boleto_enviado'       => 'fa-file-invoice-dollar',
+            'comprovante_enviado'  => 'fa-money-check-dollar',
+            'indeferido'           => 'fa-ban',
+            'encaminhado_setor2'   => 'fa-helmet-safety',
+            'encaminhado_setor3'   => 'fa-shield-halved',
+            'devolvido_setor1'     => 'fa-rotate-left',
+            'devolvido_setor2'     => 'fa-reply',
+            'setor3_aprovado'      => 'fa-check-double',
+            'assinatura_solicitada' => 'fa-file-signature',
+            default                => 'fa-bell',
         };
     }
 }
@@ -132,11 +138,17 @@ if (!function_exists('adminNotificationAccent')) {
     function adminNotificationAccent(string $tipo): string
     {
         return match ($tipo) {
-            'novo_protocolo' => 'accent-blue',
-            'boleto_enviado' => 'accent-amber',
-            'comprovante_enviado' => 'accent-teal',
-            'indeferido' => 'accent-slate',
-            default => 'accent-green',
+            'novo_protocolo'       => 'accent-blue',
+            'boleto_enviado'       => 'accent-amber',
+            'comprovante_enviado'  => 'accent-teal',
+            'indeferido'           => 'accent-slate',
+            'encaminhado_setor2'   => 'accent-green',
+            'encaminhado_setor3'   => 'accent-blue',
+            'devolvido_setor1'     => 'accent-amber',
+            'devolvido_setor2'     => 'accent-amber',
+            'setor3_aprovado'      => 'accent-teal',
+            'assinatura_solicitada' => 'accent-green',
+            default                => 'accent-green',
         };
     }
 }
@@ -218,6 +230,30 @@ if (!function_exists('createAdminNotificationForRequerimento')) {
                         $row['protocolo'],
                         $row['requerente']
                     );
+                    break;
+                case 'encaminhado_setor2':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo enviado à Fiscalização';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s chegou ao Setor 2 — Fiscalização de Obras.', $row['protocolo']);
+                    break;
+                case 'encaminhado_setor3':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo enviado ao Secretário';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s aguarda revisão do Secretário (Setor 3).', $row['protocolo']);
+                    break;
+                case 'devolvido_setor1':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo devolvido à Triagem';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s foi devolvido para a Triagem Ambiental (Setor 1).', $row['protocolo']);
+                    break;
+                case 'devolvido_setor2':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo devolvido à Fiscalização';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s foi devolvido para a Fiscalização de Obras (Setor 2).', $row['protocolo']);
+                    break;
+                case 'setor3_aprovado':
+                    $titulo = $titulo !== '' ? $titulo : 'Secretário aprovou o processo';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s foi aprovado pelo Secretário e retornou ao Setor 2 para envio ao cidadão.', $row['protocolo']);
+                    break;
+                case 'assinatura_solicitada':
+                    $titulo = $titulo !== '' ? $titulo : 'Assinatura solicitada';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s · Sua assinatura foi solicitada em um documento.', $row['protocolo']);
                     break;
                 default:
                     $titulo = $titulo !== '' ? $titulo : 'Atualização de processo';

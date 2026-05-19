@@ -2,8 +2,10 @@
 require_once 'conexao.php';
 require_once 'helpers.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/pagamento_helpers.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 verificaLogin();
+ensureAdminNotificationTables($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: requerimentos.php');
@@ -90,9 +92,34 @@ try {
 
         case 'setor3_aprovado':
             // Setor 3 assinou/aprovou → volta ao setor 2 para envio ao cidadão
-            atualizaSetor($pdo, $id, 'setor2', 'envio_cidadao');
-            registraHistorico($pdo, $adminId, $id, "Setor 3 aprovou — processo retornou ao Setor 2 para envio ao cidadão");
-            notificarAdmins($pdo, $id, 'setor2', "Processo #{$req['protocolo']} aprovado pelo Setor 3. Pronto para envio ao cidadão.");
+            atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
+            registraHistorico($pdo, $adminId, $id, "Setor 3 aprovou — processo retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
+            createAdminNotificationForRequerimento($pdo, $id, 'setor3_aprovado');
+            break;
+
+        case 'doc_final_envio':
+            // Setor 2 envia documento final ao cidadão
+            $arquivo = $_FILES['doc_final_pdf'] ?? null;
+            if (!$arquivo || ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new RuntimeException('Anexe o PDF do documento final.');
+            }
+            $dir = dirname(__DIR__) . '/uploads/' . $req['protocolo'];
+            $salvo = salvarArquivo($arquivo, $dir, 'doc_final');
+            if (!$salvo) {
+                throw new RuntimeException('Arquivo inválido. Envie apenas PDF (máx. 10MB).');
+            }
+            $instrucoes = trim($_POST['instrucoes_doc_final'] ?? '');
+            $token = gerarTokenDocumentoFinal((int) $id, $req['protocolo']);
+            $pdo->prepare("
+                INSERT INTO documentos_finais (requerimento_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE caminho_arquivo = VALUES(caminho_arquivo), nome_arquivo = VALUES(nome_arquivo),
+                    instrucoes = VALUES(instrucoes), token_acesso = VALUES(token_acesso),
+                    admin_envio_id = VALUES(admin_envio_id), enviado_em = NOW(), data_atualizacao = NOW()
+            ")->execute([$id, $salvo['caminho_relativo'] ?? $salvo['caminho'], $salvo['nome_original'], $instrucoes, $token, $adminId]);
+            atualizaSetor($pdo, $id, 'setor2', 'concluido');
+            $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
+            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando documento final ao requerente');
             break;
 
         default:
@@ -105,24 +132,9 @@ try {
     header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
     exit;
 
-} catch (Exception $e) {
-    $pdo->rollBack();
-    header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo");
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    $msg = urlencode($e->getMessage());
+    header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo&details=$msg");
     exit;
-}
-
-/**
- * Envia notificação para admins que operam o setor alvo.
- * Usa a tabela admin_notifications se existir, caso contrário ignora silenciosamente.
- */
-function notificarAdmins(PDO $pdo, int $reqId, string $setorAlvo, string $mensagem): void
-{
-    try {
-        $pdo->prepare(
-            "INSERT INTO admin_notifications (requerimento_id, tipo, mensagem, lida, data_criacao)
-             VALUES (?, 'fluxo_setor', ?, 0, NOW())"
-        )->execute([$reqId, $mensagem]);
-    } catch (Exception $e) {
-        // tabela pode não existir ainda
-    }
 }

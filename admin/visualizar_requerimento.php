@@ -2451,6 +2451,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                               data-bs-title="Encaminha o processo para o Setor 3 — Revisão do Secretário para aprovação e assinatura final.">
                                               <i class="fas fa-arrow-right me-1"></i>Enviar ao Secretário
                                           </button>
+                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                              data-bs-toggle="modal" data-bs-target="#docFinalModal"
+                                              data-bs-placement="top"
+                                              data-bs-title="Envia o documento final ao requerente por link seguro e finaliza o processo.">
+                                              <i class="fas fa-file-circle-check me-1"></i>Enviar Doc. Final ao Cidadão
+                                          </button>
                                           <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
                                               onclick="abrirFM('fm-finalizar-s2')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
@@ -2464,7 +2470,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                               <i class="fas fa-arrow-left me-1"></i>Devolver à Triagem
                                           </button>
                                       <?php elseif ($setorAtual === 'setor3'): ?>
-                                          <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
+                                          <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
+                                              class="btn btn-outline-primary btn-sm fw-medium tt"
+                                              data-bs-toggle="tooltip" data-bs-placement="top"
+                                              data-bs-title="Abre o visualizador de documentos para revisar e assinar digitalmente.">
+                                              <i class="fas fa-eye me-1"></i>Visualizar e Assinar Documentos
+                                          </a>
+                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
                                               onclick="abrirFM('fm-setor3-aprovar')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Aprova o processo e assina o documento final. O processo retorna ao Setor 2 para envio ao cidadão.">
@@ -2585,6 +2597,56 @@ document.addEventListener('DOMContentLoaded', function() {
                     <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" name="enviar_boleto_pagamento" class="btn btn-sky px-4">
                         <i class="fas fa-paper-plane me-2"></i>Enviar boleto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Enviar Documento Final ao Cidadão -->
+<div class="modal fade" id="docFinalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:inline-flex;align-items:center;justify-content:center;color:var(--teal-text);">
+                        <i class="fas fa-file-circle-check"></i>
+                    </span>
+                    <h5 class="modal-title fw-bold mb-0" style="color:var(--teal-text);">Enviar Documento Final ao Cidadão</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="fluxo_setor_handler.php" enctype="multipart/form-data">
+                <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+                <input type="hidden" name="fluxo_acao" value="doc_final_envio">
+                <div class="modal-body px-4 pt-3 pb-2">
+                    <p class="text-muted small mb-4" style="line-height:1.55;">
+                        O requerente receberá um e-mail com um link seguro para acessar e baixar o documento final. Após o envio, o processo será marcado como <strong>Finalizado</strong>.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="doc_final_pdf" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Arquivo PDF do documento final <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="doc_final_pdf" name="doc_final_pdf"
+                               accept="application/pdf,.pdf" required>
+                        <div class="form-text">Apenas PDF. Tamanho máximo: 10 MB.</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="instrucoes_doc_final" class="form-label fw-semibold" style="font-size:.875rem;">
+                            Observações <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <textarea class="form-control" id="instrucoes_doc_final" name="instrucoes_doc_final" rows="3"
+                                  style="font-size:.875rem;resize:none;"
+                                  placeholder="Prazo de validade, orientações complementares ao requerente..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
+                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar documento final
                     </button>
                 </div>
             </form>
