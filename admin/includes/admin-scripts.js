@@ -208,7 +208,7 @@ function marcarComoLidoUnico(id) {
 function confirmarExclusaoUnica(id) {
   if (
     confirm(
-      "Tem certeza que deseja excluir este requerimento da lista? Ele será movido para os arquivados."
+      "Tem certeza que deseja excluir este requerimento? Esta ação não pode ser desfeita."
     )
   ) {
     executarAcaoEmMassa("excluir", [id]);
@@ -241,7 +241,7 @@ function confirmarExclusaoMultipla() {
 
   if (
     confirm(
-      `Tem certeza que deseja excluir ${selecionados.length} requerimento(s) da lista? Eles serão movidos para os arquivados.`
+      `Tem certeza que deseja excluir ${selecionados.length} requerimento(s)? Esta ação não pode ser desfeita.`
     )
   ) {
     executarAcaoEmMassa("excluir", selecionados);

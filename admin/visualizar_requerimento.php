@@ -456,151 +456,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     }
 }
 
-// Processar encaminhamento para fiscalização (Setor 1 → Setor 2)
+// Processar envio para fiscalizacao
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_fiscalizacao'])) {
-    try {
-        $pdo->beginTransaction();
-        $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Fiscalização', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-        $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")->execute([$_SESSION['admin_id'], $id, "Encaminhou o processo para Fiscalização de Obras (Setor 2)"]);
-        $pdo->commit();
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo encaminhado para a Fiscalização de Obras.";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        $mensagem = "Erro ao encaminhar: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
+    $mensagem = "O encaminhamento para fiscalização está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
-// Processar encaminhamento para Secretaria (Setor 2 → Setor 3)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['encaminhar_secretaria'])) {
-    try {
-        $pdo->beginTransaction();
-        $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando Secretaria', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-        $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")->execute([$_SESSION['admin_id'], $id, "Encaminhou o processo para revisão da Secretaria (Setor 3)"]);
-        createAdminNotificationForRequerimento($pdo, $id, 'encaminhado_secretaria');
-        $pdo->commit();
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-        $mensagem = "✅ Processo encaminhado para a Secretaria.";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        $mensagem = "Erro ao encaminhar: " . $e->getMessage();
-        $mensagemTipo = "danger";
-    }
-}
-
-// Processar devolução ao Setor 2 pelo Setor 3
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['devolver_setor2'])) {
-    $motivoDevolucao = trim($_POST['motivo_devolucao'] ?? '');
-    if (empty($motivoDevolucao) || strlen($motivoDevolucao) < 10) {
-        $mensagem = "Informe o motivo da devolução (mínimo 10 caracteres).";
-        $mensagemTipo = "danger";
-    } else {
-        try {
-            $pdo->beginTransaction();
-            $pdo->prepare("UPDATE requerimentos SET status = 'Devolvido pela Secretaria', observacoes = ?, data_atualizacao = NOW() WHERE id = ?")->execute([$motivoDevolucao, $id]);
-            $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")->execute([$_SESSION['admin_id'], $id, "Devolveu o processo para Fiscalização — Motivo: {$motivoDevolucao}"]);
-            createAdminNotificationForRequerimento($pdo, $id, 'devolvido_secretaria');
-            $pdo->commit();
-            $requerimento = buscarDadosRequerimento($pdo, $id);
-            $mensagem = "✅ Processo devolvido para a Fiscalização de Obras.";
-            $mensagemTipo = "success";
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            $mensagem = "Erro ao devolver: " . $e->getMessage();
-            $mensagemTipo = "danger";
-        }
-    }
-}
-
-// Processar envio para secretario (stub legado)
+// Processar envio para secretario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_secretario'])) {
-    $mensagem = "Use a opção 'Encaminhar para Secretaria' no painel de ações.";
-    $mensagemTipo = "info";
-}
-
-// Processar finalização com documento (Setor 2)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar_com_documento'])) {
-    require_once '../includes/functions.php';
-    $instrucoes = trim($_POST['instrucoes_doc_final'] ?? '');
-    $arquivo = $_FILES['doc_final_pdf'] ?? null;
-    $arquivoOk = $arquivo && ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
-
-    if (!$arquivoOk) {
-        $mensagem = "Anexe o PDF do documento final para prosseguir.";
-        $mensagemTipo = "danger";
-    } else {
-        try {
-            $pdo->beginTransaction();
-
-            $dir = dirname(__DIR__) . '/uploads/' . $requerimento['protocolo'];
-            $salvo = salvarArquivo($arquivo, $dir, 'doc_final');
-            if (!$salvo) {
-                throw new RuntimeException("Arquivo inválido. Envie apenas PDF (máx. 10MB).");
-            }
-
-            $token = gerarTokenDocumentoFinal((int) $id, $requerimento['protocolo']);
-            $stmtDF = $pdo->prepare("
-                INSERT INTO documentos_finais (requerimento_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE caminho_arquivo = VALUES(caminho_arquivo), nome_arquivo = VALUES(nome_arquivo),
-                    instrucoes = VALUES(instrucoes), token_acesso = VALUES(token_acesso),
-                    admin_envio_id = VALUES(admin_envio_id), enviado_em = NOW(), data_atualizacao = NOW()
-            ");
-            $stmtDF->execute([$id, $salvo['caminho_relativo'], $salvo['nome_original'], $instrucoes, $token, $_SESSION['admin_id']]);
-
-            $pdo->prepare("UPDATE requerimentos SET status = 'Documento Final Enviado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-            $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")->execute([$_SESSION['admin_id'], $id, "Finalizou o processo enviando documento final ao requerente"]);
-
-            $pdo->commit();
-            $requerimento = buscarDadosRequerimento($pdo, $id);
-            $mensagem = "✅ Documento final enviado! O requerente pode acessar pelo link gerado.";
-            $mensagemTipo = "success";
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            $mensagem = "Erro: " . $e->getMessage();
-            $mensagemTipo = "danger";
-        }
-    }
-}
-
-// Processar solicitação de assinatura
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_assinatura'])) {
-    $docId = trim($_POST['solicitar_documento_id'] ?? '');
-    $destinatarioId = (int) ($_POST['solicitar_destinatario_id'] ?? 0);
-
-    if (empty($docId) || $destinatarioId <= 0) {
-        $mensagem = "Selecione um documento e um destinatário para solicitar assinatura.";
-        $mensagemTipo = "danger";
-    } else {
-        try {
-            $pdo->beginTransaction();
-            $pdo->prepare("
-                INSERT INTO solicitacoes_assinatura (documento_id, requerimento_id, solicitante_id, destinatario_id)
-                VALUES (?, ?, ?, ?)
-            ")->execute([$docId, $id, $_SESSION['admin_id'], $destinatarioId]);
-
-            $stmtAdm = $pdo->prepare("SELECT nome FROM administradores WHERE id = ? LIMIT 1");
-            $stmtAdm->execute([$destinatarioId]);
-            $nomeDestinatario = $stmtAdm->fetchColumn() ?: 'Usuário';
-
-            $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")->execute([$_SESSION['admin_id'], $id, "Solicitou assinatura de {$nomeDestinatario} no documento {$docId}"]);
-            createAdminNotificationForRequerimento($pdo, $id, 'assinatura_solicitada', [
-                'titulo'   => 'Assinatura solicitada',
-                'descricao' => "Sua assinatura foi solicitada em um documento do processo #{$requerimento['protocolo']}.",
-                'link_url' => "visualizar_requerimento.php?id={$id}",
-            ]);
-            $pdo->commit();
-            $mensagem = "✅ Solicitação de assinatura enviada para {$nomeDestinatario}.";
-            $mensagemTipo = "success";
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            $mensagem = "Erro ao solicitar assinatura: " . $e->getMessage();
-            $mensagemTipo = "danger";
-        }
-    }
+    $mensagem = "O encaminhamento para assinatura do secretário está desativado nesta versão.";
+    $mensagemTipo = "warning";
 }
 
 // Buscar documentos do requerimento
@@ -1331,31 +1196,6 @@ include 'header.php';
         min-height: 42px;
         font-weight: 600;
         box-shadow: none !important;
-    }
-
-    .btn-payment-primary {
-        background: var(--primary-600);
-        border: 1px solid var(--primary-600);
-        color: #fff;
-    }
-
-    .btn-payment-primary:hover,
-    .btn-payment-primary:focus {
-        background: var(--primary-700);
-        border-color: var(--primary-700);
-        color: #fff;
-    }
-
-    .boleto-modal-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: var(--primary-50);
-        border: 1px solid rgba(5, 150, 105, 0.24);
-        color: var(--primary-700);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
     }
 
     .detail-actions-primary .btn {
@@ -2464,101 +2304,51 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                             </div>
                         </div>
                                          <?php else: ?>
+                          <!-- Barra de Ações Modernas -->
                           <div class="p-4">
-
-                          <?php if ($isSetor3 && !$isSetor1 && !$isSetor2): ?>
-                          <!-- ── Setor 3 (Secretaria): Revisar e Assinar ── -->
-                          <div class="detail-actions-toolbar">
+                              <div class="detail-actions-toolbar">
+                              
                               <div class="detail-actions-primary">
-                                  <div class="detail-actions-note" style="background:var(--primary-50);border-color:var(--primary-200);">
-                                      <i class="fas fa-file-signature me-2" style="color:var(--primary-600)"></i>
-                                      <strong>Secretaria</strong> — Revise os documentos e assine ou devolva ao Setor de Fiscalização.
+                                  <div class="detail-actions-note">
+                                      <i class="fas fa-circle-info me-2"></i>
+                                      O fluxo complementar por fiscalização e secretário está temporariamente desativado nesta atualização.
                                   </div>
                               </div>
-                              <div class="detail-actions-secondary">
-                                  <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
-                                      class="btn fw-medium text-white"
-                                      style="background: var(--primary-600);">
-                                      <i class="fas fa-eye me-2"></i>Ver e Assinar Documentos
-                                  </a>
-                                  <button type="button" class="btn btn-outline-warning fw-medium"
-                                      data-bs-toggle="modal" data-bs-target="#devolverSetor2Modal">
-                                      <i class="fas fa-reply me-2"></i>Devolver ao Setor 2
-                                  </button>
-                              </div>
-                          </div>
 
-                          <?php elseif ($isSetor2 && !$isSetor1): ?>
-                          <!-- ── Setor 2 (Fiscalização): Gerar, Encaminhar, Finalizar ── -->
-                          <div class="detail-actions-toolbar">
-                              <div class="detail-actions-primary">
-                                  <div class="detail-actions-note" style="background:#fff7ed;border-color:#fed7aa;">
-                                      <i class="fas fa-hard-hat me-2" style="color:#ea580c"></i>
-                                      <strong>Fiscalização</strong> — Gere documentos, encaminhe para a Secretaria ou finalize entregando o documento ao requerente.
-                                  </div>
-                              </div>
                               <div class="detail-actions-secondary">
-                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
-                                      class="btn fw-medium text-white"
-                                      style="background: var(--primary-600);">
-                                      <i class="fas fa-file-signature me-2"></i>Gerar Documento
-                                      <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
-                                  </a>
-                                  <button type="button" class="btn btn-outline-primary fw-medium"
-                                      data-bs-toggle="modal" data-bs-target="#encaminharSecretariaModal">
-                                      <i class="fas fa-paper-plane me-2"></i>Encaminhar para Secretaria
-                                  </button>
-                                  <button type="button" class="btn btn-outline-success fw-medium"
-                                      data-bs-toggle="modal" data-bs-target="#docFinalModal">
-                                      <i class="fas fa-file-circle-check me-2"></i>Finalizar com Documento
-                                  </button>
-                                  <button type="button" class="btn btn-outline-secondary fw-medium"
-                                      data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
-                                      <i class="fas fa-edit me-2"></i>Atualizar Status
-                                  </button>
-                              </div>
-                          </div>
-
-                          <?php else: ?>
-                          <!-- ── Setor 1 (Triagem / Admin): Ações completas ── -->
-                          <div class="detail-actions-toolbar">
-                              <div class="detail-actions-secondary">
-                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
-                                      class="btn fw-medium text-white"
-                                      style="background: var(--primary-600);">
-                                      <i class="fas fa-file-signature me-2"></i>Gerar Documento
-                                      <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
-                                  </a>
-                                  <button type="button" class="btn btn-payment-primary fw-medium"
+                                  <button type="button" class="btn btn-sky fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#boletoModal">
                                       <i class="fas fa-file-invoice me-2"></i>Enviar Boleto
                                   </button>
-                                  <form method="post" action="" class="d-inline">
-                                      <button type="submit" name="enviar_fiscalizacao" class="btn btn-outline-warning fw-medium"
-                                          onclick="return confirm('Encaminhar este processo para a Fiscalização de Obras?')">
-                                          <i class="fas fa-hard-hat me-2"></i>Enc. Fiscalização
-                                      </button>
-                                  </form>
-                                  <button type="button" class="btn btn-outline-success fw-medium"
-                                      onclick="abrirFinalizacaoModal()">
-                                      <i class="fas fa-check-circle me-2"></i>Protocolo Oficial
-                                  </button>
+
                                   <button type="button" class="btn btn-outline-primary fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#atualizarStatusModal">
                                       <i class="fas fa-edit me-2"></i>Atualizar Status
                                   </button>
+
+                                  <button type="button" class="btn btn-outline-success fw-medium"
+                                      onclick="abrirFinalizacaoModal()">
+                                      <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
+                                  </button>
+
                                   <button type="button" class="btn btn-outline-danger fw-medium"
                                       data-bs-toggle="modal" data-bs-target="#indeferirInputModal">
-                                      <i class="fas fa-times-circle me-2"></i>Indeferir
+                                      <i class="fas fa-times-circle me-2"></i>Indeferir Processo
                                   </button>
+
                                   <button type="button" class="btn btn-outline-secondary fw-medium"
                                       onclick="showArquivarModal()">
                                       <i class="fas fa-archive me-2"></i>Arquivar
                                   </button>
-                              </div>
-                          </div>
-                          <?php endif; ?>
 
+                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
+                                      class="btn fw-medium text-white"
+                                      style="background: var(--primary-600);">
+                                      <i class="fas fa-file-signature me-2"></i>Gerar Documento
+                                      <i class="fas fa-external-link-alt ms-1" style="font-size:.75rem"></i>
+                                  </a>
+                              </div>
+                              </div>
                           </div>
                           <!-- Pareceres já gerados -->
                           <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
@@ -2574,127 +2364,16 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
      MODAIS DE AÇÕES ADMINISTRATIVAS
 ══════════════════════════════════════════════════ -->
 
-<!-- Modal: Encaminhar para Secretaria (Setor 2 → Setor 3) -->
-<div class="modal fade" id="encaminharSecretariaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:36px;height:36px;border-radius:8px;background:var(--primary-100);display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-paper-plane" style="color:var(--primary-600)"></i>
-                    </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:var(--primary-700);">Encaminhar para Secretaria</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="">
-                <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-0">
-                        O processo será encaminhado para revisão e assinatura da Secretaria (Setor 3).<br>
-                        O status mudará para <strong>Aguardando Secretaria</strong>.
-                    </p>
-                </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="encaminhar_secretaria" class="btn btn-primary px-4">
-                        <i class="fas fa-paper-plane me-2"></i>Confirmar Encaminhamento
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Devolver ao Setor 2 (Setor 3) -->
-<div class="modal fade" id="devolverSetor2Modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:36px;height:36px;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-reply" style="color:#d97706"></i>
-                    </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:#92400e;">Devolver à Fiscalização</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="">
-                <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-3">O processo será devolvido ao Setor 2 (Fiscalização) com o motivo informado abaixo.</p>
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold" style="font-size:.875rem;">
-                            Motivo da devolução <span class="text-danger">*</span>
-                        </label>
-                        <textarea class="form-control" name="motivo_devolucao" rows="4" required minlength="10"
-                            style="font-size:.875rem;resize:none;"
-                            placeholder="Descreva o que precisa ser revisado ou ajustado pelo setor técnico..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="devolver_setor2" class="btn btn-warning px-4 fw-medium">
-                        <i class="fas fa-reply me-2"></i>Devolver
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Finalizar com Documento (Setor 2) -->
-<div class="modal fade" id="docFinalModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:36px;height:36px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-file-circle-check" style="color:#16a34a"></i>
-                    </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:#14532d;">Finalizar com Documento</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="" enctype="multipart/form-data">
-                <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-4" style="line-height:1.55;">
-                        O requerente receberá um link seguro por e-mail para baixar o documento final do processo.
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.875rem;">
-                            PDF do documento final <span class="text-danger">*</span>
-                        </label>
-                        <input type="file" class="form-control" name="doc_final_pdf" accept="application/pdf,.pdf" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold" style="font-size:.875rem;">
-                            Observações <span class="text-muted fw-normal">(opcional)</span>
-                        </label>
-                        <textarea class="form-control" name="instrucoes_doc_final" rows="3"
-                            style="font-size:.875rem;resize:none;"
-                            placeholder="Instruções complementares para o requerente..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="finalizar_com_documento" class="btn btn-success px-4 fw-medium">
-                        <i class="fas fa-paper-plane me-2"></i>Finalizar e Enviar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- Modal: Enviar Boleto -->
 <div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="boleto-modal-icon">
+                    <span style="width:36px;height:36px;border-radius:10px;background:var(--sky-soft);border:1px solid var(--sky-mid);display:inline-flex;align-items:center;justify-content:center;color:var(--sky-text);">
                         <i class="fas fa-file-invoice"></i>
                     </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:var(--primary-700);">Enviar Boleto</h5>
+                    <h5 class="modal-title fw-bold mb-0" style="color:var(--sky-text);">Enviar Boleto</h5>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -2732,8 +2411,8 @@ if (!in_array($activeTab, $tabsPermitidas, true)) {
                     </div>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-payment-primary px-4">
+                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-sky px-4">
                         <i class="fas fa-paper-plane me-2"></i>Enviar boleto
                     </button>
                 </div>

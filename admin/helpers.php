@@ -53,9 +53,6 @@ if (!function_exists('adminStatusFluxoPrincipal')) {
             'Cancelado',
             'Finalizado',
             'Indeferido',
-            'Aguardando Secretaria',
-            'Devolvido pela Secretaria',
-            'Documento Final Enviado',
         ];
     }
 }
@@ -71,36 +68,10 @@ if (!function_exists('adminStatusFluxoExtra')) {
     }
 }
 
-if (!function_exists('adminStatusFluxoSetor2')) {
-    function adminStatusFluxoSetor2(): array
-    {
-        return [
-            'Em análise',
-            'Aguardando Fiscalização',
-            'Aprovado',
-            'Pendente',
-            'Apto a gerar alvará',
-            'Aguardando Secretaria',
-            'Devolvido pela Secretaria',
-            'Documento Final Enviado',
-        ];
-    }
-}
-
-if (!function_exists('adminStatusFluxoSetor3')) {
-    function adminStatusFluxoSetor3(): array
-    {
-        return [
-            'Aguardando Secretaria',
-            'Devolvido pela Secretaria',
-        ];
-    }
-}
-
 if (!function_exists('adminStatusPermitidoParaOperacao')) {
     function adminStatusPermitidoParaOperacao(string $status): bool
     {
-        return in_array($status, array_merge(adminStatusFluxoPrincipal(), adminStatusFluxoExtra()), true);
+        return in_array($status, adminStatusFluxoPrincipal(), true);
     }
 }
 
