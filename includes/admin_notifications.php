@@ -108,11 +108,14 @@ if (!function_exists('adminNotificationIcon')) {
     function adminNotificationIcon(string $tipo): string
     {
         return match ($tipo) {
-            'novo_protocolo' => 'fa-inbox',
-            'boleto_enviado' => 'fa-file-invoice-dollar',
-            'comprovante_enviado' => 'fa-money-check-dollar',
-            'indeferido' => 'fa-ban',
-            default => 'fa-bell',
+            'novo_protocolo'        => 'fa-inbox',
+            'boleto_enviado'        => 'fa-file-invoice-dollar',
+            'comprovante_enviado'   => 'fa-money-check-dollar',
+            'indeferido'            => 'fa-ban',
+            'encaminhado_secretaria' => 'fa-paper-plane',
+            'devolvido_secretaria'  => 'fa-reply',
+            'assinatura_solicitada' => 'fa-file-signature',
+            default                 => 'fa-bell',
         };
     }
 }
@@ -132,11 +135,14 @@ if (!function_exists('adminNotificationAccent')) {
     function adminNotificationAccent(string $tipo): string
     {
         return match ($tipo) {
-            'novo_protocolo' => 'accent-blue',
-            'boleto_enviado' => 'accent-amber',
-            'comprovante_enviado' => 'accent-teal',
-            'indeferido' => 'accent-slate',
-            default => 'accent-green',
+            'novo_protocolo'        => 'accent-blue',
+            'boleto_enviado'        => 'accent-amber',
+            'comprovante_enviado'   => 'accent-teal',
+            'indeferido'            => 'accent-slate',
+            'encaminhado_secretaria' => 'accent-blue',
+            'devolvido_secretaria'  => 'accent-amber',
+            'assinatura_solicitada' => 'accent-green',
+            default                 => 'accent-green',
         };
     }
 }
@@ -217,6 +223,29 @@ if (!function_exists('createAdminNotificationForRequerimento')) {
                         '#%s · %s foi marcado como indeferido.',
                         $row['protocolo'],
                         $row['requerente']
+                    );
+                    break;
+                case 'encaminhado_secretaria':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo enviado para Secretaria';
+                    $descricao = $descricao !== '' ? $descricao : sprintf(
+                        '#%s · %s aguarda revisão da Secretaria.',
+                        $row['protocolo'],
+                        $row['requerente']
+                    );
+                    break;
+                case 'devolvido_secretaria':
+                    $titulo = $titulo !== '' ? $titulo : 'Processo devolvido pela Secretaria';
+                    $descricao = $descricao !== '' ? $descricao : sprintf(
+                        '#%s · %s foi devolvido para revisão da Fiscalização.',
+                        $row['protocolo'],
+                        $row['requerente']
+                    );
+                    break;
+                case 'assinatura_solicitada':
+                    $titulo = $titulo !== '' ? $titulo : 'Assinatura solicitada';
+                    $descricao = $descricao !== '' ? $descricao : sprintf(
+                        '#%s · Sua assinatura foi solicitada em um documento.',
+                        $row['protocolo']
                     );
                     break;
                 default:

@@ -522,6 +522,13 @@
   gap: 10px;
 }
 
+.req-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .req-open-button {
   min-height: 38px;
   padding: 0 14px;
@@ -534,6 +541,27 @@
   gap: 8px;
   font-size: 0.84rem;
   font-weight: 700;
+}
+
+.req-delete-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff7f7;
+  color: var(--req-danger);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.req-delete-button:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
 }
 
 .req-actions-menu {
@@ -1061,6 +1089,11 @@
   .req-list-side {
     grid-column: 2;
     align-items: flex-start;
+  }
+
+  .req-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .req-actions-dropdown,

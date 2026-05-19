@@ -72,9 +72,47 @@ O método `ParecerService::preencherDados($requerimento, $adminData)` em `includ
 Variáveis disponíveis nos templates:
 `{{protocolo}}`, `{{nome_requerente}}`, `{{cpf_cnpj_requerente}}`, `{{nome_proprietario}}`, `{{cpf_cnpj_proprietario}}`, `{{endereco_objetivo}}`, `{{tipo_alvara}}` (nome legível), `{{area}}` / `{{area_construida}}`, `{{detalhes_imovel}}` / `{{especificacao}}`, `{{responsavel_tecnico_nome}}`, `{{responsavel_tecnico_registro}}`, `{{responsavel_tecnico_tipo_documento}}`, `{{responsavel_tecnico_numero}}`, `{{art_numero}}`, `{{numero_documento_ano}}`, `{{data_atual}}`, `{{atividade}}`, `{{nome_interessado}}`, `{{cpf_interessado}}`
 
-## Roles de administrador
+## Roles de administrador e Setores
 
 `admin`, `admin_geral`, `secretario`, `analista`, `fiscal`, `operador` — definidos no enum da tabela `administradores`. O menu lateral em `admin/header.php` exibe itens condicionalmente por role.
+
+### Mapeamento de Setores para Roles
+
+| Setor | Role | Responsabilidade |
+|---|---|---|
+| **Setor 1** | `analista` (+ `admin`, `admin_geral`) | Triagem central — recebe processos, analisa, gera pareceres técnicos, envia boleto, indefe. Pode encaminhar para Setor 2. |
+| **Setor 2** | `fiscal` | Fiscalização de Obras — recebe processos encaminhados pelo Setor 1, gera documentos, pode encaminhar para Setor 3 ou finalizar entregando documento ao cidadão. |
+| **Setor 3** | `secretario` | Secretaria — recebe processos do Setor 2, revisa, assina documentos e aprova ou devolve ao Setor 2. |
+
+### Fluxo de Status entre Setores
+
+```
+Pendente → Em análise (Setor 1)
+         → Aguardando Fiscalização (Setor 1 encaminha para Setor 2)
+         → Aguardando Secretaria (Setor 2 encaminha para Setor 3)
+         → Devolvido pela Secretaria (Setor 3 devolve para Setor 2)
+         → Documento Final Enviado (Setor 2 finaliza entregando doc ao cidadão)
+         → Finalizado (Setor 1 envia protocolo oficial)
+```
+
+### Variáveis de Setor (disponíveis após `include 'header.php'`)
+
+```php
+$isSetor1  // analista + admin + admin_geral
+$isSetor2  // fiscal + admin + admin_geral
+$isSetor3  // secretario + admin + admin_geral
+```
+
+Em `admin/requerimentos.php` e qualquer arquivo que precise detectar o setor **antes** do `include 'header.php'`, usar `$_SESSION['admin_nivel']` diretamente.
+
+### Multi-assinatura de documentos
+
+A tabela `assinaturas_digitais` permite múltiplos assinantes por documento (UNIQUE em `documento_id + assinante_id`). O mesmo usuário não pode assinar o mesmo documento duas vezes. Solicitações de assinatura ficam na tabela `solicitacoes_assinatura`.
+
+### Páginas de entrega ao cidadão
+
+- `pagamento.php` — boleto (token via `gerarTokenPagamento()`)
+- `documento_final.php` — documento final do Setor 2 (token via `gerarTokenDocumentoFinal()`)
 
 ## Banco de dados
 

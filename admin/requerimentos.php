@@ -5,6 +5,13 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
+// Detecção precoce de setor (header.php é incluído depois do SQL)
+$_nivelSessao = $_SESSION['admin_nivel'] ?? 'operador';
+$_isAdminSessao = in_array($_nivelSessao, ['admin', 'admin_geral'], true);
+$isSetor1 = in_array($_nivelSessao, ['analista', 'admin', 'admin_geral'], true);
+$isSetor2 = ($_nivelSessao === 'fiscal' || $_isAdminSessao);
+$isSetor3 = ($_nivelSessao === 'secretario' || $_isAdminSessao);
+
 require_once 'includes/alertas.php';
 
 $categoriasDisponiveis = [
@@ -96,7 +103,16 @@ if ($filtroStatus !== '') {
     $sql .= " AND r.status = ?";
     $sqlCount .= " AND r.status = ?";
     $params[] = $filtroStatus;
+} elseif ($isSetor2 && !$_isAdminSessao) {
+    // Setor 2 (fiscal): fila própria — processos encaminhados pelo Setor 1 ou devolvidos pelo Setor 3
+    $sql .= " AND r.status IN ('Aguardando Fiscalização', 'Devolvido pela Secretaria', 'Apto a gerar alvará')";
+    $sqlCount .= " AND r.status IN ('Aguardando Fiscalização', 'Devolvido pela Secretaria', 'Apto a gerar alvará')";
+} elseif ($isSetor3 && !$_isAdminSessao) {
+    // Setor 3 (secretario): fila própria — processos aguardando revisão
+    $sql .= " AND r.status = 'Aguardando Secretaria'";
+    $sqlCount .= " AND r.status = 'Aguardando Secretaria'";
 } else {
+    // Setor 1 e admins: comportamento padrão (exclui Finalizado)
     $sql .= " AND r.status != 'Finalizado'";
     $sqlCount .= " AND r.status != 'Finalizado'";
 }
@@ -134,13 +150,17 @@ $totalRequerimentos = (int) ($stmtCount->fetch()['total'] ?? 0);
 $totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
 
 $estatisticas = [
-    'total' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn(),
-    'nao_lidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
-    'pendentes' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
-    'aprovados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
-    'finalizados' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn(),
-    'em_analise' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn(),
-    'indeferidos' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
+    'total'               => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn(),
+    'nao_lidos'           => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn(),
+    'pendentes'           => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Pendente'")->fetchColumn(),
+    'aprovados'           => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aprovado'")->fetchColumn(),
+    'finalizados'         => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Finalizado'")->fetchColumn(),
+    'em_analise'          => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn(),
+    'indeferidos'         => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Indeferido'")->fetchColumn(),
+    'aguard_fiscalizacao' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aguardando Fiscalização'")->fetchColumn(),
+    'aguard_secretaria'   => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Aguardando Secretaria'")->fetchColumn(),
+    'devolvidos'          => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Devolvido pela Secretaria'")->fetchColumn(),
+    'doc_final_enviado'   => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Documento Final Enviado'")->fetchColumn(),
 ];
 $pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Boleto pago'")->fetchColumn();
 
@@ -167,15 +187,31 @@ $tipoSiglas = [
     'desmembramento' => 'DSM',
 ];
 
-$statusCards = [
-    ['label' => 'Todos', 'value' => $estatisticas['total'], 'status' => '', 'icon' => 'fa-layer-group'],
-    ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
-    ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
-    ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
-    ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-thumbs-up'],
-    ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
-    ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
-];
+if ($isSetor2 && !$_isAdminSessao) {
+    $statusCards = [
+        ['label' => 'Minha Fila', 'value' => $estatisticas['aguard_fiscalizacao'] + $estatisticas['devolvidos'], 'status' => '', 'icon' => 'fa-inbox'],
+        ['label' => 'Aguardando', 'value' => $estatisticas['aguard_fiscalizacao'], 'status' => 'Aguardando Fiscalização', 'icon' => 'fa-hourglass-half'],
+        ['label' => 'Devolvidos', 'value' => $estatisticas['devolvidos'], 'status' => 'Devolvido pela Secretaria', 'icon' => 'fa-reply'],
+        ['label' => 'Na Secretaria', 'value' => $estatisticas['aguard_secretaria'], 'status' => 'Aguardando Secretaria', 'icon' => 'fa-paper-plane'],
+        ['label' => 'Doc. Enviado', 'value' => $estatisticas['doc_final_enviado'], 'status' => 'Documento Final Enviado', 'icon' => 'fa-file-circle-check'],
+    ];
+} elseif ($isSetor3 && !$_isAdminSessao) {
+    $statusCards = [
+        ['label' => 'Para Revisar', 'value' => $estatisticas['aguard_secretaria'], 'status' => '', 'icon' => 'fa-inbox'],
+        ['label' => 'Aguardando', 'value' => $estatisticas['aguard_secretaria'], 'status' => 'Aguardando Secretaria', 'icon' => 'fa-file-signature'],
+    ];
+} else {
+    $statusCards = [
+        ['label' => 'Todos', 'value' => $estatisticas['total'], 'status' => '', 'icon' => 'fa-layer-group'],
+        ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
+        ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
+        ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
+        ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-thumbs-up'],
+        ['label' => 'Fiscalização', 'value' => $estatisticas['aguard_fiscalizacao'], 'status' => 'Aguardando Fiscalização', 'icon' => 'fa-hard-hat'],
+        ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
+        ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
+    ];
+}
 
 function buildReqUrl(array $overrides = []): string
 {
@@ -190,7 +226,7 @@ function buildReqUrl(array $overrides = []): string
 
 include 'header.php';
 
-$statusOperacionais = adminStatusFluxoPrincipal();
+$statusOperacionais = array_merge(adminStatusFluxoPrincipal(), adminStatusFluxoExtra());
 ?>
 <link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
 
@@ -365,37 +401,43 @@ $statusOperacionais = adminStatusFluxoPrincipal();
 
                     <div class="req-list-side">
                         <div class="req-date"><?= formataDataBR($req['data_envio']) ?></div>
-                        <details class="req-actions-menu">
-                            <summary class="req-open-button" onclick="event.stopPropagation();">
-                                Ações <i class="fas fa-ellipsis-vertical"></i>
-                            </summary>
-                            <div class="req-actions-dropdown">
-                                <button type="button" class="req-actions-item" onclick="event.stopPropagation(); abrirRequerimento(<?= (int) $req['id'] ?>);">
-                                    <i class="fas fa-eye"></i>Ver
-                                </button>
-                                <div class="req-actions-submenu">
-                                    <button type="button" class="req-actions-item" onclick="event.stopPropagation();">
-                                        <i class="fas fa-pen"></i>Alterar status
+                        <div class="req-row-actions">
+                            <button type="button" class="req-delete-button" onclick="event.stopPropagation(); confirmarExclusaoUnica(<?= (int) $req['id'] ?>);" title="Excluir da lista">
+                                <i class="fas fa-trash"></i>
+                                <span>Excluir</span>
+                            </button>
+                            <details class="req-actions-menu">
+                                <summary class="req-open-button" onclick="event.stopPropagation();">
+                                    Ações <i class="fas fa-ellipsis-vertical"></i>
+                                </summary>
+                                <div class="req-actions-dropdown">
+                                    <button type="button" class="req-actions-item" onclick="event.stopPropagation(); abrirRequerimento(<?= (int) $req['id'] ?>);">
+                                        <i class="fas fa-eye"></i>Ver
                                     </button>
-                                    <div class="req-actions-submenu-panel">
-                                        <?php foreach ($statusOperacionais as $statusAcao): ?>
-                                            <button type="button" class="req-actions-item" onclick="event.stopPropagation(); alterarStatusUnico(<?= (int) $req['id'] ?>, '<?= htmlspecialchars($statusAcao) ?>');">
-                                                <?= htmlspecialchars($statusAcao) ?>
-                                            </button>
-                                        <?php endforeach; ?>
+                                    <div class="req-actions-submenu">
+                                        <button type="button" class="req-actions-item" onclick="event.stopPropagation();">
+                                            <i class="fas fa-pen"></i>Alterar status
+                                        </button>
+                                        <div class="req-actions-submenu-panel">
+                                            <?php foreach ($statusOperacionais as $statusAcao): ?>
+                                                <button type="button" class="req-actions-item" onclick="event.stopPropagation(); alterarStatusUnico(<?= (int) $req['id'] ?>, '<?= htmlspecialchars($statusAcao) ?>');">
+                                                    <?= htmlspecialchars($statusAcao) ?>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
                                     </div>
+                                    <button type="button" class="req-actions-item" onclick="event.stopPropagation(); marcarComoLidoUnico(<?= (int) $req['id'] ?>);">
+                                        <i class="fas fa-envelope-open"></i>Marcar como aberto
+                                    </button>
+                                    <button type="button" class="req-actions-item" onclick="event.stopPropagation(); ativarModoSelecao(); toggleCheckboxById(<?= (int) $req['id'] ?>);">
+                                        <i class="fas fa-check-double"></i>Selecionar múltiplos
+                                    </button>
+                                    <button type="button" class="req-actions-item req-actions-item-danger" onclick="event.stopPropagation(); confirmarExclusaoUnica(<?= (int) $req['id'] ?>);">
+                                        <i class="fas fa-trash"></i>Excluir
+                                    </button>
                                 </div>
-                                <button type="button" class="req-actions-item" onclick="event.stopPropagation(); marcarComoLidoUnico(<?= (int) $req['id'] ?>);">
-                                    <i class="fas fa-envelope-open"></i>Marcar como aberto
-                                </button>
-                                <button type="button" class="req-actions-item" onclick="event.stopPropagation(); ativarModoSelecao(); toggleCheckboxById(<?= (int) $req['id'] ?>);">
-                                    <i class="fas fa-check-double"></i>Selecionar múltiplos
-                                </button>
-                                <button type="button" class="req-actions-item req-actions-item-danger" onclick="event.stopPropagation(); confirmarExclusaoUnica(<?= (int) $req['id'] ?>);">
-                                    <i class="fas fa-trash"></i>Excluir
-                                </button>
-                            </div>
-                        </details>
+                            </details>
+                        </div>
                     </div>
                 </article>
             <?php endforeach; ?>

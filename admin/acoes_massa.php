@@ -37,12 +37,10 @@ try {
 
     switch ($acao) {
         case 'excluir':
-            // Excluir requerimentos e dados relacionados
-            $stmt = $pdo->prepare("DELETE FROM requerimentos WHERE id IN ($placeholders)");
-            $stmt->execute($ids);
+            arquivarRequerimentos($ids, 'Excluído pela listagem de requerimentos');
 
-            $mensagem = count($ids) . ' requerimento(s) excluído(s) com sucesso!';
-            registrarAcao("Excluiu " . count($ids) . " requerimentos em massa");
+            $mensagem = count($ids) . ' requerimento(s) removido(s) da lista com sucesso!';
+            registrarAcao("Arquivou " . count($ids) . " requerimentos pela ação de excluir");
             break;
 
         case 'alterar_status':
@@ -103,4 +101,70 @@ function registrarAcao($descricao)
 
     $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, acao, data_acao) VALUES (?, ?, NOW())");
     $stmt->execute([$adminId, $descricao]);
+}
+
+function arquivarRequerimentos(array $ids, string $motivo): void
+{
+    global $pdo;
+
+    $adminId = $_SESSION['admin_id'] ?? null;
+
+    $stmtBusca = $pdo->prepare("
+        SELECT r.*,
+               req.nome as requerente_nome,
+               req.cpf_cnpj as requerente_cpf_cnpj,
+               req.telefone as requerente_telefone,
+               req.email as requerente_email,
+               p.nome as proprietario_nome,
+               p.cpf_cnpj as proprietario_cpf_cnpj
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        LEFT JOIN proprietarios p ON r.proprietario_id = p.id
+        WHERE r.id = ?
+    ");
+
+    $stmtArquiva = $pdo->prepare("
+        INSERT INTO requerimentos_arquivados (
+            requerimento_id, protocolo, tipo_alvara, requerente_id, proprietario_id,
+            endereco_objetivo, status, observacoes, data_envio, data_atualizacao,
+            admin_arquivamento, motivo_arquivamento, requerente_nome, requerente_email,
+            requerente_cpf_cnpj, requerente_telefone, proprietario_nome, proprietario_cpf_cnpj
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmtHistorico = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+    $stmtRemove = $pdo->prepare("DELETE FROM requerimentos WHERE id = ?");
+
+    foreach ($ids as $id) {
+        $stmtBusca->execute([$id]);
+        $dados = $stmtBusca->fetch();
+
+        if (!$dados) {
+            continue;
+        }
+
+        $stmtArquiva->execute([
+            $dados['id'],
+            $dados['protocolo'],
+            $dados['tipo_alvara'],
+            $dados['requerente_id'],
+            $dados['proprietario_id'],
+            $dados['endereco_objetivo'],
+            $dados['status'],
+            $dados['observacoes'],
+            $dados['data_envio'],
+            $dados['data_atualizacao'],
+            $adminId,
+            $motivo,
+            $dados['requerente_nome'],
+            $dados['requerente_email'],
+            $dados['requerente_cpf_cnpj'],
+            $dados['requerente_telefone'],
+            $dados['proprietario_nome'] ?? null,
+            $dados['proprietario_cpf_cnpj'] ?? null
+        ]);
+
+        $stmtHistorico->execute([$adminId, $id, "Arquivou o processo pela ação de excluir"]);
+        $stmtRemove->execute([$id]);
+    }
 }
