@@ -15,6 +15,7 @@ $nivelAtual = $_SESSION['admin_nivel'] ?? 'operador';
 $isAdmin    = in_array($nivelAtual, ['admin', 'admin_geral'], true);
 $isSetor3   = ($nivelAtual === 'secretario' || $isAdmin);
 $isSetor2   = ($nivelAtual === 'fiscal' || $isAdmin);
+$adminId    = $_SESSION['admin_id'];
 
 // Buscar requerimento
 $stmt = $pdo->prepare("
@@ -78,7 +79,6 @@ if (!$documentoIdFoco && !empty($documentos)) {
 }
 
 // Buscar solicitações de assinatura pendentes para o usuário atual
-$adminId = $_SESSION['admin_id'];
 $stmtSolicit = $pdo->prepare("
     SELECT sa.*, a.nome AS solicitante_nome
     FROM solicitacoes_assinatura sa
