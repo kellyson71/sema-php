@@ -4,6 +4,8 @@ require_once 'helpers.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/pagamento_helpers.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
+require_once __DIR__ . '/../includes/email_service.php';
+require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 ensureAdminNotificationTables($pdo);
 
@@ -156,6 +158,42 @@ try {
             atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
             registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando ' . count($documentoIds) . ' documento(s) final(is) ao requerente');
+
+            // Enviar email ao requerente com links diretos para os PDFs
+            $stmtReq = $pdo->prepare("
+                SELECT r.tipo_alvara, re.nome AS requerente_nome, re.email AS requerente_email
+                FROM requerimentos r
+                JOIN requerentes re ON re.id = r.requerente_id
+                WHERE r.id = ?
+            ");
+            $stmtReq->execute([$id]);
+            $reqData = $stmtReq->fetch();
+
+            if ($reqData && !empty($reqData['requerente_email'])) {
+                $tipoNome = $tipos_alvara[$reqData['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $reqData['tipo_alvara']));
+                $baseUrl  = rtrim(BASE_URL, '/') . '/';
+
+                $docsEmail = [];
+                $stmtDocUrls = $pdo->prepare("SELECT nome_arquivo, caminho_arquivo FROM documentos_finais WHERE requerimento_id = ? ORDER BY id ASC");
+                $stmtDocUrls->execute([$id]);
+                foreach ($stmtDocUrls->fetchAll() as $dfRow) {
+                    $docsEmail[] = [
+                        'nome' => $dfRow['nome_arquivo'],
+                        'url'  => $baseUrl . 'uploads/' . ltrim($dfRow['caminho_arquivo'], '/'),
+                    ];
+                }
+
+                $emailService = new EmailService();
+                $emailService->enviarEmailDocumentoFinal(
+                    $reqData['requerente_email'],
+                    $reqData['requerente_nome'],
+                    $req['protocolo'],
+                    $tipoNome,
+                    $docsEmail,
+                    $instrucoes,
+                    $id
+                );
+            }
             break;
 
         default:
