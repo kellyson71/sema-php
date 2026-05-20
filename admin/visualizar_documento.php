@@ -1,4 +1,12 @@
 <?php
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/vd_debug.log');
+error_reporting(E_ALL);
+set_exception_handler(function($e) {
+    error_log('[VD fatal exception] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    http_response_code(500);
+    exit;
+});
 require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
