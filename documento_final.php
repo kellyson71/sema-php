@@ -7,6 +7,7 @@ $mensagem = '';
 $mensagemTipo = '';
 $requerimento = null;
 $docFinal = null;
+$docsFinal = [];
 
 $token = trim($_GET['token'] ?? '');
 $partesToken = explode('.', $token, 3);
@@ -36,19 +37,29 @@ try {
         throw new RuntimeException('Link de documento inválido ou expirado.');
     }
 
-    // Buscar documento final
-    $stmt = $pdo->prepare("SELECT * FROM documentos_finais WHERE requerimento_id = ? AND token_acesso = ? LIMIT 1");
-    $stmt->execute([$requerimentoId, $token]);
-    $docFinal = $stmt->fetch();
+    // Buscar todos os documentos finais do requerimento associados a este token
+    $stmt = $pdo->prepare("
+        SELECT df.id, df.caminho_arquivo, df.nome_arquivo, df.instrucoes, df.enviado_em, df.visualizado_em
+        FROM documentos_finais df
+        WHERE df.requerimento_id = ? AND (df.token_acesso = ? OR df.requerimento_id = (
+            SELECT requerimento_id FROM documentos_finais WHERE token_acesso = ? LIMIT 1
+        ))
+        ORDER BY df.id ASC
+    ");
+    $stmt->execute([$requerimentoId, $token, $token]);
+    $docsFinal = $stmt->fetchAll();
+    $docFinal = !empty($docsFinal) ? $docsFinal[0] : null;
 
-    if (!$docFinal) {
+    if (empty($docsFinal)) {
         throw new RuntimeException('Documento não encontrado. Verifique se o link está correto.');
     }
 
-    // Registrar primeiro acesso
-    if (!$docFinal['visualizado_em']) {
-        $pdo->prepare("UPDATE documentos_finais SET visualizado_em = NOW() WHERE id = ?")
-            ->execute([$docFinal['id']]);
+    // Registrar primeiro acesso nos documentos ainda não visualizados
+    foreach ($docsFinal as $df) {
+        if (!$df['visualizado_em']) {
+            $pdo->prepare("UPDATE documentos_finais SET visualizado_em = NOW() WHERE id = ?")
+                ->execute([$df['id']]);
+        }
     }
 
 } catch (Throwable $e) {
@@ -57,7 +68,6 @@ try {
 }
 
 $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))) : '';
-$caminhoDownload = $docFinal ? BASE_URL . 'uploads/' . ltrim($docFinal['caminho_arquivo'], '/') : '';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -229,7 +239,7 @@ $caminhoDownload = $docFinal ? BASE_URL . 'uploads/' . ltrim($docFinal['caminho_
                     <i class="fas fa-file-circle-check fa-lg"></i>
                 </div>
                 <h1>Documento Final</h1>
-                <p>Seu documento está pronto para download</p>
+                <p><?= !empty($docsFinal) && count($docsFinal) > 1 ? count($docsFinal) . ' documentos prontos para download' : 'Seu documento está pronto para download' ?></p>
             </div>
             <div class="card-body">
 
@@ -240,7 +250,7 @@ $caminhoDownload = $docFinal ? BASE_URL . 'uploads/' . ltrim($docFinal['caminho_
                     </div>
                 <?php endif; ?>
 
-                <?php if ($requerimento && $docFinal): ?>
+                <?php if ($requerimento && !empty($docsFinal)): ?>
 
                     <div class="info-row">
                         <label>Protocolo</label>
@@ -266,25 +276,29 @@ $caminhoDownload = $docFinal ? BASE_URL . 'uploads/' . ltrim($docFinal['caminho_
 
                     <hr class="divider">
 
-                    <?php if (!empty($docFinal['instrucoes'])): ?>
+                    <?php if (!empty($docsFinal[0]['instrucoes'])): ?>
                         <div class="instrucoes-box">
                             <strong>Observações da equipe técnica:</strong><br>
-                            <?= htmlspecialchars($docFinal['instrucoes']) ?>
+                            <?= htmlspecialchars($docsFinal[0]['instrucoes']) ?>
                         </div>
                     <?php endif; ?>
 
-                    <a href="<?= htmlspecialchars($caminhoDownload) ?>"
-                       class="btn-download"
-                       download="<?= htmlspecialchars($docFinal['nome_arquivo']) ?>">
-                        <i class="fas fa-download"></i>
-                        Baixar Documento (PDF)
-                    </a>
+                    <?php foreach ($docsFinal as $df): ?>
+                        <?php $caminhoDownload = BASE_URL . 'uploads/' . ltrim($df['caminho_arquivo'], '/'); ?>
+                        <a href="<?= htmlspecialchars($caminhoDownload) ?>"
+                           class="btn-download"
+                           style="margin-bottom:10px;"
+                           download="<?= htmlspecialchars($df['nome_arquivo']) ?>">
+                            <i class="fas fa-download"></i>
+                            <?= htmlspecialchars($df['nome_arquivo']) ?>
+                        </a>
+                    <?php endforeach; ?>
 
                     <p style="text-align:center;font-size:.75rem;color:#9ca3af;margin-top:12px;">
                         <i class="fas fa-lock me-1"></i>
-                        Enviado em <?= date('d/m/Y \à\s H:i', strtotime($docFinal['enviado_em'])) ?>
+                        Enviado em <?= date('d/m/Y \à\s H:i', strtotime($docsFinal[0]['enviado_em'])) ?>
                         &nbsp;·&nbsp;
-                        <?= htmlspecialchars($docFinal['nome_arquivo']) ?>
+                        <?= count($docsFinal) ?> documento(s)
                     </p>
 
                 <?php elseif (!$mensagem): ?>

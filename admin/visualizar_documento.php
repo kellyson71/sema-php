@@ -51,10 +51,8 @@ $documentos = $stmtDocs->fetchAll();
 // Buscar todas as assinaturas por document/group para exibir no painel lateral
 $stmtSigs = $pdo->prepare("
     SELECT ad.documento_id, ad.assinante_nome, ad.assinante_cargo, ad.assinante_cpf,
-           ad.timestamp_assinatura, ad.group_id,
-           a.foto_perfil
+           ad.timestamp_assinatura, ad.group_id
     FROM assinaturas_digitais ad
-    LEFT JOIN administradores a ON a.id = ad.assinante_id
     WHERE ad.requerimento_id = ?
     ORDER BY ad.timestamp_assinatura ASC
 ");

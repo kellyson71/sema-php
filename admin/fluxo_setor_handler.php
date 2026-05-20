@@ -91,35 +91,51 @@ try {
             break;
 
         case 'setor3_aprovado':
+            // Validar que o secretário assinou pelo menos 1 documento
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM assinaturas_digitais WHERE requerimento_id = ? AND assinante_id = ?");
+            $stmt->execute([$id, $adminId]);
+            $temAssinatura = (int) $stmt->fetchColumn();
+            if (!$temAssinatura) {
+                throw new RuntimeException('Você precisa assinar pelo menos um documento antes de retornar ao Setor 2.');
+            }
             // Setor 3 assinou/aprovou → volta ao setor 2 para envio ao cidadão
             atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
-            registraHistorico($pdo, $adminId, $id, "Setor 3 aprovou — processo retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
+            registraHistorico($pdo, $adminId, $id, "Setor 3 revisou e retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
             createAdminNotificationForRequerimento($pdo, $id, 'setor3_aprovado');
             break;
 
         case 'doc_final_envio':
-            // Setor 2 envia documento final ao cidadão
-            $arquivo = $_FILES['doc_final_pdf'] ?? null;
-            if (!$arquivo || ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                throw new RuntimeException('Anexe o PDF do documento final.');
-            }
-            $dir = dirname(__DIR__) . '/uploads/' . $req['protocolo'];
-            $salvo = salvarArquivo($arquivo, $dir, 'doc_final');
-            if (!$salvo) {
-                throw new RuntimeException('Arquivo inválido. Envie apenas PDF (máx. 10MB).');
+            $documentoIds = array_filter(array_map('intval', $_POST['documento_ids'] ?? []));
+            if (empty($documentoIds)) {
+                throw new RuntimeException('Selecione pelo menos um documento para enviar ao cidadão.');
             }
             $instrucoes = trim($_POST['instrucoes_doc_final'] ?? '');
+            $loteId = bin2hex(random_bytes(16));
             $token = gerarTokenDocumentoFinal((int) $id, $req['protocolo']);
-            $pdo->prepare("
+
+            // Limpar envios anteriores deste requerimento
+            $pdo->prepare("DELETE FROM documentos_finais WHERE requerimento_id = ?")->execute([$id]);
+
+            $stmtDoc = $pdo->prepare("SELECT id, nome_arquivo, caminho_arquivo FROM assinaturas_digitais WHERE id = ? AND requerimento_id = ?");
+            $stmtInsert = $pdo->prepare("
                 INSERT INTO documentos_finais (requerimento_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE caminho_arquivo = VALUES(caminho_arquivo), nome_arquivo = VALUES(nome_arquivo),
-                    instrucoes = VALUES(instrucoes), token_acesso = VALUES(token_acesso),
-                    admin_envio_id = VALUES(admin_envio_id), enviado_em = NOW(), data_atualizacao = NOW()
-            ")->execute([$id, $salvo['caminho_relativo'] ?? $salvo['caminho'], $salvo['nome_original'], $instrucoes, $token, $adminId]);
+            ");
+            foreach ($documentoIds as $docId) {
+                $stmtDoc->execute([$docId, $id]);
+                $docRow = $stmtDoc->fetch();
+                if (!$docRow) continue;
+                $stmtInsert->execute([$id, $docRow['caminho_arquivo'], $docRow['nome_arquivo'], $instrucoes, $token, $adminId]);
+                // Tokens subsequentes usam ID de lote para unicidade
+                $token = $loteId . '_' . $docId;
+            }
+            // Restaurar o token real no primeiro registro para compatibilidade com documento_final.php
+            $tokenFinal = gerarTokenDocumentoFinal((int) $id, $req['protocolo']);
+            $pdo->prepare("UPDATE documentos_finais SET token_acesso = ? WHERE requerimento_id = ? ORDER BY id ASC LIMIT 1")->execute([$tokenFinal, $id]);
+
             atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando documento final ao requerente');
+            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando ' . count($documentoIds) . ' documento(s) final(is) ao requerente');
             break;
 
         default:

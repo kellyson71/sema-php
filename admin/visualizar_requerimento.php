@@ -1850,22 +1850,22 @@ $estadoCls = match($aguardandoAcao) {
   </div>
 </div>
 
-<div class="fm-backdrop" id="fm-setor3-aprovar">
+<div class="fm-backdrop" id="fm-setor3-retornar">
   <div class="fm-box">
     <div class="fm-header">
-      <div class="fm-icon roxo"><i class="fas fa-check-double"></i></div>
-      <h3>Aprovar e Assinar</h3>
+      <div class="fm-icon verde"><i class="fas fa-arrow-left"></i></div>
+      <h3>Retornar ao Setor 2</h3>
     </div>
     <div class="fm-body">
-      <p class="fm-sub">O Setor 3 aprova o processo. Ele retornará ao Setor 2 para envio final ao cidadão.</p>
+      <p class="fm-sub">O processo retorna ao Setor 2 para envio final ao cidadão. Certifique-se de ter assinado pelo menos um documento antes de retornar.</p>
       <div class="fm-impact">Destino: <strong>Setor 2 — envio ao cidadão</strong> · Setor 2 será notificado · Irreversível sem devolução manual</div>
       <form method="post" action="fluxo_setor_handler.php">
         <input type="hidden" name="requerimento_id" value="<?= $id ?>">
         <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
-        <textarea name="motivo" rows="3" placeholder="Observações (opcional)..."></textarea>
+        <textarea name="motivo" rows="3" placeholder="Observações para o Setor 2 (opcional)..."></textarea>
         <div class="fm-btns">
-          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3-aprovar')">Cancelar</button>
-          <button type="submit" class="fm-btn-confirm" style="background:#7e22ce;"><i class="fas fa-check-double me-1"></i>Aprovar</button>
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3-retornar')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm" style="background:#16a34a;"><i class="fas fa-arrow-left me-1"></i>Retornar ao Setor 2</button>
         </div>
       </form>
     </div>
@@ -2038,6 +2038,37 @@ document.addEventListener('DOMContentLoaded', function() {
             <?php echo $mensagem; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         </div>
+    <?php endif; ?>
+
+    <?php if ($isSecretarioPuro && $setorAtual === 'setor3'): ?>
+    <?php
+    $stmtDocsSec = $pdo->prepare("
+        SELECT ad.id, ad.nome_arquivo, ad.assinante_nome, ad.timestamp_assinatura
+        FROM assinaturas_digitais ad
+        WHERE ad.requerimento_id = ?
+        ORDER BY ad.timestamp_assinatura DESC
+    ");
+    $stmtDocsSec->execute([$id]);
+    $docsParaRevisar = $stmtDocsSec->fetchAll();
+    ?>
+    <?php if (!empty($docsParaRevisar)): ?>
+    <div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:10px;font-size:.9rem;">
+            <i class="fas fa-file-signature me-2"></i>Documentos enviados para sua revisão
+        </div>
+        <?php foreach ($docsParaRevisar as $docSec): ?>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #dbeafe;">
+            <div>
+                <div style="font-size:.85rem;font-weight:600;"><?= htmlspecialchars($docSec['nome_arquivo']) ?></div>
+                <div style="font-size:.75rem;color:#6b7280;">Gerado por <?= htmlspecialchars($docSec['assinante_nome']) ?> em <?= date('d/m/Y', strtotime($docSec['timestamp_assinatura'])) ?></div>
+            </div>
+            <a href="visualizar_documento.php?requerimento_id=<?= $id ?>" class="btn btn-sm btn-primary" style="font-size:.8rem;">
+                <i class="fas fa-eye me-1"></i>Revisar e Assinar
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
     <?php endif; ?>
 
     <!-- ABAS DE INFORMAÇÕES -->
@@ -2447,7 +2478,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="card-body p-0">
                     <?php if (count($historico) > 0): ?>
-                        <?php foreach ($historico as $idx => $h): ?>
+                        <?php
+                        // Para secretário puro, limitar histórico a 3 itens mais recentes
+                        $limitHistorico = $isSecretarioPuro ? 3 : PHP_INT_MAX;
+                        $historicoExibido = $isSecretarioPuro ? array_slice($historico, 0, $limitHistorico) : $historico;
+                        ?>
+                        <?php foreach ($historicoExibido as $idx => $h): ?>
                             <div class="data-row" data-historico-item="<?php echo $idx; ?>">
                                 <div class="data-label" style="min-width: 140px;">
                                     <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome'] ?? 'Sistema'); ?></div>
@@ -2463,9 +2499,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                         <?php endforeach; ?>
+                        <?php if ($isSecretarioPuro && count($historico) > $limitHistorico): ?>
+                        <div class="px-3 py-2 border-top text-center">
+                            <span class="text-muted small">Exibindo os <?= $limitHistorico ?> registros mais recentes de <?= count($historico) ?> total.</span>
+                        </div>
+                        <?php endif; ?>
 
-                        <!-- Paginação do Histórico -->
-                        <?php if (count($historico) > 10): ?>
+                        <!-- Paginação do Histórico (apenas para não-secretário) -->
+                        <?php if (!$isSecretarioPuro && count($historico) > 10): ?>
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light" id="historico-pagination">
                             <button class="btn btn-sm btn-outline-secondary" id="historico-prev" onclick="historicoChangePage(-1)" disabled>
                                 <i class="fas fa-chevron-left me-1"></i>Anterior
@@ -2609,7 +2650,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                               <!-- Ação primária do setor -->
                               <div style="margin-bottom:18px;">
-                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
+                                  <a href="<?= $setorAtual === 'setor3' ? 'visualizar_documento.php?requerimento_id='.$id : 'documentos/selecionar.php?requerimento_id='.$id ?>"
                                       class="btn fw-semibold text-white w-100 tt"
                                       data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?= htmlspecialchars($ap['tip']) ?>"
                                       style="background:var(--primary-600);padding:10px 18px;border-radius:10px;">
@@ -2661,17 +2702,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                               <i class="fas fa-arrow-left me-1"></i>Devolver à Triagem
                                           </button>
                                       <?php elseif ($setorAtual === 'setor3'): ?>
-                                          <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
-                                              class="btn btn-outline-primary btn-sm fw-medium tt"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Abre o visualizador de documentos para revisar e assinar digitalmente.">
-                                              <i class="fas fa-eye me-1"></i>Visualizar e Assinar Documentos
-                                          </a>
                                           <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
-                                              onclick="abrirFM('fm-setor3-aprovar')"
+                                              onclick="abrirFM('fm-setor3-retornar')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Aprova o processo e assina o documento final. O processo retorna ao Setor 2 para envio ao cidadão.">
-                                              <i class="fas fa-check-double me-1"></i>Aprovar e Assinar
+                                              data-bs-title="Retorna o processo ao Setor 2 após revisão. Use somente após assinar pelo menos um documento.">
+                                              <i class="fas fa-arrow-left me-1"></i>Retornar ao Setor 2
                                           </button>
                                           <button type="button" class="btn btn-outline-secondary btn-sm fw-medium tt"
                                               onclick="abrirFM('fm-devolver-s2')"
@@ -2803,9 +2838,36 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<?php
+// Documentos disponíveis para envio final (usados no docFinalModal)
+$stmtDocsFinais = $pdo->prepare("
+    SELECT ad.id, ad.nome_arquivo, ad.assinante_nome, ad.assinante_cargo, ad.timestamp_assinatura,
+           COALESCE(ad.group_id, ad.documento_id) as grupo,
+           EXISTS(
+               SELECT 1 FROM assinaturas_digitais ad2
+               WHERE ad2.requerimento_id = ad.requerimento_id
+                 AND COALESCE(ad2.group_id, ad2.documento_id) = COALESCE(ad.group_id, ad.documento_id)
+                 AND ad2.assinante_id IN (SELECT id FROM administradores WHERE nivel = 'secretario')
+           ) as tem_assinatura_secretario
+    FROM assinaturas_digitais ad
+    WHERE ad.requerimento_id = ?
+    ORDER BY ad.timestamp_assinatura DESC
+");
+$stmtDocsFinais->execute([$id]);
+$docsDisponiveis = $stmtDocsFinais->fetchAll();
+// Agrupar por grupo, pegar só a mais recente por grupo
+$docsGrouped = [];
+foreach ($docsDisponiveis as $docRow) {
+    $g = $docRow['grupo'];
+    if (!isset($docsGrouped[$g])) {
+        $docsGrouped[$g] = $docRow;
+    }
+}
+?>
+
 <!-- Modal: Enviar Documento Final ao Cidadão -->
 <div class="modal fade" id="docFinalModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
                 <div class="d-flex align-items-center gap-2">
@@ -2816,23 +2878,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="fluxo_setor_handler.php" enctype="multipart/form-data">
+            <form method="post" action="fluxo_setor_handler.php" id="formDocFinal">
                 <input type="hidden" name="requerimento_id" value="<?= $id ?>">
                 <input type="hidden" name="fluxo_acao" value="doc_final_envio">
                 <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-4" style="line-height:1.55;">
-                        O requerente receberá um e-mail com um link seguro para acessar e baixar o documento final. Após o envio, o processo será marcado como <strong>Finalizado</strong>.
+                    <p class="text-muted small mb-3" style="line-height:1.55;">
+                        Selecione os documentos assinados que serão enviados ao requerente por link seguro. Após o envio, o processo será marcado como <strong>Finalizado</strong>.
                     </p>
-
-                    <div class="mb-3">
-                        <label for="doc_final_pdf" class="form-label fw-semibold" style="font-size:.875rem;">
-                            Arquivo PDF do documento final <span class="text-danger">*</span>
-                        </label>
-                        <input type="file" class="form-control" id="doc_final_pdf" name="doc_final_pdf"
-                               accept="application/pdf,.pdf" required>
-                        <div class="form-text">Apenas PDF. Tamanho máximo: 10 MB.</div>
-                    </div>
-
+                    <?php if (empty($docsGrouped)): ?>
+                        <div class="alert alert-warning py-2 px-3" style="font-size:.85rem;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Nenhum documento assinado encontrado neste processo. Gere e assine um documento antes de enviar ao cidadão.
+                        </div>
+                    <?php else: ?>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="font-size:.875rem;">
+                                Documentos disponíveis <span class="text-danger">*</span>
+                            </label>
+                            <div id="docFinalCheckList" style="display:flex;flex-direction:column;gap:8px;">
+                                <?php foreach ($docsGrouped as $grupo => $doc): ?>
+                                    <label class="doc-final-check-item d-flex align-items-start gap-3 p-3 rounded-3 border cursor-pointer"
+                                           style="background:#f8fafc;cursor:pointer;"
+                                           data-tem-sec="<?= $doc['tem_assinatura_secretario'] ? '1' : '0' ?>">
+                                        <input type="checkbox" name="documento_ids[]" value="<?= (int)$doc['id'] ?>"
+                                               class="form-check-input mt-1 flex-shrink-0" style="width:18px;height:18px;">
+                                        <div class="flex-grow-1 min-w-0">
+                                            <div class="fw-semibold text-truncate" style="font-size:.875rem;">
+                                                <?= htmlspecialchars($doc['nome_arquivo']) ?>
+                                            </div>
+                                            <div class="text-muted" style="font-size:.77rem;margin-top:2px;">
+                                                Assinado por <strong><?= htmlspecialchars($doc['assinante_nome']) ?></strong>
+                                                (<?= htmlspecialchars($doc['assinante_cargo'] ?? 'sem cargo') ?>)
+                                                em <?= date('d/m/Y H:i', strtotime($doc['timestamp_assinatura'])) ?>
+                                            </div>
+                                            <?php if ($doc['tem_assinatura_secretario']): ?>
+                                                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac;font-size:.7rem;margin-top:4px;">
+                                                    <i class="fas fa-stamp me-1"></i>Assinado pelo Secretário
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fcd34d;font-size:.7rem;margin-top:4px;">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Sem assinatura do Secretário
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <div class="mb-2">
                         <label for="instrucoes_doc_final" class="form-label fw-semibold" style="font-size:.875rem;">
                             Observações <span class="text-muted fw-normal">(opcional)</span>
@@ -2844,7 +2937,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
                     <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success px-4">
+                    <button type="submit" class="btn btn-success px-4" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
                         <i class="fas fa-paper-plane me-2"></i>Enviar documento final
                     </button>
                 </div>
@@ -3946,5 +4039,29 @@ document.addEventListener('DOMContentLoaded', function () {
         new bootstrap.Tooltip(el, { trigger: 'hover', delay: { show: 200, hide: 80 } });
     });
 });
+</script>
+
+<script>
+// Validação do formulário de envio de documento final
+(function() {
+    var form = document.getElementById('formDocFinal');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        var checked = this.querySelectorAll('input[name="documento_ids[]"]:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            alert('Selecione pelo menos um documento para enviar.');
+            return;
+        }
+        var algumComSec = Array.from(checked).some(function(cb) {
+            return cb.closest('.doc-final-check-item') && cb.closest('.doc-final-check-item').dataset.temSec === '1';
+        });
+        if (!algumComSec) {
+            if (!confirm('Nenhum dos documentos selecionados foi assinado pelo Secretário.\n\nDeseja enviar mesmo assim?')) {
+                e.preventDefault();
+            }
+        }
+    });
+})();
 </script>
 <?php include 'footer.php'; ?>
