@@ -1940,6 +1940,75 @@ document.addEventListener('DOMContentLoaded', function() {
     $procHeaderCls = $isFinalized ? 'finalizado' : ($isIndeferido ? 'indeferido' : '');
     $nomeAlvaraProc = $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']));
     ?>
+    <?php
+    // Banner de devolução pelo Secretário (Setor 3 → Setor 2)
+    $foiDevolvidoSecretario = false;
+    $devolutorInfo = null;
+    if (
+        !empty($requerimento['motivo_devolucao']) &&
+        ($requerimento['setor_atual'] ?? '') === 'setor2' &&
+        ($requerimento['aguardando_acao'] ?? '') === 'analise_setor2' &&
+        !empty($requerimento['devolvido_por'])
+    ) {
+        $stmtDev = $pdo->prepare("SELECT id, nome, nome_completo, nivel, cargo FROM administradores WHERE id = ? LIMIT 1");
+        $stmtDev->execute([$requerimento['devolvido_por']]);
+        $devolutorInfo = $stmtDev->fetch();
+        if ($devolutorInfo && $devolutorInfo['nivel'] === 'secretario') {
+            $foiDevolvidoSecretario = true;
+        }
+    }
+    ?>
+    <?php if ($foiDevolvidoSecretario): ?>
+        <div class="banner-devolucao">
+            <div class="banner-devolucao-icon"><i class="fas fa-rotate-left"></i></div>
+            <div class="banner-devolucao-body">
+                <div class="banner-devolucao-title">
+                    Processo devolvido pelo Secretário
+                    <span class="banner-devolucao-meta">
+                        — <?= htmlspecialchars($devolutorInfo['nome_completo'] ?: $devolutorInfo['nome']) ?>
+                        <?php if (!empty($requerimento['devolvido_em'])): ?>
+                            · <?= date('d/m/Y \à\s H:i', strtotime($requerimento['devolvido_em'])) ?>
+                        <?php endif; ?>
+                    </span>
+                </div>
+                <div class="banner-devolucao-motivo">
+                    <strong>Motivo:</strong>
+                    <?= nl2br(htmlspecialchars($requerimento['motivo_devolucao'])) ?>
+                </div>
+            </div>
+        </div>
+        <style>
+        .banner-devolucao {
+            display:flex; gap:14px; align-items:flex-start;
+            background:linear-gradient(90deg,#fffbeb 0%,#fef3c7 100%);
+            border:1px solid #fcd34d;
+            border-left:4px solid #b7791f;
+            border-radius:12px;
+            padding:14px 18px;
+            margin-bottom:12px;
+            box-shadow:0 2px 8px rgba(183,121,31,.08);
+        }
+        .banner-devolucao-icon {
+            width:38px; height:38px; flex-shrink:0;
+            background:#fef3c7; border-radius:9px;
+            display:flex; align-items:center; justify-content:center;
+            color:#92400e; font-size:1.05rem;
+        }
+        .banner-devolucao-body { flex:1; min-width:0; }
+        .banner-devolucao-title {
+            font-size:.9rem; font-weight:800;
+            color:#78350f; margin-bottom:4px;
+        }
+        .banner-devolucao-meta {
+            font-weight:600; color:#92400e; font-size:.78rem;
+        }
+        .banner-devolucao-motivo {
+            font-size:.85rem; color:#3f2c0c; line-height:1.5;
+        }
+        .banner-devolucao-motivo strong { color:#78350f; }
+        </style>
+    <?php endif; ?>
+
     <div class="proc-header <?= $procHeaderCls ?>">
         <a href="requerimentos.php" class="proc-back"><i class="fas fa-arrow-left"></i> Voltar</a>
         <div class="proc-divider"></div>

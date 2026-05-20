@@ -99,7 +99,10 @@ if (isset($_GET['error'])) {
     }
 }
 
-$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.setor_atual, r.aguardando_acao, r.data_envio, r.visualizado, req.nome AS requerente
+$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.setor_atual, r.aguardando_acao, r.data_envio, r.visualizado,
+               r.motivo_devolucao, r.devolvido_por,
+               req.nome AS requerente,
+               (SELECT a.nivel FROM administradores a WHERE a.id = r.devolvido_por) AS devolvido_por_nivel
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
         WHERE 1=1";
@@ -291,6 +294,18 @@ $statusOperacionais = adminStatusFluxoPrincipal();
 .acao-revisao  { background:#f3e8ff; color:#7e22ce; }
 .acao-envio    { background:#e0f2fe; color:#0369a1; }
 .acao-concluido{ background:#f1f5f0; color:#666; }
+.badge-devolvido-sec {
+    background:#fef3c7;
+    color:#92400e;
+    border:1px solid #fcd34d;
+    font-size:.7rem;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    cursor:help;
+}
 </style>
 
 <?php
@@ -494,7 +509,19 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     <button type="button" class="req-list-main" onclick="abrirRequerimento(<?= (int) $req['id'] ?>)">
                         <div class="req-list-top">
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
-                            <?php if ($setorFiltro && !empty($req['aguardando_acao'])): ?>
+                            <?php
+                            $foiDevolvidoSec = (
+                                !empty($req['motivo_devolucao']) &&
+                                ($req['setor_atual'] ?? '') === 'setor2' &&
+                                ($req['aguardando_acao'] ?? '') === 'analise_setor2' &&
+                                ($req['devolvido_por_nivel'] ?? '') === 'secretario'
+                            );
+                            ?>
+                            <?php if ($foiDevolvidoSec): ?>
+                                <span class="badge badge-devolvido-sec" title="<?= htmlspecialchars($req['motivo_devolucao']) ?>">
+                                    <i class="fas fa-rotate-left me-1"></i>Devolvido pelo Setor 3
+                                </span>
+                            <?php elseif ($setorFiltro && !empty($req['aguardando_acao'])): ?>
                                 <span class="badge <?= htmlspecialchars(acaoClass($req['aguardando_acao'])) ?>" style="font-size:.7rem;">
                                     <?= htmlspecialchars(acaoLabel($req['aguardando_acao'])) ?>
                                 </span>
