@@ -416,39 +416,90 @@ include '../header.php';
              </h5>
              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body p-5">
-              <div class="text-center mb-4">
-                  <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                       style="width:72px;height:72px;background:#d1fae5;">
-                      <i class="fas fa-file-signature fs-2 text-success"></i>
-                  </div>
-                  <h4 class="fw-bold text-dark">Deseja finalizar a assinatura digital?</h4>
-                  <p class="text-muted mb-0">Após a confirmação, o documento será lacrado administrativamente.</p>
+          <div class="modal-body p-4">
+
+              <!-- Seletor de modo -->
+              <p class="fw-bold mb-2" style="font-size:.87rem;">Como deseja finalizar este documento?</p>
+              <div class="d-flex gap-2 mb-4" id="modoCards">
+                  <label class="modo-card selected" data-modo="assinar" style="flex:1;border:2px solid #16a34a;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f0fdf4;">
+                      <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
+                      <div style="font-size:1.3rem;margin-bottom:5px;">🖋️</div>
+                      <div style="font-weight:700;font-size:.83rem;color:#16a34a;">Assinar digitalmente</div>
+                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Bloco digital certificado</div>
+                  </label>
+                  <label class="modo-card" data-modo="sem_assinar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
+                      <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
+                      <div style="font-size:1.3rem;margin-bottom:5px;">✍️</div>
+                      <div style="font-weight:700;font-size:.83rem;color:#374151;">Linha para assinar</div>
+                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Assinatura manual no papel</div>
+                  </label>
+                  <label class="modo-card" data-modo="assinar_e_requisitar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
+                      <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
+                      <div style="font-size:1.3rem;margin-bottom:5px;">👥</div>
+                      <div style="font-weight:700;font-size:.83rem;color:#1d4ed8;">Assinar + requisitar</div>
+                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Pede co-assinatura</div>
+                  </label>
               </div>
 
-              <div class="bg-light p-3 rounded-3 mb-4 text-center border">
-                  <a href="../diretrizes_assinatura.php" target="_blank" class="text-decoration-none fw-bold"
-                     style="color: var(--sema-green);">
-                      <i class="fas fa-external-link-alt me-1"></i>
-                      Ler Diretrizes de Convalidação e Responsabilidade Legal
-                  </a>
+              <!-- Aviso para modo sem_assinar -->
+              <div id="avisoSemAssinar" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem;color:#92400e;">
+                  <i class="fas fa-triangle-exclamation me-2"></i>
+                  <strong>Atenção:</strong> Documentos sem assinatura digital <strong>não podem ser usados para aprovação no Secretário</strong> (Setor 3 exige ao menos uma assinatura). Use este modo apenas para rascunhos ou documentos que serão assinados à mão.
+              </div>
+
+              <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
+              <div id="painelCoAssinaturaEditor" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">Solicitar co-assinatura de:</label>
+                  <select id="coassRequisitar" class="form-select form-select-sm">
+                      <option value="">— Selecione um administrador —</option>
+                      <?php
+                      $adminLogado = $_SESSION['admin_id'] ?? 0;
+                      $adminsLista = $pdo->query("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != $adminLogado ORDER BY nome")->fetchAll();
+                      foreach ($adminsLista as $adm): ?>
+                          <option value="<?= $adm['id'] ?>"><?= htmlspecialchars($adm['nome']) ?> (<?= htmlspecialchars($adm['nivel']) ?>)</option>
+                      <?php endforeach; ?>
+                  </select>
+                  <textarea id="coassMensagem" class="form-control form-control-sm mt-2" rows="2"
+                            placeholder="Mensagem para o destinatário (opcional)..."
+                            style="font-size:.82rem;resize:none;"></textarea>
               </div>
 
               <form id="formCheckout">
-                  <div class="form-check p-3 mb-3 border rounded border-success"
-                       style="background: rgba(16,185,129,0.06);">
-                      <input class="form-check-input ms-1 me-2 border-success shadow-none"
-                             type="checkbox" id="checkDiretrizes" required
+                  <!-- Diretrizes (só para modos com assinatura digital) -->
+                  <div id="blocoDiretrizes">
+                      <div class="bg-light p-3 rounded-3 mb-3 text-center border">
+                          <a href="../diretrizes_assinatura.php" target="_blank" class="text-decoration-none fw-bold"
+                             style="color: var(--sema-green);">
+                              <i class="fas fa-external-link-alt me-1"></i>
+                              Ler Diretrizes de Convalidação e Responsabilidade Legal
+                          </a>
+                      </div>
+                      <div class="form-check p-3 mb-3 border rounded border-success"
+                           style="background: rgba(16,185,129,0.06);">
+                          <input class="form-check-input ms-1 me-2 border-success shadow-none"
+                                 type="checkbox" id="checkDiretrizes"
+                                 style="transform: scale(1.3); margin-top: 5px;">
+                          <label class="form-check-label fw-bold text-dark" for="checkDiretrizes">
+                              Eu afirmo que li e concordo inteiramente com as diretrizes de assinatura digital
+                              <span class="text-danger">*</span>
+                          </label>
+                      </div>
+                  </div>
+
+                  <!-- Confirmação para modo sem_assinar -->
+                  <div id="blocoConfirmacaoManual" style="display:none;" class="form-check p-3 mb-3 border rounded border-warning" style="background:rgba(251,191,36,0.06);">
+                      <input class="form-check-input ms-1 me-2 shadow-none" type="checkbox" id="checkManual"
                              style="transform: scale(1.3); margin-top: 5px;">
-                      <label class="form-check-label fw-bold text-dark" for="checkDiretrizes">
-                          Eu afirmo que li e concordo inteiramente com as diretrizes de assinatura digital
+                      <label class="form-check-label fw-bold text-dark" for="checkManual">
+                          Entendo que este documento requer assinatura física e não poderá ser aprovado pelo Secretário sem uma assinatura digital adicional
                           <span class="text-danger">*</span>
                       </label>
                   </div>
-                  <div class="form-check ms-2 mb-4">
+
+                  <div class="form-check ms-2 mb-3">
                       <input class="form-check-input" type="checkbox" id="checkDownload" checked>
                       <label class="form-check-label text-muted" for="checkDownload">
-                          Fazer o download automático do PDF logo após autenticar
+                          Fazer o download automático do PDF após gerar
                       </label>
                   </div>
 
@@ -457,7 +508,7 @@ include '../header.php';
                               data-bs-dismiss="modal">Revisar Documento</button>
                       <button type="button" class="btn btn-sema fw-bold px-5"
                               id="btnAssinarFinal" onclick="finalizarAssinatura()">
-                          <i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica
+                          <i class="fas fa-check-circle me-2"></i> <span id="btnAssinarLabel">Confirmar Assinatura Técnica</span>
                       </button>
                   </div>
               </form>
@@ -843,14 +894,75 @@ include '../header.php';
         this.setCustomValidity(this.checked ? '' : 'O aceite nas diretrizes é obrigatório.');
     });
 
+    /* ─── Seletor de modo ──────────────────────────────────── */
+    (function() {
+        const cards = document.querySelectorAll('.modo-card');
+        const modoColors = {
+            assinar: { border: '#16a34a', bg: '#f0fdf4', text: '#16a34a' },
+            sem_assinar: { border: '#b7791f', bg: '#fffbeb', text: '#92400e' },
+            assinar_e_requisitar: { border: '#1d4ed8', bg: '#eff6ff', text: '#1d4ed8' },
+        };
+        const btnLabels = {
+            assinar: 'Confirmar Assinatura Técnica',
+            sem_assinar: 'Gerar com Linha Manual',
+            assinar_e_requisitar: 'Assinar e Solicitar Co-assinatura',
+        };
+
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                const modo = card.dataset.modo;
+
+                cards.forEach(c => {
+                    c.classList.remove('selected');
+                    c.style.border = '2px solid #e5e7eb';
+                    c.style.background = '#f9fafb';
+                    c.querySelector('div:nth-child(3)').style.color = '#374151';
+                });
+
+                card.classList.add('selected');
+                const col = modoColors[modo];
+                card.style.border = `2px solid ${col.border}`;
+                card.style.background = col.bg;
+                card.querySelector('div:nth-child(3)').style.color = col.text;
+
+                document.getElementById('btnAssinarLabel').textContent = btnLabels[modo] || 'Confirmar';
+
+                const isSemAssinar = modo === 'sem_assinar';
+                const isRequisitar = modo === 'assinar_e_requisitar';
+
+                document.getElementById('avisoSemAssinar').style.display       = isSemAssinar ? 'block' : 'none';
+                document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
+                document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
+                document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
+
+                document.getElementById('checkDiretrizes').required = !isSemAssinar;
+                document.getElementById('checkManual').required     = isSemAssinar;
+            });
+        });
+    })();
+
     /* ─── Finalizar assinatura ─────────────────────────────── */
     function finalizarAssinatura() {
-        const form = document.getElementById('formCheckout');
-        if (!form.checkValidity()) { form.reportValidity(); return; }
+        const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
+        const isSemAssinar = modoAtivo === 'sem_assinar';
+
+        // Validação dos checkboxes conforme modo
+        const checkDiretrizes = document.getElementById('checkDiretrizes');
+        const checkManual     = document.getElementById('checkManual');
+        if (!isSemAssinar && !checkDiretrizes.checked) {
+            checkDiretrizes.closest('.form-check').scrollIntoView({ behavior: 'smooth' });
+            checkDiretrizes.focus();
+            return;
+        }
+        if (isSemAssinar && !checkManual.checked) {
+            checkManual.closest('.form-check').scrollIntoView({ behavior: 'smooth' });
+            checkManual.focus();
+            return;
+        }
 
         const btn = document.getElementById('btnAssinarFinal');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Autenticando...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
         let conteudoHtml = '';
         if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
@@ -882,20 +994,29 @@ include '../header.php';
         fd.append('salvar_banco',     'true');
         fd.append('template_salvo',   templateNome);
         fd.append('download',         fazDownload);
+        fd.append('modo_assinatura',  modoAtivo);
+        if (modoAtivo === 'assinar_e_requisitar') {
+            fd.append('coassinatura_destinatario_id', document.getElementById('coassRequisitar').value);
+            fd.append('coassinatura_mensagem',        document.getElementById('coassMensagem').value);
+        }
 
         fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd })
         .then(res => res.json())
         .then(ret => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
+            btn.innerHTML = `<i class="fas fa-check-circle me-2"></i> <span id="btnAssinarLabel">${document.getElementById('btnAssinarLabel')?.textContent || 'Confirmar'}</span>`;
 
             if (ret.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
+                const swalTitle = isSemAssinar ? 'Documento Gerado!' : 'Autenticado com Sucesso!';
+                const swalText  = isSemAssinar
+                    ? 'Documento gerado com linha de assinatura manual. Lembre-se de coletar a assinatura física.'
+                    : 'O arquivo consta permanentemente armazenado nos registros eletrônicos do Processo.';
                 Swal.fire({
-                    title: 'Autenticado com Sucesso!',
-                    text: 'O arquivo consta permanentemente armazenado nos registros eletrônicos do Processo.',
+                    title: swalTitle,
+                    text: swalText,
                     icon: 'success',
-                    timer: 2500,
+                    timer: 3000,
                     showConfirmButton: false
                 }).then(() => {
                     if (fazDownload && ret.url_pdf) {

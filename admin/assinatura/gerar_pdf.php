@@ -249,6 +249,8 @@ function renderizarParecerPdf(string $conteudo_html, array $assinantes, string $
  */
 function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
 {
+    if (empty($assinantes)) return;
+
     $pdf->lastPage();
     $pdf->SetAutoPageBreak(false);
 
@@ -256,6 +258,14 @@ function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
     $ph = $pdf->getPageHeight();
     $bH = 13;
     $bY = $ph - 14 - $bH;
+
+    // Modo linha manual: apenas um assinante com tipo='manual'
+    if (($assinantes[0]['tipo'] ?? '') === 'manual') {
+        $bW = 70;
+        $bX = ($pw - $bW) / 2;
+        _renderLinhaAssinaturaManual($pdf, $assinantes[0], $bX, $bY, $bW);
+        return;
+    }
 
     $n = count($assinantes);
 
@@ -274,6 +284,30 @@ function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
     foreach ($assinantes as $i => $assinante) {
         $bX = $startX + $i * ($bW + $gap);
         _renderBlocoAssinatura($pdf, $assinante, $bX, $bY, $bW, $bH);
+    }
+}
+
+/**
+ * Renderiza uma linha simples de assinatura manual (sem bloco digital).
+ */
+function _renderLinhaAssinaturaManual(SEMA_PDF $pdf, array $assinante, float $bX, float $bY, float $bW): void
+{
+    $nome  = strtoupper($assinante['nome'] ?? '');
+    $cargo = $assinante['cargo'] ?? '';
+
+    $pdf->SetDrawColor(0, 0, 0);
+    $pdf->SetLineWidth(0.35);
+    $pdf->Line($bX, $bY + 7, $bX + $bW, $bY + 7);
+
+    $pdf->SetFont('helvetica', 'B', 5.5);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetXY($bX, $bY + 8);
+    $pdf->Cell($bW, 3, $nome, 0, 0, 'C');
+
+    if ($cargo) {
+        $pdf->SetFont('helvetica', '', 5);
+        $pdf->SetXY($bX, $bY + 11);
+        $pdf->Cell($bW, 2.5, $cargo, 0, 0, 'C');
     }
 }
 

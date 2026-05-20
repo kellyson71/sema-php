@@ -123,9 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $caminhoRelativo = 'pareceres/' . $requerimento_id . '/' . $nomeArquivoBase;
 
             // 1. Gerar e salvar fisicamente o PDF no disco "F"
-            // Modo sem_assinar: passa array vazio de assinantes para omitir bloco de assinatura
             if ($modoAssinatura === 'sem_assinar') {
-                emitirParecerAssinado($conteudo, [], $numero_processo, 'F', $caminhoFisico);
+                // Linha de assinatura manual: nome + cargo sem bloco digital
+                $assinanteManual = array_merge($assinante, ['tipo' => 'manual']);
+                emitirParecerAssinado($conteudo, $assinanteManual, $numero_processo, 'F', $caminhoFisico);
             } else {
                 emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
             }
@@ -140,10 +141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nomeCurto_template = preg_replace('/\.html$/i', '', $template_salvo); // limpa .html caso chegue
 
             // Definir tipo de assinatura conforme modo
-            $tipoAssinatura = ($modoAssinatura === 'sem_assinar') ? 'sem_assinatura' : 'digital_sema';
-            $assinanteNomeReg = ($modoAssinatura === 'sem_assinar') ? '(sem assinatura)' : $assinante['nome'];
-            $assinanteCpfReg  = ($modoAssinatura === 'sem_assinar') ? '' : $assinante['cpf'];
-            $assinanteCargoReg= ($modoAssinatura === 'sem_assinar') ? '' : $assinante['cargo'];
+            $tipoAssinatura     = ($modoAssinatura === 'sem_assinar') ? 'sem_assinatura' : 'digital_sema';
+            $assinanteNomeReg   = $assinante['nome'];
+            $assinanteCpfReg    = ($modoAssinatura === 'sem_assinar') ? '' : $assinante['cpf'];
+            $assinanteCargoReg  = $assinante['cargo'];
 
             // 3. Persistência de Banco de Dados
             $stmt = $pdo->prepare("
