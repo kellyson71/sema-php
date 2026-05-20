@@ -39,13 +39,19 @@ $stmtDocs = $pdo->prepare("
            ad.group_id, ad.visivel_para,
            (SELECT COUNT(*) FROM assinaturas_digitais ad2
             WHERE (ad2.group_id = ad.group_id OR ad2.documento_id = ad.documento_id)
-           ) AS total_assinaturas
+           ) AS total_assinaturas,
+           (df.documento_id IS NOT NULL) AS tem_fonte,
+           (SELECT COUNT(*) FROM assinaturas_digitais ad3
+            WHERE ad3.documento_id = COALESCE(ad.group_id, ad.documento_id)
+              AND ad3.assinante_id = ?
+           ) AS ja_assinei
     FROM assinaturas_digitais ad
+    LEFT JOIN documentos_fonte df ON df.documento_id = COALESCE(ad.group_id, ad.documento_id)
     WHERE ad.requerimento_id = ?
     GROUP BY COALESCE(ad.group_id, ad.documento_id)
     ORDER BY ad.timestamp_assinatura DESC
 ");
-$stmtDocs->execute([$requerimentoId]);
+$stmtDocs->execute([$adminId, $requerimentoId]);
 $documentos = $stmtDocs->fetchAll();
 
 // Buscar todas as assinaturas por document/group para exibir no painel lateral
@@ -107,6 +113,7 @@ if (isset($_GET['success'])) {
     $successMsgs = [
         'solicitacao_enviada' => 'Solicitação de co-assinatura enviada com sucesso.',
         'fluxo_atualizado'    => 'Fluxo atualizado com sucesso.',
+        'coassinado'          => 'Assinatura adicionada com sucesso.',
     ];
     $pageSuccess = $successMsgs[$_GET['success']] ?? 'Operação realizada com sucesso.';
 }
@@ -252,20 +259,31 @@ include 'header.php';
                             </div>
                         <?php endforeach; ?>
 
-                        <?php if ($isSetor3 && $requerimento['setor_atual'] === 'setor3'): ?>
-                            <a href="documentos/selecionar.php?requerimento_id=<?= $requerimentoId ?>"
-                               class="btn btn-sm w-100 mt-2 fw-semibold"
-                               style="background:#059669;color:#fff;font-size:.78rem;text-decoration:none;display:block;text-align:center;">
-                                <i class="fas fa-file-signature me-1"></i>Gerar / Assinar documento
-                            </a>
+                        <?php if ($doc['tem_fonte']): ?>
+                            <?php if ($doc['ja_assinei']): ?>
+                                <div class="mt-2 text-center" style="font-size:.75rem;color:#059669;">
+                                    <i class="fas fa-check-circle me-1"></i>Você já assinou este documento
+                                </div>
+                            <?php else: ?>
+                                <button type="button"
+                                        class="btn btn-sm w-100 mt-2 fw-semibold"
+                                        style="background:#059669;color:#fff;font-size:.78rem;"
+                                        onclick="abrirCoAssinar('<?= htmlspecialchars($doc['documento_id']) ?>')">
+                                    <i class="fas fa-file-signature me-1"></i>Adicionar minha assinatura
+                                </button>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="mt-2 text-center text-muted" style="font-size:.72rem;">
+                                <i class="fas fa-lock me-1"></i>Co-assinatura indisponível para documentos antigos
+                            </div>
                         <?php endif; ?>
 
-                            <button type="button"
-                                    class="btn btn-sm w-100 mt-1 btn-outline-secondary"
-                                    style="font-size:.76rem;"
-                                    onclick="abrirModalSolicitar('<?= htmlspecialchars($doc['documento_id']) ?>')">
-                                <i class="fas fa-user-plus me-1"></i>Solicitar co-assinatura
-                            </button>
+                        <button type="button"
+                                class="btn btn-sm w-100 mt-1 btn-outline-secondary"
+                                style="font-size:.76rem;"
+                                onclick="abrirModalSolicitar('<?= htmlspecialchars($doc['documento_id']) ?>')">
+                            <i class="fas fa-user-plus me-1"></i>Solicitar co-assinatura
+                        </button>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -472,7 +490,83 @@ include 'header.php';
     </div>
 </div>
 
+<!-- FM Modal: Adicionar minha assinatura (co-assinatura) -->
+<div class="fm-backdrop" id="fm-coassinar">
+  <div class="fm-box">
+    <div class="fm-header">
+      <div class="fm-icon verde"><i class="fas fa-file-signature"></i></div>
+      <h3>Adicionar minha assinatura</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">Sua assinatura digital será adicionada ao documento. O PDF será regenerado com todas as assinaturas acumuladas. O conteúdo não será alterado.</p>
+      <div class="fm-impact">Ação irreversível · Assinatura registrada com IP e timestamp</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:.83rem;margin-bottom:14px;margin-top:10px;">
+        <input type="checkbox" id="chk-coassinar" style="margin-top:3px;flex-shrink:0;">
+        <span>Declaro que revisei o conteúdo deste documento e concordo em assiná-lo digitalmente em nome da SEMA.</span>
+      </label>
+      <div id="coassinar-error" style="display:none;color:#8f2222;font-size:.8rem;margin-bottom:8px;"></div>
+      <div class="fm-btns">
+        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-coassinar')">Cancelar</button>
+        <button type="button" class="fm-btn-confirm" id="btn-confirmar-coassinar" onclick="confirmarCoAssinar()">
+          <i class="fas fa-file-signature me-1"></i>Assinar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+let _coAssinarDocId = '';
+
+function abrirCoAssinar(docId) {
+    _coAssinarDocId = docId;
+    document.getElementById('chk-coassinar').checked = false;
+    document.getElementById('coassinar-error').style.display = 'none';
+    const btn = document.getElementById('btn-confirmar-coassinar');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-file-signature me-1"></i>Assinar';
+    abrirFM('fm-coassinar');
+}
+
+function confirmarCoAssinar() {
+    if (!document.getElementById('chk-coassinar').checked) {
+        const err = document.getElementById('coassinar-error');
+        err.textContent = 'Marque a declaração antes de assinar.';
+        err.style.display = 'block';
+        return;
+    }
+    const btn = document.getElementById('btn-confirmar-coassinar');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assinando...';
+
+    const fd = new FormData();
+    fd.append('documento_id', _coAssinarDocId);
+    fd.append('requerimento_id', '<?= $requerimentoId ?>');
+
+    fetch('assinatura/coassinar.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                fecharFM('fm-coassinar');
+                showToast('Assinatura adicionada com sucesso! Recarregando...', 'success');
+                setTimeout(() => location.reload(), 1800);
+            } else {
+                const err = document.getElementById('coassinar-error');
+                err.textContent = data.error || 'Erro ao assinar.';
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-signature me-1"></i>Assinar';
+            }
+        })
+        .catch(() => {
+            const err = document.getElementById('coassinar-error');
+            err.textContent = 'Falha de comunicação com o servidor.';
+            err.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-file-signature me-1"></i>Assinar';
+        });
+}
+
 function carregarDocumento(el, docId) {
     document.querySelectorAll('.doc-item').forEach(d => d.classList.remove('active'));
     el.classList.add('active');

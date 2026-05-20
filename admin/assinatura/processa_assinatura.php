@@ -173,7 +173,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
 
-            // 4. Update Histórico de Protocolo
+            // 4. Persistir HTML-fonte para permitir co-assinatura futura
+            $pdo->prepare("
+                INSERT IGNORE INTO documentos_fonte
+                    (documento_id, requerimento_id, conteudo_html, tipo_documento, caminho_arquivo, criado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ")->execute([$documentoId, $requerimento_id, $conteudo, $nomeCurto_template, $caminhoRelativo, $admin_id]);
+
+            // 5. Update Histórico de Protocolo
             $acaoHistorico = match ($modoAssinatura) {
                 'sem_assinar'          => "Gerou documento sem assinatura: " . strtoupper(str_replace('_', ' ', $nomeCurto_template)),
                 'assinar_e_requisitar' => "Gerou e assinou digitalmente (requisitou co-assinatura): " . strtoupper(str_replace('_', ' ', $nomeCurto_template)),
