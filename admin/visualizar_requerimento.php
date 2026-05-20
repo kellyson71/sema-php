@@ -1547,6 +1547,16 @@ $acaoLabelsMap = [
     'concluido'       => 'Processo concluído',
 ];
 $acaoAtualLabel = $acaoLabelsMap[$aguardandoAcao] ?? $aguardandoAcao;
+// Variáveis de setor — $nivelAtual e $isAdmin já são definidos por header.php (linha ~62)
+// Definimos aqui como fallback caso chamadas antes do include
+if (!isset($nivelAtual)) { $nivelAtual = $_SESSION['admin_nivel'] ?? 'operador'; }
+if (!isset($isAdmin))    { $isAdmin    = in_array($nivelAtual, ['admin', 'admin_geral'], true); }
+$isSetor2  = ($nivelAtual === 'fiscal'    || $isAdmin);
+$isSetor3  = ($nivelAtual === 'secretario' || $isAdmin);
+$isSetor1  = ($nivelAtual === 'analista'  || $isAdmin);
+// Fiscal puro e secretário puro (sem privilégio admin_geral)
+$isFiscalPuro     = ($nivelAtual === 'fiscal');
+$isSecretarioPuro = ($nivelAtual === 'secretario');
 if (isset($_GET['error']) && $_GET['error'] === 'motivo_obrigatorio') {
     $mensagem = 'O motivo da devolução é obrigatório.';
     $mensagemTipo = 'danger';
@@ -2492,24 +2502,29 @@ document.addEventListener('DOMContentLoaded', function() {
                                   </div>
                               </div>
 
-                              <!-- Outras ações -->
+                              <!-- Outras ações — exibição condicional por setor -->
+                              <?php if (!$isSecretarioPuro): ?>
                               <div>
                                   <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Outras Ações</p>
                                   <div class="detail-actions-secondary">
+
+                                      <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
                                       <button type="button" class="btn btn-sky btn-sm fw-medium tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Envia um e-mail ao requerente com o link seguro para acessar e baixar o boleto de pagamento."
                                           onclick="document.getElementById('boletoModal') && new bootstrap.Modal(document.getElementById('boletoModal')).show()">
                                           <i class="fas fa-file-invoice me-1"></i>Enviar Boleto
                                       </button>
+                                      <?php endif; ?>
 
                                       <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Altera manualmente o status do processo (ex.: Em análise, Pendente, Aguardando boleto)."
+                                          data-bs-title="<?= $isFiscalPuro ? 'Atualiza o status dentro do fluxo de fiscalização.' : 'Altera manualmente o status do processo (ex.: Em análise, Pendente, Aguardando boleto).' ?>"
                                           onclick="document.getElementById('atualizarStatusModal') && new bootstrap.Modal(document.getElementById('atualizarStatusModal')).show()">
                                           <i class="fas fa-edit me-1"></i>Atualizar Status
                                       </button>
 
+                                      <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
                                       <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Envia por e-mail ao requerente o protocolo oficial com o alvará ou documento final do processo."
@@ -2530,8 +2545,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                           onclick="showArquivarModal()">
                                           <i class="fas fa-archive me-1"></i>Arquivar
                                       </button>
+                                      <?php endif; ?>
+
                                   </div>
                               </div>
+                              <?php endif; ?>
                           </div>
                           <!-- Pareceres já gerados -->
                           <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
@@ -2675,16 +2693,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="mb-3">
                         <label for="modal_status" class="form-label fw-semibold">Novo Status</label>
+                        <?php
+                        // Status disponíveis por role
+                        if ($isFiscalPuro) {
+                            $statusModalOpcoes = ['Em análise', 'Pendente', 'Finalizado'];
+                        } else {
+                            $statusModalOpcoes = ['Em análise','Aprovado','Reprovado','Pendente','Aguardando boleto','Boleto pago','Cancelado','Finalizado','Indeferido'];
+                        }
+                        ?>
                         <select class="form-select" id="modal_status" name="status" required>
-                            <option value="Em análise" <?= $requerimento['status']=='Em análise'?'selected':'' ?>>Em análise</option>
-                            <option value="Aprovado"   <?= $requerimento['status']=='Aprovado'  ?'selected':'' ?>>Aprovado</option>
-                            <option value="Reprovado"  <?= $requerimento['status']=='Reprovado' ?'selected':'' ?>>Reprovado</option>
-                            <option value="Pendente"   <?= $requerimento['status']=='Pendente'  ?'selected':'' ?>>Pendente</option>
-                            <option value="Aguardando boleto" <?= $requerimento['status']=='Aguardando boleto'?'selected':'' ?>>Aguardando boleto</option>
-                            <option value="Boleto pago" <?= $requerimento['status']=='Boleto pago'?'selected':'' ?>>Boleto pago</option>
-                            <option value="Cancelado"  <?= $requerimento['status']=='Cancelado' ?'selected':'' ?>>Cancelado</option>
-                            <option value="Finalizado" <?= $requerimento['status']=='Finalizado'?'selected':'' ?>>Finalizado</option>
-                            <option value="Indeferido" <?= $requerimento['status']=='Indeferido'?'selected':'' ?>>Indeferido</option>
+                            <?php foreach ($statusModalOpcoes as $opt): ?>
+                                <option value="<?= htmlspecialchars($opt) ?>" <?= $requerimento['status'] === $opt ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($opt) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div>

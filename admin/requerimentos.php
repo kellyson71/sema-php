@@ -99,7 +99,7 @@ if (isset($_GET['error'])) {
     }
 }
 
-$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado, req.nome AS requerente
+$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.setor_atual, r.aguardando_acao, r.data_envio, r.visualizado, req.nome AS requerente
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
         WHERE 1=1";
@@ -158,7 +158,9 @@ if (!$mostrarEncerrados && $filtroStatus === '') {
     foreach ($statusEncerrados as $se) { $params[] = $se; }
 }
 
-$sql .= " ORDER BY r.visualizado ASC, r.data_envio DESC LIMIT {$itensPorPagina} OFFSET {$offset}";
+// Fiscal e secretário veem a fila em ordem FIFO (mais antigo primeiro)
+$ordenacao = $setorFiltro ? "r.data_envio ASC" : "r.visualizado ASC, r.data_envio DESC";
+$sql .= " ORDER BY {$ordenacao} LIMIT {$itensPorPagina} OFFSET {$offset}";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -180,17 +182,50 @@ if ($setorFiltro) {
 }
 $totalEncerrados = (int) $stmtEnc->fetchColumn();
 
-$sfWhere = $setorFiltro ? "setor_atual = '$setorFiltro' AND" : '';
-$estatisticas = [
-    'total'      => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere 1=1")->fetchColumn(),
-    'nao_lidos'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere visualizado = 0")->fetchColumn(),
-    'pendentes'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Pendente'")->fetchColumn(),
-    'aprovados'  => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Aprovado'")->fetchColumn(),
-    'finalizados'=> (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Finalizado'")->fetchColumn(),
-    'em_analise' => (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Em análise'")->fetchColumn(),
-    'indeferidos'=> (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Indeferido'")->fetchColumn(),
-];
-$pagamentosPendentesConclusao = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE $sfWhere status = 'Boleto pago'")->fetchColumn();
+// Estatísticas — usa prepared statements para evitar interpolação direta de $setorFiltro
+function contarReq(PDO $pdo, ?string $setor, string $extraWhere = '1=1', array $extraParams = []): int {
+    $where = $setor ? "setor_atual = ? AND $extraWhere" : $extraWhere;
+    $params = $setor ? array_merge([$setor], $extraParams) : $extraParams;
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE $where");
+    $st->execute($params);
+    return (int) $st->fetchColumn();
+}
+
+if ($setorFiltro) {
+    // Cards focados na fila do setor (fiscal / secretário)
+    $acaoFila = $setorFiltro === 'setor2' ? 'analise_setor2' : 'revisao_setor3';
+    $estatisticas = [
+        'na_fila'     => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", [$acaoFila]),
+        'em_processo' => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", ['revisao_setor3']),
+        'concluidos'  => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", ['concluido']),
+        'total'       => contarReq($pdo, $setorFiltro),
+    ];
+    $statusCards = [
+        ['label' => 'Na fila',       'value' => $estatisticas['na_fila'],     'acao' => $acaoFila,          'icon' => 'fa-inbox'],
+        ['label' => 'Em processo',   'value' => $estatisticas['em_processo'], 'acao' => 'revisao_setor3',   'icon' => 'fa-hourglass-half'],
+        ['label' => 'Concluídos',    'value' => $estatisticas['concluidos'],  'acao' => 'concluido',         'icon' => 'fa-check-circle'],
+        ['label' => 'Total recebido','value' => $estatisticas['total'],       'acao' => '',                  'icon' => 'fa-layer-group'],
+    ];
+} else {
+    $estatisticas = [
+        'total'      => contarReq($pdo, null),
+        'nao_lidos'  => contarReq($pdo, null, "visualizado = 0"),
+        'pendentes'  => contarReq($pdo, null, "status = ?", ['Pendente']),
+        'aprovados'  => contarReq($pdo, null, "status = ?", ['Aprovado']),
+        'finalizados'=> contarReq($pdo, null, "status = ?", ['Finalizado']),
+        'em_analise' => contarReq($pdo, null, "status = ?", ['Em análise']),
+        'indeferidos'=> contarReq($pdo, null, "status = ?", ['Indeferido']),
+    ];
+    $statusCards = [
+        ['label' => 'Todos',       'value' => $estatisticas['total'],      'status' => '',           'icon' => 'fa-layer-group'],
+        ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'],  'status' => null,         'unread' => true, 'icon' => 'fa-eye-slash'],
+        ['label' => 'Em análise',  'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
+        ['label' => 'Pendente',    'value' => $estatisticas['pendentes'],  'status' => 'Pendente',   'icon' => 'fa-clock'],
+        ['label' => 'Finalizado',  'value' => $estatisticas['finalizados'],'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
+        ['label' => 'Indeferido',  'value' => $estatisticas['indeferidos'],'status' => 'Indeferido', 'icon' => 'fa-ban'],
+    ];
+}
+$pagamentosPendentesConclusao = contarReq($pdo, $setorFiltro, "status = ?", ['Boleto pago']);
 
 $contagemCategorias = [];
 foreach ($tiposPorCategoria as $cat => $slugs) {
@@ -206,9 +241,13 @@ foreach ($tiposPorCategoria as $cat => $slugs) {
     $contagemCategorias[$cat] = (int) $stmtCat->fetchColumn();
 }
 
-$tiposAlvara = $setorFiltro
-    ? $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos WHERE setor_atual = '$setorFiltro' ORDER BY tipo_alvara")->fetchAll()
-    : $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
+if ($setorFiltro) {
+    $stmtTipos = $pdo->prepare("SELECT DISTINCT tipo_alvara FROM requerimentos WHERE setor_atual = ? ORDER BY tipo_alvara");
+    $stmtTipos->execute([$setorFiltro]);
+    $tiposAlvara = $stmtTipos->fetchAll();
+} else {
+    $tiposAlvara = $pdo->query("SELECT DISTINCT tipo_alvara FROM requerimentos ORDER BY tipo_alvara")->fetchAll();
+}
 
 $tipoSiglas = [
     'licenca_ambiental_unica' => 'LAU',
@@ -244,12 +283,40 @@ include 'header.php';
 $statusOperacionais = adminStatusFluxoPrincipal();
 ?>
 <link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
+<style>
+/* Pills de aguardando_acao — reusados da fila_setor.php */
+.acao-triagem  { background:#e8effd; color:#3762d9; }
+.acao-boleto   { background:#fff3dc; color:#b7791f; }
+.acao-analise  { background:#e3f3e8; color:#14532d; }
+.acao-revisao  { background:#f3e8ff; color:#7e22ce; }
+.acao-envio    { background:#e0f2fe; color:#0369a1; }
+.acao-concluido{ background:#f1f5f0; color:#666; }
+</style>
 
+<?php
+$filaLabels = [
+    'setor2' => ['titulo' => 'Fila da Fiscalização de Obras', 'icon' => 'fa-helmet-safety', 'cor' => '#14532d', 'bg' => '#f0fdf4'],
+    'setor3' => ['titulo' => 'Fila de Revisão do Secretário',  'icon' => 'fa-shield-halved',  'cor' => '#7e22ce', 'bg' => '#faf5ff'],
+];
+$filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
+?>
 <div class="admin-page-shell requerimentos-page">
     <section class="page-hero page-hero-compact">
         <div class="page-hero-copy">
-            <h1 class="page-title">Requerimentos</h1>
-            <p class="page-subtitle">Exibindo <?= count($requerimentos) ?> de <?= (int) $totalRequerimentos ?> processos</p>
+            <?php if ($filaInfo): ?>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
+                    <span style="width:32px;height:32px;border-radius:9px;background:<?= $filaInfo['bg'] ?>;border:1.5px solid <?= $filaInfo['cor'] ?>33;display:inline-flex;align-items:center;justify-content:center;color:<?= $filaInfo['cor'] ?>;flex-shrink:0;">
+                        <i class="fas <?= $filaInfo['icon'] ?>" style="font-size:.85rem;"></i>
+                    </span>
+                    <h1 class="page-title" style="color:<?= $filaInfo['cor'] ?>;"><?= $filaInfo['titulo'] ?></h1>
+                </div>
+                <p class="page-subtitle">
+                    <?= $estatisticas['na_fila'] ?> aguardando ação · <?= (int) $totalRequerimentos ?> processo(s) no setor
+                </p>
+            <?php else: ?>
+                <h1 class="page-title">Requerimentos</h1>
+                <p class="page-subtitle">Exibindo <?= count($requerimentos) ?> de <?= (int) $totalRequerimentos ?> processos</p>
+            <?php endif; ?>
         </div>
         <div class="page-toolbar">
             <button type="button" class="toolbar-button" onclick="window.print()">
@@ -263,15 +330,21 @@ $statusOperacionais = adminStatusFluxoPrincipal();
     <section class="req-summary-strip">
         <?php foreach ($statusCards as $card): ?>
             <?php
-            $isUnreadCard = !empty($card['unread']);
-            $isActive = $isUnreadCard
-                ? $filtroNaoVisualizados
-                : ($filtroStatus === $card['status'] || ($card['status'] === '' && $filtroStatus === '' && !$filtroNaoVisualizados));
-            $summaryUrl = $isUnreadCard
-                ? buildReqUrl(['nao_visualizados' => 1, 'status' => '', 'pagina' => 1])
-                : buildReqUrl(['status' => $card['status'], 'nao_visualizados' => '', 'pagina' => 1]);
+            if ($setorFiltro) {
+                // Cards de setor: sem link de filtro (apenas informativos)
+                $isActive = false;
+                $summaryUrl = buildReqUrl(['pagina' => 1]);
+            } else {
+                $isUnreadCard = !empty($card['unread']);
+                $isActive = $isUnreadCard
+                    ? $filtroNaoVisualizados
+                    : ($filtroStatus === ($card['status'] ?? '') || (($card['status'] ?? '') === '' && $filtroStatus === '' && !$filtroNaoVisualizados));
+                $summaryUrl = $isUnreadCard
+                    ? buildReqUrl(['nao_visualizados' => 1, 'status' => '', 'pagina' => 1])
+                    : buildReqUrl(['status' => $card['status'] ?? '', 'nao_visualizados' => '', 'pagina' => 1]);
+            }
             ?>
-            <a href="<?= htmlspecialchars($summaryUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?> <?= $isUnreadCard ? 'summary-chip-unread' : '' ?>">
+            <a href="<?= htmlspecialchars($summaryUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?> <?= !empty($card['unread']) ? 'summary-chip-unread' : '' ?>">
                 <span><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i><?= htmlspecialchars($card['label']) ?></span>
                 <strong><?= (int) $card['value'] ?></strong>
             </a>
@@ -421,7 +494,13 @@ $statusOperacionais = adminStatusFluxoPrincipal();
                     <button type="button" class="req-list-main" onclick="abrirRequerimento(<?= (int) $req['id'] ?>)">
                         <div class="req-list-top">
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
-                            <span class="badge badge-status <?= htmlspecialchars($metaClass) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                            <?php if ($setorFiltro && !empty($req['aguardando_acao'])): ?>
+                                <span class="badge <?= htmlspecialchars(acaoClass($req['aguardando_acao'])) ?>" style="font-size:.7rem;">
+                                    <?= htmlspecialchars(acaoLabel($req['aguardando_acao'])) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge badge-status <?= htmlspecialchars($metaClass) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                            <?php endif; ?>
                             <?php if ($req['visualizado'] == 0): ?>
                                 <span class="req-unread-pill"><span class="req-unread-dot"></span>Não aberto</span>
                             <?php endif; ?>
