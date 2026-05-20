@@ -253,10 +253,10 @@ include 'header.php';
                         <?php endforeach; ?>
 
                         <?php if ($isSetor3 && $requerimento['setor_atual'] === 'setor3'): ?>
-                            <a href="documentos/editor.php?requerimento_id=<?= $requerimentoId ?>"
+                            <a href="documentos/selecionar.php?requerimento_id=<?= $requerimentoId ?>"
                                class="btn btn-sm w-100 mt-2 fw-semibold"
                                style="background:#059669;color:#fff;font-size:.78rem;text-decoration:none;display:block;text-align:center;">
-                                <i class="fas fa-file-signature me-1"></i>Assinar documento
+                                <i class="fas fa-file-signature me-1"></i>Gerar / Assinar documento
                             </a>
                         <?php endif; ?>
 
