@@ -36,13 +36,12 @@ if (!$requerimento) {
 $stmtDocs = $pdo->prepare("
     SELECT ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.hash_documento,
            ad.timestamp_assinatura, ad.assinante_nome, ad.assinante_cargo,
-           ad.group_id, ad.visivel_para, ad.apagado,
+           ad.group_id, ad.visivel_para,
            (SELECT COUNT(*) FROM assinaturas_digitais ad2
             WHERE (ad2.group_id = ad.group_id OR ad2.documento_id = ad.documento_id)
-              AND ad2.apagado = 0) AS total_assinaturas
+           ) AS total_assinaturas
     FROM assinaturas_digitais ad
     WHERE ad.requerimento_id = ?
-      AND ad.apagado = 0
     GROUP BY COALESCE(ad.group_id, ad.documento_id)
     ORDER BY ad.timestamp_assinatura DESC
 ");
@@ -56,7 +55,7 @@ $stmtSigs = $pdo->prepare("
            a.foto_perfil
     FROM assinaturas_digitais ad
     LEFT JOIN administradores a ON a.id = ad.assinante_id
-    WHERE ad.requerimento_id = ? AND ad.apagado = 0
+    WHERE ad.requerimento_id = ?
     ORDER BY ad.timestamp_assinatura ASC
 ");
 $stmtSigs->execute([$requerimentoId]);

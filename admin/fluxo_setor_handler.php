@@ -51,13 +51,13 @@ try {
         case 'enviar_setor2':
             atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
             registraHistorico($pdo, $adminId, $id, "Enviou processo ao Setor 2 — Análise" . ($motivo ? ": $motivo" : ''));
-            notificarAdmins($pdo, $id, 'setor2', "Processo #{$req['protocolo']} chegou ao Setor 2.");
+            createAdminNotificationForRequerimento($pdo, $id, 'encaminhado_setor2');
             break;
 
         case 'enviar_setor3':
             atualizaSetor($pdo, $id, 'setor3', 'revisao_setor3');
             registraHistorico($pdo, $adminId, $id, "Enviou processo ao Setor 3 — Revisão Final" . ($motivo ? ": $motivo" : ''));
-            notificarAdmins($pdo, $id, 'setor3', "Processo #{$req['protocolo']} chegou ao Setor 3 para revisão.");
+            createAdminNotificationForRequerimento($pdo, $id, 'encaminhado_setor3');
             break;
 
         case 'devolver_setor2':
@@ -68,7 +68,7 @@ try {
             }
             atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
             registraHistorico($pdo, $adminId, $id, "Setor 3 devolveu ao Setor 2 — Motivo: $motivo");
-            notificarAdmins($pdo, $id, 'setor2', "Processo #{$req['protocolo']} devolvido pelo Setor 3: $motivo");
+            createAdminNotificationForRequerimento($pdo, $id, 'devolvido_setor2');
             break;
 
         case 'devolver_setor1':

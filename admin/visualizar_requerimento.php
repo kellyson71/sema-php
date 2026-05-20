@@ -1623,17 +1623,65 @@ if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
 .caminho-estado.envio    { background:#e0f2fe; color:#0369a1; }
 .caminho-estado.concluido{ background:#f1f5f0; color:#6b7280; }
 /* Modais inline */
-.fm-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; align-items:center; justify-content:center; }
-.fm-backdrop.open { display:flex; }
-.fm-box { background:#fff; border-radius:16px; padding:24px; max-width:440px; width:100%; margin:16px; box-shadow:0 24px 64px rgba(0,0,0,.18); }
-.fm-box h3 { margin:0 0 4px; font-size:1rem; font-weight:800; }
-.fm-box .fm-sub { margin:0 0 14px; color:#66756d; font-size:.83rem; line-height:1.5; }
+@keyframes fmBackdropIn  { from { background:rgba(0,0,0,0); } to { background:rgba(0,0,0,.48); } }
+@keyframes fmBoxIn       { from { opacity:0; transform:translateY(28px) scale(.94); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes fmIconPop     { 0%{transform:scale(0)} 60%{transform:scale(1.18)} 100%{transform:scale(1)} }
+.fm-backdrop {
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0);
+    z-index:9000;
+    display:flex;
+    align-items:center; justify-content:center;
+    pointer-events:none;
+    transition:background .2s ease;
+}
+.fm-backdrop.open {
+    background:rgba(0,0,0,.48);
+    pointer-events:auto;
+    animation:fmBackdropIn .2s ease forwards;
+}
+.fm-box {
+    background:#fff;
+    border-radius:16px;
+    padding:0;
+    max-width:440px; width:100%; margin:16px;
+    box-shadow:0 24px 64px rgba(0,0,0,.2);
+    opacity:0;
+    transform:translateY(28px) scale(.94);
+    transition:opacity .25s ease, transform .28s cubic-bezier(.34,1.3,.64,1);
+    overflow:hidden;
+}
+.fm-backdrop.open .fm-box {
+    opacity:1;
+    transform:translateY(0) scale(1);
+    animation:fmBoxIn .28s cubic-bezier(.34,1.3,.64,1) forwards;
+}
+.fm-header {
+    display:flex; align-items:center; gap:12px;
+    padding:18px 20px 14px;
+    border-bottom:1px solid #f0f2f0;
+}
+.fm-icon {
+    width:40px; height:40px; border-radius:10px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1rem;
+}
+.fm-icon.verde  { background:#e6f2ea; color:#14532d; }
+.fm-icon.roxo   { background:#f3e8ff; color:#7e22ce; }
+.fm-icon.amarelo{ background:#fef3c7; color:#b7791f; }
+.fm-icon.vermelho{ background:#fef2f2; color:#8f2222; }
+.fm-header h3 { margin:0; font-size:.97rem; font-weight:800; color:#102117; }
+.fm-body { padding:16px 20px 20px; }
+.fm-box .fm-sub { margin:0 0 12px; color:#66756d; font-size:.83rem; line-height:1.55; }
 .fm-box .fm-impact { background:#f7f9f7; border:1px solid #e3e8e4; border-radius:8px; padding:8px 12px; font-size:.78rem; color:#374151; margin-bottom:14px; }
-.fm-box textarea { width:100%; padding:9px; border:1px solid #e3e8e4; border-radius:8px; font-size:.83rem; resize:vertical; margin-bottom:12px; }
+.fm-box textarea { width:100%; padding:9px; border:1px solid #e3e8e4; border-radius:8px; font-size:.83rem; resize:vertical; margin-bottom:12px; outline:none; transition:border-color .15s; }
+.fm-box textarea:focus { border-color:#14532d; }
 .fm-box .fm-btns { display:flex; gap:8px; justify-content:flex-end; }
-.fm-btn-cancel { padding:7px 14px; border:1px solid #e3e8e4; border-radius:8px; background:#fff; color:#374151; font-size:.82rem; font-weight:600; cursor:pointer; }
-.fm-btn-confirm { padding:7px 16px; border-radius:8px; background:#14532d; color:#fff; border:none; font-size:.82rem; font-weight:700; cursor:pointer; }
+.fm-btn-cancel { padding:7px 14px; border:1px solid #e3e8e4; border-radius:8px; background:#fff; color:#374151; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s, border-color .15s; }
+.fm-btn-cancel:hover { background:#f7f9f7; border-color:#c4c9c5; }
+.fm-btn-confirm { padding:7px 16px; border-radius:8px; background:#14532d; color:#fff; border:none; font-size:.82rem; font-weight:700; cursor:pointer; transition:background .15s, transform .1s; }
 .fm-btn-confirm:hover { background:#0f4425; }
+.fm-btn-confirm:active { transform:scale(.97); }
 .fm-btn-warn { background:#b7791f; }
 .fm-btn-warn:hover { background:#92400e; }
 .fm-btn-danger { background:#8f2222; }
@@ -1672,133 +1720,197 @@ $estadoCls = match($aguardandoAcao) {
 <!-- MODAIS DE FLUXO (Bootstrap-free, inline) -->
 <div class="fm-backdrop" id="fm-setor2">
   <div class="fm-box">
-    <h3><i class="fas fa-helmet-safety me-2" style="color:#14532d"></i>Enviar para Fiscalização de Obras</h3>
-    <p class="fm-sub">O processo passa para a <strong>Fiscalização de Obras</strong> (Setor 2). A equipe verá o processo na fila deles.</p>
-    <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Pode ser revertido depois</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="enviar_setor2">
-      <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor2')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm"><i class="fas fa-arrow-right me-1"></i>Confirmar</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon verde"><i class="fas fa-helmet-safety"></i></div>
+      <h3>Enviar para Fiscalização de Obras</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo passa para a <strong>Fiscalização de Obras</strong> (Setor 2). A equipe verá o processo na fila deles.</p>
+      <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Pode ser revertido depois</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="enviar_setor2">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor2')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm"><i class="fas fa-arrow-right me-1"></i>Confirmar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-setor3">
   <div class="fm-box">
-    <h3><i class="fas fa-shield-halved me-2" style="color:#7e22ce"></i>Enviar para Revisão do Secretário</h3>
-    <p class="fm-sub">O processo passa para a <strong>Revisão do Secretário</strong> (Setor 3). O secretário pode assinar ou devolver com motivo.</p>
-    <div class="fm-impact">Destino: <strong>Revisão do Secretário — Setor 3</strong> · Cidadão <em>não</em> é notificado · Após aprovação retorna à Fiscalização</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="enviar_setor3">
-      <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm" style="background:#7e22ce"><i class="fas fa-shield-halved me-1"></i>Confirmar</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon roxo"><i class="fas fa-shield-halved"></i></div>
+      <h3>Enviar para Revisão do Secretário</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo passa para a <strong>Revisão do Secretário</strong> (Setor 3). O secretário pode assinar ou devolver com motivo.</p>
+      <div class="fm-impact">Destino: <strong>Revisão do Secretário — Setor 3</strong> · Cidadão <em>não</em> é notificado · Após aprovação retorna à Fiscalização</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="enviar_setor3">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm" style="background:#7e22ce"><i class="fas fa-shield-halved me-1"></i>Confirmar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-finalizar-s1">
   <div class="fm-box">
-    <h3><i class="fas fa-check me-2" style="color:#14532d"></i>Finalizar no Setor 1</h3>
-    <p class="fm-sub">O processo é encerrado diretamente pelo Setor 1, sem passar pela fiscalização ou revisão final.</p>
-    <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="concluir_direto">
-      <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s1')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm"><i class="fas fa-check me-1"></i>Finalizar</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon verde"><i class="fas fa-check"></i></div>
+      <h3>Finalizar no Setor 1</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo é encerrado diretamente pelo Setor 1, sem passar pela fiscalização ou revisão final.</p>
+      <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="concluir_direto">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s1')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm"><i class="fas fa-check me-1"></i>Finalizar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-finalizar-s2">
   <div class="fm-box">
-    <h3><i class="fas fa-check-double me-2" style="color:#14532d"></i>Finalizar no Setor 2</h3>
-    <p class="fm-sub">O processo é encerrado pelo Setor 2. Use após enviar o documento final ao cidadão.</p>
-    <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="concluir_setor2">
-      <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s2')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm"><i class="fas fa-check-double me-1"></i>Finalizar</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon verde"><i class="fas fa-check-double"></i></div>
+      <h3>Finalizar no Setor 2</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo é encerrado pelo Setor 2. Use após enviar o documento final ao cidadão.</p>
+      <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="concluir_setor2">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s2')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm"><i class="fas fa-check-double me-1"></i>Finalizar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-devolver-s1">
   <div class="fm-box">
-    <h3><i class="fas fa-rotate-left me-2" style="color:#b7791f"></i>Devolver à Triagem Ambiental</h3>
-    <p class="fm-sub">O processo retorna para a <strong>Triagem Ambiental</strong> (Setor 1). Informe o motivo.</p>
-    <div class="fm-impact">Destino: <strong>Triagem Ambiental — Setor 1</strong> · Cidadão <em>não</em> é notificado</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="devolver_setor1">
-      <textarea name="motivo" rows="3" placeholder="Motivo da devolução..." required></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-devolver-s1')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm fm-btn-warn"><i class="fas fa-rotate-left me-1"></i>Devolver</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon amarelo"><i class="fas fa-rotate-left"></i></div>
+      <h3>Devolver à Triagem Ambiental</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo retorna para a <strong>Triagem Ambiental</strong> (Setor 1). Informe o motivo.</p>
+      <div class="fm-impact">Destino: <strong>Triagem Ambiental — Setor 1</strong> · Cidadão <em>não</em> é notificado</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="devolver_setor1">
+        <textarea name="motivo" rows="3" placeholder="Motivo da devolução..." required></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-devolver-s1')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm fm-btn-warn"><i class="fas fa-rotate-left me-1"></i>Devolver</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-devolver-s2">
   <div class="fm-box">
-    <h3><i class="fas fa-rotate-left me-2" style="color:#8f2222"></i>Devolver à Fiscalização de Obras</h3>
-    <p class="fm-sub">O processo retorna para a <strong>Fiscalização de Obras</strong> (Setor 2) com motivo. Este campo é obrigatório e ficará visível no histórico.</p>
-    <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Motivo aparece na fila deles</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="devolver_setor2">
-      <textarea name="motivo" rows="3" placeholder="Motivo da devolução..." required></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-devolver-s2')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm fm-btn-danger"><i class="fas fa-rotate-left me-1"></i>Devolver</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon vermelho"><i class="fas fa-rotate-left"></i></div>
+      <h3>Devolver à Fiscalização de Obras</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo retorna para a <strong>Fiscalização de Obras</strong> (Setor 2) com motivo. Este campo é obrigatório e ficará visível no histórico.</p>
+      <div class="fm-impact">Destino: <strong>Fiscalização de Obras — Setor 2</strong> · Cidadão <em>não</em> é notificado · Motivo aparece na fila deles</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="devolver_setor2">
+        <textarea name="motivo" rows="3" placeholder="Motivo da devolução..." required></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-devolver-s2')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm fm-btn-danger"><i class="fas fa-rotate-left me-1"></i>Devolver</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="fm-backdrop" id="fm-setor3-aprovar">
   <div class="fm-box">
-    <h3><i class="fas fa-check-double me-2" style="color:#7e22ce"></i>Aprovar e Assinar</h3>
-    <p class="fm-sub">O Setor 3 aprova o processo. Ele retornará ao Setor 2 para envio final ao cidadão.</p>
-    <div class="fm-impact">Destino: <strong>Setor 2 — envio ao cidadão</strong> · Setor 2 será notificado · Irreversível sem devolução manual</div>
-    <form method="post" action="fluxo_setor_handler.php">
-      <input type="hidden" name="requerimento_id" value="<?= $id ?>">
-      <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
-      <textarea name="motivo" rows="3" placeholder="Observações (opcional)..."></textarea>
-      <div class="fm-btns">
-        <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3-aprovar')">Cancelar</button>
-        <button type="submit" class="fm-btn-confirm" style="background:#7e22ce;"><i class="fas fa-check-double me-1"></i>Aprovar</button>
-      </div>
-    </form>
+    <div class="fm-header">
+      <div class="fm-icon roxo"><i class="fas fa-check-double"></i></div>
+      <h3>Aprovar e Assinar</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O Setor 3 aprova o processo. Ele retornará ao Setor 2 para envio final ao cidadão.</p>
+      <div class="fm-impact">Destino: <strong>Setor 2 — envio ao cidadão</strong> · Setor 2 será notificado · Irreversível sem devolução manual</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $id ?>">
+        <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
+        <textarea name="motivo" rows="3" placeholder="Observações (opcional)..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3-aprovar')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm" style="background:#7e22ce;"><i class="fas fa-check-double me-1"></i>Aprovar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <script>
-function abrirFM(id) { document.getElementById(id).classList.add('open'); }
-function fecharFM(id) { document.getElementById(id).classList.remove('open'); }
-// mantém compatibilidade com chamadas antigas
+function abrirFM(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('open');
+    // foco no primeiro textarea para acessibilidade
+    const ta = el.querySelector('textarea');
+    if (ta) setTimeout(() => ta.focus(), 260);
+}
+function fecharFM(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const box = el.querySelector('.fm-box');
+    if (box) {
+        box.style.transition = 'opacity .18s ease, transform .18s ease';
+        box.style.opacity = '0';
+        box.style.transform = 'translateY(16px) scale(.96)';
+    }
+    el.style.transition = 'background .18s ease';
+    el.style.background = 'rgba(0,0,0,0)';
+    setTimeout(() => {
+        el.classList.remove('open');
+        if (box) { box.style.transition = ''; box.style.opacity = ''; box.style.transform = ''; }
+        el.style.transition = ''; el.style.background = '';
+    }, 190);
+}
+// compatibilidade retroativa
 function abrirModal(id) { abrirFM(id); }
 function fecharModal(id) { fecharFM(id); }
 document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.fm-backdrop').forEach(function(el) {
-    el.addEventListener('click', function(e) { if (e.target === el) el.classList.remove('open'); });
-  });
+    document.querySelectorAll('.fm-backdrop').forEach(function(el) {
+        el.addEventListener('click', function(e) { if (e.target === el) fecharFM(el.id); });
+    });
+    // ESC fecha modal aberto
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        const open = document.querySelector('.fm-backdrop.open');
+        if (open) fecharFM(open.id);
+    });
 });
 </script>
 
