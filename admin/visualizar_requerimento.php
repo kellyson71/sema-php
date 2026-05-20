@@ -2632,35 +2632,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
                               <?php
                               // Ação primária e rótulo por setor
-                              $acaoPrimaria = [
-                                  'setor1' => [
-                                      'label' => 'Gerar Documento',
-                                      'icon'  => 'fa-file-alt',
-                                      'tip'   => 'Abre o seletor de templates para gerar o documento de triagem/abertura deste processo.',
-                                  ],
-                                  'setor2' => [
-                                      'label' => 'Gerar Documento',
-                                      'icon'  => 'fa-file-signature',
-                                      'tip'   => 'Abre o editor para gerar o parecer técnico de fiscalização ou relatório de vistoria deste processo.',
-                                  ],
-                                  'setor3' => [
-                                      'label' => 'Revisar Documentos',
-                                      'icon'  => 'fa-file-circle-check',
-                                      'tip'   => 'Abre os documentos gerados para revisão e assinatura final do Secretário.',
-                                  ],
-                              ];
-                              $ap = $acaoPrimaria[$setorAtual] ?? $acaoPrimaria['setor1'];
                               ?>
 
-                              <!-- Ação primária do setor -->
-                              <div style="margin-bottom:18px;">
-                                  <a href="<?= $setorAtual === 'setor3' ? 'visualizar_documento.php?requerimento_id='.$id : 'documentos/selecionar.php?requerimento_id='.$id ?>"
+                              <!-- Ações primárias por role -->
+                              <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
+                                  <?php if ($isSetor1 || $isSetor2): ?>
+                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
                                       class="btn fw-semibold text-white w-100 tt"
-                                      data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?= htmlspecialchars($ap['tip']) ?>"
+                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                      data-bs-title="Abre o seletor de templates para criar ou complementar documentos deste processo."
                                       style="background:var(--primary-600);padding:10px 18px;border-radius:10px;">
-                                      <i class="fas <?= $ap['icon'] ?> me-2"></i><?= $ap['label'] ?>
+                                      <i class="fas fa-file-alt me-2"></i>Gerar Documento
                                       <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
                                   </a>
+                                  <?php endif; ?>
+                                  <?php if ($isSetor3): ?>
+                                  <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
+                                      class="btn fw-semibold text-white w-100 tt"
+                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                      data-bs-title="Abre os documentos gerados para revisão e assinatura final do Secretário."
+                                      style="background:#0f766e;padding:10px 18px;border-radius:10px;">
+                                      <i class="fas fa-file-circle-check me-2"></i>Revisar Documentos
+                                      <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
+                                  </a>
+                                  <?php endif; ?>
                               </div>
 
                               <!-- Encaminhamento de fluxo -->
@@ -3698,10 +3693,10 @@ foreach ($docsDisponiveis as $docRow) {
                  const iniciais    = (p.assinante || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
                  const nomeLimpo   = formatarNomeParecer(p.nome);
 
-                 const docViewerUrl = p.documento_id ? `visualizar_documento.php?requerimento_id=<?php echo $id ?>&documento_id=${encodeURIComponent(p.documento_id)}` : null;
+                 const docViewerUrl = p.documento_id ? `visualizar_documento.php?requerimento_id=<?php echo $id ?>&documento_id=${encodeURIComponent(p.documento_id)}` : '';
                  grid.innerHTML += `
-                    <div style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;${docViewerUrl ? 'cursor:pointer;' : ''}"
-                         ${docViewerUrl ? `onclick="window.location='${docViewerUrl}'"` : ''}>
+                    <div class="doc-card-clickable" data-viewer-url="${escHtml(docViewerUrl)}"
+                         style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;${docViewerUrl ? 'cursor:pointer;transition:border-color .15s,box-shadow .15s;' : ''}">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;gap:8px;">
                             <span style="font-family:monospace;font-size:.68rem;color:#888;background:#f5f5f5;padding:3px 7px;border-radius:4px;">
                                 <i class="fas fa-fingerprint me-1"></i>${p.documento_id ? p.documento_id.substring(0,12) + '…' : '—'}
@@ -3717,15 +3712,25 @@ foreach ($docsDisponiveis as $docRow) {
                                 <div style="font-size:.7rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.cargo || '')} • ${p.data}</div>
                             </div>
                         </div>
-                        <div style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
-                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
-                            <button onclick="event.stopPropagation();excluirDocAssinado('${p.documento_id}')" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
+                        <div class="doc-card-actions" style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
+                            <button data-excluir-doc="${escHtml(p.documento_id)}" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>`;
              });
          })
          .catch(error => console.error('Erro ao carregar pareceres:', error));
      }
+
+     // Delegação de click nos cards de documento assinado
+     document.getElementById('docs-assinados-grid').addEventListener('click', function(e) {
+         const btn = e.target.closest('[data-excluir-doc]');
+         if (btn) { excluirDocAssinado(btn.dataset.excluirDoc); return; }
+         const card = e.target.closest('.doc-card-clickable');
+         if (card && card.dataset.viewerUrl) {
+             window.location.href = card.dataset.viewerUrl;
+         }
+     });
 
      function excluirDocAssinado(docId) {
          if (!confirm('Remover este documento da listagem?')) return;

@@ -260,14 +260,12 @@ include 'header.php';
                             </a>
                         <?php endif; ?>
 
-                        <?php if ($isSetor2 || $isSetor3): ?>
                             <button type="button"
                                     class="btn btn-sm w-100 mt-1 btn-outline-secondary"
                                     style="font-size:.76rem;"
                                     onclick="abrirModalSolicitar('<?= htmlspecialchars($doc['documento_id']) ?>')">
                                 <i class="fas fa-user-plus me-1"></i>Solicitar co-assinatura
                             </button>
-                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>

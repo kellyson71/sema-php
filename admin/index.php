@@ -51,25 +51,31 @@ foreach (['setor1','setor2','setor3'] as $s) {
     $hubSetores[$s] = (int) $st->fetchColumn();
 }
 
+$adminIdDash = $_SESSION['admin_id'] ?? 0;
 if ($setorFiltro) {
     $st = $pdo->prepare("
-        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado,
+               req.nome AS requerente,
+               (SELECT COUNT(*) FROM historico_acoes ha WHERE ha.requerimento_id = r.id AND ha.admin_id = ?) AS acoes_minhas
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
         WHERE r.setor_atual = ?
-        ORDER BY r.data_envio DESC
+        ORDER BY r.visualizado ASC, r.data_envio DESC
         LIMIT 10
     ");
-    $st->execute([$setorFiltro]);
+    $st->execute([$adminIdDash, $setorFiltro]);
     $ultimosRequerimentos = $st->fetchAll();
 } else {
-    $stmt = $pdo->query("
-        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
+    $stmt = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado,
+               req.nome AS requerente,
+               (SELECT COUNT(*) FROM historico_acoes ha WHERE ha.requerimento_id = r.id AND ha.admin_id = ?) AS acoes_minhas
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
         ORDER BY r.data_envio DESC
         LIMIT 10
     ");
+    $stmt->execute([$adminIdDash]);
     $ultimosRequerimentos = $stmt->fetchAll();
 }
 
@@ -214,6 +220,7 @@ if ($setorFiltro) {
     .queue-list { display:flex; flex-direction:column; gap:10px; }
     .queue-item { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:16px; padding:16px 18px; border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); transition:border-color .2s ease, background-color .2s ease; }
     .queue-item:hover { border-color:var(--line-strong); background:#fff; }
+    .queue-item-unread { border-left:3px solid #f59e0b; background:#fffbeb; }
     .queue-item-top { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
     .queue-protocol { font-size:.82rem; font-weight:800; color:var(--primary-strong); letter-spacing:.02em; }
     .queue-name { margin-bottom:6px; font-size:1rem; font-weight:700; color:var(--ink); }
@@ -299,13 +306,24 @@ if ($setorFiltro) {
             <?php if ($ultimosRequerimentos): ?>
                 <div class="queue-list">
                     <?php foreach ($ultimosRequerimentos as $req): ?>
-                        <?php $meta = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']]; ?>
-                        <?php $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV'; ?>
-                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item">
+                        <?php
+                        $meta  = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']];
+                        $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
+                        $naoVisto = !$req['visualizado'];
+                        $atueiNele = (int)($req['acoes_minhas'] ?? 0) > 0;
+                        ?>
+                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item<?= $naoVisto ? ' queue-item-unread' : '' ?>">
                             <div class="queue-item-main">
                                 <div class="queue-item-top">
                                     <span class="queue-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                                     <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
+                                    <?php if ($naoVisto): ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Não visto</span>
+                                    <?php elseif ($atueiNele): ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;">Já atuei</span>
+                                    <?php else: ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;">Recebido</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="queue-name"><?= htmlspecialchars($req['requerente']) ?></div>
                                 <div class="queue-meta">
