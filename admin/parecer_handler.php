@@ -552,12 +552,17 @@ try {
             if (!$requerimento_id) throw new Exception('requerimento_id obrigatório');
 
             $stmtAd = $pdo->prepare("
-                SELECT documento_id, nome_arquivo, tipo_documento, assinante_nome,
-                       assinante_cargo, assinante_cpf, caminho_arquivo,
-                       timestamp_assinatura
-                FROM assinaturas_digitais
-                WHERE requerimento_id = ?
-                ORDER BY timestamp_assinatura DESC
+                SELECT ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
+                       ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo,
+                       ad.timestamp_assinatura,
+                       GROUP_CONCAT(DISTINCT ad2.assinante_id ORDER BY ad2.assinante_id SEPARATOR ',') AS assinantes_ids
+                FROM assinaturas_digitais ad
+                LEFT JOIN assinaturas_digitais ad2
+                    ON (ad2.documento_id = ad.documento_id)
+                WHERE ad.requerimento_id = ?
+                GROUP BY ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
+                         ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo, ad.timestamp_assinatura
+                ORDER BY ad.timestamp_assinatura DESC
             ");
             $stmtAd->execute([$requerimento_id]);
             $rows = $stmtAd->fetchAll(PDO::FETCH_ASSOC);
@@ -565,6 +570,11 @@ try {
             $pareceres = array_map(function($r) {
                 $existe = !empty($r['caminho_arquivo']) && file_exists($r['caminho_arquivo']);
                 $tamanho = $existe ? filesize($r['caminho_arquivo']) : 0;
+                // Converter GROUP_CONCAT string para array de inteiros
+                $assinantesIds = [];
+                if (!empty($r['assinantes_ids'])) {
+                    $assinantesIds = array_map('intval', explode(',', $r['assinantes_ids']));
+                }
                 return [
                     'documento_id' => $r['documento_id'],
                     'arquivo'      => $r['nome_arquivo'],
@@ -576,6 +586,7 @@ try {
                     'data'         => date('d/m/Y H:i', strtotime($r['timestamp_assinatura'])),
                     'tamanho'      => $tamanho,
                     'apagado'      => !$existe,
+                    'assinantes'   => $assinantesIds,
                 ];
             }, $rows);
 

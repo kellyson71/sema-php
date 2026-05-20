@@ -57,6 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $salvar_banco = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
     $template_salvo = $_POST['template_salvo'] ?? 'Documento Eletrônico';
 
+    // Modo de assinatura: 'assinar' (padrão), 'sem_assinar', 'assinar_e_requisitar'
+    $modoAssinatura = $_POST['modo_assinatura'] ?? 'assinar';
+    if (!in_array($modoAssinatura, ['assinar', 'sem_assinar', 'assinar_e_requisitar'], true)) {
+        $modoAssinatura = 'assinar';
+    }
+
     if ($salvar_banco) {
         header('Content-Type: application/json');
     }
@@ -117,17 +123,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $caminhoRelativo = 'pareceres/' . $requerimento_id . '/' . $nomeArquivoBase;
 
             // 1. Gerar e salvar fisicamente o PDF no disco "F"
-            emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
+            // Modo sem_assinar: passa array vazio de assinantes para omitir bloco de assinatura
+            if ($modoAssinatura === 'sem_assinar') {
+                emitirParecerAssinado($conteudo, [], $numero_processo, 'F', $caminhoFisico);
+            } else {
+                emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico);
+            }
 
             if (!file_exists($caminhoFisico)) {
                 ob_clean(); echo json_encode(['success' => false, 'error' => 'A biblioteca PDF falhou ao gravar o arquivo físico.']); exit;
             }
-            
+
             // 2. Coletar Metadados p/ Tabela
             $documentoId = uniqid('doc_');
             $hashDocumento = hash_file('sha256', $caminhoFisico);
             $nomeCurto_template = preg_replace('/\.html$/i', '', $template_salvo); // limpa .html caso chegue
-            
+
+            // Definir tipo de assinatura conforme modo
+            $tipoAssinatura = ($modoAssinatura === 'sem_assinar') ? 'sem_assinatura' : 'digital_sema';
+            $assinanteNomeReg = ($modoAssinatura === 'sem_assinar') ? '(sem assinatura)' : $assinante['nome'];
+            $assinanteCpfReg  = ($modoAssinatura === 'sem_assinar') ? '' : $assinante['cpf'];
+            $assinanteCargoReg= ($modoAssinatura === 'sem_assinar') ? '' : $assinante['cargo'];
+
             // 3. Persistência de Banco de Dados
             $stmt = $pdo->prepare("
                 INSERT INTO assinaturas_digitais (
@@ -137,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     assinatura_criptografada, timestamp_assinatura, ip_assinante
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
             ");
-            
+
             $stmt->execute([
                 $documentoId,
                 $requerimento_id,
@@ -146,33 +163,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $caminhoRelativo,
                 $hashDocumento,
                 $admin_id,
-                $assinante['nome'],
-                $assinante['cpf'],
-                $assinante['cargo'],
-                'digital_sema',
+                $assinanteNomeReg,
+                $assinanteCpfReg,
+                $assinanteCargoReg,
+                $tipoAssinatura,
                 '{}',
                 hash('sha256', $documentoId . time() . $admin_id),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
 
-            
             // 4. Update Histórico de Protocolo
+            $acaoHistorico = match ($modoAssinatura) {
+                'sem_assinar'          => "Gerou documento sem assinatura: " . strtoupper(str_replace('_', ' ', $nomeCurto_template)),
+                'assinar_e_requisitar' => "Gerou e assinou digitalmente (requisitou co-assinatura): " . strtoupper(str_replace('_', ' ', $nomeCurto_template)),
+                default                => "Gerou e assinou digitalmente o documento: " . strtoupper(str_replace('_', ' ', $nomeCurto_template)),
+            };
             $stmtHist = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-            $stmtHist->execute([
-                $admin_id,
-                $requerimento_id,
-                "Gerou e assinou digitalmente o documento: " . strtoupper(str_replace('_', ' ', $nomeCurto_template))
-            ]);
-            
+            $stmtHist->execute([$admin_id, $requerimento_id, $acaoHistorico]);
+
+            // 5. Modo assinar_e_requisitar: criar solicitação de co-assinatura
+            if ($modoAssinatura === 'assinar_e_requisitar') {
+                $destinatarioId = (int)($_POST['coassinatura_destinatario_id'] ?? 0);
+                $mensagemCoAs   = trim($_POST['coassinatura_mensagem'] ?? '');
+                if ($destinatarioId > 0) {
+                    $pdo->prepare("
+                        INSERT INTO solicitacoes_assinatura
+                            (documento_id, requerimento_id, solicitante_id, destinatario_id, mensagem, status)
+                        VALUES (?, ?, ?, ?, ?, 'pendente')
+                        ON DUPLICATE KEY UPDATE
+                            mensagem = VALUES(mensagem),
+                            status   = 'pendente',
+                            criado_em = NOW()
+                    ")->execute([$documentoId, $requerimento_id, $admin_id, $destinatarioId, $mensagemCoAs]);
+
+                    // Notificar destinatário se função disponível
+                    if (function_exists('createAdminNotificationForRequerimento')) {
+                        createAdminNotificationForRequerimento($pdo, $requerimento_id, 'solicitacao_assinatura');
+                    }
+                }
+            }
+
             ob_clean();
             echo json_encode([
-                 'success' => true,
-                 'url_pdf' => $caminhoRelativo,
-                 'nome_arquivo' => $nomeArquivoBase,
-                 'documento_id' => $documentoId
+                'success'      => true,
+                'url_pdf'      => $caminhoRelativo,
+                'nome_arquivo' => $nomeArquivoBase,
+                'documento_id' => $documentoId
             ]);
             exit;
-            
+
         } catch (Exception $e) {
             error_log("Erro em processa_assinatura no fluxo JSON -> " . $e->getMessage());
             ob_clean(); echo json_encode(['success' => false, 'error' => 'Falha Crítica ao registrar documento: ' . $e->getMessage()]); exit;
@@ -180,7 +219,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } else {
         // Fluxo Antigo Direto (Força Download no Navegador)
-        emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'D');
+        if ($modoAssinatura === 'sem_assinar') {
+            emitirParecerAssinado($conteudo, [], $numero_processo, 'D');
+        } else {
+            emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'D');
+        }
         exit;
     }
 } else {
