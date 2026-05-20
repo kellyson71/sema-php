@@ -19,7 +19,7 @@ $isSetor2   = ($nivelAtual === 'fiscal' || $isAdmin);
 // Buscar requerimento
 $stmt = $pdo->prepare("
     SELECT r.id, r.protocolo, r.status, r.setor_atual, r.aguardando_acao, r.tipo_alvara,
-           r.data_criacao, req.nome AS requerente_nome, req.email AS requerente_email
+           r.data_envio, req.nome AS requerente_nome, req.email AS requerente_email
     FROM requerimentos r
     JOIN requerentes req ON r.requerente_id = req.id
     WHERE r.id = ?
@@ -118,6 +118,8 @@ include 'header.php';
 
 .section-label { font-size: .7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; margin-top: .75rem; }
 </style>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 
 <div class="doc-viewer-layout">
 
@@ -209,11 +211,11 @@ include 'header.php';
                         <?php endforeach; ?>
 
                         <?php if ($isSetor3 && $requerimento['setor_atual'] === 'setor3'): ?>
-                            <a href="assinatura/assinatura_modal.php?requerimento_id=<?= $requerimentoId ?>&documento_id=<?= urlencode($doc['documento_id']) ?>"
+                            <button type="button" onclick="abrirModalAssinatura('<?= urlencode($doc['documento_id']) ?>')"
                                class="btn btn-sm w-100 mt-2 fw-semibold"
                                style="background:#059669;color:#fff;font-size:.78rem;">
                                 <i class="fas fa-file-signature me-1"></i>Assinar este documento
-                            </a>
+                            </button>
                         <?php endif; ?>
 
                         <?php if ($isSetor2 || $isSetor3): ?>
@@ -311,6 +313,75 @@ include 'header.php';
     </div>
 </div>
 
+<!-- Modal: Assinar e Gerar PDF -->
+<div class="modal fade" id="assinaturaModal" tabindex="-1" aria-labelledby="assinaturaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:inline-flex;align-items:center;justify-content:center;color:#16a34a;">
+                        <i class="fas fa-file-signature"></i>
+                    </span>
+                    <h5 class="modal-title fw-bold mb-0" style="color:#1e3a5f;">Assinar e Gerar PDF</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="assinatura/processa_assinatura.php" method="POST" id="formAssinatura">
+                <div class="modal-body px-4 pt-3">
+                    <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
+                    <input type="hidden" name="documento_id" id="modal-assinar-doc-id" value="">
+                    <input type="hidden" name="modo_assinatura" id="hidden_modo_assinatura" value="assinar">
+
+                    <div class="assinatura-modo-selector d-flex gap-2 mb-4">
+                        <label class="assinatura-modo-card selected" data-modo="assinar" style="flex:1;border:2px solid #16a34a;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f0fdf4;">
+                            <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
+                            <div style="font-size:1.3rem;margin-bottom:6px;">🖋️</div>
+                            <div style="font-weight:700;font-size:.85rem;color:#16a34a;">Assinar e finalizar</div>
+                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">Gera PDF com bloco de assinatura</div>
+                        </label>
+                        <label class="assinatura-modo-card" data-modo="sem_assinar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f9fafb;">
+                            <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
+                            <div style="font-size:1.3rem;margin-bottom:6px;">📄</div>
+                            <div style="font-weight:700;font-size:.85rem;color:#374151;">Finalizar sem assinar</div>
+                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">PDF sem bloco de assinatura</div>
+                        </label>
+                        <label class="assinatura-modo-card" data-modo="assinar_e_requisitar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f9fafb;">
+                            <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
+                            <div style="font-size:1.3rem;margin-bottom:6px;">👥</div>
+                            <div style="font-weight:700;font-size:.85rem;color:#1d4ed8;">Assinar e requisitar</div>
+                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">Assina + pede co-assinatura</div>
+                        </label>
+                    </div>
+
+                    <div id="painelCoAssinatura" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
+                        <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">Solicitar co-assinatura de:</label>
+                        <select name="coassinatura_destinatario_id" class="form-select form-select-sm mb-2">
+                            <option value="">— Selecione um administrador —</option>
+                            <?php foreach ($admins as $adm): ?>
+                                <option value="<?= $adm['id'] ?>"><?= htmlspecialchars($adm['nome']) ?> (<?= htmlspecialchars($adm['nivel']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                        <textarea name="coassinatura_mensagem" class="form-control form-control-sm" rows="2"
+                                  placeholder="Mensagem para o destinatário (opcional)..."
+                                  style="font-size:.82rem;resize:none;"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.875rem;">Conteúdo do Parecer/Documento</label>
+                        <textarea id="editor_assinatura" name="conteudo_parecer"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
+                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success px-4 btn-assinar-submit" style="font-size:.875rem;">
+                        <i class="fas fa-signature me-2"></i>Assinar documento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Solicitar Co-assinatura -->
 <div class="modal fade" id="solicitarAssinaturaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -391,6 +462,74 @@ function abrirModalSolicitar(docId) {
     document.getElementById('modal-doc-id').value = docId;
     new bootstrap.Modal(document.getElementById('solicitarAssinaturaModal')).show();
 }
+
+function abrirModalAssinatura(docId) {
+    document.getElementById('modal-assinar-doc-id').value = docId;
+    
+    // Iniciar Summernote se não estiver iniciado
+    if (!jQuery('#editor_assinatura').next('.note-editor').length) {
+        jQuery('#editor_assinatura').summernote({
+            placeholder: 'Escreva o parecer aqui...',
+            tabsize: 2,
+            height: 300,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'para']],
+                ['table', ['table']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+    }
+    
+    new bootstrap.Modal(document.getElementById('assinaturaModal')).show();
+}
+
+// Lógica dos cards de modo
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.assinatura-modo-card');
+    if (!card) return;
+    
+    const container = card.closest('.assinatura-modo-selector');
+    container.querySelectorAll('.assinatura-modo-card').forEach(c => {
+        c.classList.remove('selected');
+        c.style.border = '2px solid #e5e7eb';
+        c.style.background = '#f9fafb';
+        const labelDiv = c.querySelector('div:nth-child(3)');
+        if (labelDiv) labelDiv.style.color = '#374151';
+    });
+    
+    card.classList.add('selected');
+    const modo = card.dataset.modo;
+    document.getElementById('hidden_modo_assinatura').value = modo;
+    
+    const labelDiv = card.querySelector('div:nth-child(3)');
+    if (modo === 'assinar') {
+        card.style.border = '2px solid #16a34a';
+        card.style.background = '#f0fdf4';
+        if (labelDiv) labelDiv.style.color = '#16a34a';
+    } else if (modo === 'sem_assinar') {
+        card.style.border = '2px solid #6b7280';
+        card.style.background = '#f3f4f6';
+        if (labelDiv) labelDiv.style.color = '#374151';
+    } else {
+        card.style.border = '2px solid #1d4ed8';
+        card.style.background = '#eff6ff';
+        if (labelDiv) labelDiv.style.color = '#1d4ed8';
+    }
+    
+    document.getElementById('painelCoAssinatura').style.display = (modo === 'assinar_e_requisitar') ? 'block' : 'none';
+    
+    const btnSubmit = document.querySelector('.btn-assinar-submit');
+    const labels = {
+        'assinar': '<i class="fas fa-signature me-2"></i>Assinar documento',
+        'sem_assinar': '<i class="fas fa-file me-2"></i>Finalizar sem assinar',
+        'assinar_e_requisitar': '<i class="fas fa-users me-2"></i>Assinar e solicitar co-assinatura'
+    };
+    btnSubmit.innerHTML = labels[modo];
+});
 </script>
 
 <?php include 'footer.php'; ?>

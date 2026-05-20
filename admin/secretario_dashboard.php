@@ -240,7 +240,7 @@ include 'header.php';
                             <strong>#<?= htmlspecialchars($solic['protocolo']) ?></strong>
                             <span class="text-muted ms-2 small"><?= htmlspecialchars($solic['requerente_nome']) ?></span>
                         </div>
-                        <small class="text-muted"><?= date('d/m/Y', strtotime($solic['data_criacao'])) ?></small>
+                        <small class="text-muted"><?= date('d/m/Y', strtotime($solic['criado_em'])) ?></small>
                     </div>
                     <?php if ($solic['mensagem']): ?>
                     <div class="text-muted small mt-1 fst-italic">"<?= htmlspecialchars($solic['mensagem']) ?>"</div>
