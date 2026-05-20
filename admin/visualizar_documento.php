@@ -1,15 +1,15 @@
 <?php
 ini_set('log_errors', 1);
-ini_set('error_log', '/tmp/vd_debug.log');
+ini_set('error_log', __DIR__ . '/vd_debug.log');
 error_reporting(E_ALL);
 register_shutdown_function(function() {
     $e = error_get_last();
     if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        file_put_contents('/tmp/vd_debug.log', '[FATAL] ' . print_r($e, true) . "\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/vd_debug.log', '[FATAL] ' . print_r($e, true) . "\n", FILE_APPEND);
     }
 });
 set_exception_handler(function($e) {
-    file_put_contents('/tmp/vd_debug.log', '[EXCEPTION] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/vd_debug.log', '[EXCEPTION] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n", FILE_APPEND);
     http_response_code(500);
     exit;
 });
