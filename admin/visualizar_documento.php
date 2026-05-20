@@ -90,6 +90,27 @@ try {
 // Buscar lista de admins ativos para solicitar assinatura
 $admins = $pdo->query("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != $adminId ORDER BY nome")->fetchAll();
 
+// Feedback de erro/sucesso
+$pageError = '';
+$pageSuccess = '';
+if (isset($_GET['error'])) {
+    $errorMsgs = [
+        'dados_invalidos'       => 'Dados inválidos. Verifique e tente novamente.',
+        'motivo_obrigatorio'    => 'O motivo é obrigatório para recusar.',
+        'solicitacao_duplicada' => 'Já existe uma solicitação pendente para este documento e destinatário.',
+        'erro_solicitacao'      => 'Erro ao processar solicitação' . (isset($_GET['details']) ? ': ' . htmlspecialchars(urldecode($_GET['details'])) : '.'),
+        'erro_fluxo'            => 'Erro no fluxo' . (isset($_GET['details']) ? ': ' . htmlspecialchars(urldecode($_GET['details'])) : '.'),
+    ];
+    $pageError = $errorMsgs[$_GET['error']] ?? 'Ocorreu um erro inesperado.';
+}
+if (isset($_GET['success'])) {
+    $successMsgs = [
+        'solicitacao_enviada' => 'Solicitação de co-assinatura enviada com sucesso.',
+        'fluxo_atualizado'    => 'Fluxo atualizado com sucesso.',
+    ];
+    $pageSuccess = $successMsgs[$_GET['success']] ?? 'Operação realizada com sucesso.';
+}
+
 include 'header.php';
 ?>
 
@@ -117,9 +138,30 @@ include 'header.php';
 .solicit-badge .sol-text { font-size: .78rem; color: #92400e; font-weight: 500; }
 
 .section-label { font-size: .7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; margin-top: .75rem; }
+
+/* FM modals (inline, sem Bootstrap) */
+.fm-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; align-items:center; justify-content:center; }
+.fm-backdrop.open { display:flex; }
+.fm-box { background:#fff; border-radius:18px; max-width:430px; width:100%; margin:16px; box-shadow:0 20px 60px rgba(0,0,0,.18); animation:fmIn .2s ease; }
+@keyframes fmIn { from { opacity:0; transform:translateY(14px) scale(.97); } to { opacity:1; transform:none; } }
+.fm-header { display:flex; align-items:center; gap:12px; padding:18px 20px 0; }
+.fm-icon { width:38px; height:38px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.fm-icon.verde   { background:#e6f2ea; color:#14532d; }
+.fm-icon.amarelo { background:#fef3c7; color:#b7791f; }
+.fm-icon.vermelho{ background:#fef2f2; color:#8f2222; }
+.fm-icon.azul    { background:#eff6ff; color:#1d4ed8; }
+.fm-header h3 { margin:0; font-size:.97rem; font-weight:800; color:#102117; }
+.fm-body { padding:14px 20px 20px; }
+.fm-box .fm-sub { margin:0 0 10px; color:#66756d; font-size:.83rem; line-height:1.55; }
+.fm-box .fm-impact { background:#f7f9f7; border:1px solid #e3e8e4; border-radius:8px; padding:8px 12px; font-size:.78rem; color:#374151; margin-bottom:12px; }
+.fm-box textarea { width:100%; padding:9px; border:1px solid #e3e8e4; border-radius:8px; font-size:.83rem; resize:vertical; margin-bottom:12px; outline:none; transition:border-color .15s; box-sizing:border-box; }
+.fm-box textarea:focus { border-color:#14532d; }
+.fm-box .fm-btns { display:flex; gap:8px; justify-content:flex-end; }
+.fm-btn-cancel  { padding:7px 14px; border:1px solid #e3e8e4; border-radius:8px; background:#fff; color:#374151; font-size:.82rem; font-weight:600; cursor:pointer; }
+.fm-btn-confirm { padding:7px 16px; border-radius:8px; background:#14532d; color:#fff; border:none; font-size:.82rem; font-weight:700; cursor:pointer; }
+.fm-btn-warn    { background:#b7791f !important; }
+.fm-btn-danger  { background:#8f2222 !important; }
 </style>
-<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 
 <div class="doc-viewer-layout">
 
@@ -211,11 +253,11 @@ include 'header.php';
                         <?php endforeach; ?>
 
                         <?php if ($isSetor3 && $requerimento['setor_atual'] === 'setor3'): ?>
-                            <button type="button" onclick="abrirModalAssinatura('<?= urlencode($doc['documento_id']) ?>')"
+                            <a href="documentos/editor.php?requerimento_id=<?= $requerimentoId ?>"
                                class="btn btn-sm w-100 mt-2 fw-semibold"
-                               style="background:#059669;color:#fff;font-size:.78rem;">
-                                <i class="fas fa-file-signature me-1"></i>Assinar este documento
-                            </button>
+                               style="background:#059669;color:#fff;font-size:.78rem;text-decoration:none;display:block;text-align:center;">
+                                <i class="fas fa-file-signature me-1"></i>Assinar documento
+                            </a>
                         <?php endif; ?>
 
                         <?php if ($isSetor2 || $isSetor3): ?>
@@ -233,35 +275,23 @@ include 'header.php';
             <?php if ($isSetor3 && $requerimento['setor_atual'] === 'setor3'): ?>
                 <div class="section-label mt-3"><i class="fas fa-tasks me-1"></i>Ações do Setor 3</div>
 
-                <form method="post" action="fluxo_setor_handler.php">
-                    <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
-                    <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
-                    <button type="submit" class="btn btn-sm w-100 fw-semibold mb-2"
-                            style="background:#0d9488;color:#fff;font-size:.8rem;"
-                            onclick="return confirm('Confirmar aprovação? O processo retornará ao Setor 2 para envio ao cidadão.')">
-                        <i class="fas fa-check-double me-1"></i>Aprovar e retornar ao Setor 2
-                    </button>
-                </form>
-
-                <button type="button"
-                        class="btn btn-sm btn-outline-danger w-100"
-                        style="font-size:.8rem;"
-                        onclick="document.getElementById('devolverSetor2Panel').style.display='block'">
-                    <i class="fas fa-reply me-1"></i>Devolver ao Setor 2 com motivo
+                <button type="button" class="btn btn-sm w-100 fw-semibold mb-1"
+                        style="background:#0d9488;color:#fff;font-size:.8rem;"
+                        onclick="abrirFM('fm-s3-aprovar')">
+                    <i class="fas fa-check-double me-1"></i>Aprovar e retornar ao Setor 2
                 </button>
 
-                <div id="devolverSetor2Panel" style="display:none;" class="mt-2">
-                    <form method="post" action="fluxo_setor_handler.php">
-                        <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
-                        <input type="hidden" name="fluxo_acao" value="devolver_setor2">
-                        <textarea name="motivo" rows="3" required
-                                  class="form-control form-control-sm mb-2"
-                                  placeholder="Descreva o motivo da devolução..."></textarea>
-                        <button type="submit" class="btn btn-danger btn-sm w-100" style="font-size:.78rem;">
-                            <i class="fas fa-paper-plane me-1"></i>Confirmar devolução
-                        </button>
-                    </form>
-                </div>
+                <button type="button" class="btn btn-sm w-100 fw-semibold mb-1"
+                        style="background:#8f2222;color:#fff;font-size:.8rem;"
+                        onclick="abrirFM('fm-s3-recusar')">
+                    <i class="fas fa-times-circle me-1"></i>Recusar e retornar ao Setor 2
+                </button>
+
+                <button type="button" class="btn btn-sm w-100"
+                        style="background:#b7791f;color:#fff;font-size:.8rem;"
+                        onclick="abrirFM('fm-s3-sem-decisao')">
+                    <i class="fas fa-rotate-left me-1"></i>Retornar sem decisão
+                </button>
             <?php endif; ?>
         </div>
     </div>
@@ -313,73 +343,86 @@ include 'header.php';
     </div>
 </div>
 
-<!-- Modal: Assinar e Gerar PDF -->
-<div class="modal fade" id="assinaturaModal" tabindex="-1" aria-labelledby="assinaturaModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:inline-flex;align-items:center;justify-content:center;color:#16a34a;">
-                        <i class="fas fa-file-signature"></i>
-                    </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:#1e3a5f;">Assinar e Gerar PDF</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="assinatura/processa_assinatura.php" method="POST" id="formAssinatura">
-                <div class="modal-body px-4 pt-3">
-                    <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
-                    <input type="hidden" name="documento_id" id="modal-assinar-doc-id" value="">
-                    <input type="hidden" name="modo_assinatura" id="hidden_modo_assinatura" value="assinar">
-
-                    <div class="assinatura-modo-selector d-flex gap-2 mb-4">
-                        <label class="assinatura-modo-card selected" data-modo="assinar" style="flex:1;border:2px solid #16a34a;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f0fdf4;">
-                            <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
-                            <div style="font-size:1.3rem;margin-bottom:6px;">🖋️</div>
-                            <div style="font-weight:700;font-size:.85rem;color:#16a34a;">Assinar e finalizar</div>
-                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">Gera PDF com bloco de assinatura</div>
-                        </label>
-                        <label class="assinatura-modo-card" data-modo="sem_assinar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f9fafb;">
-                            <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
-                            <div style="font-size:1.3rem;margin-bottom:6px;">📄</div>
-                            <div style="font-weight:700;font-size:.85rem;color:#374151;">Finalizar sem assinar</div>
-                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">PDF sem bloco de assinatura</div>
-                        </label>
-                        <label class="assinatura-modo-card" data-modo="assinar_e_requisitar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;background:#f9fafb;">
-                            <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
-                            <div style="font-size:1.3rem;margin-bottom:6px;">👥</div>
-                            <div style="font-weight:700;font-size:.85rem;color:#1d4ed8;">Assinar e requisitar</div>
-                            <div style="font-size:.73rem;color:#6b7280;margin-top:4px;">Assina + pede co-assinatura</div>
-                        </label>
-                    </div>
-
-                    <div id="painelCoAssinatura" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
-                        <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">Solicitar co-assinatura de:</label>
-                        <select name="coassinatura_destinatario_id" class="form-select form-select-sm mb-2">
-                            <option value="">— Selecione um administrador —</option>
-                            <?php foreach ($admins as $adm): ?>
-                                <option value="<?= $adm['id'] ?>"><?= htmlspecialchars($adm['nome']) ?> (<?= htmlspecialchars($adm['nivel']) ?>)</option>
-                            <?php endforeach; ?>
-                        </select>
-                        <textarea name="coassinatura_mensagem" class="form-control form-control-sm" rows="2"
-                                  placeholder="Mensagem para o destinatário (opcional)..."
-                                  style="font-size:.82rem;resize:none;"></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.875rem;">Conteúdo do Parecer/Documento</label>
-                        <textarea id="editor_assinatura" name="conteudo_parecer"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success px-4 btn-assinar-submit" style="font-size:.875rem;">
-                        <i class="fas fa-signature me-2"></i>Assinar documento
-                    </button>
-                </div>
-            </form>
+<!-- Toast de feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;">
+    <div id="pageToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="pageToastMsg">Operação realizada com sucesso.</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>
+</div>
+
+<!-- FM Modal: Aprovar e retornar ao Setor 2 -->
+<div class="fm-backdrop" id="fm-s3-aprovar">
+  <div class="fm-box">
+    <div class="fm-header">
+      <div class="fm-icon verde"><i class="fas fa-check-double"></i></div>
+      <h3>Aprovar e retornar ao Setor 2</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O Setor 2 receberá o processo de volta para enviar o documento final ao cidadão.</p>
+      <div class="fm-impact">Exige pelo menos uma assinatura digital neste processo · Cidadão ainda não é notificado</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
+        <input type="hidden" name="fluxo_acao" value="setor3_aprovado">
+        <input type="hidden" name="referer" value="visualizar_documento">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-s3-aprovar')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm"><i class="fas fa-check-double me-1"></i>Confirmar aprovação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- FM Modal: Recusar e retornar ao Setor 2 -->
+<div class="fm-backdrop" id="fm-s3-recusar">
+  <div class="fm-box">
+    <div class="fm-header">
+      <div class="fm-icon vermelho"><i class="fas fa-times-circle"></i></div>
+      <h3>Recusar e retornar ao Setor 2</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo volta ao Setor 2 com o motivo da recusa registrado.</p>
+      <div class="fm-impact">O motivo é obrigatório · Não exige assinatura · Setor 2 verá o motivo no histórico</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
+        <input type="hidden" name="fluxo_acao" value="setor3_recusado">
+        <input type="hidden" name="referer" value="visualizar_documento">
+        <textarea name="motivo" rows="3" placeholder="Descreva o motivo da recusa..." required></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-s3-recusar')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm fm-btn-danger"><i class="fas fa-times-circle me-1"></i>Confirmar recusa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- FM Modal: Retornar sem decisão -->
+<div class="fm-backdrop" id="fm-s3-sem-decisao">
+  <div class="fm-box">
+    <div class="fm-header">
+      <div class="fm-icon amarelo"><i class="fas fa-rotate-left"></i></div>
+      <h3>Retornar sem decisão</h3>
+    </div>
+    <div class="fm-body">
+      <p class="fm-sub">O processo retorna ao Setor 2 sem aprovação nem recusa. Útil para ajustes intermediários.</p>
+      <div class="fm-impact">Não exige assinatura · Histórico registrará "Retornou sem decisão" · Setor 2 retoma a análise</div>
+      <form method="post" action="fluxo_setor_handler.php">
+        <input type="hidden" name="requerimento_id" value="<?= $requerimentoId ?>">
+        <input type="hidden" name="fluxo_acao" value="setor3_sem_decisao">
+        <input type="hidden" name="referer" value="visualizar_documento">
+        <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <div class="fm-btns">
+          <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-s3-sem-decisao')">Cancelar</button>
+          <button type="submit" class="fm-btn-confirm fm-btn-warn"><i class="fas fa-rotate-left me-1"></i>Retornar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: Solicitar Co-assinatura -->
@@ -433,22 +476,18 @@ include 'header.php';
 
 <script>
 function carregarDocumento(el, docId) {
-    // Atualiza item ativo na sidebar
     document.querySelectorAll('.doc-item').forEach(d => d.classList.remove('active'));
     el.classList.add('active');
 
-    // Oculta todos os painéis de assinatura e mostra o correto
     document.querySelectorAll('.doc-sigs-panel').forEach(p => p.style.display = 'none');
     const sigsPanel = document.getElementById('sigs-' + docId);
     if (sigsPanel) sigsPanel.style.display = 'block';
 
-    // Atualiza iframe
     const iframe = document.getElementById('doc-viewer-iframe');
     if (iframe) {
         iframe.src = 'assinatura/redownload_pdf.php?id=' + encodeURIComponent(docId) + '&inline=1';
     }
 
-    // Atualiza title + botões
     const nome = el.querySelector('.doc-name')?.textContent ?? '';
     document.getElementById('viewer-title').innerHTML = '<i class="fas fa-file-pdf me-2" style="color:#ef4444;"></i>' + nome;
 
@@ -463,73 +502,59 @@ function abrirModalSolicitar(docId) {
     new bootstrap.Modal(document.getElementById('solicitarAssinaturaModal')).show();
 }
 
-function abrirModalAssinatura(docId) {
-    document.getElementById('modal-assinar-doc-id').value = docId;
-    
-    // Iniciar Summernote se não estiver iniciado
-    if (!jQuery('#editor_assinatura').next('.note-editor').length) {
-        jQuery('#editor_assinatura').summernote({
-            placeholder: 'Escreva o parecer aqui...',
-            tabsize: 2,
-            height: 300,
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'underline', 'clear']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'para']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ]
-        });
-    }
-    
-    new bootstrap.Modal(document.getElementById('assinaturaModal')).show();
+function abrirFM(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('open');
+    const ta = el.querySelector('textarea');
+    if (ta) setTimeout(() => ta.focus(), 220);
 }
 
-// Lógica dos cards de modo
-document.addEventListener('click', function(e) {
-    const card = e.target.closest('.assinatura-modo-card');
-    if (!card) return;
-    
-    const container = card.closest('.assinatura-modo-selector');
-    container.querySelectorAll('.assinatura-modo-card').forEach(c => {
-        c.classList.remove('selected');
-        c.style.border = '2px solid #e5e7eb';
-        c.style.background = '#f9fafb';
-        const labelDiv = c.querySelector('div:nth-child(3)');
-        if (labelDiv) labelDiv.style.color = '#374151';
-    });
-    
-    card.classList.add('selected');
-    const modo = card.dataset.modo;
-    document.getElementById('hidden_modo_assinatura').value = modo;
-    
-    const labelDiv = card.querySelector('div:nth-child(3)');
-    if (modo === 'assinar') {
-        card.style.border = '2px solid #16a34a';
-        card.style.background = '#f0fdf4';
-        if (labelDiv) labelDiv.style.color = '#16a34a';
-    } else if (modo === 'sem_assinar') {
-        card.style.border = '2px solid #6b7280';
-        card.style.background = '#f3f4f6';
-        if (labelDiv) labelDiv.style.color = '#374151';
-    } else {
-        card.style.border = '2px solid #1d4ed8';
-        card.style.background = '#eff6ff';
-        if (labelDiv) labelDiv.style.color = '#1d4ed8';
+function fecharFM(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const box = el.querySelector('.fm-box');
+    if (box) {
+        box.style.transition = 'opacity .18s ease, transform .18s ease';
+        box.style.opacity = '0';
+        box.style.transform = 'translateY(14px) scale(.97)';
     }
-    
-    document.getElementById('painelCoAssinatura').style.display = (modo === 'assinar_e_requisitar') ? 'block' : 'none';
-    
-    const btnSubmit = document.querySelector('.btn-assinar-submit');
-    const labels = {
-        'assinar': '<i class="fas fa-signature me-2"></i>Assinar documento',
-        'sem_assinar': '<i class="fas fa-file me-2"></i>Finalizar sem assinar',
-        'assinar_e_requisitar': '<i class="fas fa-users me-2"></i>Assinar e solicitar co-assinatura'
-    };
-    btnSubmit.innerHTML = labels[modo];
+    el.style.transition = 'background .18s ease';
+    el.style.background = 'rgba(0,0,0,0)';
+    setTimeout(() => {
+        el.classList.remove('open');
+        if (box) { box.style.transition = ''; box.style.opacity = ''; box.style.transform = ''; }
+        el.style.transition = ''; el.style.background = '';
+    }, 190);
+}
+
+// Fechar FM ao clicar no backdrop
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.fm-backdrop').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            if (e.target === el) fecharFM(el.id);
+        });
+    });
+
+    // Toast de feedback (erro/sucesso vindos da URL)
+    <?php if ($pageError): ?>
+    showToast(<?= json_encode($pageError) ?>, 'error');
+    <?php elseif ($pageSuccess): ?>
+    showToast(<?= json_encode($pageSuccess) ?>, 'success');
+    <?php endif; ?>
 });
+
+function showToast(msg, type) {
+    const toastEl = document.getElementById('pageToast');
+    const msgEl   = document.getElementById('pageToastMsg');
+    if (!toastEl || !msgEl) return;
+    msgEl.textContent = msg;
+    toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+    toastEl.classList.add(type === 'error' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-success');
+    if (typeof bootstrap !== 'undefined') {
+        new bootstrap.Toast(toastEl, { delay: 6000 }).show();
+    }
+}
 </script>
 
 <?php include 'footer.php'; ?>

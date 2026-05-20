@@ -1686,6 +1686,10 @@ if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
 .fm-btn-warn:hover { background:#92400e; }
 .fm-btn-danger { background:#8f2222; }
 .fm-btn-danger:hover { background:#6b0f0f; }
+/* Sky (boleto) */
+:root { --sky-soft:#e0f2fe; --sky-mid:#7dd3fc; --sky-text:#0369a1; }
+.btn-sky { background:#0369a1; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:.83rem; font-weight:600; cursor:pointer; transition:background .15s; }
+.btn-sky:hover { background:#0284c7; color:#fff; }
 </style>
 
 <?php
@@ -1755,7 +1759,7 @@ $estadoCls = match($aguardandoAcao) {
         <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
         <div class="fm-btns">
           <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-setor3')">Cancelar</button>
-          <button type="submit" class="fm-btn-confirm" style="background:#7e22ce"><i class="fas fa-shield-halved me-1"></i>Confirmar</button>
+          <button type="submit" class="fm-btn-confirm"><i class="fas fa-shield-halved me-1"></i>Confirmar</button>
         </div>
       </form>
     </div>
@@ -2063,7 +2067,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="font-size:.75rem;color:#6b7280;">Gerado por <?= htmlspecialchars($docSec['assinante_nome']) ?> em <?= date('d/m/Y', strtotime($docSec['timestamp_assinatura'])) ?></div>
             </div>
             <a href="visualizar_documento.php?requerimento_id=<?= $id ?>" class="btn btn-sm btn-primary" style="font-size:.8rem;">
-                <i class="fas fa-eye me-1"></i>Revisar e Assinar
+                <i class="fas fa-eye me-1"></i>Revisar Documentos
             </a>
         </div>
         <?php endforeach; ?>
@@ -2630,17 +2634,17 @@ document.addEventListener('DOMContentLoaded', function() {
                               // Ação primária e rótulo por setor
                               $acaoPrimaria = [
                                   'setor1' => [
-                                      'label' => 'Gerar Documento de Triagem',
+                                      'label' => 'Gerar Documento',
                                       'icon'  => 'fa-file-alt',
                                       'tip'   => 'Abre o seletor de templates para gerar o documento de triagem/abertura deste processo.',
                                   ],
                                   'setor2' => [
-                                      'label' => 'Gerar Parecer Técnico',
+                                      'label' => 'Gerar Documento',
                                       'icon'  => 'fa-file-signature',
                                       'tip'   => 'Abre o editor para gerar o parecer técnico de fiscalização ou relatório de vistoria deste processo.',
                                   ],
                                   'setor3' => [
-                                      'label' => 'Revisar e Assinar Documento',
+                                      'label' => 'Revisar Documentos',
                                       'icon'  => 'fa-file-circle-check',
                                       'tip'   => 'Abre os documentos gerados para revisão e assinatura final do Secretário.',
                                   ],
@@ -2674,7 +2678,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                               onclick="abrirFM('fm-finalizar-s1')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encerra o processo diretamente na Triagem, sem enviar para Fiscalização ou Secretário. Use quando não há pendências técnicas.">
-                                              <i class="fas fa-check me-1"></i>Finalizar na Triagem
+                                              <i class="fas fa-check me-1"></i>Marcar como Concluído
                                           </button>
                                       <?php elseif ($setorAtual === 'setor2'): ?>
                                           <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
@@ -2693,7 +2697,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                               onclick="abrirFM('fm-finalizar-s2')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encerra o processo na Fiscalização sem enviar para o Secretário. Use quando o processo já está regularizado.">
-                                              <i class="fas fa-check me-1"></i>Finalizar na Fiscalização
+                                              <i class="fas fa-check me-1"></i>Marcar como Concluído
                                           </button>
                                           <button type="button" class="btn btn-outline-secondary btn-sm fw-medium tt"
                                               onclick="abrirFM('fm-devolver-s1')"
@@ -3678,10 +3682,8 @@ foreach ($docsDisponiveis as $docRow) {
                             </div>
                         </div>
                         <div class="data-actions">
-                            ${!p.apagado ? `<a href="${viewerUrl}" class="copy-btn me-1" target="_blank" title="Visualizar"><i class="fas fa-eye"></i></a>
-                            ${p.documento_id ? `<a href="parecer_viewer.php?id=${p.documento_id}&autoprint=1" class="copy-btn me-1" target="_blank" title="Imprimir"><i class="fas fa-print"></i></a>` : ''}
-                            <a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
-                            <button onclick="excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
+                            <button onclick="event.stopPropagation();excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>`;
              });
@@ -3696,8 +3698,10 @@ foreach ($docsDisponiveis as $docRow) {
                  const iniciais    = (p.assinante || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
                  const nomeLimpo   = formatarNomeParecer(p.nome);
 
+                 const docViewerUrl = p.documento_id ? `visualizar_documento.php?requerimento_id=<?php echo $id ?>&documento_id=${encodeURIComponent(p.documento_id)}` : null;
                  grid.innerHTML += `
-                    <div style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;">
+                    <div style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;${docViewerUrl ? 'cursor:pointer;' : ''}"
+                         ${docViewerUrl ? `onclick="window.location='${docViewerUrl}'"` : ''}>
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;gap:8px;">
                             <span style="font-family:monospace;font-size:.68rem;color:#888;background:#f5f5f5;padding:3px 7px;border-radius:4px;">
                                 <i class="fas fa-fingerprint me-1"></i>${p.documento_id ? p.documento_id.substring(0,12) + '…' : '—'}
@@ -3714,11 +3718,8 @@ foreach ($docsDisponiveis as $docRow) {
                             </div>
                         </div>
                         <div style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
-                            ${!p.apagado && viewerUrl ? `<a href="${viewerUrl}" target="_blank" class="btn btn-sm btn-primary flex-fill" style="font-size:.75rem"><i class="fas fa-eye me-1"></i>Ver</a>` :
-                              '<button class="btn btn-sm btn-secondary flex-fill" disabled style="font-size:.75rem"><i class="fas fa-eye-slash me-1"></i>Indisponível</button>'}
-                            ${!p.apagado && p.documento_id ? `<a href="parecer_viewer.php?id=${p.documento_id}&autoprint=1" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Imprimir"><i class="fas fa-print"></i></a>` : ''}
-                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
-                            <button onclick="excluirDocAssinado('${p.documento_id}')" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
+                            <button onclick="event.stopPropagation();excluirDocAssinado('${p.documento_id}')" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>`;
              });

@@ -96,12 +96,32 @@ try {
             $stmt->execute([$id, $adminId]);
             $temAssinatura = (int) $stmt->fetchColumn();
             if (!$temAssinatura) {
-                throw new RuntimeException('Você precisa assinar pelo menos um documento antes de retornar ao Setor 2.');
+                throw new RuntimeException('Você precisa assinar pelo menos um documento antes de aprovar e retornar.');
             }
-            // Setor 3 assinou/aprovou → volta ao setor 2 para envio ao cidadão
             atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
-            registraHistorico($pdo, $adminId, $id, "Setor 3 revisou e retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
+            registraHistorico($pdo, $adminId, $id, "Setor 3 aprovou e retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
             createAdminNotificationForRequerimento($pdo, $id, 'setor3_aprovado');
+            break;
+
+        case 'setor3_recusado':
+            if (!$motivo) {
+                $pdo->rollBack();
+                $dest = ($_POST['referer'] ?? '') === 'visualizar_documento'
+                    ? "visualizar_documento.php?requerimento_id=$id&error=motivo_obrigatorio"
+                    : "visualizar_requerimento.php?id=$id&error=motivo_obrigatorio";
+                header("Location: $dest");
+                exit;
+            }
+            atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
+            $pdo->prepare("UPDATE requerimentos SET motivo_devolucao = ?, data_atualizacao = NOW() WHERE id = ?")->execute([$motivo, $id]);
+            registraHistorico($pdo, $adminId, $id, "Setor 3 recusou e devolveu ao Setor 2 — Motivo: $motivo");
+            createAdminNotificationForRequerimento($pdo, $id, 'devolvido_setor2');
+            break;
+
+        case 'setor3_sem_decisao':
+            atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
+            registraHistorico($pdo, $adminId, $id, "Setor 3 retornou ao Setor 2 sem decisão" . ($motivo ? ": $motivo" : ''));
+            createAdminNotificationForRequerimento($pdo, $id, 'devolvido_setor2');
             break;
 
         case 'doc_final_envio':
@@ -145,12 +165,22 @@ try {
     }
 
     $pdo->commit();
-    header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
+    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
+    if ($fromDocViewer) {
+        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado");
+    } else {
+        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
+    }
     exit;
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     $msg = urlencode($e->getMessage());
-    header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo&details=$msg");
+    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
+    if ($fromDocViewer) {
+        header("Location: visualizar_documento.php?requerimento_id=$id&error=erro_fluxo&details=$msg");
+    } else {
+        header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo&details=$msg");
+    }
     exit;
 }
