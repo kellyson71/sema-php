@@ -55,6 +55,7 @@ $filtroCategoria = $_GET['categoria'] ?? '';
 if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
     $filtroCategoria = '';
 }
+$filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
 
 // Status encerrados: ocultos por padrão, visíveis apenas se filtro explícito ou toggle ativo
@@ -121,9 +122,6 @@ if ($filtroStatus !== '') {
     $sql .= " AND r.status = ?";
     $sqlCount .= " AND r.status = ?";
     $params[] = $filtroStatus;
-} else {
-    $sql .= " AND r.status != 'Finalizado'";
-    $sqlCount .= " AND r.status != 'Finalizado'";
 }
 
 if ($filtroTipo !== '') {
@@ -140,6 +138,15 @@ if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
     foreach ($slugsCat as $s) {
         $params[] = $s;
     }
+}
+
+if ($filtroBusca !== '') {
+    $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
+    $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
+    $termoBusca = '%' . $filtroBusca . '%';
+    $params[] = $termoBusca;
+    $params[] = $termoBusca;
+    $params[] = $termoBusca;
 }
 
 if ($filtroNaoVisualizados) {
@@ -393,6 +400,10 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             <?php if ($filtroNaoVisualizados): ?>
                 <input type="hidden" name="nao_visualizados" value="1">
             <?php endif; ?>
+            <div class="req-filter-search">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" name="busca" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Buscar por protocolo, nome ou CPF/CNPJ">
+            </div>
             <label class="req-filter-label" for="tipoFiltro">Tipo:</label>
             <select id="tipoFiltro" name="tipo" class="req-filter-select">
                 <option value="">Todos</option>
@@ -403,7 +414,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
-            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
                     <i class="fas fa-eye"></i> Ver todos
