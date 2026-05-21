@@ -42,6 +42,8 @@ $pageTitles = [
     'nova_denuncia.php' => 'Nova Denúncia',
     'visualizar_denuncia.php' => 'Detalhes da Denúncia',
     'requerimentos_arquivados.php' => 'Requerimentos Arquivados',
+    'fila_setor.php' => 'Filas por Setor',
+    'fluxo_setor_handler.php' => 'Fluxo de Setor',
     'logs_email.php' => 'Histórico de Envios',
     'notificacoes.php' => 'Notificações',
     'testes.php' => 'Painel de Testes',
@@ -69,6 +71,9 @@ $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['st
 $searchItems = [
     ['label' => 'Dashboard', 'caption' => 'Visão geral do painel', 'url' => $adminBase . 'index.php', 'icon' => 'fa-gauge-high'],
     ['label' => 'Requerimentos', 'caption' => 'Lista principal de protocolos', 'url' => $adminBase . 'requerimentos.php', 'icon' => 'fa-clipboard-list'],
+    ['label' => 'Fila — Setor 1', 'caption' => 'Triagem de protocolos', 'url' => $adminBase . 'fila_setor.php?setor=setor1', 'icon' => 'fa-inbox'],
+    ['label' => 'Fila — Setor 2', 'caption' => 'Análise técnica', 'url' => $adminBase . 'fila_setor.php?setor=setor2', 'icon' => 'fa-magnifying-glass'],
+    ['label' => 'Fila — Setor 3', 'caption' => 'Revisão final', 'url' => $adminBase . 'fila_setor.php?setor=setor3', 'icon' => 'fa-shield-halved'],
     ['label' => 'Notificações', 'caption' => 'Central operacional do admin', 'url' => $adminBase . 'notificacoes.php', 'icon' => 'fa-bell'],
     ['label' => 'Denúncias', 'caption' => 'Acompanhar denúncias ambientais', 'url' => $adminBase . 'denuncias.php', 'icon' => 'fa-bullhorn'],
     ['label' => 'Estatísticas', 'caption' => 'Indicadores e relatórios', 'url' => $adminBase . 'estatisticas.php', 'icon' => 'fa-chart-column'],
@@ -1398,6 +1403,17 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                                 <?php if ($totalNaoVisualizados > 0): ?>
                                     <span class="badge bg-danger sidebar-link-badge"><?= $totalNaoVisualizados > 99 ? '99+' : $totalNaoVisualizados ?></span>
                                 <?php endif; ?>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
+                            <span class="sidebar-link-icon"><i class="fas fa-layer-group"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Filas por Setor</span>
+                                    <span class="sidebar-link-caption">S1 · S2 · S3</span>
+                                </span>
                             </span>
                         </a>
                     </li>

@@ -1,9 +1,28 @@
 <?php
 if (!defined('APP_VERSION')) {
-    define('APP_VERSION', '2.1.0');
-    define('APP_VERSION_DATE', '22/04/2026');
+    define('APP_VERSION', '3.0.0');
+    define('APP_VERSION_DATE', '21/05/2026');
 
     $appChangelog = [
+        [
+            'version' => '3.0.0',
+            'date' => '21/05/2026',
+            'title' => 'Fluxo multi-setor, co-assinatura e documentos finais',
+            'badge' => 'Grande atualização',
+            'badge_color' => '#0d5433',
+            'badge_bg' => '#def2e6',
+            'changes' => [
+                'Fluxo de processos dividido em 3 setores: Triagem (S1), Fiscalização de Obras (S2) e Revisão do Secretário (S3)',
+                'Cada perfil (analista, fiscal, secretário) vê apenas a fila do seu setor',
+                'Co-assinatura de documentos: múltiplos administradores podem assinar o mesmo documento',
+                'Documentos finais enviados diretamente ao cidadão por e-mail com link seguro',
+                'Cidadão pode visualizar e baixar o documento final sem precisar de login',
+                'Modal de solicitação de assinatura entre setores com campo de mensagem',
+                'Modos de assinatura: assinatura digital SEMA, linha manual ou sem assinatura',
+                'Novos dashboards diferenciados para Fiscal e Secretário com painel de assinaturas pendentes',
+                'Obrigatoriedade de troca de senha no primeiro acesso de novos usuários',
+            ],
+        ],
         [
             'version' => '2.1.0',
             'date' => '22/04/2026',

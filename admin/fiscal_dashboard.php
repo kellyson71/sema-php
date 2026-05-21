@@ -1,7 +1,5 @@
 <?php
 require_once 'conexao.php';
-header("Location: index.php");
-exit;
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
@@ -55,6 +53,23 @@ $stmtAnalisados = $pdo->prepare("
 ");
 $stmtAnalisados->execute([$_SESSION['admin_id']]);
 $analisadosPorMim = $stmtAnalisados->fetchColumn();
+
+// Solicitações de assinatura pendentes para este fiscal
+$adminId = $_SESSION['admin_id'];
+$stmtSolics = $pdo->prepare("
+    SELECT sa.id, sa.requerimento_id, sa.documento_id, sa.mensagem, sa.data_criacao,
+           r.protocolo, req.nome AS requerente_nome,
+           a.nome AS solicitante_nome
+    FROM solicitacoes_assinatura sa
+    JOIN requerimentos r ON r.id = sa.requerimento_id
+    JOIN requerentes req ON req.id = r.requerente_id
+    JOIN administradores a ON a.id = sa.solicitante_id
+    WHERE sa.destinatario_id = ? AND sa.status = 'pendente'
+    ORDER BY sa.data_criacao DESC
+    LIMIT 10
+");
+$stmtSolics->execute([$adminId]);
+$solics = $stmtSolics->fetchAll();
 
 $totalSetor = (int)$aguardandoAnalise + (int)$analisadosPorMim;
 
@@ -140,6 +155,37 @@ include 'header.php';
             <?php endif; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+    <?php endif; ?>
+
+    <!-- Solicitações de assinatura pendentes -->
+    <?php if (!empty($solics)): ?>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center gap-2">
+            <span class="badge bg-danger rounded-circle p-2"><?= count($solics) ?></span>
+            <h6 class="fw-bold mb-0"><i class="fas fa-signature text-danger me-2"></i>Documentos aguardando sua assinatura</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+                <?php foreach ($solics as $solic): ?>
+                <a href="visualizar_requerimento.php?id=<?= $solic['requerimento_id'] ?>"
+                   class="list-group-item list-group-item-action py-3 px-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-danger me-2" style="font-size:.7rem;">Assinatura Pendente</span>
+                            <strong>#<?= htmlspecialchars($solic['protocolo']) ?></strong>
+                            <span class="text-muted ms-2 small"><?= htmlspecialchars($solic['requerente_nome']) ?></span>
+                        </div>
+                        <small class="text-muted"><?= date('d/m/Y', strtotime($solic['criado_em'])) ?></small>
+                    </div>
+                    <?php if ($solic['mensagem']): ?>
+                    <div class="text-muted small mt-1 fst-italic">"<?= htmlspecialchars($solic['mensagem']) ?>"</div>
+                    <?php endif; ?>
+                    <div class="text-muted small mt-1">Solicitado por: <?= htmlspecialchars($solic['solicitante_nome']) ?></div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
     <?php endif; ?>
 
     <!-- Filtros de Busca -->

@@ -61,7 +61,7 @@ CREATE TABLE `assinaturas_digitais` (
   `assinante_nome` varchar(255) NOT NULL,
   `assinante_cpf` varchar(20) DEFAULT NULL,
   `assinante_cargo` varchar(100) DEFAULT NULL,
-  `tipo_assinatura` enum('desenho','texto') NOT NULL,
+  `tipo_assinatura` enum('desenho','texto','digital_sema') NOT NULL,
   `assinatura_visual` text DEFAULT NULL,
   `assinatura_criptografada` text NOT NULL,
   `timestamp_assinatura` timestamp NOT NULL DEFAULT current_timestamp(),

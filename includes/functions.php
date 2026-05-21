@@ -83,6 +83,35 @@ function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
 }
 
 /**
+ * Gera token seguro para acesso público ao documento final (Setor 2).
+ */
+function gerarTokenDocumentoFinal(int $requerimentoId, string $protocolo): string
+{
+    $assinatura = hash_hmac('sha256', $requerimentoId . '|docfinal|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
+    return $requerimentoId . '.df.' . substr($assinatura, 0, 32);
+}
+
+function validarTokenDocumentoFinal(string $token, int $requerimentoId, string $protocolo): bool
+{
+    if ($token === '') {
+        return false;
+    }
+    return hash_equals(gerarTokenDocumentoFinal($requerimentoId, $protocolo), $token);
+}
+
+function gerarUrlDocumentoFinal(int $requerimentoId, string $protocolo): string
+{
+    $base = rtrim(BASE_URL, '/');
+    if (!preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $base = $protocol . '://' . $host . '/' . ltrim($base, '/');
+        $base = rtrim($base, '/');
+    }
+    return $base . '/documento_final.php?token=' . urlencode(gerarTokenDocumentoFinal($requerimentoId, $protocolo));
+}
+
+/**
  * Salva um arquivo enviado
  * @param array $arquivo Array $_FILES do arquivo
  * @param string $diretorio Diretório onde o arquivo será salvo

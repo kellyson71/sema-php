@@ -123,3 +123,16 @@ lftp -u "u492577848.semapmpfestagio,Pmpfestagio2021" ftp://46.202.145.215 -e \
 
 - `main` — produção
 - `homologacao` — staging (branch ativa de desenvolvimento)
+
+## Estrutura de deploy no servidor
+
+O servidor tem dois ambientes no mesmo host:
+
+- `~/domains/sema.protocolosead.com/public_html/` → branch **main** (produção)
+- `~/domains/sema.protocolosead.com/public_html/homologacao/` → branch **homologacao** (staging)
+
+Deploy da branch `homologacao`:
+```bash
+ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
+  "cd ~/domains/sema.protocolosead.com/public_html/homologacao && git pull"
+```

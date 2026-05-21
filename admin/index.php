@@ -12,19 +12,72 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 }
 verificaLogin();
 
-$totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
-$emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
-$naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
-$novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
+// Restrição de setor para fiscal (setor2) e secretario (setor3)
+$nivelAdmin = $_SESSION['admin_nivel'] ?? '';
+$setorFiltro = match($nivelAdmin) {
+    'fiscal'    => 'setor2',
+    'secretario' => 'setor3',
+    default     => null,
+};
 
-$stmt = $pdo->query("
-    SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, req.nome AS requerente
-    FROM requerimentos r
-    JOIN requerentes req ON r.requerente_id = req.id
-    ORDER BY r.data_envio DESC
-    LIMIT 10
-");
-$ultimosRequerimentos = $stmt->fetchAll();
+if ($setorFiltro) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ?");
+    $st->execute([$setorFiltro]);
+    $totalRequerimentos = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND status = 'Em análise'");
+    $st->execute([$setorFiltro]);
+    $emAnalise = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND visualizado = 0");
+    $st->execute([$setorFiltro]);
+    $naoVisualizados = (int) $st->fetchColumn();
+
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)");
+    $st->execute([$setorFiltro]);
+    $novosSemana = (int) $st->fetchColumn();
+} else {
+    $totalRequerimentos = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos")->fetchColumn();
+    $emAnalise = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE status = 'Em análise'")->fetchColumn();
+    $naoVisualizados = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE visualizado = 0")->fetchColumn();
+    $novosSemana = (int) $pdo->query("SELECT COUNT(*) FROM requerimentos WHERE data_envio >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetchColumn();
+}
+
+// Contagens para o hub de setores
+$hubSetores = [];
+foreach (['setor1','setor2','setor3'] as $s) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM requerimentos WHERE setor_atual = ? AND aguardando_acao != 'concluido'");
+    $st->execute([$s]);
+    $hubSetores[$s] = (int) $st->fetchColumn();
+}
+
+$adminIdDash = $_SESSION['admin_id'] ?? 0;
+if ($setorFiltro) {
+    $st = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado,
+               req.nome AS requerente,
+               (SELECT COUNT(*) FROM historico_acoes ha WHERE ha.requerimento_id = r.id AND ha.admin_id = ?) AS acoes_minhas
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        WHERE r.setor_atual = ?
+        ORDER BY r.visualizado ASC, r.data_envio DESC
+        LIMIT 10
+    ");
+    $st->execute([$adminIdDash, $setorFiltro]);
+    $ultimosRequerimentos = $st->fetchAll();
+} else {
+    $stmt = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.data_envio, r.visualizado,
+               req.nome AS requerente,
+               (SELECT COUNT(*) FROM historico_acoes ha WHERE ha.requerimento_id = r.id AND ha.admin_id = ?) AS acoes_minhas
+        FROM requerimentos r
+        JOIN requerentes req ON r.requerente_id = req.id
+        ORDER BY r.data_envio DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$adminIdDash]);
+    $ultimosRequerimentos = $stmt->fetchAll();
+}
 
 $stmt = $pdo->query("
     SELECT ha.acao, ha.data_acao, a.nome AS admin_nome, r.protocolo
@@ -119,9 +172,15 @@ $dataPainelLabel = sprintf(
     $meses[(int) $dataPainel->format('n')] ?? $dataPainel->format('m')
 );
 
-$ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
-$ctaFilaHref = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
-$ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
+if ($setorFiltro) {
+    $ctaFilaLabel = 'Abrir minha fila';
+    $ctaFilaHref  = 'fila_setor.php?setor=' . $setorFiltro;
+    $ctaFilaIcon  = 'fa-inbox';
+} else {
+    $ctaFilaLabel = $naoVisualizados > 0 ? 'Abrir fila não lida' : 'Ver requerimentos';
+    $ctaFilaHref  = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
+    $ctaFilaIcon  = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
+}
 ?>
 
 <style>
@@ -137,6 +196,16 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .hero-cta-secondary:hover { border-color:var(--primary-soft-2); color:var(--primary); }
     .hero-helper { margin-top:12px; display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 12px; border-radius:999px; background:var(--surface-soft); color:var(--muted); font-size:.8rem; font-weight:600; }
     .hero-helper i { color:var(--primary); }
+    /* Hub de setores */
+    .setor-hub { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+    .setor-hub-card { display:flex; flex-direction:column; gap:6px; padding:18px 20px; background:#fff; border:2px solid var(--line); border-radius:18px; text-decoration:none; color:var(--ink); transition:border-color .15s, background .15s; }
+    .setor-hub-card:hover { border-color:var(--primary); background:var(--surface-soft); color:var(--primary); }
+    .setor-hub-num { font-size:1.9rem; font-weight:800; color:var(--ink); line-height:1; }
+    .setor-hub-num.alerta { color:#d97706; }
+    .setor-hub-label { font-size:.9rem; font-weight:800; }
+    .setor-hub-sub { font-size:.78rem; color:var(--muted); }
+    .setor-hub-cta { margin-top:4px; font-size:.78rem; font-weight:700; color:var(--primary); }
+    @media (max-width:767px) { .setor-hub { grid-template-columns:1fr; } }
     .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
     .metric-card, .panel-card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:var(--card-shadow); }
     .metric-card { padding:22px; }
@@ -151,6 +220,7 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
     .queue-list { display:flex; flex-direction:column; gap:10px; }
     .queue-item { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:16px; padding:16px 18px; border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); transition:border-color .2s ease, background-color .2s ease; }
     .queue-item:hover { border-color:var(--line-strong); background:#fff; }
+    .queue-item-unread { border-left:3px solid #f59e0b; background:#fffbeb; }
     .queue-item-top { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
     .queue-protocol { font-size:.82rem; font-weight:800; color:var(--primary-strong); letter-spacing:.02em; }
     .queue-name { margin-bottom:6px; font-size:1rem; font-weight:700; color:var(--ink); }
@@ -179,6 +249,25 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
             <i class="fas fa-arrow-rotate-left"></i>
             A fila rápida abre só os não vistos. Na listagem, há um atalho para voltar ao total.
         </div>
+    </section>
+
+    <section class="setor-hub">
+        <?php
+        $hubMeta = [
+            'setor1' => ['label' => 'Triagem Ambiental',     'sub' => 'Setor 1', 'icon' => 'fa-inbox'],
+            'setor2' => ['label' => 'Fiscalização de Obras', 'sub' => 'Setor 2', 'icon' => 'fa-helmet-safety'],
+            'setor3' => ['label' => 'Revisão do Secretário', 'sub' => 'Setor 3', 'icon' => 'fa-shield-halved'],
+        ];
+        foreach ($hubMeta as $s => $hm):
+            $n = $hubSetores[$s];
+        ?>
+            <a href="fila_setor.php?setor=<?= $s ?>" class="setor-hub-card">
+                <strong class="setor-hub-num <?= $n > 0 ? 'alerta' : '' ?>"><?= $n ?></strong>
+                <span class="setor-hub-label"><i class="fas <?= $hm['icon'] ?> me-1"></i><?= $hm['label'] ?></span>
+                <span class="setor-hub-sub"><?= $hm['sub'] ?></span>
+                <span class="setor-hub-cta">Abrir fila <i class="fas fa-arrow-right fa-xs"></i></span>
+            </a>
+        <?php endforeach; ?>
     </section>
 
     <section class="metric-grid">
@@ -217,13 +306,24 @@ $ctaFilaIcon = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
             <?php if ($ultimosRequerimentos): ?>
                 <div class="queue-list">
                     <?php foreach ($ultimosRequerimentos as $req): ?>
-                        <?php $meta = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']]; ?>
-                        <?php $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV'; ?>
-                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item">
+                        <?php
+                        $meta  = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']];
+                        $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
+                        $naoVisto = !$req['visualizado'];
+                        $atueiNele = (int)($req['acoes_minhas'] ?? 0) > 0;
+                        ?>
+                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item<?= $naoVisto ? ' queue-item-unread' : '' ?>">
                             <div class="queue-item-main">
                                 <div class="queue-item-top">
                                     <span class="queue-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                                     <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
+                                    <?php if ($naoVisto): ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Não visto</span>
+                                    <?php elseif ($atueiNele): ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;">Já atuei</span>
+                                    <?php else: ?>
+                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;">Recebido</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="queue-name"><?= htmlspecialchars($req['requerente']) ?></div>
                                 <div class="queue-meta">

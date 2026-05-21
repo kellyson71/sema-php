@@ -76,6 +76,10 @@ include 'header.php';
             </div>
             
             <div class="flex items-center gap-3">
+                <a href="exportar_denuncia.php?id=<?php echo $denuncia['id']; ?>" target="_blank"
+                   class="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                    <i class="fas fa-file-export mr-2"></i> Exportar Denúncia
+                </a>
                 <a href="documentos/selecionar_denuncia.php?denuncia_id=<?php echo $denuncia['id']; ?>"
                    class="bg-white border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
                     <i class="fas fa-file-signature mr-2"></i> Gerar Documento

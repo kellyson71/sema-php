@@ -409,6 +409,21 @@ class EmailService
         return ob_get_clean();
     }
 
+    public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null)
+    {
+        try {
+            $subject = "[SEMA] Protocolo #{$protocolo} - Seu documento final está disponível";
+            $nome_destinatario = $to_name;
+            ob_start();
+            include __DIR__ . '/../templates/email_documento_final.php';
+            $body = ob_get_clean();
+            return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
+        } catch (Throwable $e) {
+            error_log("Erro ao enviar email de documento final: " . $e->getMessage());
+            return false;
+        }
+    }
+
     /**
      * Enviar email com código de verificação para assinatura
      * 

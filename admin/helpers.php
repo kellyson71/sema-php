@@ -138,3 +138,41 @@ function calcularTemposEtapas(array $historico, string $data_envio): array
 
     return compact('tEnvio', 'tVisualizacao', 'tPendente', 'tFiscalizacao', 'tSecretario', 'tConclusao');
 }
+
+/**
+ * Retorna o label de verbo de ação para um valor de aguardando_acao.
+ * Usado nas filas, hub e na tela do processo.
+ */
+if (!function_exists('acaoLabel')) {
+    function acaoLabel(string $acao): string
+    {
+        $map = [
+            'triagem_setor1'  => 'Gerar documento',
+            'boleto_pendente' => 'Aguardando pagamento',
+            'analise_setor2'  => 'Analisar fiscalização',
+            'revisao_setor3'  => 'Revisar assinatura',
+            'envio_cidadao'   => 'Enviar ao cidadão',
+            'concluido'       => 'Concluído',
+        ];
+        return $map[$acao] ?? ucwords(str_replace('_', ' ', $acao));
+    }
+}
+
+/**
+ * Retorna a CSS class de cor para um aguardando_acao.
+ * Classes: acao-triagem | acao-boleto | acao-analise | acao-revisao | acao-envio | acao-concluido
+ */
+if (!function_exists('acaoClass')) {
+    function acaoClass(string $acao): string
+    {
+        $map = [
+            'triagem_setor1'  => 'acao-triagem',
+            'boleto_pendente' => 'acao-boleto',
+            'analise_setor2'  => 'acao-analise',
+            'revisao_setor3'  => 'acao-revisao',
+            'envio_cidadao'   => 'acao-envio',
+            'concluido'       => 'acao-concluido',
+        ];
+        return $map[$acao] ?? 'acao-triagem';
+    }
+}

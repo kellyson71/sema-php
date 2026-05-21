@@ -69,42 +69,9 @@ if ($_SESSION['login_attempts'] >= 5) {
     }
 }
 
-/**
- * Verifica se o dispositivo atual é confiável (cookie + DB).
- */
-function verificarDispositivoConfiavel($pdo) {
-    $token = $_COOKIE['sema_trusted_device'] ?? '';
-    if (empty($token) || strlen($token) !== 64) return false;
-
-    $hash = hash('sha256', $token);
-    $stmt = $pdo->prepare("SELECT admin_id FROM dispositivos_confiados WHERE token_hash = ? AND expira_em > NOW() LIMIT 1");
-    $stmt->execute([$hash]);
-    $row = $stmt->fetch();
-    return $row ? (int)$row['admin_id'] : false;
-}
-
-/**
- * Registra o dispositivo como confiável por 30 dias.
- */
-function registrarDispositivoConfiavel($pdo, $adminId) {
-    $token = bin2hex(random_bytes(32));
-    $hash = hash('sha256', $token);
-    $expira = date('Y-m-d H:i:s', time() + 30 * 24 * 3600);
-
-    $stmt = $pdo->prepare("INSERT INTO dispositivos_confiados (admin_id, token_hash, ip_address, user_agent, expira_em) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$adminId, $hash, $_SERVER['REMOTE_ADDR'] ?? '', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), $expira]);
-
-    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-    setcookie('sema_trusted_device', $token, [
-        'expires'  => time() + 30 * 24 * 3600,
-        'path'     => '/',
-        'secure'   => $isSecure,
-        'httponly' => true,
-        'samesite' => 'Strict',
-    ]);
-
-    $pdo->exec("DELETE FROM dispositivos_confiados WHERE expira_em < NOW()");
-}
+// Funções de dispositivo confiado delegam para conexao.php (sistema correto):
+// - dispositivoConfiado($pdo)       → verifica cookie sema_device_token + admin_sessoes_confiadas
+// - registrarSessaoConfiada($pdo, $adminId) → salva token + seta cookie sema_device_token
 
 /**
  * Cria a sessão de admin.
@@ -120,6 +87,7 @@ function criarSessaoAdmin($pdo, $admin) {
     $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
     $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
     $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
+    $_SESSION['admin_primeiro_acesso']    = !empty($admin['primeiro_acesso']);
     $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
     $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
     $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);
@@ -181,8 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            $trustedAdminId = verificarDispositivoConfiavel($pdo);
-            if ($trustedAdminId === (int)$admin['id']) {
+            if (dispositivoConfiado($pdo)) {
                 criarSessaoAdmin($pdo, $admin);
                 $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
                 unset($_SESSION['login_redirect_url']);
@@ -266,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
             criarSessaoAdmin($pdo, $admin);
 
             if ($lembrarDispositivo) {
-                registrarDispositivoConfiavel($pdo, $admin['id']);
+                registrarSessaoConfiada($pdo, $admin['id']);
             }
 
             unset($_SESSION['2fa_admin_data'], $_SESSION['2fa_otp_code'], $_SESSION['2fa_otp_expires']);
