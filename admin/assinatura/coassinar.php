@@ -30,6 +30,8 @@ if (!$documentoId || !$requerimentoId || !$adminId) {
 }
 
 try {
+    $pdo->beginTransaction();
+
     // 1. Buscar fonte do documento (HTML + caminho do PDF)
     $stmtFonte = $pdo->prepare("SELECT * FROM documentos_fonte WHERE documento_id = ?");
     $stmtFonte->execute([$documentoId]);
@@ -63,11 +65,12 @@ try {
 
     // 4. Buscar todos os assinantes existentes (ordem cronológica)
     $stmtSigs = $pdo->prepare("
-        SELECT assinante_nome, assinante_cargo, assinante_cpf, matricula_portaria, timestamp_assinatura, tipo_assinatura
-        FROM assinaturas_digitais
-        LEFT JOIN administradores ON administradores.id = assinaturas_digitais.assinante_id
-        WHERE assinaturas_digitais.documento_id = ?
-        ORDER BY timestamp_assinatura ASC
+        SELECT ad.assinante_nome, ad.assinante_cargo, ad.assinante_cpf,
+               a.matricula_portaria, ad.timestamp_assinatura, ad.tipo_assinatura
+        FROM assinaturas_digitais ad
+        LEFT JOIN administradores a ON a.id = ad.assinante_id
+        WHERE ad.documento_id = ?
+        ORDER BY ad.timestamp_assinatura ASC
     ");
     $stmtSigs->execute([$documentoId]);
     $signatariosExistentes = $stmtSigs->fetchAll(PDO::FETCH_ASSOC);
@@ -143,9 +146,11 @@ try {
         $admin['nome_completo'] ?: $admin['nome'],
         $admin['cpf'] ?? '',
         $admin['cargo'] ?? '',
-        hash('sha256', $documentoId . time() . $adminId),
+        hash('sha256', $documentoId . microtime(true) . $adminId . bin2hex(random_bytes(8))),
         $_SERVER['REMOTE_ADDR'] ?? null,
     ]);
+
+    $pdo->commit();
 
     // 9. Marcar solicitações pendentes como assinadas
     try {
@@ -168,8 +173,9 @@ try {
     exit;
 
 } catch (Throwable $e) {
-    error_log('[coassinar] Erro: ' . $e->getMessage());
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('[coassinar] Erro requerimento #' . ($requerimentoId ?? '?') . ': ' . $e->getMessage());
     ob_clean();
-    echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => 'Erro ao processar co-assinatura. Tente novamente.']);
     exit;
 }

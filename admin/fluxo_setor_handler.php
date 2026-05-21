@@ -213,12 +213,12 @@ try {
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    $msg = urlencode($e->getMessage());
+    error_log('[fluxo_setor] Erro requerimento #' . ($id ?? '?') . ': ' . $e->getMessage());
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     if ($fromDocViewer) {
-        header("Location: visualizar_documento.php?requerimento_id=$id&error=erro_fluxo&details=$msg");
+        header("Location: visualizar_documento.php?requerimento_id=$id&error=erro_fluxo");
     } else {
-        header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo&details=$msg");
+        header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo");
     }
     exit;
 }

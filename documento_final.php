@@ -37,16 +37,14 @@ try {
         throw new RuntimeException('Link de documento inválido ou expirado.');
     }
 
-    // Buscar todos os documentos finais do requerimento associados a este token
+    // Buscar apenas documentos finais associados diretamente a este token
     $stmt = $pdo->prepare("
         SELECT df.id, df.caminho_arquivo, df.nome_arquivo, df.instrucoes, df.enviado_em, df.visualizado_em
         FROM documentos_finais df
-        WHERE df.requerimento_id = ? AND (df.token_acesso = ? OR df.requerimento_id = (
-            SELECT requerimento_id FROM documentos_finais WHERE token_acesso = ? LIMIT 1
-        ))
+        WHERE df.requerimento_id = ? AND df.token_acesso = ?
         ORDER BY df.id ASC
     ");
-    $stmt->execute([$requerimentoId, $token, $token]);
+    $stmt->execute([$requerimentoId, $token]);
     $docsFinal = $stmt->fetchAll();
     $docFinal = !empty($docsFinal) ? $docsFinal[0] : null;
 

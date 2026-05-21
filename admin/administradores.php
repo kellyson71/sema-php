@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $mensagemTipo = "danger";
                     } else {
                         $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO administradores (nome, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO administradores (nome, email, senha, nivel, ativo, primeiro_acesso) VALUES (?, ?, ?, ?, ?, 1)");
                         $stmt->execute([$nome, $email, $senhaHash, $nivel, $ativo]);
 
                         $mensagem = "Administrador adicionado com sucesso.";

@@ -1717,7 +1717,7 @@ $estadoCls = match($aguardandoAcao) {
     <span class="caminho-step <?= $s3cls ?>"><span class="cdot"></span> Revisão do Secretário <small style="opacity:.65">Setor 3</small><span class="caminho-opt-tag">opcional</span></span>
     <span class="caminho-sep">→</span>
     <span class="caminho-step <?= $fimcls ?>"><span class="cdot"></span> Concluído</span>
-    <span class="caminho-estado <?= $estadoCls ?>"><?= htmlspecialchars(acaoLabel($aguardandoAcao)) ?></span>
+    <span class="caminho-estado <?= $estadoCls ?>"><?= htmlspecialchars($acaoAtualLabel) ?></span>
 </div>
 </div><!-- /caminho -->
 

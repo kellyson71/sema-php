@@ -87,6 +87,7 @@ function criarSessaoAdmin($pdo, $admin) {
     $_SESSION['admin_cpf'] = $admin['cpf'] ?? '';
     $_SESSION['admin_cargo'] = $admin['cargo'] ?? 'Administrador';
     $_SESSION['admin_matricula_portaria'] = $admin['matricula_portaria'] ?? '';
+    $_SESSION['admin_primeiro_acesso']    = !empty($admin['primeiro_acesso']);
     $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
     $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
     $_SESSION['assinatura_auth_valid_until'] = time() + (24 * 60 * 60);

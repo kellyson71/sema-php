@@ -1,18 +1,4 @@
 <?php
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/vd_debug.log');
-error_reporting(E_ALL);
-register_shutdown_function(function() {
-    $e = error_get_last();
-    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        file_put_contents(__DIR__ . '/vd_debug.log', '[FATAL] ' . print_r($e, true) . "\n", FILE_APPEND);
-    }
-});
-set_exception_handler(function($e) {
-    file_put_contents(__DIR__ . '/vd_debug.log', '[EXCEPTION] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n", FILE_APPEND);
-    http_response_code(500);
-    exit;
-});
 require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
@@ -108,7 +94,9 @@ try {
 }
 
 // Buscar lista de admins ativos para solicitar assinatura
-$admins = $pdo->query("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != $adminId ORDER BY nome")->fetchAll();
+$stmtAdmins = $pdo->prepare("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != ? ORDER BY nome");
+$stmtAdmins->execute([$adminId]);
+$admins = $stmtAdmins->fetchAll();
 
 // Feedback de erro/sucesso
 $pageError = '';

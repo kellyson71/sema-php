@@ -454,7 +454,9 @@ include '../header.php';
                       <option value="">— Selecione um administrador —</option>
                       <?php
                       $adminLogado = $_SESSION['admin_id'] ?? 0;
-                      $adminsLista = $pdo->query("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != $adminLogado ORDER BY nome")->fetchAll();
+                      $stmtAdminsEditor = $pdo->prepare("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != ? ORDER BY nome");
+                  $stmtAdminsEditor->execute([$adminLogado]);
+                  $adminsLista = $stmtAdminsEditor->fetchAll();
                       foreach ($adminsLista as $adm): ?>
                           <option value="<?= $adm['id'] ?>"><?= htmlspecialchars($adm['nome']) ?> (<?= htmlspecialchars($adm['nivel']) ?>)</option>
                       <?php endforeach; ?>
