@@ -400,7 +400,7 @@ include_once 'enquadramento_conema.php';
                 const tiposAmbientais = [
                     'licenca_previa_ambiental',
                     'licenca_previa_instalacao',
-                    'declaracao_inelegibilidade',
+                    'declaracao_inexigibilidade',
                     'dispensa_licenca',
                     'licenca_instalacao_operacao',
                     'licenca_operacao',
@@ -802,7 +802,7 @@ include_once 'enquadramento_conema.php';
                     const tiposAmbientais = [
                         'licenca_previa_ambiental',
                         'licenca_previa_instalacao',
-                        'declaracao_inelegibilidade',
+                        'declaracao_inexigibilidade',
                         'dispensa_licenca',
                         'licenca_instalacao_operacao',
                         'licenca_operacao',

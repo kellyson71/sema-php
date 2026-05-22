@@ -441,8 +441,8 @@ $tipos_alvara = [
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
     ],
-    'declaracao_inelegibilidade' => [
-        'nome' => 'DECLARAÇÃO DE INELEGIBILIDADE',
+    'declaracao_inexigibilidade' => [
+        'nome' => 'DECLARAÇÃO DE INEXIGIBILIDADE',
         'categoria' => 'ambiental',
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
@@ -456,15 +456,7 @@ $tipos_alvara = [
             '4. Contrato de arrendamento (se houver);',
             '5. Certidão municipal válida por 2 anos OU alvará municipal;',
             '6. Certidão DNIT/DER-RN (se aplicável);',
-            '7. Memorial descritivo do empreendimento;',
-            '8. Planta georreferenciada (digital e impressa);',
-            '9. Outorga preventiva (quando exigida);',
-            '10. Descrição e classificação de resíduos;',
-            '11. Cronograma físico das instalações;',
-            '12. ARTs de todos os projetos;',
-            '13. Publicação em Diário Oficial;',
-            '14. Comprovante de pagamento;',
-            '15. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+            '7. Projeto básico;',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -487,15 +479,7 @@ $tipos_alvara = [
             '4. Contrato de arrendamento (se houver);',
             '5. Certidão municipal válida por 2 anos OU alvará municipal;',
             '6. Certidão DNIT/DER-RN (se aplicável);',
-            '7. Memorial descritivo do empreendimento;',
-            '8. Planta georreferenciada (digital e impressa);',
-            '9. Outorga preventiva (quando exigida);',
-            '10. Descrição e classificação de resíduos;',
-            '11. Cronograma físico das instalações;',
-            '12. ARTs de todos os projetos;',
-            '13. Publicação em Diário Oficial;',
-            '14. Comprovante de pagamento;',
-            '15. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+            '7. Projeto básico;',
         ],
         'contato' => [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
@@ -657,8 +641,9 @@ $tipos_alvara = [
         ]
     ],
     'autorizacao_supressao' => [
-        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL (ainda não disponível no momento)',
+        'nome' => 'AUTORIZAÇÃO DE SUPRESSÃO VEGETAL (em breve)',
         'categoria' => 'ambiental',
+        'desabilitado' => true,
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
         'documentos' => [
