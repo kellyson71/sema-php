@@ -6,6 +6,9 @@ require_once '../includes/pagamento_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
 ensureAdminNotificationTables($pdo);
 
 // Verificar se o ID foi fornecido
@@ -2635,17 +2638,11 @@ document.addEventListener('DOMContentLoaded', function() {
                               ?>
 
                               <!-- Ações primárias por role -->
-                              <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
-                                  <?php if ($isSetor1 || $isSetor2): ?>
+                              <div style="margin-bottom:18px;">
                                   <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
-                                      class="btn fw-semibold text-white w-100 tt"
-                                      data-bs-toggle="tooltip" data-bs-placement="top"
-                                      data-bs-title="Abre o seletor de templates para criar ou complementar documentos deste processo."
-                                      style="background:var(--primary-600);padding:10px 18px;border-radius:10px;">
-                                      <i class="fas fa-file-alt me-2"></i>Gerar Documento
-                                      <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
+                                      style="display:block;width:100%;padding:10px 18px;border-radius:10px;background:#3762d9;color:#fff;font-weight:700;text-align:center;text-decoration:none;font-size:.93rem;box-sizing:border-box;">
+                                      <i class="fas fa-file-alt" style="margin-right:8px;"></i>Gerar Documento
                                   </a>
-                                  <?php endif; ?>
                                   <?php if ($isSetor3): ?>
                                   <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
                                       class="btn fw-semibold text-white w-100 tt"

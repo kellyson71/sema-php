@@ -15,7 +15,7 @@ if (!in_array($_SESSION['admin_nivel'], ['admin', 'admin_geral'])) {
     exit;
 }
 
-$rolesSuportados = ['analista'];
+$rolesSuportados = ['analista', 'fiscal', 'secretario', 'operador'];
 
 // Sair da simulação
 if (isset($_GET['sair'])) {
@@ -36,13 +36,11 @@ if (isset($_GET['role']) && in_array($_GET['role'], $rolesSuportados)) {
     }
     $_SESSION['admin_nivel'] = $role;
 
-    // Redirecionar para o dashboard correto do role
-    switch ($role) {
-        case 'analista':
-            header("Location: requerimentos.php?status=Pendente");
-            break;
-        default:
-            header("Location: index.php");
+    $redirect = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : null;
+    if ($redirect) {
+        header("Location: " . $redirect);
+    } else {
+        header("Location: requerimentos.php");
     }
     exit;
 }
