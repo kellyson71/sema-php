@@ -2638,10 +2638,14 @@ document.addEventListener('DOMContentLoaded', function() {
                               ?>
 
                               <!-- Ações primárias por role -->
-                              <div style="margin-bottom:18px;">
+                              <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
                                   <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
-                                      style="display:block;width:100%;padding:10px 18px;border-radius:10px;background:#3762d9;color:#fff;font-weight:700;text-align:center;text-decoration:none;font-size:.93rem;box-sizing:border-box;">
-                                      <i class="fas fa-file-alt" style="margin-right:8px;"></i>Gerar Documento
+                                      class="btn fw-semibold text-white w-100 tt"
+                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                      data-bs-title="Abre o seletor de templates para criar ou complementar documentos deste processo."
+                                      style="background:#16a34a;padding:10px 18px;border-radius:10px;">
+                                      <i class="fas fa-file-alt me-2"></i>Gerar Documento
+                                      <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
                                   </a>
                                   <?php if ($isSetor3): ?>
                                   <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
