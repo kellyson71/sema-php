@@ -6,6 +6,9 @@ require_once '../includes/pagamento_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
 ensureAdminNotificationTables($pdo);
 
 // Verificar se o ID foi fornecido
