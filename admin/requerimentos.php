@@ -30,7 +30,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
 // Slugs legados que não existem mais em tipos_alvara.php (anteriores à refatoração
 // de licenciamento ambiental 2026-04) mas ainda aparecem em requerimentos antigos.
 $slugsLegadosPorCategoria = [
-    'obras' => ['licenca_previa'], // slug legado de LP anterior à refatoração 2026-04; não é licença ambiental
+    'ambiental' => ['licenca_previa'], // slug legado LP (Licença Prévia ambiental) anterior à refatoração 2026-04
 ];
 foreach ($slugsLegadosPorCategoria as $cat => $slugs) {
     foreach ($slugs as $slug) {
@@ -407,11 +407,34 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             <label class="req-filter-label" for="tipoFiltro">Tipo:</label>
             <select id="tipoFiltro" name="tipo" class="req-filter-select">
                 <option value="">Todos</option>
-                <?php foreach ($tiposAlvara as $tipo): ?>
-                    <option value="<?= htmlspecialchars($tipo['tipo_alvara']) ?>" <?= $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) ?>
-                    </option>
-                <?php endforeach; ?>
+                <?php if ($filtroCategoria !== ''): ?>
+                    <?php foreach ($tiposAlvara as $tipo):
+                        $catDoTipo = $tipos_alvara[$tipo['tipo_alvara']]['categoria'] ?? null;
+                        if ($catDoTipo !== $filtroCategoria) continue;
+                    ?>
+                        <option value="<?= htmlspecialchars($tipo['tipo_alvara']) ?>" <?= $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <?php
+                    $tiposPorCatOrdenados = [];
+                    foreach ($tiposAlvara as $tipo) {
+                        $cat = $tipos_alvara[$tipo['tipo_alvara']]['categoria'] ?? 'outro';
+                        $tiposPorCatOrdenados[$cat][] = $tipo;
+                    }
+                    foreach ($categoriasDisponiveis as $catSlug => $catInfo):
+                        if (empty($tiposPorCatOrdenados[$catSlug])) continue;
+                    ?>
+                        <optgroup label="<?= htmlspecialchars($catInfo['label']) ?>">
+                            <?php foreach ($tiposPorCatOrdenados[$catSlug] as $tipo): ?>
+                                <option value="<?= htmlspecialchars($tipo['tipo_alvara']) ?>" <?= $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
             <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
