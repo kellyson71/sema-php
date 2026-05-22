@@ -2636,7 +2636,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                               <!-- Ações primárias por role -->
                               <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
-                                  <?php if ($isSetor1 || $isSetor2): ?>
                                   <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
                                       class="btn fw-semibold text-white w-100 tt"
                                       data-bs-toggle="tooltip" data-bs-placement="top"
@@ -2645,7 +2644,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                       <i class="fas fa-file-alt me-2"></i>Gerar Documento
                                       <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
                                   </a>
-                                  <?php endif; ?>
                                   <?php if ($isSetor3): ?>
                                   <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
                                       class="btn fw-semibold text-white w-100 tt"
