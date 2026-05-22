@@ -1,5 +1,6 @@
 <?php
 require_once '../tipos_alvara.php';
+require_once '../includes/config.php';
 
 if (!isset($_POST['tipo']) || !isset($tipos_alvara[$_POST['tipo']])) {
     echo '<div class="mensagem-erro">
@@ -55,6 +56,13 @@ if ($tipo === 'funcionamento') {
             $id = 'doc_' . $tipo . '_' . $index;
             echo '<div class="file-input-container">';
             echo '<label for="' . $id . '">' . $documento . '</label>';
+            if (isset($alvara['download_links'][$index])) {
+                $dl = $alvara['download_links'][$index];
+                $url = rtrim(BASE_URL, '/') . '/' . $dl['arquivo'];
+                echo '<a href="' . htmlspecialchars($url) . '" target="_blank" download class="doc-download-link">'
+                    . '<i class="fas fa-file-pdf"></i> ' . htmlspecialchars($dl['label'])
+                    . '</a>';
+            }
             echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
             echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. 100MB)</small>';
             echo '</div>';
@@ -139,6 +147,25 @@ echo '</div>';
     margin-bottom: 8px;
     color: #495057;
     font-weight: 500;
+}
+
+.doc-download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 5px 12px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    color: #856404;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.doc-download-link:hover {
+    background: #ffd970;
+    color: #533f03;
 }
 
 .file-input-container input[type="file"] {

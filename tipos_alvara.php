@@ -416,6 +416,70 @@ $tipos_alvara = [
         'categoria' => 'ambiental',
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
+        'download_links' => [
+            0 => ['label' => 'Baixar modelo de requerimento (PDF)', 'arquivo' => 'assets/Requerimento_padrao_SEMA.pdf'],
+        ],
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo do empreendimento;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Outorga preventiva (quando exigida);',
+            '10. Descrição e classificação de resíduos;',
+            '11. Cronograma físico das instalações;',
+            '12. ARTs de todos os projetos;',
+            '13. Publicação em Diário Oficial;',
+            '14. Comprovante de pagamento;',
+            '15. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'declaracao_inelegibilidade' => [
+        'nome' => 'DECLARAÇÃO DE INELEGIBILIDADE',
+        'categoria' => 'ambiental',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'download_links' => [
+            0 => ['label' => 'Baixar modelo de requerimento (PDF)', 'arquivo' => 'assets/Requerimento_padrao_SEMA.pdf'],
+        ],
+        'documentos' => [
+            '1. Requerimento assinado;',
+            '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',
+            '3. Documento legal da área com firma reconhecida;',
+            '4. Contrato de arrendamento (se houver);',
+            '5. Certidão municipal válida por 2 anos OU alvará municipal;',
+            '6. Certidão DNIT/DER-RN (se aplicável);',
+            '7. Memorial descritivo do empreendimento;',
+            '8. Planta georreferenciada (digital e impressa);',
+            '9. Outorga preventiva (quando exigida);',
+            '10. Descrição e classificação de resíduos;',
+            '11. Cronograma físico das instalações;',
+            '12. ARTs de todos os projetos;',
+            '13. Publicação em Diário Oficial;',
+            '14. Comprovante de pagamento;',
+            '15. Estudo ambiental (EIA/RIMA, PCA ou equivalente quando exigido);'
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+        ]
+    ],
+    'dispensa_licenca' => [
+        'nome' => 'DISPENSA DE LICENÇA (em breve)',
+        'categoria' => 'ambiental',
+        'desabilitado' => true,
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'download_links' => [
+            0 => ['label' => 'Baixar modelo de requerimento (PDF)', 'arquivo' => 'assets/Requerimento_padrao_SEMA.pdf'],
+        ],
         'documentos' => [
             '1. Requerimento assinado;',
             '2. Documentos pessoais PF/PJ (RG/CPF ou contrato social);',

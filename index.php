@@ -312,7 +312,11 @@ include_once 'enquadramento_conema.php';
                                     ?>
                                     <optgroup label="<?= htmlspecialchars($catNome) ?>">
                                         <?php foreach ($tiposDaCategoria as $slug => $tipo): ?>
+                                        <?php if (!empty($tipo['desabilitado'])): ?>
+                                        <option value="<?= $slug ?>" disabled style="color:#aaa;"><?= htmlspecialchars($tipo['nome']) ?></option>
+                                        <?php else: ?>
                                         <option value="<?= $slug ?>"><?= htmlspecialchars($tipo['nome']) ?></option>
+                                        <?php endif; ?>
                                         <?php endforeach; ?>
                                     </optgroup>
                                     <?php endforeach; ?>
@@ -396,6 +400,8 @@ include_once 'enquadramento_conema.php';
                 const tiposAmbientais = [
                     'licenca_previa_ambiental',
                     'licenca_previa_instalacao',
+                    'declaracao_inelegibilidade',
+                    'dispensa_licenca',
                     'licenca_instalacao_operacao',
                     'licenca_operacao',
                     'licenca_ambiental_unica',
@@ -796,6 +802,8 @@ include_once 'enquadramento_conema.php';
                     const tiposAmbientais = [
                         'licenca_previa_ambiental',
                         'licenca_previa_instalacao',
+                        'declaracao_inelegibilidade',
+                        'dispensa_licenca',
                         'licenca_instalacao_operacao',
                         'licenca_operacao',
                         'licenca_ambiental_unica',
