@@ -915,7 +915,7 @@ include_once 'enquadramento_conema.php';
                                 <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
-                                <input ${tiposExigemDO.includes(tipo) ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${tiposExigemDO.includes(tipo) ? ' *' : ' (opcional)'}">
+                                <input ${tiposExigemDO.includes(tipo) ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${tiposExigemDO.includes(tipo) ? ' *' : ''}">
                                 <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
                             </div>
                             <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
