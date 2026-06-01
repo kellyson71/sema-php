@@ -139,12 +139,9 @@ include_once 'enquadramento_conema.php';
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
 
-                <div style="max-width:800px;margin:18px auto 0;padding:14px 16px;border-radius:10px;background:rgba(245,158,11,0.16);border:1px solid rgba(245,158,11,0.32);color:#fef3c7;display:flex;gap:12px;align-items:flex-start;">
-                    <i class="fas fa-envelope-open-text" style="margin-top:2px;color:#fbbf24;"></i>
-                    <div style="line-height:1.55;font-size:0.95rem;">
-                        <strong style="color:#fff7ed;">Aviso sobre pagamento:</strong>
-                        após a análise inicial, o boleto será enviado para o email informado no requerimento. O pagamento e o envio do comprovante serão feitos depois, por um link seguro enviado pela equipe.
-                    </div>
+                <div style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
+                    <i class="fas fa-info-circle" style="font-size:0.78rem;flex-shrink:0;"></i>
+                    <span>O boleto será enviado por email após a análise inicial. Pagamento e comprovante são enviados depois por link seguro da equipe.</span>
                 </div>
 
                 <?php
@@ -312,7 +309,11 @@ include_once 'enquadramento_conema.php';
                                     ?>
                                     <optgroup label="<?= htmlspecialchars($catNome) ?>">
                                         <?php foreach ($tiposDaCategoria as $slug => $tipo): ?>
+                                        <?php if (!empty($tipo['desabilitado'])): ?>
+                                        <option value="<?= $slug ?>" disabled style="color:#aaa;"><?= htmlspecialchars($tipo['nome']) ?></option>
+                                        <?php else: ?>
                                         <option value="<?= $slug ?>"><?= htmlspecialchars($tipo['nome']) ?></option>
+                                        <?php endif; ?>
                                         <?php endforeach; ?>
                                     </optgroup>
                                     <?php endforeach; ?>
@@ -396,18 +397,22 @@ include_once 'enquadramento_conema.php';
                 const tiposAmbientais = [
                     'licenca_previa_ambiental',
                     'licenca_previa_instalacao',
+                    'declaracao_inexigibilidade',
+                    'dispensa_licenca',
                     'licenca_instalacao_operacao',
                     'licenca_operacao',
                     'licenca_ambiental_unica',
                     'licenca_ampliacao',
                     'licenca_operacional_corretiva',
-                    'autorizacao_supressao'
+                    'autorizacao_supressao',
+                    'lac'
                 ];
-                
+                const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
+
                 if (tiposAmbientais.includes(tipoAlvara)) {
                     const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
-                    
-                    if (!publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
+
+                    if (tiposExigemDO.includes(tipoAlvara) && !publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
                     
                     // Validar estudo ambiental
                     const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
@@ -446,61 +451,9 @@ include_once 'enquadramento_conema.php';
                     return false;
                 }
                 
-                // Coletar arquivos selecionados para exibir no overlay
-                const arquivosInfo = [];
-                let totalBytes = 0;
-                document.querySelectorAll('input[type="file"]').forEach(input => {
-                    Array.from(input.files).forEach(f => {
-                        arquivosInfo.push(f.name);
-                        totalBytes += f.size;
-                    });
-                });
-
-                const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
-                const listaHTML = arquivosInfo.map(nome =>
-                    `<li style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
-                        <i class="fas fa-file-pdf" style="color:#ff6b6b;flex-shrink:0;"></i>
-                        <span style="font-size:0.82rem;word-break:break-all;">${nome}</span>
-                     </li>`
-                ).join('');
-
-                document.getElementById('upload-lista').innerHTML = listaHTML || '<li style="color:rgba(255,255,255,0.6);font-size:0.82rem;">Nenhum arquivo adicional</li>';
-                document.getElementById('upload-total').textContent = arquivosInfo.length
-                    ? `${arquivosInfo.length} arquivo(s) · ${totalMB} MB`
-                    : '';
-
+                // Mostrar loading
                 document.getElementById('loading').style.display = 'flex';
                 document.getElementById('botao').disabled = true;
-                window._enviando = true;
-
-                // Envia via fetch para controlar a navegação manualmente.
-                // Com submit normal, o beforeunload dispara no redirect do servidor
-                // e o browser exibe "sair?" mesmo os dados já tendo sido salvos.
-                e.preventDefault();
-                var formEl = document.getElementById('form');
-                fetch(formEl.action, {
-                    method: 'POST',
-                    body: new FormData(formEl),
-                    headers: { 'X-Requested-With': 'fetch' }
-                })
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        window._enviando = false;
-                        window.location.href = data.redirect;
-                    })
-                    .catch(function() {
-                        window._enviando = false;
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('botao').disabled = false;
-                        alert('Erro de conexão ao enviar o requerimento. Verifique sua internet e tente novamente.');
-                    });
-            });
-
-            window.addEventListener('beforeunload', function(e) {
-                if (window._enviando) {
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
             });
             </script>
         </section>
@@ -767,32 +720,9 @@ include_once 'enquadramento_conema.php';
     <!-- Faixa gráfica institucional -->
     <div style="width:100%; height:50px; background:url('./assets/img/faixa.png') repeat-x center / auto 100%; line-height:0; font-size:0;"></div>
 
-    <!-- Overlay de envio -->
-    <div id="loading" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
-        <div style="background:#1a472a;border-radius:16px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.5);color:#fff;text-align:center;">
-
-            <!-- Ícone animado -->
-            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-                <i class="fas fa-cloud-upload-alt" style="font-size:1.8rem;animation:pulseUp 1.4s ease-in-out infinite;"></i>
-            </div>
-
-            <h2 style="margin:0 0 6px;font-size:1.2rem;font-weight:700;">Enviando seu requerimento…</h2>
-            <p style="margin:0 0 4px;font-size:0.85rem;color:rgba(255,255,255,0.75);">Aguarde enquanto os documentos são enviados ao servidor.</p>
-            <p id="upload-total" style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin:0 0 20px;"></p>
-
-            <!-- Barra de progresso indeterminada -->
-            <div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden;margin-bottom:20px;">
-                <div style="height:100%;width:40%;background:#4ade80;border-radius:2px;animation:slide 1.6s ease-in-out infinite;"></div>
-            </div>
-
-            <!-- Lista de arquivos -->
-            <?php /* lista preenchida pelo JS */ ?>
-            <ul id="upload-lista" style="list-style:none;padding:0;margin:0 0 20px;max-height:160px;overflow-y:auto;text-align:left;"></ul>
-
-            <p style="font-size:0.75rem;color:rgba(255,255,255,0.45);margin:0;">
-                <i class="fas fa-lock" style="margin-right:4px;"></i>Não feche nem recarregue esta página
-            </p>
-        </div>
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading" style="display: none;">
+        <div class="loading-spinner"></div>
     </div>
 
     <script>
@@ -834,13 +764,13 @@ include_once 'enquadramento_conema.php';
                         .then(data => {
                             documentosDiv.innerHTML = data;
 
-                            // Inicializa drop zones (scripts do innerHTML não executam)
-                            initDropZones(documentosDiv);
-
-                            // Vincula inputs ao form principal
+                            // Adicionamos os novos campos para o formulário principal
                             const inputsFile = documentosDiv.querySelectorAll('input[type="file"]');
                             inputsFile.forEach(input => {
                                 input.setAttribute('form', 'form');
+                                input.addEventListener('change', function() {
+                                    validarArquivoPDF(this);
+                                });
                             });
                         })
                         .catch(error => {
@@ -871,13 +801,17 @@ include_once 'enquadramento_conema.php';
                     const tiposAmbientais = [
                         'licenca_previa_ambiental',
                         'licenca_previa_instalacao',
+                        'declaracao_inexigibilidade',
+                        'dispensa_licenca',
                         'licenca_instalacao_operacao',
                         'licenca_operacao',
                         'licenca_ambiental_unica',
                         'licenca_ampliacao',
                         'licenca_operacional_corretiva',
-                        'autorizacao_supressao'
+                        'autorizacao_supressao',
+                        'lac'
                     ];
+                    const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
                     const tiposExigemCTF = [
                         'licenca_operacao',
                         'licenca_instalacao_operacao',
@@ -981,7 +915,7 @@ include_once 'enquadramento_conema.php';
                                 <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
-                                <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
+                                <input ${tiposExigemDO.includes(tipo) ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${tiposExigemDO.includes(tipo) ? ' *' : ' (não exigido para LAC)'}">
                                 <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
                             </div>
                             <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
@@ -1051,99 +985,37 @@ include_once 'enquadramento_conema.php';
             }
         });
 
-        // Função para validar que apenas arquivos PDF sejam enviados (fallback silencioso)
+        // Função para validar que apenas arquivos PDF sejam enviados
         function validarArquivoPDF(input) {
-            if (!input.files || input.files.length === 0) return true;
+            if (!input.files || input.files.length === 0) {
+                return true; // Se não há arquivo, não precisa validar
+            }
+
             var file = input.files[0];
-            if (!file.name.toLowerCase().endsWith('.pdf') || file.size > 10485760) {
+            var fileName = file.name.toLowerCase();
+
+            if (!fileName.endsWith('.pdf')) {
+                alert('Por favor, selecione apenas arquivos em formato PDF.');
                 input.value = '';
                 return false;
             }
-            return true;
-        }
 
-        // Inicializa drop zones carregadas via AJAX
-        function initDropZones(container) {
-            var MAX_SIZE = 10 * 1024 * 1024;
-
-            function formatSize(bytes) {
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            var tipoSelecionado = document.querySelector('select[name="tipo_alvara"]')?.value || '';
+            var tiposAmbientaisUpload = [
+                'licenca_previa_ambiental','licenca_previa_instalacao','declaracao_inexigibilidade',
+                'dispensa_licenca','licenca_instalacao_operacao','licenca_operacao',
+                'licenca_ambiental_unica','licenca_ampliacao','licenca_operacional_corretiva',
+                'autorizacao_supressao','lac'
+            ];
+            var limiteBytes = tiposAmbientaisUpload.includes(tipoSelecionado) ? 41943040 : 10485760; // 40MB ou 10MB
+            var limiteMB = tiposAmbientaisUpload.includes(tipoSelecionado) ? '40MB' : '10MB';
+            if (file.size > limiteBytes) {
+                alert('O arquivo é muito grande. O limite para este tipo de processo é ' + limiteMB + '.');
+                input.value = '';
+                return false;
             }
 
-            container.querySelectorAll('.file-drop-zone').forEach(function(zone) {
-                var input     = zone.querySelector('input[type="file"]');
-                var nameEl    = zone.querySelector('.file-sel-name');
-                var sizeEl    = zone.querySelector('.file-sel-size');
-                var removeBtn = zone.querySelector('.file-remove-btn');
-                var errorEl   = zone.querySelector('.file-error-msg');
-
-                if (!input) return;
-
-                function showFile(file) {
-                    nameEl.textContent = file.name;
-                    sizeEl.textContent = formatSize(file.size);
-                    errorEl.textContent = '';
-                    zone.classList.remove('has-file', 'error');
-                    void zone.offsetWidth;
-                    zone.classList.add('has-file');
-                }
-
-                function showError(msg) {
-                    errorEl.textContent = msg;
-                    zone.classList.remove('has-file');
-                    zone.classList.add('error');
-                    input.value = '';
-                }
-
-                function clearFile() {
-                    input.value = '';
-                    zone.classList.remove('has-file', 'error');
-                    errorEl.textContent = '';
-                }
-
-                function validate(file) {
-                    if (!file.name.toLowerCase().endsWith('.pdf')) {
-                        showError('Apenas arquivos PDF são aceitos.');
-                        return false;
-                    }
-                    if (file.size > MAX_SIZE) {
-                        showError('Arquivo excede o limite de 10 MB. Reduza o PDF e tente novamente.');
-                        return false;
-                    }
-                    return true;
-                }
-
-                input.addEventListener('change', function() {
-                    if (!this.files || !this.files[0]) return;
-                    if (validate(this.files[0])) showFile(this.files[0]);
-                });
-
-                zone.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    zone.classList.add('drag-over');
-                });
-
-                zone.addEventListener('dragleave', function(e) {
-                    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
-                });
-
-                zone.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    zone.classList.remove('drag-over');
-                    var file = e.dataTransfer.files[0];
-                    if (!file || !validate(file)) return;
-                    var dt = new DataTransfer();
-                    dt.items.add(file);
-                    input.files = dt.files;
-                    showFile(file);
-                });
-
-                removeBtn && removeBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    clearFile();
-                });
-            });
+            return true;
         }
 
     </script>
@@ -1361,16 +1233,6 @@ include_once 'enquadramento_conema.php';
 
         @keyframes spinner-border {
             to { transform: rotate(360deg); }
-        }
-
-        @keyframes pulseUp {
-            0%, 100% { transform: translateY(0); opacity: 1; }
-            50%       { transform: translateY(-6px); opacity: 0.7; }
-        }
-
-        @keyframes slide {
-            0%   { transform: translateX(-100%); }
-            100% { transform: translateX(350%); }
         }
     </style>
 </body>

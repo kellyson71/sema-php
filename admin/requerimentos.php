@@ -30,7 +30,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
 // Slugs legados que não existem mais em tipos_alvara.php (anteriores à refatoração
 // de licenciamento ambiental 2026-04) mas ainda aparecem em requerimentos antigos.
 $slugsLegadosPorCategoria = [
-    'ambiental' => ['licenca_previa'], // slug legado LP (Licença Prévia ambiental) anterior à refatoração 2026-04
+    'ambiental' => ['licenca_previa'], // antiga "LP — Licença Prévia Ambiental"
 ];
 foreach ($slugsLegadosPorCategoria as $cat => $slugs) {
     foreach ($slugs as $slug) {
@@ -266,7 +266,6 @@ $statusCards = [
     ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
     ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
     ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
-    ['label' => 'Aprovado', 'value' => $estatisticas['aprovados'], 'status' => 'Aprovado', 'icon' => 'fa-thumbs-up'],
     ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
     ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
@@ -433,6 +432,14 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
+                    <?php endforeach; ?>
+                    <?php
+                    // Tipos sem categoria mapeada nas categoriasDisponiveis
+                    $tiposRestantes = $tiposPorCatOrdenados[''] ?? [];
+                    foreach ($tiposRestantes as $tipo): ?>
+                        <option value="<?= htmlspecialchars($tipo['tipo_alvara']) ?>" <?= $filtroTipo === $tipo['tipo_alvara'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(nomeAlvara($tipo['tipo_alvara'])) ?>
+                        </option>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </select>

@@ -42,6 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Regras de negócio derivadas da fonte de verdade (tipos_alvara.php)
     $tipoInfo = $tipos_alvara[$_POST['tipo_alvara'] ?? ''] ?? null;
+    if (!$tipoInfo || !empty($tipoInfo['desabilitado'])) {
+        setMensagem('erro', 'Tipo de alvará inválido ou não disponível.');
+        redirect('index.php');
+    }
     $isAmbiental = ($tipoInfo['categoria'] ?? '') === 'ambiental';
     $exigeCTF = $tipoInfo['exige_ctf'] ?? false;
     $exigeLicencaAnterior = $tipoInfo['exige_licenca_anterior'] ?? false;
@@ -169,8 +173,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validações específicas para tipologias ambientais
+    $exigeDiarioOficial = $isAmbiental && ($tipoInfo['exige_diario_oficial'] ?? true);
     if ($isAmbiental) {
-        if (empty($publicacao_diario_oficial)) {
+        if ($exigeDiarioOficial && empty($publicacao_diario_oficial)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
             redirect('index.php');
@@ -244,90 +249,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $diretorio_upload = UPLOAD_DIR . $protocolo;
 
     // Verificar tipos de arquivo antes de processar
+    $erro_arquivo = false;
     foreach ($_FILES as $campo => $arquivo) {
         if ($arquivo['error'] === UPLOAD_ERR_OK) {
-            $extensao = strtolower(pathinfo($arquivo['name'], PATHINFO_EXTENSION));
-            if ($extensao !== 'pdf' || $arquivo['type'] !== 'application/pdf') {
+            $nome_original = $arquivo['name'];
+            $extensao = strtolower(pathinfo($nome_original, PATHINFO_EXTENSION));
+            $tipo = $arquivo['type'];
+
+            if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
+                $erro_arquivo = true;
                 $_SESSION['form_data'] = $_POST;
-                // Limpar requerimento já salvo
-                $pdo->prepare("DELETE FROM requerimentos WHERE id = ?")->execute([$requerimento_id]);
                 setMensagem('erro', 'Apenas arquivos PDF são permitidos. Por favor, converta seus documentos para PDF e tente novamente.');
                 redirect('index.php');
             }
         }
-    }
-
-    // Processar os arquivos enviados e rastrear falhas físicas
-    $arquivos_salvos    = []; // caminhos físicos gravados com sucesso
-    $falhas_upload      = []; // nomes dos arquivos que falharam
-
+    }    // Processar os arquivos enviados
     foreach ($_FILES as $campo => $arquivo) {
+        // Verificar se é um documento opcional que foi marcado como "não preciso enviar"
         $checkbox_nao_preciso = $campo . '_nao_preciso';
-        $nao_precisa_enviar   = isset($_POST[$checkbox_nao_preciso]) && $_POST[$checkbox_nao_preciso] === 'on';
+        $nao_precisa_enviar = isset($_POST[$checkbox_nao_preciso]) && $_POST[$checkbox_nao_preciso] === 'on';
 
         if ($arquivo['error'] === UPLOAD_ERR_OK) {
-            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo);
+            $limiteArquivo = $isAmbiental ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE;
+            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo, $limiteArquivo);
 
-            if ($arquivo_info && file_exists($arquivo_info['caminho_completo'])) {
-                $documentoModel->criar([
+            if ($arquivo_info) {
+                // Registrar o documento no banco de dados
+                $documento = [
                     'requerimento_id' => $requerimento_id,
                     'campo_formulario' => $campo,
-                    'nome_original'    => $arquivo_info['nome_original'],
-                    'nome_salvo'       => $arquivo_info['nome_salvo'],
-                    'caminho'          => $arquivo_info['caminho'],
-                    'tipo_arquivo'     => $arquivo_info['tipo'],
-                    'tamanho'          => $arquivo_info['tamanho'],
-                ]);
-                $arquivos_salvos[] = $arquivo_info['caminho_completo'];
-            } else {
-                $falhas_upload[] = $arquivo['name'];
+                    'nome_original' => $arquivo_info['nome_original'],
+                    'nome_salvo' => $arquivo_info['nome_salvo'],
+                    'caminho' => $arquivo_info['caminho'],
+                    'tipo_arquivo' => $arquivo_info['tipo'],
+                    'tamanho' => $arquivo_info['tamanho']
+                ];
+
+                $documentoModel->criar($documento);
             }
         } elseif ($nao_precisa_enviar) {
-            $documentoModel->criar([
+            // Registrar que o documento foi marcado como "não preciso enviar"
+            $documento = [
                 'requerimento_id' => $requerimento_id,
                 'campo_formulario' => $campo,
-                'nome_original'    => 'NÃO ENVIADO - Marcado como opcional',
-                'nome_salvo'       => '',
-                'caminho'          => '',
-                'tipo_arquivo'     => 'opcional_nao_enviado',
-                'tamanho'          => 0,
-            ]);
+                'nome_original' => 'NÃO ENVIADO - Marcado como opcional',
+                'nome_salvo' => '',
+                'caminho' => '',
+                'tipo_arquivo' => 'opcional_nao_enviado',
+                'tamanho' => 0
+            ];
+
+            $documentoModel->criar($documento);
         }
-    }
-
-    // Se qualquer arquivo obrigatório não foi gravado no disco, desfaz tudo e retorna erro
-    if (!empty($falhas_upload)) {
-        // Remover arquivos que chegaram a ser salvos
-        foreach ($arquivos_salvos as $caminho) {
-            if (file_exists($caminho)) unlink($caminho);
-        }
-        if (is_dir($diretorio_upload)) rmdir($diretorio_upload);
-
-        // Limpar registros do banco
-        $pdo->prepare("DELETE FROM documentos WHERE requerimento_id = ?")->execute([$requerimento_id]);
-        $pdo->prepare("DELETE FROM requerimentos WHERE id = ?")->execute([$requerimento_id]);
-
-        error_log("Upload falhou para protocolo $protocolo. Arquivos: " . implode(', ', $falhas_upload));
-        setMensagem('erro', 'Erro ao salvar os documentos no servidor. Por favor, tente novamente. Se o problema persistir, entre em contato com a SEMA.');
-        redirect('index.php');
-    }
-
-    // Todos os arquivos foram confirmados em disco — redirecionar para sucesso
-    $_SESSION['protocolo']        = $protocolo;
+    } // Redirecionar para a página de sucesso com o protocolo
+    $_SESSION['protocolo'] = $protocolo;
     $_SESSION['proprietario_nome'] = $proprietario['nome'];
 
     // Enviar email de confirmação
     try {
-        $emailService    = new EmailService();
+        $emailService = new EmailService();
         $tipo_alvara_nome = $tipos_alvara[$tipoAlvara]['nome'] ?? $tipoAlvara;
+        $dados_requerimento = [
+            'id' => $requerimento_id,
+            'data_envio' => date('Y-m-d H:i:s'),
+            'endereco_objetivo' => $_POST['endereco_objetivo'] ?? ''
+        ];
 
-        $emailService->enviarEmailProtocolo(
+        $email_enviado = $emailService->enviarEmailProtocolo(
             $requerente['email'],
             $requerente['nome'],
             $protocolo,
             $tipo_alvara_nome,
-            ['id' => $requerimento_id, 'data_envio' => date('Y-m-d H:i:s'), 'endereco_objetivo' => $_POST['endereco_objetivo'] ?? '']
+            $dados_requerimento
         );
+
+        if ($email_enviado) {
+            error_log("Email de confirmação enviado com sucesso para: " . $requerente['email']);
+        } else {
+            error_log("Falha ao enviar email de confirmação para: " . $requerente['email']);
+        }
     } catch (Exception $e) {
         error_log("Erro ao enviar email de confirmação: " . $e->getMessage());
     }

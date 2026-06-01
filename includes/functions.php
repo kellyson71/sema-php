@@ -118,14 +118,14 @@ function gerarUrlDocumentoFinal(int $requerimentoId, string $protocolo): string
  * @param string $prefixo Prefixo para o nome do arquivo
  * @return array|false Informações do arquivo salvo ou false em caso de erro
  */
-function salvarArquivo($arquivo, $diretorio, $prefixo = '')
+function salvarArquivo($arquivo, $diretorio, $prefixo = '', $maxSize = null)
 {
     if ($arquivo['error'] !== UPLOAD_ERR_OK) {
         return false;
     }
 
-    // Verifica o tamanho do arquivo (10MB)
-    if ($arquivo['size'] > MAX_FILE_SIZE) {
+    $limite = $maxSize ?? MAX_FILE_SIZE;
+    if ($arquivo['size'] > $limite) {
         return false;
     }
 
