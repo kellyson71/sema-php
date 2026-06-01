@@ -407,13 +407,15 @@ include_once 'enquadramento_conema.php';
                     'licenca_ambiental_unica',
                     'licenca_ampliacao',
                     'licenca_operacional_corretiva',
-                    'autorizacao_supressao'
+                    'autorizacao_supressao',
+                    'lac'
                 ];
-                
+                const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
+
                 if (tiposAmbientais.includes(tipoAlvara)) {
                     const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
-                    
-                    if (!publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
+
+                    if (tiposExigemDO.includes(tipoAlvara) && !publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
                     
                     // Validar estudo ambiental
                     const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
@@ -809,8 +811,10 @@ include_once 'enquadramento_conema.php';
                         'licenca_ambiental_unica',
                         'licenca_ampliacao',
                         'licenca_operacional_corretiva',
-                        'autorizacao_supressao'
+                        'autorizacao_supressao',
+                        'lac'
                     ];
+                    const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
                     const tiposExigemCTF = [
                         'licenca_operacao',
                         'licenca_instalacao_operacao',
@@ -914,7 +918,7 @@ include_once 'enquadramento_conema.php';
                                 <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
-                                <input required name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial *">
+                                <input ${tiposExigemDO.includes(tipo) ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${tiposExigemDO.includes(tipo) ? ' *' : ' (não exigido para LAC)'}">
                                 <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
                             </div>
                             <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
@@ -999,9 +1003,17 @@ include_once 'enquadramento_conema.php';
                 return false;
             }
 
-            // Verificar tamanho do arquivo (máximo 100MB)
-            if (file.size > 104857600) {
-                alert('O arquivo é muito grande. Por favor, selecione um arquivo com tamanho máximo de 100MB.');
+            var tipoSelecionado = document.querySelector('select[name="tipo_alvara"]')?.value || '';
+            var tiposAmbientaisUpload = [
+                'licenca_previa_ambiental','licenca_previa_instalacao','declaracao_inexigibilidade',
+                'dispensa_licenca','licenca_instalacao_operacao','licenca_operacao',
+                'licenca_ambiental_unica','licenca_ampliacao','licenca_operacional_corretiva',
+                'autorizacao_supressao','lac'
+            ];
+            var limiteBytes = tiposAmbientaisUpload.includes(tipoSelecionado) ? 41943040 : 10485760; // 40MB ou 10MB
+            var limiteMB = tiposAmbientaisUpload.includes(tipoSelecionado) ? '40MB' : '10MB';
+            if (file.size > limiteBytes) {
+                alert('O arquivo é muito grande. O limite para este tipo de processo é ' + limiteMB + '.');
                 input.value = '';
                 return false;
             }

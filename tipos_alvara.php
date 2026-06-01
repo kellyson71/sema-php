@@ -624,6 +624,7 @@ $tipos_alvara = [
         'categoria' => 'ambiental',
         'exige_ctf' => false,
         'exige_licenca_anterior' => false,
+        'exige_diario_oficial' => false,
         'documentos' => [
             '1. Requerimento de licença;',
             '2. Documentos pessoais (PF/PJ);',

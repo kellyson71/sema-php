@@ -61,7 +61,14 @@ try {
     $tiposAmbientais = [
         'licenca_previa_ambiental', 'licenca_previa_instalacao', 'licenca_instalacao_operacao',
         'licenca_operacao', 'licenca_ambiental_unica', 'licenca_ampliacao',
-        'licenca_operacional_corretiva', 'autorizacao_supressao'
+        'licenca_operacional_corretiva', 'autorizacao_supressao', 'lac',
+        'declaracao_inexigibilidade', 'dispensa_licenca'
+    ];
+    $tiposExigemDO = [
+        'licenca_previa_ambiental', 'licenca_previa_instalacao', 'licenca_instalacao_operacao',
+        'licenca_operacao', 'licenca_ambiental_unica', 'licenca_ampliacao',
+        'licenca_operacional_corretiva', 'autorizacao_supressao',
+        'declaracao_inexigibilidade', 'dispensa_licenca'
     ];
     $tiposExigemCTF = [
         'licenca_operacao', 'licenca_instalacao_operacao', 'licenca_ambiental_unica',
@@ -134,7 +141,7 @@ try {
 
     if (in_array($tipoAlvara, $tiposAmbientais)) {
         $erros_ambientais = [];
-        if (empty($publicacao_diario_oficial)) $erros_ambientais[] = 'Dados da publicação em Diário Oficial';
+        if (in_array($tipoAlvara, $tiposExigemDO) && empty($publicacao_diario_oficial)) $erros_ambientais[] = 'Dados da publicação em Diário Oficial';
         
         if (in_array($tipoAlvara, $tiposExigemCTF) && empty($ctf_numero)) 
             $erros_ambientais[] = 'Número do CTF';
@@ -232,7 +239,8 @@ try {
                               ($_POST[$checkbox_nao_preciso] === 'on' || $_POST[$checkbox_nao_preciso] === 'true' || $_POST[$checkbox_nao_preciso] === '1');
 
         if ($arquivo['error'] === UPLOAD_ERR_OK) {
-            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo);
+            $limiteArquivo = in_array($tipoAlvara, $tiposAmbientais) ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE;
+            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo, $limiteArquivo);
             if ($arquivo_info) {
                 $documentoData = [
                     'requerimento_id' => $requerimento_id,

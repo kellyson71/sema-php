@@ -169,8 +169,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validações específicas para tipologias ambientais
+    $exigeDiarioOficial = $isAmbiental && ($tipoInfo['exige_diario_oficial'] ?? true);
     if ($isAmbiental) {
-        if (empty($publicacao_diario_oficial)) {
+        if ($exigeDiarioOficial && empty($publicacao_diario_oficial)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
             redirect('index.php');
@@ -265,8 +266,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nao_precisa_enviar = isset($_POST[$checkbox_nao_preciso]) && $_POST[$checkbox_nao_preciso] === 'on';
 
         if ($arquivo['error'] === UPLOAD_ERR_OK) {
-            // Salvar o arquivo
-            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo);
+            $limiteArquivo = $isAmbiental ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE;
+            $arquivo_info = salvarArquivo($arquivo, $diretorio_upload, $campo, $limiteArquivo);
 
             if ($arquivo_info) {
                 // Registrar o documento no banco de dados
