@@ -37,7 +37,7 @@ if (isset($_GET['role']) && in_array($_GET['role'], $rolesSuportados)) {
     $_SESSION['admin_nivel'] = $role;
 
     $redirect = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : null;
-    if ($redirect) {
+    if ($redirect && str_starts_with($redirect, '/')) {
         header("Location: " . $redirect);
     } else {
         header("Location: requerimentos.php");

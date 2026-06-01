@@ -42,6 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Regras de negócio derivadas da fonte de verdade (tipos_alvara.php)
     $tipoInfo = $tipos_alvara[$_POST['tipo_alvara'] ?? ''] ?? null;
+    if (!$tipoInfo || !empty($tipoInfo['desabilitado'])) {
+        setMensagem('erro', 'Tipo de alvará inválido ou não disponível.');
+        redirect('index.php');
+    }
     $isAmbiental = ($tipoInfo['categoria'] ?? '') === 'ambiental';
     $exigeCTF = $tipoInfo['exige_ctf'] ?? false;
     $exigeLicencaAnterior = $tipoInfo['exige_licenca_anterior'] ?? false;

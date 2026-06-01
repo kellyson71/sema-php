@@ -43,10 +43,10 @@ try {
 
     $tipoAlvara = $_POST['tipo_alvara'];
 
-    // Validar se o tipo de alvará existe
+    // Validar se o tipo de alvará existe e está habilitado
     global $tipos_alvara;
-    if (!isset($tipos_alvara[$tipoAlvara])) {
-        jsonResponse(false, 'Tipo de alvará inválido.');
+    if (!isset($tipos_alvara[$tipoAlvara]) || !empty($tipos_alvara[$tipoAlvara]['desabilitado'])) {
+        jsonResponse(false, 'Tipo de alvará inválido ou não disponível.');
     }
 
     // 4. Inicialização dos modelos
