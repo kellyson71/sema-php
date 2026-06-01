@@ -28,7 +28,7 @@ if ($tipo === 'funcionamento') {
             echo '<div class="file-input-container">';
             echo '<label for="' . $id . '">' . $documento . '</label>';
             echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. <?= $limiteLabel ?>)</small>';
+            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
             echo '</div>';
         }
         echo '</div>';
@@ -43,7 +43,7 @@ if ($tipo === 'funcionamento') {
             echo '<div class="file-input-container">';
             echo '<label for="' . $id . '">' . $documento . '</label>';
             echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. <?= $limiteLabel ?>)</small>';
+            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
             echo '</div>';
         }
         echo '</div>';
@@ -65,7 +65,7 @@ if ($tipo === 'funcionamento') {
                     . '</a>';
             }
             echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. <?= $limiteLabel ?>)</small>';
+            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
             echo '</div>';
         }
         echo '</div>';
@@ -81,7 +81,7 @@ if (isset($alvara['documentos_opcionais'])) {
         echo '<div class="file-input-container">';
         echo '<label for="' . $id . '">' . $documento . '</label>';
         echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf">';
-        echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. <?= $limiteLabel ?>)</small>';
+        echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
         echo '</div>';
     }
     echo '</div>';
