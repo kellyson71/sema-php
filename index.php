@@ -139,12 +139,9 @@ include_once 'enquadramento_conema.php';
                     <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
                 </div>
 
-                <div style="max-width:800px;margin:18px auto 0;padding:14px 16px;border-radius:10px;background:rgba(245,158,11,0.16);border:1px solid rgba(245,158,11,0.32);color:#fef3c7;display:flex;gap:12px;align-items:flex-start;">
-                    <i class="fas fa-envelope-open-text" style="margin-top:2px;color:#fbbf24;"></i>
-                    <div style="line-height:1.55;font-size:0.95rem;">
-                        <strong style="color:#fff7ed;">Aviso sobre pagamento:</strong>
-                        após a análise inicial, o boleto será enviado para o email informado no requerimento. O pagamento e o envio do comprovante serão feitos depois, por um link seguro enviado pela equipe.
-                    </div>
+                <div style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
+                    <i class="fas fa-info-circle" style="font-size:0.78rem;flex-shrink:0;"></i>
+                    <span>O boleto será enviado por email após a análise inicial. Pagamento e comprovante são enviados depois por link seguro da equipe.</span>
                 </div>
 
                 <?php
