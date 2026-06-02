@@ -326,9 +326,9 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             <?php endif; ?>
         </div>
         <div class="page-toolbar">
-            <button type="button" class="toolbar-button" onclick="window.print()">
-                <i class="fas fa-download"></i> Exportar
-            </button>
+            <a href="<?= htmlspecialchars('exportar_requerimentos.php?' . http_build_query(array_filter($_GET, fn($v) => $v !== ''))) ?>" class="toolbar-button">
+                <i class="fas fa-file-csv"></i> Exportar planilha
+            </a>
         </div>
     </section>
 
