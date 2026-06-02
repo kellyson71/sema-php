@@ -154,7 +154,7 @@ if ($filtroNaoVisualizados) {
     $sqlCount .= " AND r.visualizado = 0";
 }
 
-if (!$mostrarEncerrados && $filtroStatus === '') {
+if (!$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
     $placeholdersEnc = implode(',', array_fill(0, count($statusEncerrados), '?'));
     $sql .= " AND r.status NOT IN ($placeholdersEnc)";
     $sqlCount .= " AND r.status NOT IN ($placeholdersEnc)";
@@ -224,6 +224,7 @@ if ($setorFiltro) {
         ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'],  'status' => null,         'unread' => true, 'icon' => 'fa-eye-slash'],
         ['label' => 'Em análise',  'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
         ['label' => 'Pendente',    'value' => $estatisticas['pendentes'],  'status' => 'Pendente',   'icon' => 'fa-clock'],
+        ['label' => 'Aprovado',    'value' => $estatisticas['aprovados'],  'status' => 'Aprovado',   'icon' => 'fa-circle-check'],
         ['label' => 'Finalizado',  'value' => $estatisticas['finalizados'],'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
         ['label' => 'Indeferido',  'value' => $estatisticas['indeferidos'],'status' => 'Indeferido', 'icon' => 'fa-ban'],
     ];
@@ -259,15 +260,6 @@ $tipoSiglas = [
     'construcao' => 'CNS',
     'licenca_previa_obras' => 'LPO',
     'desmembramento' => 'DSM',
-];
-
-$statusCards = [
-    ['label' => 'Todos', 'value' => $estatisticas['total'], 'status' => '', 'icon' => 'fa-layer-group'],
-    ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'], 'status' => null, 'unread' => true, 'icon' => 'fa-eye-slash'],
-    ['label' => 'Em análise', 'value' => $estatisticas['em_analise'], 'status' => 'Em análise', 'icon' => 'fa-hourglass-half'],
-    ['label' => 'Pendente', 'value' => $estatisticas['pendentes'], 'status' => 'Pendente', 'icon' => 'fa-clock'],
-    ['label' => 'Finalizado', 'value' => $estatisticas['finalizados'], 'status' => 'Finalizado', 'icon' => 'fa-check-circle'],
-    ['label' => 'Indeferido', 'value' => $estatisticas['indeferidos'], 'status' => 'Indeferido', 'icon' => 'fa-ban'],
 ];
 
 function buildReqUrl(array $overrides = []): string
