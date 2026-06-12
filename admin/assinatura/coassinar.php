@@ -6,6 +6,7 @@ ob_start();
 $rootDir = dirname(__DIR__, 2);
 require_once $rootDir . '/includes/config.php';
 require_once dirname(__DIR__) . '/conexao.php';
+require_once $rootDir . '/includes/assinatura_avancada_service.php';
 
 if (function_exists('verificaLogin')) {
     verificaLogin();
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $documentoId    = trim($_POST['documento_id']    ?? '');
 $requerimentoId = (int) ($_POST['requerimento_id'] ?? 0);
 $adminId        = $_SESSION['admin_id'] ?? null;
+$pinAssinatura  = $_POST['pin_assinatura'] ?? '';
 
 if (!$documentoId || !$requerimentoId || !$adminId) {
     ob_clean();
@@ -60,6 +62,29 @@ try {
     if (!$admin) {
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Administrador não encontrado.']);
+        exit;
+    }
+
+    // 3b. Assinatura avançada: o co-assinante assina o hash do conteúdo-fonte
+    //     com a SUA chave RSA (PIN obrigatório). O conteúdo-fonte é imutável,
+    //     então a assinatura do primeiro signatário permanece válida.
+    $servicoAvancada = new AssinaturaAvancadaService($pdo);
+    $hashConteudo = AssinaturaAvancadaService::hashConteudo($fonte['conteudo_html']);
+    try {
+        $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
+    } catch (RuntimeException $eRsa) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        ob_clean();
+        if ($eRsa->getMessage() === 'PIN_SETUP_REQUIRED') {
+            echo json_encode(['success' => false, 'code' => 'pin_setup_required',
+                'error' => 'Você ainda não configurou seu PIN de assinatura.']);
+        } elseif ($eRsa->getMessage() === 'PIN_INCORRETO') {
+            echo json_encode(['success' => false, 'code' => 'pin_incorreto',
+                'error' => 'PIN de assinatura incorreto.']);
+        } else {
+            error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Falha na operação criptográfica de assinatura.']);
+        }
         exit;
     }
 
@@ -116,7 +141,16 @@ try {
     require_once __DIR__ . '/gerar_pdf.php';
 
     $numero_processo = "Processo_#{$requerimentoId}";
-    emitirParecerAssinado($fonte['conteudo_html'], $assinantes, $numero_processo, 'F', $caminhoFisico);
+    $verifyUrl = rtrim(BASE_URL, '/') . '/consultar/verificar.php?id=' . $documentoId;
+    $sigPos = ($fonte['sig_pos_x'] !== null && $fonte['sig_pos_y'] !== null)
+        ? ['x' => (float) $fonte['sig_pos_x'], 'y' => (float) $fonte['sig_pos_y']]
+        : null;
+
+    emitirParecerAssinado($fonte['conteudo_html'], $assinantes, $numero_processo, 'F', $caminhoFisico, [
+        'verify_url' => $verifyUrl,
+        'doc_codigo' => $documentoId,
+        'sig_pos'    => $sigPos,
+    ]);
 
     if (!file_exists($caminhoFisico)) {
         ob_clean();
@@ -127,14 +161,15 @@ try {
     $novoHash = hash_file('sha256', $caminhoFisico);
 
     // 8. Inserir nova linha em assinaturas_digitais (mesmo documento_id, novo assinante)
+    //    assinatura_criptografada = RSA real do co-assinante sobre hash_conteudo
     $nomeArquivo = basename($caminhoFisico);
     $pdo->prepare("
         INSERT INTO assinaturas_digitais
             (documento_id, requerimento_id, tipo_documento, nome_arquivo, caminho_arquivo,
-             hash_documento, assinante_id, assinante_nome, assinante_cpf, assinante_cargo,
-             tipo_assinatura, assinatura_visual, assinatura_criptografada,
+             hash_documento, hash_conteudo, assinante_id, assinante_nome, assinante_cpf, assinante_cargo,
+             tipo_assinatura, nivel_assinatura, assinatura_visual, assinatura_criptografada, chave_publica,
              timestamp_assinatura, ip_assinante)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'digital_sema', '{}', ?, NOW(), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'digital_sema', 'avancada', '{}', ?, ?, NOW(), ?)
     ")->execute([
         $documentoId,
         $requerimentoId,
@@ -142,13 +177,21 @@ try {
         $nomeArquivo,
         $caminhoRelativo,
         $novoHash,
+        $hashConteudo,
         $adminId,
         $admin['nome_completo'] ?: $admin['nome'],
         $admin['cpf'] ?? '',
         $admin['cargo'] ?? '',
-        hash('sha256', $documentoId . microtime(true) . $adminId . bin2hex(random_bytes(8))),
+        $assinaturaRsa['assinatura'],
+        $assinaturaRsa['chave_publica'],
         $_SERVER['REMOTE_ADDR'] ?? null,
     ]);
+
+    // 8b. O PDF foi regravado: atualizar hash_documento de TODAS as linhas
+    //     deste documento_id, senão as assinaturas anteriores apontariam para
+    //     um hash de arquivo que não existe mais (falso "documento adulterado").
+    $pdo->prepare("UPDATE assinaturas_digitais SET hash_documento = ? WHERE documento_id = ?")
+        ->execute([$novoHash, $documentoId]);
 
     $pdo->commit();
 

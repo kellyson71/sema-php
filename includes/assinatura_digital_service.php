@@ -155,54 +155,116 @@ class AssinaturaDigitalService
         ];
     }
 
+    /**
+     * Resolve o caminho físico do PDF. Os registros guardam caminhos relativos
+     * à pasta admin/ (ex: 'pareceres/12/arquivo.pdf'); este resolvedor aceita
+     * também caminhos absolutos e relativos à raiz do projeto, para que a
+     * verificação funcione independente de onde o script foi chamado.
+     */
+    public function resolverCaminhoArquivo(string $caminho): ?string
+    {
+        if ($caminho === '') return null;
+        $raiz = dirname(__DIR__);
+        $candidatos = [
+            $caminho,                                       // absoluto ou relativo ao cwd
+            $raiz . '/admin/' . ltrim($caminho, '/'),       // relativo a admin/ (padrão)
+            $raiz . '/' . ltrim($caminho, '/'),             // relativo à raiz
+        ];
+        foreach ($candidatos as $c) {
+            if (is_file($c)) return $c;
+        }
+        return null;
+    }
+
+    /**
+     * Verifica um documento e TODAS as suas assinaturas.
+     *
+     * Documentos novos (nivel 'avancada'): cada assinante tem RSA própria sobre
+     * o hash do conteúdo-fonte, verificada com a chave pública snapshot.
+     * Documentos legados (sem chave_publica): valida-se apenas o registro e a
+     * integridade do PDF — exibidos como "registro eletrônico simples".
+     */
     public function verificarDocumento($documentoId)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ?");
+        require_once __DIR__ . '/assinatura_avancada_service.php';
+
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM assinaturas_digitais
+            WHERE documento_id = ?
+            ORDER BY timestamp_assinatura ASC, id ASC
+        ");
         $stmt->execute([$documentoId]);
-        $assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
+        $linhas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!$assinatura) {
+        if (!$linhas) {
+            return ['valido' => false, 'erro' => 'Documento não encontrado no sistema'];
+        }
+
+        $principal = $linhas[0];
+
+        $caminhoFisico = $this->resolverCaminhoArquivo($principal['caminho_arquivo']);
+        if ($caminhoFisico === null) {
             return [
                 'valido' => false,
-                'erro' => 'Documento não encontrado no sistema'
+                'erro'   => 'Arquivo físico não encontrado no servidor',
+                'dados'  => $principal,
             ];
         }
 
-        if (!file_exists($assinatura['caminho_arquivo'])) {
+        // Integridade do PDF: o hash mais recente reflete a última regravação
+        // legítima (co-assinatura atualiza todas as linhas).
+        $hashAtual = $this->calcularHashDocumento($caminhoFisico);
+        $hashEsperado = end($linhas)['hash_documento'];
+
+        if ($hashAtual !== $hashEsperado) {
             return [
                 'valido' => false,
-                'erro' => 'Arquivo físico não encontrado',
-                'dados' => $assinatura
+                'erro'   => 'Documento foi modificado após a assinatura (hash divergente)',
+                'dados'  => $principal,
             ];
         }
 
-        $hashAtual = $this->calcularHashDocumento($assinatura['caminho_arquivo']);
-
-        if ($hashAtual !== $assinatura['hash_documento']) {
-            return [
-                'valido' => false,
-                'erro' => 'Documento foi modificado após assinatura (hash divergente)',
-                'dados' => $assinatura
+        // Verificação criptográfica por assinante
+        $assinantes = [];
+        $todasValidas = true;
+        foreach ($linhas as $linha) {
+            if ($linha['tipo_assinatura'] === 'sem_assinatura') {
+                continue; // linha de geração sem assinatura não conta como assinante
+            }
+            $temRsa = !empty($linha['chave_publica']) && !empty($linha['hash_conteudo']);
+            $rsaOk  = $temRsa && AssinaturaAvancadaService::verificar(
+                $linha['hash_conteudo'],
+                $linha['assinatura_criptografada'],
+                $linha['chave_publica']
+            );
+            if ($temRsa && !$rsaOk) {
+                $todasValidas = false;
+            }
+            $assinantes[] = [
+                'nome'      => $linha['assinante_nome'],
+                'cpf'       => $linha['assinante_cpf'],
+                'cargo'     => $linha['assinante_cargo'],
+                'data'      => $linha['timestamp_assinatura'],
+                'nivel'     => $temRsa ? 'avancada' : 'simples',
+                'rsa_valida' => $temRsa ? $rsaOk : null, // null = legado, sem RSA para conferir
             ];
         }
 
-        $assinaturaValida = $this->verificarAssinatura(
-            $assinatura['hash_documento'],
-            $assinatura['assinatura_criptografada']
-        );
-
-        if (!$assinaturaValida) {
+        if (!$todasValidas) {
             return [
                 'valido' => false,
-                'erro' => 'Assinatura digital inválida',
-                'dados' => $assinatura
+                'erro'   => 'Uma ou mais assinaturas eletrônicas falharam na verificação criptográfica',
+                'dados'  => $principal,
+                'assinantes' => $assinantes,
             ];
         }
 
         return [
-            'valido' => true,
-            'dados' => $assinatura,
-            'metadados' => !empty($assinatura['metadados_json']) ? json_decode($assinatura['metadados_json'], true) : null
+            'valido'         => true,
+            'dados'          => $principal,
+            'assinantes'     => $assinantes,
+            'caminho_fisico' => $caminhoFisico,
+            'metadados'      => !empty($principal['metadados_json']) ? json_decode($principal['metadados_json'], true) : null,
         ];
     }
 }

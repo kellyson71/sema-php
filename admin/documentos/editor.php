@@ -161,49 +161,75 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           ASSINATURA DIGITAL (preview no editor)
+           ASSINATURA DIGITAL — preview ARRASTÁVEL, fiel ao
+           bloco do PDF (88mm × 20mm, QR à esquerda, padrão gov.br)
         ═══════════════════════════════════════════════ */
         .a4-signature-badge {
             position: absolute;
-            bottom: 18mm;
-            right: var(--a4-margin-lr);
-            width: 62mm;
+            width: 88mm;
+            height: 20mm;
             background: #fff;
-            border: 0.5px solid #a0a0a0;
-            border-radius: 2px;
-            padding: 2mm 3mm;
+            border: 0.5px solid #969696;
+            border-top: 1.1mm solid var(--sema-green);
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            pointer-events: none;
-            z-index: 10;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        }
-        .a4-signature-badge .sig-header {
-            background: #dcdcdc;
-            margin: -2mm -3mm 1.5mm;
-            padding: 1mm 3mm;
-            border-radius: 2px 2px 0 0;
-            font-size: 5pt;
-            font-weight: 700;
-            color: #333;
+            z-index: 30;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
             display: flex;
-            align-items: center;
-            gap: 2mm;
+            gap: 2.5mm;
+            padding: 2mm;
+            box-sizing: border-box;
+            transition: box-shadow .15s;
         }
-        .a4-signature-badge .sig-header::before {
-            content: '';
-            display: inline-block;
-            width: 1.8mm; height: 1.8mm;
-            background: #333;
+        .a4-signature-badge.dragging {
+            cursor: grabbing;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.3);
+            opacity: .92;
+        }
+        .a4-signature-badge:hover::after {
+            content: 'Arraste para reposicionar a assinatura';
+            position: absolute;
+            top: -26px; left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b; color: #fff;
+            font-size: 10px; font-weight: 600;
+            padding: 4px 10px; border-radius: 6px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .a4-signature-badge .sig-qr {
+            width: 15mm; height: 15mm;
+            flex-shrink: 0;
+            border: 1px solid #e2e2e2;
+            background:
+                repeating-linear-gradient(0deg,  #2a2a2a 0 2px, transparent 2px 5px),
+                repeating-linear-gradient(90deg, #2a2a2a 0 2px, #f4f4f4 2px 5px);
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .a4-signature-badge .sig-qr span {
+            background: #fff; color: #555;
+            font-size: 7px; font-weight: 700;
+            padding: 1px 4px;
+        }
+        .a4-signature-badge .sig-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .a4-signature-badge .sig-title {
+            font-size: 6pt; font-weight: 700; color: var(--sema-green);
+            letter-spacing: .02em;
         }
         .a4-signature-badge .sig-name {
-            font-size: 5.5pt; font-weight: 700; color: #1e1e1e;
+            font-size: 6.4pt; font-weight: 700; color: #141414; margin-top: 1mm;
         }
         .a4-signature-badge .sig-detail {
-            font-size: 5pt; color: #555; margin-top: 0.5mm;
+            font-size: 5.4pt; color: #555; margin-top: 0.4mm;
         }
-        .a4-signature-badge .sig-date {
-            font-size: 5pt; color: #808080; margin-top: 0.5mm;
+        .a4-signature-badge .sig-verify {
+            font-size: 4.8pt; color: #777; margin-top: auto;
+            border-top: 0.15mm solid #ddd; padding-top: 0.6mm;
         }
+        .a4-signature-badge .sig-verify b { color: var(--sema-green); }
 
         /* ═══════════════════════════════════════════════
            VARIÁVEIS DESTACADAS — NEGRITO (sem cor)
@@ -276,35 +302,34 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           SEPARADOR VISUAL DE PÁGINAS (Dentro do canvas)
+           SEPARADOR DE PÁGINAS ESTILO GOOGLE DOCS
+           Elemento em fluxo (contenteditable=false) inserido
+           exatamente onde o TCPDF corta a página. Visualmente
+           separa as folhas com a cor da "mesa" e sombras de borda.
         ═══════════════════════════════════════════════ */
-        .page-break-indicator {
-            position: absolute;
-            left: -15mm; right: -15mm;
-            height: 0;
+        .note-editable .page-gap {
+            display: block;
+            height: 14mm;
+            margin: 0 calc(-1 * var(--a4-margin-lr));
+            background: #d0d4da;
+            position: relative;
             pointer-events: none;
-            z-index: 10;
+            box-shadow:
+                inset 0  10px 8px -8px rgba(0,0,0,0.28),
+                inset 0 -10px 8px -8px rgba(0,0,0,0.28);
         }
-        .page-break-indicator::before {
-            content: '';
+        .note-editable .page-gap::after {
+            content: attr(data-label);
             position: absolute;
-            left: 0; right: 0;
-            top: 0;
-            border-top: 2px dashed #ffb0b0;
-        }
-        .page-break-indicator::after {
-            content: attr(data-page-label);
-            position: absolute;
-            right: 0;
-            top: -9px;
-            font-size: 7.5pt;
-            font-weight: 700;
-            color: #bd4848;
-            font-family: 'Helvetica Neue', sans-serif;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font: 700 7.5pt 'Helvetica Neue', sans-serif;
+            color: #64748b;
             background: #fff;
-            padding: 0 6px;
-            border: 1px solid #ffb0b0;
-            border-radius: 10px;
+            padding: 2px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
         }
 
         /* ═══════════════════════════════════════════════
@@ -392,6 +417,9 @@ include '../header.php';
                     <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
                         <i class="fas fa-bookmark me-1"></i> Salvar Template
                     </button>
+                    <button class="btn btn-outline-primary fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar — o que você vê é exatamente o documento final">
+                        <i class="fas fa-eye me-1"></i> Pré-visualizar PDF
+                    </button>
                     <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
                         <i class="fas fa-signature me-2"></i> Assinar e Finalizar
                     </button>
@@ -423,21 +451,21 @@ include '../header.php';
               <div class="d-flex gap-2 mb-4" id="modoCards">
                   <label class="modo-card selected" data-modo="assinar" style="flex:1;border:2px solid #16a34a;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f0fdf4;">
                       <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;">🖋️</div>
-                      <div style="font-weight:700;font-size:.83rem;color:#16a34a;">Assinar digitalmente</div>
-                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Bloco digital certificado</div>
+                      <div style="font-size:1.3rem;margin-bottom:5px;color:#16a34a;"><i class="fas fa-file-signature"></i></div>
+                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#16a34a;">Assinar eletronicamente</div>
+                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Assinatura avançada com QR de verificação</div>
                   </label>
                   <label class="modo-card" data-modo="sem_assinar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
                       <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;">✍️</div>
-                      <div style="font-weight:700;font-size:.83rem;color:#374151;">Linha para assinar</div>
+                      <div style="font-size:1.3rem;margin-bottom:5px;color:#92400e;"><i class="fas fa-pen-ruler"></i></div>
+                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#374151;">Linha para assinar</div>
                       <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Assinatura manual no papel</div>
                   </label>
                   <label class="modo-card" data-modo="assinar_e_requisitar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
                       <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;">👥</div>
-                      <div style="font-weight:700;font-size:.83rem;color:#1d4ed8;">Assinar + requisitar</div>
-                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Pede co-assinatura</div>
+                      <div style="font-size:1.3rem;margin-bottom:5px;color:#1d4ed8;"><i class="fas fa-users"></i></div>
+                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#1d4ed8;">Assinar + requisitar</div>
+                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Pede co-assinatura de outros servidores</div>
                   </label>
               </div>
 
@@ -449,21 +477,63 @@ include '../header.php';
 
               <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
               <div id="painelCoAssinaturaEditor" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
-                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">Solicitar co-assinatura de:</label>
-                  <select id="coassRequisitar" class="form-select form-select-sm">
-                      <option value="">— Selecione um administrador —</option>
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">
+                      <i class="fas fa-user-plus me-1"></i> Solicitar co-assinatura de:
+                      <span class="text-muted fw-normal" style="font-size:.75rem;">(pode marcar mais de um)</span>
+                  </label>
+                  <div id="coassListaDestinatarios" style="max-height:160px;overflow-y:auto;background:#fff;border:1px solid #dbeafe;border-radius:8px;padding:8px 10px;">
                       <?php
                       $adminLogado = $_SESSION['admin_id'] ?? 0;
                       $stmtAdminsEditor = $pdo->prepare("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != ? ORDER BY nome");
-                  $stmtAdminsEditor->execute([$adminLogado]);
-                  $adminsLista = $stmtAdminsEditor->fetchAll();
+                      $stmtAdminsEditor->execute([$adminLogado]);
+                      $adminsLista = $stmtAdminsEditor->fetchAll();
                       foreach ($adminsLista as $adm): ?>
-                          <option value="<?= $adm['id'] ?>"><?= htmlspecialchars($adm['nome']) ?> (<?= htmlspecialchars($adm['nivel']) ?>)</option>
+                          <div class="form-check" style="margin-bottom:4px;">
+                              <input class="form-check-input coass-destinatario" type="checkbox"
+                                     value="<?= $adm['id'] ?>" id="coass_adm_<?= $adm['id'] ?>">
+                              <label class="form-check-label" for="coass_adm_<?= $adm['id'] ?>" style="font-size:.83rem;cursor:pointer;">
+                                  <?= htmlspecialchars($adm['nome']) ?>
+                                  <span class="text-muted">(<?= htmlspecialchars($adm['nivel']) ?>)</span>
+                              </label>
+                          </div>
                       <?php endforeach; ?>
-                  </select>
+                  </div>
                   <textarea id="coassMensagem" class="form-control form-control-sm mt-2" rows="2"
-                            placeholder="Mensagem para o destinatário (opcional)..."
+                            placeholder="Mensagem para os destinatários (opcional)..."
                             style="font-size:.82rem;resize:none;"></textarea>
+              </div>
+
+              <!-- PIN de assinatura (modos digitais) -->
+              <div id="blocoPin" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:16px;">
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">
+                      <i class="fas fa-key me-1"></i> PIN de assinatura
+                  </label>
+                  <input type="password" id="pinAssinatura" class="form-control" maxlength="64"
+                         autocomplete="off" placeholder="Digite seu PIN pessoal de assinatura">
+                  <small class="text-muted" style="font-size:.74rem;">
+                      O PIN protege sua chave criptográfica individual (RSA-2048). Só você o conhece — é ele que garante o nível avançado da assinatura.
+                  </small>
+              </div>
+
+              <!-- Primeira configuração de PIN (exibido quando o admin ainda não tem chave) -->
+              <div id="blocoPinSetup" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
+                  <div class="fw-bold mb-1" style="font-size:.88rem;color:#1d4ed8;">
+                      <i class="fas fa-shield-halved me-1"></i> Configure sua chave de assinatura
+                  </div>
+                  <p class="text-muted mb-3" style="font-size:.78rem;">
+                      É a primeira vez que você assina. Crie um PIN pessoal (mínimo 6 caracteres): ele cifra sua chave criptográfica exclusiva.
+                      Sem o seu PIN, ninguém — nem o sistema — consegue assinar em seu nome. Guarde-o com segurança.
+                  </p>
+                  <div class="row g-2">
+                      <div class="col-6">
+                          <input type="password" id="pinNovo" class="form-control" maxlength="64"
+                                 autocomplete="new-password" placeholder="Criar PIN">
+                      </div>
+                      <div class="col-6">
+                          <input type="password" id="pinNovoConfirma" class="form-control" maxlength="64"
+                                 autocomplete="new-password" placeholder="Confirmar PIN">
+                      </div>
+                  </div>
               </div>
 
               <form id="formCheckout">
@@ -615,7 +685,10 @@ include '../header.php';
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
+    const adminNome     = <?= json_encode($_SESSION['admin_nome_completo'] ?? $_SESSION['admin_nome'] ?? 'Assinante') ?>;
+    const adminCargo    = <?= json_encode($_SESSION['admin_cargo'] ?? 'Administrador(a)') ?>;
     let currentTemplate = templateNome;
+    let adminTemChave   = null; // null = ainda não consultado
 
     /* ─── Icon Picker ────────────────────────────────────────── */
     const ICONES_DISPONIVEIS = [
@@ -679,20 +752,101 @@ include '../header.php';
     function gerarFooterHtml(totalPages) {
         return `
             <div class="a4-sema-footer">
-                <div class="a4-footer-sign">Assinado digitalmente por NOME DO ASSINANTE  |  Cargo</div>
-                <div class="a4-footer-date">Autenticado em dd/mm/aaaa hh:mm:ss</div>
+                <div class="a4-footer-sign">Assinatura eletrônica de ${escapeHtml(adminNome)}  |  ${escapeHtml(adminCargo)}</div>
+                <div class="a4-footer-date">O QR code e o código de verificação são gerados na assinatura</div>
                 <div class="a4-footer-page" id="visual-page-counter">&mdash; Página 1 de ${totalPages} &mdash;</div>
             </div>`;
     }
 
     function gerarSignatureBadgeHtml() {
         return `
-            <div class="a4-signature-badge">
-                <div class="sig-header">ASSINADO DIGITALMENTE</div>
-                <div class="sig-name">NOME DO ASSINANTE</div>
-                <div class="sig-detail">Cargo  |  CPF: ***.***.**-**</div>
-                <div class="sig-date">dd/mm/aaaa hh:mm:ss</div>
+            <div class="a4-signature-badge" id="sigBadge">
+                <div class="sig-qr"><span>QR</span></div>
+                <div class="sig-info">
+                    <div class="sig-title">DOCUMENTO ASSINADO ELETRONICAMENTE</div>
+                    <div class="sig-name">${escapeHtml(adminNome.toUpperCase())}</div>
+                    <div class="sig-detail">${escapeHtml(adminCargo)} | dd/mm/aaaa hh:mm</div>
+                    <div class="sig-verify">Verifique a autenticidade em: <b>consultar/verificar.php</b></div>
+                </div>
             </div>`;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       BADGE DE ASSINATURA ARRASTÁVEL
+       A posição é mantida em mm (mesma unidade do TCPDF) relativa
+       à ÚLTIMA página. O PDF coloca o bloco exatamente onde o
+       usuário soltou no preview.
+    ═══════════════════════════════════════════════════════════ */
+    const SIG_W_MM = 88, SIG_H_MM = 20;
+    // Padrão = inferior-direito, idêntico ao default do gerar_pdf.php
+    let sigPos = { x: 210 - 15 - SIG_W_MM, y: 297 - 14 - SIG_H_MM };
+    let sigPosCustomizada = false;
+
+    function _sheet()    { return document.querySelector('.a4-page-sheet'); }
+    function _editable() { return document.querySelector('.note-editable'); }
+    function _badge()    { return document.getElementById('sigBadge'); }
+    function pxPerMm()   { const s = _sheet(); return s ? s.getBoundingClientRect().width / 210 : 3.7795; }
+
+    /** Topo (px, relativo à folha) da última página visual. */
+    function lastPageTopPx() {
+        const ed = _editable(), s = _sheet();
+        if (!ed || !s) return 0;
+        const gaps = ed.querySelectorAll('.page-gap');
+        if (!gaps.length) return 0;
+        const g = gaps[gaps.length - 1];
+        const sheetTop = s.getBoundingClientRect().top;
+        // Conteúdo após o separador começa em y=27mm (header) na página do PDF
+        return (g.getBoundingClientRect().bottom - sheetTop) - 27 * pxPerMm();
+    }
+
+    function posicionarBadge() {
+        const b = _badge(), s = _sheet();
+        if (!b || !s) return;
+        const k = pxPerMm();
+        const topPx = lastPageTopPx() + sigPos.y * k;
+        b.style.left   = (sigPos.x * k) + 'px';
+        b.style.top    = topPx + 'px';
+        b.style.right  = 'auto';
+        b.style.bottom = 'auto';
+        // Folha precisa ser alta o bastante para conter o badge
+        const minH = topPx + SIG_H_MM * k + 14 * k;
+        if (s.offsetHeight < minH) s.style.minHeight = minH + 'px';
+    }
+
+    function clampSigPos() {
+        sigPos.x = Math.max(10, Math.min(sigPos.x, 210 - SIG_W_MM - 10));
+        sigPos.y = Math.max(25, Math.min(sigPos.y, 297 - SIG_H_MM - 12));
+    }
+
+    function iniciarDragBadge() {
+        const b = _badge(), s = _sheet();
+        if (!b || !s) return;
+        let dragging = false, offX = 0, offY = 0;
+
+        b.addEventListener('pointerdown', function(e) {
+            dragging = true;
+            b.classList.add('dragging');
+            const r = b.getBoundingClientRect();
+            offX = e.clientX - r.left;
+            offY = e.clientY - r.top;
+            b.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        b.addEventListener('pointermove', function(e) {
+            if (!dragging) return;
+            const sr = s.getBoundingClientRect();
+            const k = pxPerMm();
+            sigPos.x = (e.clientX - offX - sr.left) / k;
+            sigPos.y = ((e.clientY - offY - sr.top) - lastPageTopPx()) / k;
+            clampSigPos();
+            sigPosCustomizada = true;
+            posicionarBadge();
+        });
+        b.addEventListener('pointerup', function(e) {
+            dragging = false;
+            b.classList.remove('dragging');
+            b.releasePointerCapture(e.pointerId);
+        });
     }
 
     /**
@@ -720,14 +874,20 @@ include '../header.php';
         footerEl.innerHTML = gerarFooterHtml(1);
         sheet.appendChild(footerEl.firstElementChild);
 
-        // Inserir Badge de Assinatura (absolute sempre presa ao fundo da folha)
+        // Inserir Badge de Assinatura (arrastável, fiel ao PDF)
         sheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
+        iniciarDragBadge();
+        posicionarBadge();
 
         iniciarMonitorPaginas();
     }
 
     /**
-     * Aplica as linhas tracejadas de corte no editor e atualiza contador
+     * PAGINAÇÃO ESTILO GOOGLE DOCS
+     * Insere separadores em fluxo (.page-gap, contenteditable=false) entre os
+     * blocos, exatamente onde o TCPDF corta (256mm úteis por página). O texto
+     * abaixo do separador desce visualmente — como folhas separadas — sem
+     * alterar o conteúdo real (os separadores são removidos antes do envio).
      */
     let _lastTotalPages = 1;
     function iniciarMonitorPaginas() {
@@ -738,48 +898,86 @@ include '../header.php';
         let _updating = false;
 
         const observer = new MutationObserver(function(mutations) {
-            // Ignorar mutações causadas pelos próprios indicadores
             if (_updating) return;
-            // Ignorar se só mudou page-break-indicator
-            const isOnlyIndicators = mutations.every(function(m) {
+            // Ignorar mutações causadas pelos próprios separadores
+            const isOnlyGaps = mutations.every(function(m) {
                 return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).every(function(n) {
-                    return n.nodeType === 1 && n.classList && n.classList.contains('page-break-indicator');
+                    return n.nodeType === 1 && n.classList && n.classList.contains('page-gap');
                 });
             });
-            if (isOnlyIndicators) return;
+            if (isOnlyGaps) return;
 
             clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 150);
+            _debounceTimer = setTimeout(recalcularPaginas, 250);
         });
+
+        function criarGap(numPagina) {
+            const gap = document.createElement('div');
+            gap.className = 'page-gap';
+            gap.setAttribute('contenteditable', 'false');
+            gap.setAttribute('data-label', 'Fim da página ' + numPagina + ' — Página ' + (numPagina + 1));
+            return gap;
+        }
 
         function recalcularPaginas() {
             if (_updating) return;
             _updating = true;
             observer.disconnect();
 
-            const alturaConteudo = editable.scrollHeight;
-            const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
+            // 1. Remove separadores atuais (medição parte do conteúdo puro + re-inserção)
+            editable.querySelectorAll('.page-gap').forEach(function(g) { g.remove(); });
 
-            // Remove todos os indicadores atuais
-            editable.querySelectorAll('.page-break-indicator').forEach(function(i) { i.remove(); });
+            // 2. Percorre os blocos de nível superior inserindo separadores onde
+            //    o conteúdo cruza o limite útil da página. Medições são feitas ao
+            //    vivo: cada gap inserido desloca o conteúdo seguinte, e o próximo
+            //    corte é calculado a partir da nova posição.
+            let numPagina = 1;
+            let pageStart = 0;                       // offsetTop do início da página atual
+            let pageBottom = PAGE_USABLE_PX;          // limite inferior da página atual
 
-            // Redesenha os indicadores
-            for (let p = 1; p < paginasNecessarias; p++) {
-                const indicator = document.createElement('div');
-                indicator.className = 'page-break-indicator';
-                indicator.setAttribute('data-page-label', 'Corte da Página ' + p + ' / ' + (p + 1));
-                indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
-                editable.appendChild(indicator);
-            }
+            let i = 0;
+            // children é uma HTMLCollection viva — inserções são refletidas
+            const children = editable.children;
+            while (i < children.length) {
+                const bloco = children[i];
+                if (bloco.classList && bloco.classList.contains('page-gap')) { i++; continue; }
 
-            // Atualiza footer se a página mudou
-            if (paginasNecessarias !== _lastTotalPages) {
-                const counter = document.getElementById('visual-page-counter');
-                if (counter) {
-                    counter.innerHTML = '&mdash; Página 1 a ' + paginasNecessarias + ' &mdash;';
+                const top = bloco.offsetTop;
+                const h   = bloco.offsetHeight;
+
+                if (top >= pageBottom || (top < pageBottom && top + h > pageBottom && h <= PAGE_USABLE_PX)) {
+                    // Bloco começa após o corte, ou cruza o corte e cabe inteiro
+                    // na próxima página → separador antes dele
+                    const gap = criarGap(numPagina);
+                    editable.insertBefore(gap, bloco);
+                    numPagina++;
+                    // Próxima página começa no offsetTop do bloco (já deslocado pelo gap)
+                    pageStart  = bloco.offsetTop;
+                    pageBottom = pageStart + PAGE_USABLE_PX;
+                    i += 2; // pula gap + bloco
+                    continue;
                 }
-                _lastTotalPages = paginasNecessarias;
+
+                if (h > PAGE_USABLE_PX && top < pageBottom) {
+                    // Bloco maior que uma página (tabela longa): o TCPDF o divide
+                    // internamente — estendemos o limite sem inserir separador
+                    while (pageBottom < top + h) {
+                        pageBottom += PAGE_USABLE_PX;
+                        numPagina++;
+                    }
+                }
+                i++;
             }
+
+            // 3. Contador no rodapé
+            if (numPagina !== _lastTotalPages) {
+                const counter = document.getElementById('visual-page-counter');
+                if (counter) counter.innerHTML = '&mdash; ' + numPagina + ' página' + (numPagina > 1 ? 's' : '') + ' &mdash;';
+                _lastTotalPages = numPagina;
+            }
+
+            // 4. Reposiciona o badge de assinatura na última página
+            posicionarBadge();
 
             _updating = false;
             observer.observe(editable, { childList: true, subtree: true, characterData: true });
@@ -787,7 +985,7 @@ include '../header.php';
 
         editable.addEventListener('input', function() {
             clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 150);
+            _debounceTimer = setTimeout(recalcularPaginas, 250);
         });
 
         observer.observe(editable, { childList: true, subtree: true, characterData: true });
@@ -871,14 +1069,62 @@ include '../header.php';
         });
     }
 
+    /* ─── Conteúdo do editor, limpo dos elementos visuais ──── */
+    function obterConteudoLimpo() {
+        let html = '';
+        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
+            html = $('#editor-conteudo').summernote('code');
+        } else {
+            html = document.getElementById('editor-conteudo').value;
+        }
+        // Separadores de página do editor (Google Docs style) — nunca vão ao servidor
+        html = html.replace(/<div[^>]*class="[^"]*page-gap[^"]*"[^>]*>[\s\S]*?<\/div>/g, '');
+        html = html.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
+        // Spans var-field viram texto puro
+        html = html.replace(
+            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
+            '$1'
+        );
+        // Cores residuais do Summernote
+        html = html.replace(
+            /(<span[^>]*style="[^"]*)color\s*:\s*(?:rgb\(26\s*,\s*82\s*,\s*118\)|#1a5276)\s*;?/gi,
+            '$1'
+        );
+        return html;
+    }
+
+    /* ─── Pré-visualizar o PDF REAL (TCPDF) em nova aba ────── */
+    function previewPdf() {
+        const html = obterConteudoLimpo();
+        if (!html || html.trim() === '' || html === '<p><br></p>') {
+            Swal.fire('Atenção', 'O documento está vazio.', 'warning');
+            return;
+        }
+        const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '../assinatura/preview_pdf.php';
+        form.target = '_blank';
+        const campos = {
+            conteudo_parecer: html,
+            requerimento_id:  reqId,
+            modo_assinatura:  modoAtivo,
+            sig_pos_x: sigPosCustomizada ? sigPos.x.toFixed(1) : '',
+            sig_pos_y: sigPosCustomizada ? sigPos.y.toFixed(1) : '',
+        };
+        for (const [k, v] of Object.entries(campos)) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = k; inp.value = v;
+            form.appendChild(inp);
+        }
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+    }
+
     /* ─── Abrir modal de assinatura ────────────────────────── */
     function abrirModalAssinatura() {
-        let htmlContent = '';
-        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
-            htmlContent = $('#editor-conteudo').summernote('code');
-        } else {
-            htmlContent = document.getElementById('editor-conteudo').value;
-        }
+        const htmlContent = obterConteudoLimpo();
         if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>') {
             Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
             return;
@@ -888,7 +1134,33 @@ include '../header.php';
         chk.checked = false;
         chk.setCustomValidity('O aceite nas diretrizes é um bloco obrigatório legal.');
 
+        document.getElementById('pinAssinatura').value = '';
+        document.getElementById('pinNovo').value = '';
+        document.getElementById('pinNovoConfirma').value = '';
+
+        // Consulta se o admin já tem chave de assinatura → decide entre
+        // pedir o PIN ou exibir o fluxo de primeira configuração
+        fetch('../assinatura/chave_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ acao: 'status' })
+        })
+        .then(r => r.json())
+        .then(ret => {
+            adminTemChave = !!(ret.success && ret.tem_chave);
+            atualizarBlocosPin();
+        })
+        .catch(() => { adminTemChave = null; atualizarBlocosPin(); });
+
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
+    }
+
+    /* Exibe o bloco certo de PIN conforme modo selecionado + estado da chave */
+    function atualizarBlocosPin() {
+        const modoAtivo  = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
+        const ehDigital  = modoAtivo !== 'sem_assinar';
+        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'block' : 'none';
+        document.getElementById('blocoPinSetup').style.display = (ehDigital && adminTemChave === false) ? 'block' : 'none';
     }
 
     /* ─── Listener do checkbox de diretrizes ─────────────── */
@@ -939,12 +1211,14 @@ include '../header.php';
 
                 document.getElementById('checkDiretrizes').required = !isSemAssinar;
                 document.getElementById('checkManual').required     = isSemAssinar;
+
+                atualizarBlocosPin();
             });
         });
     })();
 
     /* ─── Finalizar assinatura ─────────────────────────────── */
-    function finalizarAssinatura() {
+    async function finalizarAssinatura() {
         const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const isSemAssinar = modoAtivo === 'sem_assinar';
 
@@ -962,32 +1236,63 @@ include '../header.php';
             return;
         }
 
+        // Modo digital: garante chave + PIN antes de prosseguir
+        let pinParaAssinar = '';
+        if (!isSemAssinar) {
+            if (adminTemChave === false) {
+                // Primeira configuração: cria a chave com o PIN escolhido
+                const p1 = document.getElementById('pinNovo').value;
+                const p2 = document.getElementById('pinNovoConfirma').value;
+                if (p1.length < 6) {
+                    Swal.fire('PIN muito curto', 'O PIN de assinatura deve ter no mínimo 6 caracteres.', 'warning');
+                    return;
+                }
+                if (p1 !== p2) {
+                    Swal.fire('PINs diferentes', 'Os dois campos de PIN não coincidem.', 'warning');
+                    return;
+                }
+                try {
+                    const r = await fetch('../assinatura/chave_handler.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ acao: 'criar', pin: p1, pin_confirmacao: p2 })
+                    });
+                    const ret = await r.json();
+                    if (!ret.success) {
+                        Swal.fire('Erro', ret.error || 'Falha ao criar sua chave de assinatura.', 'error');
+                        return;
+                    }
+                    adminTemChave = true;
+                    pinParaAssinar = p1;
+                } catch (e) {
+                    Swal.fire('Erro', 'Falha de conexão ao criar a chave de assinatura.', 'error');
+                    return;
+                }
+            } else {
+                pinParaAssinar = document.getElementById('pinAssinatura').value;
+                if (!pinParaAssinar) {
+                    Swal.fire('PIN obrigatório', 'Digite seu PIN de assinatura para assinar eletronicamente.', 'warning');
+                    document.getElementById('pinAssinatura').focus();
+                    return;
+                }
+            }
+        }
+
+        // Co-assinatura: exige pelo menos um destinatário marcado
+        let destinatarios = [];
+        if (modoAtivo === 'assinar_e_requisitar') {
+            destinatarios = Array.from(document.querySelectorAll('.coass-destinatario:checked')).map(c => c.value);
+            if (destinatarios.length === 0) {
+                Swal.fire('Atenção', 'Marque pelo menos um servidor para co-assinar.', 'warning');
+                return;
+            }
+        }
+
         const btn = document.getElementById('btnAssinarFinal');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-        let conteudoHtml = '';
-        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
-            conteudoHtml = $('#editor-conteudo').summernote('code');
-        } else {
-            conteudoHtml = document.getElementById('editor-conteudo').value;
-        }
-
-        // Remover indicadores de quebra de página (elementos visuais do editor)
-        conteudoHtml = conteudoHtml.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
-
-        // Remover spans var-field antes de enviar para PDF (mantém apenas o valor de texto)
-        conteudoHtml = conteudoHtml.replace(
-            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
-            '$1'
-        );
-
-        // Limpeza de cores inline residuais que o Summernote injeta ao quebrar spans
-        // Remove color:#1a5276 e variantes (hex azul do antigo var-field)
-        conteudoHtml = conteudoHtml.replace(
-            /(<span[^>]*style="[^"]*)color\s*:\s*(?:rgb\(26\s*,\s*82\s*,\s*118\)|#1a5276)\s*;?/gi,
-            '$1'
-        );
+        const conteudoHtml = obterConteudoLimpo();
 
         const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
@@ -997,9 +1302,14 @@ include '../header.php';
         fd.append('template_salvo',   templateNome);
         fd.append('download',         fazDownload);
         fd.append('modo_assinatura',  modoAtivo);
+        fd.append('pin_assinatura',   pinParaAssinar);
+        if (sigPosCustomizada) {
+            fd.append('sig_pos_x', sigPos.x.toFixed(1));
+            fd.append('sig_pos_y', sigPos.y.toFixed(1));
+        }
         if (modoAtivo === 'assinar_e_requisitar') {
-            fd.append('coassinatura_destinatario_id', document.getElementById('coassRequisitar').value);
-            fd.append('coassinatura_mensagem',        document.getElementById('coassMensagem').value);
+            destinatarios.forEach(d => fd.append('coassinatura_destinatarios[]', d));
+            fd.append('coassinatura_mensagem', document.getElementById('coassMensagem').value);
         }
 
         fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd })
@@ -1010,15 +1320,15 @@ include '../header.php';
 
             if (ret.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
-                const swalTitle = isSemAssinar ? 'Documento Gerado!' : 'Autenticado com Sucesso!';
+                const swalTitle = isSemAssinar ? 'Documento Gerado' : 'Assinado com Sucesso';
                 const swalText  = isSemAssinar
                     ? 'Documento gerado com linha de assinatura manual. Lembre-se de coletar a assinatura física.'
-                    : 'O arquivo consta permanentemente armazenado nos registros eletrônicos do Processo.';
+                    : 'Documento assinado eletronicamente e registrado no processo. O QR code de verificação está impresso no documento.';
                 Swal.fire({
                     title: swalTitle,
                     text: swalText,
                     icon: 'success',
-                    timer: 3000,
+                    timer: 3200,
                     showConfirmButton: false
                 }).then(() => {
                     if (fazDownload && ret.url_pdf) {
@@ -1033,6 +1343,14 @@ include '../header.php';
                         window.location.href = '../visualizar_requerimento.php?id=' + reqId;
                     }, 500);
                 });
+            } else if (ret.code === 'pin_incorreto') {
+                Swal.fire('PIN incorreto', 'O PIN de assinatura informado está errado. Tente novamente.', 'error');
+                document.getElementById('pinAssinatura').value = '';
+                document.getElementById('pinAssinatura').focus();
+            } else if (ret.code === 'pin_setup_required') {
+                adminTemChave = false;
+                atualizarBlocosPin();
+                Swal.fire('Configure seu PIN', 'Você ainda não tem chave de assinatura. Crie seu PIN no campo exibido.', 'info');
             } else {
                 Swal.fire('Erro Interno', ret.error || 'Não foi possível registrar o documento.', 'error');
             }
@@ -1040,7 +1358,7 @@ include '../header.php';
         .catch(() => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
-            Swal.fire('Falha Crítica', 'Falha estrutural ao registrar no Endpoint de Assinaturas.', 'error');
+            Swal.fire('Falha Crítica', 'Falha de comunicação ao registrar a assinatura.', 'error');
         });
     }
 
