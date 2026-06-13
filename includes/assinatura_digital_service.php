@@ -177,6 +177,110 @@ class AssinaturaDigitalService
     }
 
     /**
+     * Extrai o documento_id embutido nos metadados do PDF (Keywords
+     * 'SEMA-DOC-ID:<hex>'). Best-effort: o TCPDF grava o dicionário Info de
+     * forma legível, mas um re-save externo pode remover/reescrever — nesse
+     * caso retorna null e o documento cai no estado DESCONHECIDO.
+     */
+    public function extrairDocumentoIdDeArquivo(string $caminho): ?string
+    {
+        if (!is_file($caminho)) return null;
+        $bytes = file_get_contents($caminho);
+        if ($bytes === false) return null;
+        if (preg_match('/SEMA-DOC-ID:([a-f0-9]{16,64})/', $bytes, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Verifica a autenticidade a partir do ARQUIVO enviado (upload público).
+     * Retorna um dos estados: 'autentico', 'alterado', 'desconhecido'.
+     * Não armazena o arquivo — apenas registra um log da verificação.
+     *
+     * @param string $caminhoTmp caminho temporário do upload ($_FILES[...]['tmp_name'])
+     */
+    public function verificarPorArquivo(string $caminhoTmp): array
+    {
+        if (!is_file($caminhoTmp)) {
+            return ['estado' => 'desconhecido', 'erro' => 'Arquivo não recebido.'];
+        }
+
+        $hashEnviado = hash_file('sha256', $caminhoTmp);
+
+        // 1. Match exato por hash do PDF → documento íntegro e autêntico
+        $stmt = $this->pdo->prepare("
+            SELECT documento_id FROM assinaturas_digitais
+            WHERE hash_documento = ?
+            ORDER BY timestamp_assinatura DESC, id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$hashEnviado]);
+        $docId = $stmt->fetchColumn();
+
+        if ($docId) {
+            $res = $this->verificarDocumento($docId);
+            $res['estado'] = !empty($res['valido']) ? 'autentico' : 'alterado';
+            $this->registrarVerificacao($docId, $hashEnviado, $res['estado'], 'upload');
+            return $res;
+        }
+
+        // 2. Hash não bateu → tenta o ID embutido nos metadados
+        $idEmbutido = $this->extrairDocumentoIdDeArquivo($caminhoTmp);
+        if ($idEmbutido) {
+            $stmt = $this->pdo->prepare("
+                SELECT * FROM assinaturas_digitais
+                WHERE documento_id = ?
+                ORDER BY timestamp_assinatura ASC, id ASC
+                LIMIT 1
+            ");
+            $stmt->execute([$idEmbutido]);
+            $registro = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($registro) {
+                // Documento é da SEMA, mas o arquivo não corresponde ao oficial
+                $this->registrarVerificacao($idEmbutido, $hashEnviado, 'alterado', 'upload');
+                return [
+                    'valido'      => false,
+                    'estado'      => 'alterado',
+                    'erro'        => 'Este documento foi emitido pelo SEMA, mas o arquivo enviado foi alterado após a assinatura (não corresponde à versão oficial registrada).',
+                    'dados'       => $registro,
+                ];
+            }
+        }
+
+        // 3. Nada reconhecido
+        $this->registrarVerificacao(null, $hashEnviado, 'desconhecido', 'upload');
+        return [
+            'valido' => false,
+            'estado' => 'desconhecido',
+            'erro'   => 'Este arquivo não foi emitido pelo SEMA ou não pôde ser reconhecido.',
+        ];
+    }
+
+    /**
+     * Registra a verificação para auditoria (sem armazenar o arquivo).
+     * Silencioso: falha de log nunca deve quebrar a verificação.
+     */
+    public function registrarVerificacao(?string $documentoId, ?string $hashEnviado, string $resultado, string $metodo = 'upload'): void
+    {
+        try {
+            $this->pdo->prepare("
+                INSERT INTO verificacoes_log (documento_id, hash_enviado, metodo, resultado, ip_origem)
+                VALUES (?, ?, ?, ?, ?)
+            ")->execute([
+                $documentoId,
+                $hashEnviado,
+                $metodo,
+                $resultado,
+                $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+        } catch (Throwable $e) {
+            error_log('[verificacoes_log] ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Verifica um documento e TODAS as suas assinaturas.
      *
      * Documentos novos (nivel 'avancada'): cada assinante tem RSA própria sobre

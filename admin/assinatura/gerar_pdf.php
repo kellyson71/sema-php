@@ -458,6 +458,14 @@ function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero
 
     aplicarBlocosAssinaturaNoPdf($pdf, $assinantes, $opcoes);
 
+    // Embute o documento_id nos metadados (Keywords) para o verificador por
+    // upload reconhecer o documento mesmo se o hash do arquivo mudar. Ignora o
+    // valor 'PREVIEW' (pré-visualização não registra nem deve ser rastreável).
+    $docCodigo = $opcoes['doc_codigo'] ?? '';
+    if ($docCodigo !== '' && $docCodigo !== 'PREVIEW') {
+        $pdf->SetKeywords('SEMA-DOC-ID:' . $docCodigo);
+    }
+
     if (ob_get_length()) {
        ob_clean();
     }
