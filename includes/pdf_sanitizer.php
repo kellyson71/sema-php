@@ -18,8 +18,7 @@ function sanitizarHtmlParaPdf(string $html): string {
     $html = ParecerService::stripVarSpans($html);
 
     // 2. Remove elementos visuais do editor (separadores de página)
-    $html = preg_replace('/<div[^>]*class="[^"]*page-gap[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
-    $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
+    $html = preg_replace('/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
 
     // 3. Remove position absolute/fixed/relative de qualquer style inline
     $html = preg_replace('/\bposition\s*:\s*(absolute|fixed|relative|sticky)\b\s*[;]?/i', '', $html);

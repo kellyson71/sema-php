@@ -116,9 +116,8 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     $html = trim($conteudo_html);
 
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
-    $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
-    // Separadores visuais de página do editor (estilo Google Docs) — nunca vão para o PDF
-    $html = preg_replace('/<div[^>]*class="[^"]*page-gap[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
+    // Marcadores visuais de corte/separação de página do editor — nunca vão para o PDF
+    $html = preg_replace('/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
     $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
     // Summernote injeta <p><br></p> ao apertar Enter — no editor viram "respiros"
     // visualmente discretos, mas no TCPDF cada um vira uma linha cheia. Removemos

@@ -1090,8 +1090,7 @@ include '../header.php';
             html = document.getElementById('editor-conteudo').value;
         }
         // Separadores de página do editor (Google Docs style) — nunca vão ao servidor
-        html = html.replace(/<div[^>]*class="[^"]*page-gap[^"]*"[^>]*>[\s\S]*?<\/div>/g, '');
-        html = html.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
+        html = html.replace(/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/g, '');
         // Spans var-field viram texto puro
         html = html.replace(
             /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
