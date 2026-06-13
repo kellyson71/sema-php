@@ -314,7 +314,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <?php if (!MODO_HOMOLOG): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
+    <?php endif; ?>
     <style>
         :root {
             --primary: #009851;
@@ -981,6 +983,40 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     setLoading(btn, true, 'Verificando…');
     clearAlert('login-err');
 
+    <?php if (MODO_HOMOLOG): ?>
+    fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Entrar no painel ' + iconArrow();
+        if (data.success) {
+            if (data.skip_2fa) { window.location.href = data.redirect || 'index.php'; return; }
+            state.user = usuario;
+            state.maskedEmail = data.email_mascarado || '';
+            state.hasTotp     = !!data.has_totp;
+            document.getElementById('mc-app').classList.add('hidden');
+
+            if (state.hasTotp && state.maskedEmail) {
+                document.getElementById('method-user').textContent = usuario;
+                document.getElementById('method-email-masked').textContent = state.maskedEmail;
+                document.getElementById('mc-app').classList.remove('hidden');
+                goTo('method');
+            } else {
+                state.method = state.hasTotp ? 'app' : 'email';
+                renderOtp();
+                goTo('otp');
+                setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
+            }
+        } else {
+            showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+        }
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Entrar no painel ' + iconArrow();
+        showAlert('login-err', 'Erro de rede. Tente novamente.');
+    });
+    <?php else: ?>
     grecaptcha.ready(() => {
         grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', { action: 'login' }).then(token => {
             document.getElementById('recaptcha-token').value = token;
@@ -1019,6 +1055,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
             });
         });
     });
+    <?php endif; ?>
 });
 
 /* ── 2FA method selection ── */
