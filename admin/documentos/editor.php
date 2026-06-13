@@ -397,24 +397,15 @@ include '../header.php';
         /* Etiqueta de etapa */
         .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
-        /* PIN de assinatura — bloco EVIDENCIADO */
+        /* PIN de assinatura — compacto */
         .pin-box {
-            display:flex; align-items:center; gap:14px;
-            background: linear-gradient(135deg, #f0f9f4, #e7f5ee);
-            border: 2px solid var(--sema-green); border-radius:14px;
-            padding:16px; margin-bottom:18px;
-            box-shadow: 0 4px 16px rgba(28,75,54,.12);
+            background:#f6faf8; border:1px solid #cfe6da; border-radius:10px;
+            padding:12px 14px; margin-bottom:16px;
         }
-        .pin-box .pin-ic {
-            width:46px; height:46px; border-radius:12px; flex-shrink:0;
-            background: var(--sema-green); color:#fff;
-            display:flex; align-items:center; justify-content:center; font-size:1.2rem;
-            box-shadow: 0 4px 10px rgba(28,75,54,.3);
-        }
-        .pin-box .form-control { border:1.5px solid #bfe3d0; font-weight:600; letter-spacing:.18em; }
-        .pin-box .form-control:focus { border-color: var(--sema-green); box-shadow:0 0 0 .2rem rgba(28,75,54,.15); }
-        .pin-box-label { font-weight:800; font-size:.9rem; color: var(--sema-green); }
-        .pin-box-hint { font-size:.72rem; color:#5b7c6e; }
+        .pin-box-label { font-weight:700; font-size:.82rem; color: var(--sema-green); display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+        .pin-box .form-control { border:1px solid #cfe1d7; letter-spacing:.14em; }
+        .pin-box .form-control:focus { border-color: var(--sema-green); box-shadow:0 0 0 .18rem rgba(28,75,54,.13); }
+        .pin-box-hint { font-size:.71rem; color:#6b8377; margin-top:5px; }
 
         /* Cards de co-assinante (lista selecionável) */
         .coass-grid { display:flex; flex-direction:column; gap:7px; max-height:200px; overflow-y:auto; padding:2px; }
@@ -612,16 +603,13 @@ include '../header.php';
                             style="font-size:.82rem;resize:none;"></textarea>
               </div>
 
-              <!-- PIN de assinatura (modos digitais) — EVIDENCIADO -->
+              <!-- PIN de assinatura (modos digitais) -->
               <div id="blocoPin" class="pin-box">
-                  <div class="pin-ic"><i class="fas fa-key"></i></div>
-                  <div class="flex-grow-1">
-                      <div class="pin-box-label">PIN de assinatura</div>
-                      <input type="password" id="pinAssinatura" class="form-control form-control-lg mt-1" maxlength="64"
-                             autocomplete="off" placeholder="Digite seu PIN pessoal">
-                      <div class="pin-box-hint mt-1">
-                          <i class="fas fa-lock me-1"></i>Protege sua chave individual (RSA-2048). Só você o conhece — é o que garante a validade jurídica.
-                      </div>
+                  <div class="pin-box-label"><i class="fas fa-key"></i> PIN de assinatura</div>
+                  <input type="password" id="pinAssinatura" class="form-control" maxlength="64"
+                         autocomplete="off" placeholder="Digite seu PIN pessoal">
+                  <div class="pin-box-hint">
+                      <i class="fas fa-lock me-1"></i>Protege sua chave individual e garante a validade jurídica da assinatura.
                   </div>
               </div>
 
@@ -1231,7 +1219,7 @@ include '../header.php';
     function atualizarBlocosPin() {
         const modoAtivo  = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const ehDigital  = modoAtivo !== 'sem_assinar';
-        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'flex' : 'none';
+        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'block' : 'none';
         document.getElementById('blocoPinSetup').style.display = (ehDigital && adminTemChave === false) ? 'block' : 'none';
     }
 
@@ -1248,14 +1236,13 @@ include '../header.php';
         }
     }
 
-    /* Cards de co-assinante: clique alterna o checkbox + estilo .sel */
-    document.addEventListener('click', function(e) {
-        const card = e.target.closest('.coass-card');
-        if (!card) return;
-        const cb = card.querySelector('input[type=checkbox]');
-        // se clicou direto no checkbox, ele já alterna; senão alternamos nós
-        if (e.target !== cb) { cb.checked = !cb.checked; }
-        card.classList.toggle('sel', cb.checked);
+    /* Cards de co-assinante: o <label> alterna o checkbox nativamente;
+       só refletimos o estado na classe .sel via evento change (sem toggle
+       manual, que causava duplo-toggle e impedia a seleção). */
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('.coass-card input[type=checkbox]')) {
+            e.target.closest('.coass-card').classList.toggle('sel', e.target.checked);
+        }
     });
 
     /* ─── Listener do checkbox de diretrizes ─────────────── */
