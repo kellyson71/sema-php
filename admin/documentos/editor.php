@@ -286,6 +286,11 @@ include '../header.php';
             overflow: visible !important;
             box-sizing: border-box !important;
             position: relative;
+            /* Espelha a quebra do TCPDF: palavras longas (ex: "aaaa…" sem
+               espaços) quebram em vez de transbordar — mantém a altura medida
+               coerente com a paginação real do PDF. */
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
         }
         .note-editable table {
             width: 100%; border-collapse: collapse;
@@ -302,35 +307,75 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           SEPARADOR DE PÁGINAS ESTILO GOOGLE DOCS
-           Elemento em fluxo (contenteditable=false) inserido
-           exatamente onde o TCPDF corta a página. Visualmente
-           separa as folhas com a cor da "mesa" e sombras de borda.
+           MARCADOR DE CORTE DE PÁGINA
+           O TCPDF pagina o fluxo contínuo cortando a cada 256mm
+           úteis — inclusive NO MEIO de um parágrafo. O marcador é
+           um overlay na posição exata do corte: o texto acima fica
+           na página N, o texto abaixo vai para a página N+1.
         ═══════════════════════════════════════════════ */
-        .note-editable .page-gap {
-            display: block;
-            height: 14mm;
-            margin: 0 calc(-1 * var(--a4-margin-lr));
-            background: #d0d4da;
-            position: relative;
-            pointer-events: none;
-            box-shadow:
-                inset 0  10px 8px -8px rgba(0,0,0,0.28),
-                inset 0 -10px 8px -8px rgba(0,0,0,0.28);
-        }
-        .note-editable .page-gap::after {
-            content: attr(data-label);
+        .note-editable .page-cut {
             position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font: 700 7.5pt 'Helvetica Neue', sans-serif;
-            color: #64748b;
-            background: #fff;
-            padding: 2px 12px;
-            border-radius: 12px;
-            border: 1px solid #cbd5e1;
-            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            left: 0; right: 0;
+            height: 0;
+            pointer-events: none;
+            z-index: 12;
         }
+        .note-editable .page-cut::before {
+            content: '';
+            position: absolute;
+            left: calc(-1 * var(--a4-margin-lr));
+            right: calc(-1 * var(--a4-margin-lr));
+            top: 0;
+            border-top: 2px dashed #64a3d8;
+        }
+        /* sombra suave abaixo do corte = "início da próxima folha" */
+        .note-editable .page-cut::after {
+            content: '';
+            position: absolute;
+            left: calc(-1 * var(--a4-margin-lr));
+            right: calc(-1 * var(--a4-margin-lr));
+            top: 2px;
+            height: 12px;
+            background: linear-gradient(rgba(100, 163, 216, .14), transparent);
+        }
+        .note-editable .page-cut .pc-label {
+            position: absolute;
+            right: calc(-1 * var(--a4-margin-lr) + 4px);
+            top: -11px;
+            background: #1e5a96;
+            color: #fff;
+            font: 700 9px 'Helvetica Neue', sans-serif;
+            padding: 3px 9px;
+            border-radius: 10px;
+            white-space: nowrap;
+            box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        }
+
+        /* ═══════════════════════════════════════════════
+           MODAL — SELETOR DE MODO (lista vertical hierárquica)
+        ═══════════════════════════════════════════════ */
+        .modo-lista { display: flex; flex-direction: column; gap: 8px; }
+        .modo-card {
+            display: flex; align-items: center; gap: 12px;
+            border: 1.5px solid #e5e7eb; border-radius: 12px;
+            padding: 12px 14px; cursor: pointer; background: #fff;
+            transition: border-color .12s, background .12s;
+            margin: 0;
+        }
+        .modo-card:hover { border-color: #cbd5e1; background: #f8fafc; }
+        .modo-card .mc-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; flex-shrink: 0;
+            background: #f1f5f9; color: #64748b;
+            transition: background .12s, color .12s;
+        }
+        .modo-card .mc-title { font-weight: 700; font-size: .86rem; color: #1e293b; }
+        .modo-card .mc-desc  { font-size: .74rem; color: #64748b; margin-top: 1px; }
+        .modo-card .mc-check { margin-left: auto; font-size: 1.05rem; color: #d1d5db; transition: color .12s; flex-shrink: 0; }
+        .modo-card.selected { border-color: var(--sema-green); background: #f0fdf4; }
+        .modo-card.selected .mc-icon { background: var(--sema-green); color: #fff; }
+        .modo-card.selected .mc-check { color: var(--sema-green); }
 
         /* ═══════════════════════════════════════════════
            MODAL
@@ -446,33 +491,37 @@ include '../header.php';
           </div>
           <div class="modal-body p-4">
 
-              <!-- Seletor de modo -->
-              <p class="fw-bold mb-2" style="font-size:.87rem;">Como deseja finalizar este documento?</p>
-              <div class="d-flex gap-2 mb-4" id="modoCards">
-                  <label class="modo-card selected" data-modo="assinar" style="flex:1;border:2px solid #16a34a;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f0fdf4;">
+              <!-- Seletor de modo: lista vertical com hierarquia clara -->
+              <div class="mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;">Etapa 1 de 2</div>
+              <p class="fw-bold mb-2" style="font-size:.92rem;">Como este documento será finalizado?</p>
+              <div class="modo-lista mb-4" id="modoCards">
+                  <label class="modo-card selected" data-modo="assinar">
                       <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;color:#16a34a;"><i class="fas fa-file-signature"></i></div>
-                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#16a34a;">Assinar eletronicamente</div>
-                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Assinatura avançada com QR de verificação</div>
+                      <div class="mc-icon"><i class="fas fa-file-signature"></i></div>
+                      <div>
+                          <div class="mc-title">Assinar eletronicamente</div>
+                          <div class="mc-desc">Assinatura avançada com sua chave pessoal e QR code de verificação pública</div>
+                      </div>
+                      <i class="fas fa-circle-check mc-check"></i>
                   </label>
-                  <label class="modo-card" data-modo="sem_assinar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
-                      <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;color:#92400e;"><i class="fas fa-pen-ruler"></i></div>
-                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#374151;">Linha para assinar</div>
-                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Assinatura manual no papel</div>
-                  </label>
-                  <label class="modo-card" data-modo="assinar_e_requisitar" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;background:#f9fafb;">
+                  <label class="modo-card" data-modo="assinar_e_requisitar">
                       <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
-                      <div style="font-size:1.3rem;margin-bottom:5px;color:#1d4ed8;"><i class="fas fa-users"></i></div>
-                      <div class="modo-card-titulo" style="font-weight:700;font-size:.83rem;color:#1d4ed8;">Assinar + requisitar</div>
-                      <div style="font-size:.7rem;color:#6b7280;margin-top:3px;">Pede co-assinatura de outros servidores</div>
+                      <div class="mc-icon"><i class="fas fa-users"></i></div>
+                      <div>
+                          <div class="mc-title">Assinar e solicitar co-assinatura</div>
+                          <div class="mc-desc">Você assina agora e outros servidores são notificados para assinar também</div>
+                      </div>
+                      <i class="fas fa-circle-check mc-check"></i>
                   </label>
-              </div>
-
-              <!-- Aviso para modo sem_assinar -->
-              <div id="avisoSemAssinar" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem;color:#92400e;">
-                  <i class="fas fa-triangle-exclamation me-2"></i>
-                  <strong>Atenção:</strong> Documentos sem assinatura digital <strong>não podem ser usados para aprovação no Secretário</strong> (Setor 3 exige ao menos uma assinatura). Use este modo apenas para rascunhos ou documentos que serão assinados à mão.
+                  <label class="modo-card" data-modo="sem_assinar">
+                      <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
+                      <div class="mc-icon"><i class="fas fa-pen-ruler"></i></div>
+                      <div>
+                          <div class="mc-title">Gerar com linha para assinatura manual</div>
+                          <div class="mc-desc">Sem assinatura eletrônica — o documento será assinado à caneta</div>
+                      </div>
+                      <i class="fas fa-circle-check mc-check"></i>
+                  </label>
               </div>
 
               <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
@@ -537,41 +586,37 @@ include '../header.php';
               </div>
 
               <form id="formCheckout">
+                  <div class="mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;">Etapa 2 de 2</div>
+                  <p class="fw-bold mb-2" style="font-size:.92rem;">Confirmação</p>
+
                   <!-- Diretrizes (só para modos com assinatura digital) -->
                   <div id="blocoDiretrizes">
-                      <div class="bg-light p-3 rounded-3 mb-3 text-center border">
-                          <a href="../diretrizes_assinatura.php" target="_blank" class="text-decoration-none fw-bold"
-                             style="color: var(--sema-green);">
-                              <i class="fas fa-external-link-alt me-1"></i>
-                              Ler Diretrizes de Convalidação e Responsabilidade Legal
-                          </a>
-                      </div>
-                      <div class="form-check p-3 mb-3 border rounded border-success"
-                           style="background: rgba(16,185,129,0.06);">
-                          <input class="form-check-input ms-1 me-2 border-success shadow-none"
-                                 type="checkbox" id="checkDiretrizes"
-                                 style="transform: scale(1.3); margin-top: 5px;">
-                          <label class="form-check-label fw-bold text-dark" for="checkDiretrizes">
-                              Eu afirmo que li e concordo inteiramente com as diretrizes de assinatura digital
-                              <span class="text-danger">*</span>
+                      <div class="d-flex align-items-start gap-2 p-3 mb-3 border rounded-3" style="border-color:#bbf7d0 !important;background:#f7fefb;">
+                          <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkDiretrizes"
+                                 style="margin-top:2px;">
+                          <label class="form-check-label" for="checkDiretrizes" style="font-size:.84rem;cursor:pointer;">
+                              Li e aceito as
+                              <a href="../diretrizes_assinatura.php" target="_blank" class="fw-bold text-decoration-none" style="color:var(--sema-green);">diretrizes de responsabilidade legal <i class="fas fa-arrow-up-right-from-square" style="font-size:.65rem;"></i></a>
+                              da assinatura eletrônica <span class="text-danger">*</span>
                           </label>
                       </div>
                   </div>
 
                   <!-- Confirmação para modo sem_assinar -->
-                  <div id="blocoConfirmacaoManual" style="display:none;" class="form-check p-3 mb-3 border rounded border-warning" style="background:rgba(251,191,36,0.06);">
-                      <input class="form-check-input ms-1 me-2 shadow-none" type="checkbox" id="checkManual"
-                             style="transform: scale(1.3); margin-top: 5px;">
-                      <label class="form-check-label fw-bold text-dark" for="checkManual">
-                          Entendo que este documento requer assinatura física e não poderá ser aprovado pelo Secretário sem uma assinatura digital adicional
-                          <span class="text-danger">*</span>
-                      </label>
+                  <div id="blocoConfirmacaoManual" style="display:none;">
+                      <div class="d-flex align-items-start gap-2 p-3 mb-3 border rounded-3" style="border-color:#fde68a !important;background:#fffdf5;">
+                          <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkManual"
+                                 style="margin-top:2px;">
+                          <label class="form-check-label" for="checkManual" style="font-size:.84rem;cursor:pointer;">
+                              Entendo que sem assinatura eletrônica este documento <strong>não pode ser aprovado pelo Secretário</strong> (Setor 3) <span class="text-danger">*</span>
+                          </label>
+                      </div>
                   </div>
 
-                  <div class="form-check ms-2 mb-3">
+                  <div class="form-check ms-1 mb-3">
                       <input class="form-check-input" type="checkbox" id="checkDownload" checked>
-                      <label class="form-check-label text-muted" for="checkDownload">
-                          Fazer o download automático do PDF após gerar
+                      <label class="form-check-label text-muted" for="checkDownload" style="font-size:.84rem;">
+                          Baixar o PDF automaticamente após gerar
                       </label>
                   </div>
 
@@ -883,11 +928,12 @@ include '../header.php';
     }
 
     /**
-     * PAGINAÇÃO ESTILO GOOGLE DOCS
-     * Insere separadores em fluxo (.page-gap, contenteditable=false) entre os
-     * blocos, exatamente onde o TCPDF corta (256mm úteis por página). O texto
-     * abaixo do separador desce visualmente — como folhas separadas — sem
-     * alterar o conteúdo real (os separadores são removidos antes do envio).
+     * MARCADORES DE CORTE DE PÁGINA
+     * O TCPDF pagina o fluxo contínuo: corta a cada 256mm úteis, inclusive no
+     * MEIO de um parágrafo (a linha de cima fica na página N, a de baixo vai
+     * para a N+1). O marcador é um overlay posicionado exatamente no Y do
+     * corte — funciona para qualquer conteúdo, inclusive um parágrafo gigante.
+     * Para conferência 100% fiel existe o botão "Pré-visualizar PDF".
      */
     let _lastTotalPages = 1;
     function iniciarMonitorPaginas() {
@@ -899,84 +945,50 @@ include '../header.php';
 
         const observer = new MutationObserver(function(mutations) {
             if (_updating) return;
-            // Ignorar mutações causadas pelos próprios separadores
-            const isOnlyGaps = mutations.every(function(m) {
+            // Ignorar mutações causadas pelos próprios marcadores
+            const isOnlyCuts = mutations.every(function(m) {
                 return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).every(function(n) {
-                    return n.nodeType === 1 && n.classList && n.classList.contains('page-gap');
+                    return n.nodeType === 1 && n.classList && n.classList.contains('page-cut');
                 });
             });
-            if (isOnlyGaps) return;
+            if (isOnlyCuts) return;
 
             clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 250);
+            _debounceTimer = setTimeout(recalcularPaginas, 200);
         });
-
-        function criarGap(numPagina) {
-            const gap = document.createElement('div');
-            gap.className = 'page-gap';
-            gap.setAttribute('contenteditable', 'false');
-            gap.setAttribute('data-label', 'Fim da página ' + numPagina + ' — Página ' + (numPagina + 1));
-            return gap;
-        }
 
         function recalcularPaginas() {
             if (_updating) return;
             _updating = true;
             observer.disconnect();
 
-            // 1. Remove separadores atuais (medição parte do conteúdo puro + re-inserção)
-            editable.querySelectorAll('.page-gap').forEach(function(g) { g.remove(); });
+            editable.querySelectorAll('.page-cut').forEach(function(c) { c.remove(); });
 
-            // 2. Percorre os blocos de nível superior inserindo separadores onde
-            //    o conteúdo cruza o limite útil da página. Medições são feitas ao
-            //    vivo: cada gap inserido desloca o conteúdo seguinte, e o próximo
-            //    corte é calculado a partir da nova posição.
-            let numPagina = 1;
-            let pageStart = 0;                       // offsetTop do início da página atual
-            let pageBottom = PAGE_USABLE_PX;          // limite inferior da página atual
+            const cs = getComputedStyle(editable);
+            const padTop = parseFloat(cs.paddingTop) || 0;
+            const padBottom = parseFloat(cs.paddingBottom) || 0;
 
-            let i = 0;
-            // children é uma HTMLCollection viva — inserções são refletidas
-            const children = editable.children;
-            while (i < children.length) {
-                const bloco = children[i];
-                if (bloco.classList && bloco.classList.contains('page-gap')) { i++; continue; }
+            // Altura real do conteúdo, sem os paddings do canvas
+            const contentH = editable.scrollHeight - padTop - padBottom;
+            const totalPaginas = Math.max(1, Math.ceil(contentH / PAGE_USABLE_PX));
 
-                const top = bloco.offsetTop;
-                const h   = bloco.offsetHeight;
-
-                if (top >= pageBottom || (top < pageBottom && top + h > pageBottom && h <= PAGE_USABLE_PX)) {
-                    // Bloco começa após o corte, ou cruza o corte e cabe inteiro
-                    // na próxima página → separador antes dele
-                    const gap = criarGap(numPagina);
-                    editable.insertBefore(gap, bloco);
-                    numPagina++;
-                    // Próxima página começa no offsetTop do bloco (já deslocado pelo gap)
-                    pageStart  = bloco.offsetTop;
-                    pageBottom = pageStart + PAGE_USABLE_PX;
-                    i += 2; // pula gap + bloco
-                    continue;
-                }
-
-                if (h > PAGE_USABLE_PX && top < pageBottom) {
-                    // Bloco maior que uma página (tabela longa): o TCPDF o divide
-                    // internamente — estendemos o limite sem inserir separador
-                    while (pageBottom < top + h) {
-                        pageBottom += PAGE_USABLE_PX;
-                        numPagina++;
-                    }
-                }
-                i++;
+            // Um marcador por corte, na posição exata do fluxo contínuo
+            for (let p = 1; p < totalPaginas; p++) {
+                const cut = document.createElement('div');
+                cut.className = 'page-cut';
+                cut.setAttribute('contenteditable', 'false');
+                cut.style.top = (padTop + p * PAGE_USABLE_PX) + 'px';
+                cut.innerHTML = '<span class="pc-label">fim da pág. ' + p + ' ↓ pág. ' + (p + 1) + '</span>';
+                editable.appendChild(cut);
             }
 
-            // 3. Contador no rodapé
-            if (numPagina !== _lastTotalPages) {
+            if (totalPaginas !== _lastTotalPages) {
                 const counter = document.getElementById('visual-page-counter');
-                if (counter) counter.innerHTML = '&mdash; ' + numPagina + ' página' + (numPagina > 1 ? 's' : '') + ' &mdash;';
-                _lastTotalPages = numPagina;
+                if (counter) counter.innerHTML = '&mdash; ' + totalPaginas + ' página' + (totalPaginas > 1 ? 's' : '') + ' no PDF &mdash;';
+                _lastTotalPages = totalPaginas;
             }
 
-            // 4. Reposiciona o badge de assinatura na última página
+            // Reposiciona o badge de assinatura na última página
             posicionarBadge();
 
             _updating = false;
@@ -985,7 +997,7 @@ include '../header.php';
 
         editable.addEventListener('input', function() {
             clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 250);
+            _debounceTimer = setTimeout(recalcularPaginas, 200);
         });
 
         observer.observe(editable, { childList: true, subtree: true, characterData: true });
@@ -1171,40 +1183,24 @@ include '../header.php';
     /* ─── Seletor de modo ──────────────────────────────────── */
     (function() {
         const cards = document.querySelectorAll('.modo-card');
-        const modoColors = {
-            assinar: { border: '#16a34a', bg: '#f0fdf4', text: '#16a34a' },
-            sem_assinar: { border: '#b7791f', bg: '#fffbeb', text: '#92400e' },
-            assinar_e_requisitar: { border: '#1d4ed8', bg: '#eff6ff', text: '#1d4ed8' },
-        };
         const btnLabels = {
-            assinar: 'Confirmar Assinatura Técnica',
-            sem_assinar: 'Gerar com Linha Manual',
-            assinar_e_requisitar: 'Assinar e Solicitar Co-assinatura',
+            assinar: 'Assinar Documento',
+            sem_assinar: 'Gerar Documento',
+            assinar_e_requisitar: 'Assinar e Solicitar',
         };
 
         cards.forEach(card => {
             card.addEventListener('click', () => {
                 const modo = card.dataset.modo;
 
-                cards.forEach(c => {
-                    c.classList.remove('selected');
-                    c.style.border = '2px solid #e5e7eb';
-                    c.style.background = '#f9fafb';
-                    c.querySelector('div:nth-child(3)').style.color = '#374151';
-                });
-
+                cards.forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                const col = modoColors[modo];
-                card.style.border = `2px solid ${col.border}`;
-                card.style.background = col.bg;
-                card.querySelector('div:nth-child(3)').style.color = col.text;
 
                 document.getElementById('btnAssinarLabel').textContent = btnLabels[modo] || 'Confirmar';
 
                 const isSemAssinar = modo === 'sem_assinar';
                 const isRequisitar = modo === 'assinar_e_requisitar';
 
-                document.getElementById('avisoSemAssinar').style.display       = isSemAssinar ? 'block' : 'none';
                 document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
                 document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
                 document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
