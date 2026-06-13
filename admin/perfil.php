@@ -1,9 +1,13 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/assinatura_avancada_service.php';
 verificaLogin();
 
 $adminId = (int) $_SESSION['admin_id'];
 $admin = getDadosAdmin($pdo, $adminId);
+
+// Estado da chave de assinatura eletrônica (para a seção de PIN)
+$temChaveAssinatura = (new AssinaturaAvancadaService($pdo))->temChave($adminId);
 
 $uploadDir = '../uploads/perfil/';
 if (!file_exists($uploadDir)) {
@@ -244,6 +248,16 @@ include 'header.php';
     .profile-btn-danger:hover { background:#fff6f6; color:#9a2323; }
     .profile-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:20px; }
     .profile-alert { border:none; border-radius:16px; box-shadow:var(--card-shadow); }
+    /* Card de status do PIN de assinatura */
+    .pin-status-card { display:flex; align-items:center; gap:16px; padding:18px 20px; border-radius:16px; border:1px solid var(--line); background:#fff; margin-top:14px; }
+    .pin-status-card.ativo   { border-color:#bbf0d4; background:linear-gradient(180deg,#f3faf6,#fff); }
+    .pin-status-card.inativo { border-color:#fde6c7; background:linear-gradient(180deg,#fffaf2,#fff); }
+    .pin-status-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    .pin-status-card.ativo   .pin-status-icon { background:#1c4b36; color:#fff; }
+    .pin-status-card.inativo .pin-status-icon { background:#f59e0b; color:#fff; }
+    .pin-status-title { font-size:.98rem; font-weight:700; margin:0 0 2px; color:var(--ink); }
+    .pin-status-desc  { font-size:.82rem; color:var(--muted, #64748b); margin:0; line-height:1.4; }
+    @media (max-width:640px){ .pin-status-card { flex-direction:column; align-items:flex-start; } }
     .totp-modal .modal-content { border-radius:24px; border:1px solid var(--line); overflow:hidden; box-shadow:0 28px 52px rgba(16, 33, 23, .18); }
     .totp-modal-header { background:linear-gradient(135deg, var(--primary) 0%, #0f4425 100%); color:#fff; border-bottom:none; padding:22px 24px 18px; }
     .totp-modal-title { margin:0 0 6px; font-size:1.18rem; font-weight:800; color:#fff; }
@@ -437,8 +451,79 @@ include 'header.php';
                     </button>
                 </div>
             </form>
+
+            <!-- ── PIN de assinatura eletrônica ─────────────────────── -->
+            <div class="profile-divider"></div>
+            <div class="panel-head" style="margin-top:18px;">
+                <div>
+                    <span class="panel-kicker">Assinatura eletrônica</span>
+                    <h2>PIN de assinatura</h2>
+                    <p>O PIN protege sua chave criptográfica individual (RSA-2048). É exigido sempre que você assina um documento — só você o conhece.</p>
+                </div>
+            </div>
+
+            <div class="pin-status-card <?= $temChaveAssinatura ? 'ativo' : 'inativo' ?>">
+                <div class="pin-status-icon">
+                    <i class="fas <?= $temChaveAssinatura ? 'fa-shield-halved' : 'fa-shield' ?>"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h3 class="pin-status-title">
+                        <?= $temChaveAssinatura ? 'Chave de assinatura configurada' : 'Chave de assinatura ainda não configurada' ?>
+                    </h3>
+                    <p class="pin-status-desc">
+                        <?= $temChaveAssinatura
+                            ? 'Você já pode assinar documentos. Se esqueceu o PIN, redefina abaixo — isso gera uma nova chave (os documentos já assinados continuam válidos).'
+                            : 'Configure um PIN para habilitar a assinatura eletrônica avançada dos seus documentos.' ?>
+                    </p>
+                </div>
+                <button type="button" class="profile-btn profile-btn-primary" onclick="abrirModalPin()">
+                    <i class="fas <?= $temChaveAssinatura ? 'fa-rotate' : 'fa-key' ?>"></i>
+                    <?= $temChaveAssinatura ? 'Redefinir PIN' : 'Configurar PIN' ?>
+                </button>
+            </div>
         </div>
     </div>
+</div>
+
+<!-- Modal PIN de assinatura -->
+<div class="modal fade" id="modalPin" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header px-4 py-3" style="background:linear-gradient(135deg,#1c4b36,#0d7f5f);">
+        <h5 class="modal-title fw-bold text-white">
+          <i class="fas fa-key me-2"></i><?= $temChaveAssinatura ? 'Redefinir PIN de assinatura' : 'Configurar PIN de assinatura' ?>
+        </h5>
+        <button type="button" class="btn-close" style="filter:brightness(0) invert(1);" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <?php if ($temChaveAssinatura): ?>
+          <div class="alert alert-warning py-2" style="font-size:.82rem;">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            Redefinir gera uma <strong>nova chave</strong>. O PIN antigo deixa de funcionar. Documentos já assinados permanecem válidos.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Senha de login (confirmação)</label>
+            <input type="password" id="pinSenhaLogin" class="form-control" autocomplete="current-password" placeholder="Sua senha de acesso ao painel">
+          </div>
+        <?php endif; ?>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Novo PIN <span class="text-muted">(mínimo 6 caracteres)</span></label>
+          <input type="password" id="pinNovoPerfil" class="form-control" maxlength="64" autocomplete="new-password" placeholder="Crie seu PIN">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">Confirmar PIN</label>
+          <input type="password" id="pinConfirmaPerfil" class="form-control" maxlength="64" autocomplete="new-password" placeholder="Repita o PIN">
+        </div>
+        <div id="pinErroPerfil" class="text-danger small mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white fw-semibold" style="background:#1c4b36;" id="btnSalvarPin" onclick="salvarPin()">
+          <i class="fas fa-check me-1"></i> <?= $temChaveAssinatura ? 'Redefinir' : 'Configurar' ?>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="modal fade" id="modalSetupTotp" tabindex="-1" aria-labelledby="modalSetupTotpLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -478,10 +563,87 @@ include 'header.php';
 
 <script>
     let setupModal;
+    let pinModal;
 
     document.addEventListener('DOMContentLoaded', function() {
         setupModal = new bootstrap.Modal(document.getElementById('modalSetupTotp'));
+        pinModal = new bootstrap.Modal(document.getElementById('modalPin'));
     });
+
+    const temChaveAssinatura = <?= $temChaveAssinatura ? 'true' : 'false' ?>;
+
+    function abrirModalPin() {
+        document.getElementById('pinNovoPerfil').value = '';
+        document.getElementById('pinConfirmaPerfil').value = '';
+        const sl = document.getElementById('pinSenhaLogin');
+        if (sl) sl.value = '';
+        document.getElementById('pinErroPerfil').style.display = 'none';
+        pinModal.show();
+    }
+
+    function salvarPin() {
+        const erro = document.getElementById('pinErroPerfil');
+        const pin = document.getElementById('pinNovoPerfil').value;
+        const pin2 = document.getElementById('pinConfirmaPerfil').value;
+        const senhaEl = document.getElementById('pinSenhaLogin');
+        erro.style.display = 'none';
+
+        if (temChaveAssinatura && senhaEl && !senhaEl.value) {
+            erro.textContent = 'Informe sua senha de login para confirmar.';
+            erro.style.display = 'block'; return;
+        }
+        if (pin.length < 6) {
+            erro.textContent = 'O PIN deve ter no mínimo 6 caracteres.';
+            erro.style.display = 'block'; return;
+        }
+        if (pin !== pin2) {
+            erro.textContent = 'Os PINs não coincidem.';
+            erro.style.display = 'block'; return;
+        }
+
+        const btn = document.getElementById('btnSalvarPin');
+        btn.disabled = true;
+        const txtOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Salvando...';
+
+        const body = new URLSearchParams({
+            acao: 'criar',
+            pin: pin,
+            pin_confirmacao: pin2,
+            confirmar_recriacao: temChaveAssinatura ? '1' : '0',
+        });
+        if (temChaveAssinatura && senhaEl) body.append('senha_login', senhaEl.value);
+
+        fetch('assinatura/chave_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        })
+        .then(r => r.json())
+        .then(ret => {
+            btn.disabled = false;
+            btn.innerHTML = txtOriginal;
+            if (ret.success) {
+                pinModal.hide();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ title: 'PIN configurado', text: 'Sua chave de assinatura está pronta.', icon: 'success', timer: 2200, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    alert('PIN configurado com sucesso.');
+                    location.reload();
+                }
+            } else {
+                erro.textContent = ret.error || 'Não foi possível salvar o PIN.';
+                erro.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = txtOriginal;
+            erro.textContent = 'Falha de conexão. Tente novamente.';
+            erro.style.display = 'block';
+        });
+    }
 
     function iniciarSetupTotp() {
         setupModal.show();

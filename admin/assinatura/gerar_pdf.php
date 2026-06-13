@@ -310,8 +310,8 @@ function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes, array $o
 }
 
 /**
- * Bloco de assinatura no padrão visual gov.br: QR code à esquerda,
- * relação de assinantes à direita, rodapé com URL de verificação.
+ * Bloco de assinatura institucional: logo da SEMA à esquerda, relação de
+ * assinantes à direita, rodapé com URL/código de verificação.
  */
 function _renderBlocoAssinaturaGov(SEMA_PDF $pdf, array $assinantes, float $bX, float $bY, float $bW, float $bH, array $opcoes): void
 {
@@ -329,15 +329,15 @@ function _renderBlocoAssinaturaGov(SEMA_PDF $pdf, array $assinantes, float $bX, 
     $pdf->SetFillColor(28, 75, 54);
     $pdf->Rect($bX, $bY, $bW, 1.1, 'F');
 
-    // QR code (se houver URL de verificação)
-    $qrSize = 15.0;
-    $qrX = $bX + 2.0;
-    $qrY = $bY + 2.6;
+    // Logo SEMA à esquerda (no lugar do antigo QR code)
+    $logoSize = 15.0;
+    $logoX = $bX + 2.5;
+    $logoY = $bY + 2.8;
+    $logoFile = dirname(__DIR__, 2) . '/assets/SEMA/PNG/Azul/Logo SEMA Vertical.png';
     $textX = $bX + 2.0;
-    if ($verifyUrl !== '') {
-        $qrStyle = ['border' => 0, 'padding' => 0, 'fgcolor' => [25, 25, 25], 'bgcolor' => false];
-        $pdf->write2DBarcode($verifyUrl, 'QRCODE,M', $qrX, $qrY, $qrSize, $qrSize, $qrStyle, 'N');
-        $textX = $qrX + $qrSize + 2.5;
+    if (is_file($logoFile)) {
+        $pdf->Image($logoFile, $logoX, $logoY, $logoSize, 0, 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        $textX = $logoX + $logoSize + 3.0;
     }
     $textW = $bX + $bW - 2.0 - $textX;
 

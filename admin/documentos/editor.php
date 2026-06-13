@@ -199,20 +199,14 @@ include '../header.php';
             white-space: nowrap;
             pointer-events: none;
         }
-        .a4-signature-badge .sig-qr {
+        .a4-signature-badge .sig-logo {
             width: 15mm; height: 15mm;
             flex-shrink: 0;
-            border: 1px solid #e2e2e2;
-            background:
-                repeating-linear-gradient(0deg,  #2a2a2a 0 2px, transparent 2px 5px),
-                repeating-linear-gradient(90deg, #2a2a2a 0 2px, #f4f4f4 2px 5px);
             display: flex; align-items: center; justify-content: center;
-            position: relative;
         }
-        .a4-signature-badge .sig-qr span {
-            background: #fff; color: #555;
-            font-size: 7px; font-weight: 700;
-            padding: 1px 4px;
+        .a4-signature-badge .sig-logo img {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
         }
         .a4-signature-badge .sig-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
         .a4-signature-badge .sig-title {
@@ -354,36 +348,54 @@ include '../header.php';
         /* ═══════════════════════════════════════════════
            MODAL — SELETOR DE MODO (lista vertical hierárquica)
         ═══════════════════════════════════════════════ */
-        .modo-lista { display: flex; flex-direction: column; gap: 8px; }
+        .modo-lista { display: flex; flex-direction: column; gap: 10px; }
         .modo-card {
-            display: flex; align-items: center; gap: 12px;
-            border: 1.5px solid #e5e7eb; border-radius: 12px;
-            padding: 12px 14px; cursor: pointer; background: #fff;
-            transition: border-color .12s, background .12s;
-            margin: 0;
+            display: flex; align-items: center; gap: 14px;
+            border: 1.5px solid #e2e8f0; border-radius: 14px;
+            padding: 14px 16px; cursor: pointer; background: #fff;
+            transition: all .15s ease;
+            margin: 0; position: relative;
         }
-        .modo-card:hover { border-color: #cbd5e1; background: #f8fafc; }
+        .modo-card:hover { border-color: var(--sema-green-lt); background: #f6faf8; transform: translateY(-1px); }
         .modo-card .mc-icon {
-            width: 38px; height: 38px; border-radius: 10px;
+            width: 42px; height: 42px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1rem; flex-shrink: 0;
-            background: #f1f5f9; color: #64748b;
-            transition: background .12s, color .12s;
+            font-size: 1.05rem; flex-shrink: 0;
+            background: #eef2f0; color: #5b7c6e;
+            transition: all .15s ease;
         }
-        .modo-card .mc-title { font-weight: 700; font-size: .86rem; color: #1e293b; }
-        .modo-card .mc-desc  { font-size: .74rem; color: #64748b; margin-top: 1px; }
-        .modo-card .mc-check { margin-left: auto; font-size: 1.05rem; color: #d1d5db; transition: color .12s; flex-shrink: 0; }
-        .modo-card.selected { border-color: var(--sema-green); background: #f0fdf4; }
-        .modo-card.selected .mc-icon { background: var(--sema-green); color: #fff; }
-        .modo-card.selected .mc-check { color: var(--sema-green); }
+        .modo-card .mc-title { font-weight: 700; font-size: .9rem; color: #1e293b; }
+        .modo-card .mc-desc  { font-size: .76rem; color: #64748b; margin-top: 2px; line-height: 1.35; }
+        .modo-card .mc-check { margin-left: auto; font-size: 1.25rem; color: #d8dee6; transition: all .15s ease; flex-shrink: 0; }
+        .modo-card.selected {
+            border-color: var(--sema-green);
+            background: linear-gradient(180deg, #f3faf6, #eaf4ee);
+            box-shadow: 0 4px 16px rgba(28,75,54,.13), 0 0 0 1px var(--sema-green) inset;
+        }
+        .modo-card.selected .mc-icon { background: var(--sema-green); color: #fff; box-shadow: 0 4px 10px rgba(28,75,54,.28); }
+        .modo-card.selected .mc-check { color: var(--sema-green); transform: scale(1.1); }
 
         /* ═══════════════════════════════════════════════
            MODAL
         ═══════════════════════════════════════════════ */
-        .modal-header-sema { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .modal-header-sema {
+            background: linear-gradient(135deg, var(--sema-green), var(--sema-teal));
+            border-bottom: none; color: #fff;
+        }
+        .modal-header-sema .modal-title { color: #fff !important; }
+        .modal-header-sema .btn-close { filter: brightness(0) invert(1); opacity: .85; }
         .text-sema  { color: var(--sema-green) !important; }
         .btn-sema   { background: var(--sema-green); border-color: var(--sema-green); color: #fff; }
         .btn-sema:hover { background: var(--sema-green-lt); border-color: var(--sema-green-lt); color: #fff; }
+        /* Botão de pré-visualização — neutro elegante, fora da paleta azul Bootstrap */
+        .btn-preview {
+            background: #fff; color: var(--sema-green);
+            border: 1.5px solid var(--sema-green); font-weight: 500;
+            transition: all .15s ease;
+        }
+        .btn-preview:hover { background: var(--sema-green); color: #fff; }
+        /* Etiqueta de etapa */
+        .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
         /* ─── Icon Picker ─── */
         .icon-option {
@@ -462,7 +474,7 @@ include '../header.php';
                     <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
                         <i class="fas fa-bookmark me-1"></i> Salvar Template
                     </button>
-                    <button class="btn btn-outline-primary fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar — o que você vê é exatamente o documento final">
+                    <button class="btn btn-preview fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar — o que você vê é exatamente o documento final">
                         <i class="fas fa-eye me-1"></i> Pré-visualizar PDF
                     </button>
                     <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
@@ -484,23 +496,23 @@ include '../header.php';
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
           <div class="modal-header modal-header-sema px-4 py-3">
-             <h5 class="modal-title fw-bold text-sema">
-                <i class="fas fa-shield-alt me-2"></i> Autenticação Legal Exigida
+             <h5 class="modal-title fw-bold">
+                <i class="fas fa-file-signature me-2"></i> Assinar e Finalizar Documento
              </h5>
              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body p-4">
 
               <!-- Seletor de modo: lista vertical com hierarquia clara -->
-              <div class="mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;">Etapa 1 de 2</div>
-              <p class="fw-bold mb-2" style="font-size:.92rem;">Como este documento será finalizado?</p>
+              <div class="mb-1 etapa-kicker">Etapa 1 de 2</div>
+              <p class="fw-bold mb-3" style="font-size:.95rem;">Como este documento será finalizado?</p>
               <div class="modo-lista mb-4" id="modoCards">
                   <label class="modo-card selected" data-modo="assinar">
                       <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
                       <div class="mc-icon"><i class="fas fa-file-signature"></i></div>
                       <div>
                           <div class="mc-title">Assinar eletronicamente</div>
-                          <div class="mc-desc">Assinatura avançada com sua chave pessoal e QR code de verificação pública</div>
+                          <div class="mc-desc">Assinatura avançada com sua chave pessoal e código de verificação pública</div>
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
@@ -525,12 +537,12 @@ include '../header.php';
               </div>
 
               <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
-              <div id="painelCoAssinaturaEditor" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
-                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">
+              <div id="painelCoAssinaturaEditor" style="display:none;background:#f3faf6;border:1px solid #bbf0d4;border-radius:12px;padding:14px;margin-bottom:16px;">
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--sema-green);">
                       <i class="fas fa-user-plus me-1"></i> Solicitar co-assinatura de:
                       <span class="text-muted fw-normal" style="font-size:.75rem;">(pode marcar mais de um)</span>
                   </label>
-                  <div id="coassListaDestinatarios" style="max-height:160px;overflow-y:auto;background:#fff;border:1px solid #dbeafe;border-radius:8px;padding:8px 10px;">
+                  <div id="coassListaDestinatarios" style="max-height:160px;overflow-y:auto;background:#fff;border:1px solid #d6ece0;border-radius:8px;padding:8px 10px;">
                       <?php
                       $adminLogado = $_SESSION['admin_id'] ?? 0;
                       $stmtAdminsEditor = $pdo->prepare("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != ? ORDER BY nome");
@@ -565,8 +577,8 @@ include '../header.php';
               </div>
 
               <!-- Primeira configuração de PIN (exibido quando o admin ainda não tem chave) -->
-              <div id="blocoPinSetup" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
-                  <div class="fw-bold mb-1" style="font-size:.88rem;color:#1d4ed8;">
+              <div id="blocoPinSetup" style="display:none;background:#f0f7f3;border:1px solid #bbf0d4;border-radius:12px;padding:14px;margin-bottom:16px;">
+                  <div class="fw-bold mb-1" style="font-size:.88rem;color:var(--sema-green);">
                       <i class="fas fa-shield-halved me-1"></i> Configure sua chave de assinatura
                   </div>
                   <p class="text-muted mb-3" style="font-size:.78rem;">
@@ -586,7 +598,7 @@ include '../header.php';
               </div>
 
               <form id="formCheckout">
-                  <div class="mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;">Etapa 2 de 2</div>
+                  <div class="mb-1 etapa-kicker">Etapa 2 de 2</div>
                   <p class="fw-bold mb-2" style="font-size:.92rem;">Confirmação</p>
 
                   <!-- Diretrizes (só para modos com assinatura digital) -->
@@ -806,7 +818,7 @@ include '../header.php';
     function gerarSignatureBadgeHtml() {
         return `
             <div class="a4-signature-badge" id="sigBadge">
-                <div class="sig-qr"><span>QR</span></div>
+                <div class="sig-logo"><img src="${logoSemaUrl}" alt="SEMA"></div>
                 <div class="sig-info">
                     <div class="sig-title">DOCUMENTO ASSINADO ELETRONICAMENTE</div>
                     <div class="sig-name">${escapeHtml(adminNome.toUpperCase())}</div>

@@ -42,10 +42,23 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Os PINs informados não coincidem.']);
                 break;
             }
+            $jaTemChave = $servico->temChave($adminId);
             // Recriar chave exige confirmação explícita — invalida o PIN anterior
-            if ($servico->temChave($adminId) && ($_POST['confirmar_recriacao'] ?? '') !== '1') {
+            if ($jaTemChave && ($_POST['confirmar_recriacao'] ?? '') !== '1') {
                 echo json_encode(['success' => false, 'error' => 'Você já possui uma chave. Envie confirmar_recriacao=1 para substituí-la.']);
                 break;
+            }
+            // Redefinição (já existe chave) exige a senha de login como dupla
+            // checagem — impede que uma sessão sequestrada troque o PIN à toa.
+            if ($jaTemChave) {
+                $senhaLogin = $_POST['senha_login'] ?? '';
+                $st = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
+                $st->execute([$adminId]);
+                $hashSenha = $st->fetchColumn();
+                if (!$hashSenha || !password_verify($senhaLogin, $hashSenha)) {
+                    echo json_encode(['success' => false, 'error' => 'Senha de login incorreta.']);
+                    break;
+                }
             }
             $servico->criarChave($adminId, $pin);
 
