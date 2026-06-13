@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            if (dispositivoConfiado($pdo)) {
+            if (!empty($admin['bypass_2fa']) || dispositivoConfiado($pdo)) {
                 criarSessaoAdmin($pdo, $admin);
                 $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
                 unset($_SESSION['login_redirect_url']);
