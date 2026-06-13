@@ -643,7 +643,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <div style="margin-bottom:22px">
                     <div class="mono" style="font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase">Painel Administrativo</div>
                     <h2 class="display" style="margin:6px 0 0;font-size:28px;font-weight:700">Bem-vindo de volta</h2>
-                    <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Informe suas credenciais institucionais.</p>
                 </div>
 
                 <?php if ($erro): ?>
