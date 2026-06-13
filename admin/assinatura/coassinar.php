@@ -141,7 +141,7 @@ try {
     require_once __DIR__ . '/gerar_pdf.php';
 
     $numero_processo = "Processo_#{$requerimentoId}";
-    $verifyUrl = rtrim(BASE_URL, '/') . '/consultar/verificar.php?id=' . $documentoId;
+    $verifyUrl = rtrim(BASE_URL, '/') . '/verificar';
     $sigPos = ($fonte['sig_pos_x'] !== null && $fonte['sig_pos_y'] !== null)
         ? ['x' => (float) $fonte['sig_pos_x'], 'y' => (float) $fonte['sig_pos_y']]
         : null;

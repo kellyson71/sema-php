@@ -397,6 +397,52 @@ include '../header.php';
         /* Etiqueta de etapa */
         .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
+        /* PIN de assinatura — bloco EVIDENCIADO */
+        .pin-box {
+            display:flex; align-items:center; gap:14px;
+            background: linear-gradient(135deg, #f0f9f4, #e7f5ee);
+            border: 2px solid var(--sema-green); border-radius:14px;
+            padding:16px; margin-bottom:18px;
+            box-shadow: 0 4px 16px rgba(28,75,54,.12);
+        }
+        .pin-box .pin-ic {
+            width:46px; height:46px; border-radius:12px; flex-shrink:0;
+            background: var(--sema-green); color:#fff;
+            display:flex; align-items:center; justify-content:center; font-size:1.2rem;
+            box-shadow: 0 4px 10px rgba(28,75,54,.3);
+        }
+        .pin-box .form-control { border:1.5px solid #bfe3d0; font-weight:600; letter-spacing:.18em; }
+        .pin-box .form-control:focus { border-color: var(--sema-green); box-shadow:0 0 0 .2rem rgba(28,75,54,.15); }
+        .pin-box-label { font-weight:800; font-size:.9rem; color: var(--sema-green); }
+        .pin-box-hint { font-size:.72rem; color:#5b7c6e; }
+
+        /* Cards de co-assinante (lista selecionável) */
+        .coass-grid { display:flex; flex-direction:column; gap:7px; max-height:200px; overflow-y:auto; padding:2px; }
+        .coass-card {
+            display:flex; align-items:center; gap:11px; cursor:pointer;
+            border:1.5px solid #e2e8f0; border-radius:11px; padding:9px 12px; background:#fff;
+            transition: all .13s ease; margin:0;
+        }
+        .coass-card:hover { border-color: var(--sema-green-lt); background:#f6faf8; }
+        .coass-card .cc-av {
+            width:34px; height:34px; border-radius:50%; flex-shrink:0;
+            background:#e6efe9; color:#3f6a54; font-weight:800; font-size:.8rem;
+            display:flex; align-items:center; justify-content:center;
+        }
+        .coass-card .cc-nome { font-weight:700; font-size:.84rem; color:#1e293b; line-height:1.2; }
+        .coass-card .cc-nivel { font-size:.7rem; color:#94a3b8; }
+        .coass-card .cc-check { margin-left:auto; width:22px; height:22px; border-radius:50%; border:2px solid #d1d9e2; display:flex; align-items:center; justify-content:center; color:#fff; font-size:.7rem; transition: all .13s ease; flex-shrink:0; }
+        .coass-card input { display:none; }
+        .coass-card.sel { border-color: var(--sema-green); background:#f0faf4; box-shadow:0 0 0 1px var(--sema-green) inset; }
+        .coass-card.sel .cc-av { background: var(--sema-green); color:#fff; }
+        .coass-card.sel .cc-check { background: var(--sema-green); border-color: var(--sema-green); }
+
+        /* Caixa de aceite (diretrizes / manual) */
+        .aceite-box { display:flex; align-items:flex-start; gap:10px; padding:13px 15px; margin-bottom:14px; border:1.5px solid #bbf7d0; border-radius:12px; background:#f7fefb; transition: border-color .15s, background .15s; }
+        .aceite-box.warn { border-color:#fde68a; background:#fffdf5; }
+        @keyframes shakeX { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-7px);} 40%,80%{transform:translateX(7px);} }
+        .shake { animation: shakeX .4s ease; border-color:#ef4444 !important; background:#fef2f2 !important; }
+
         /* ─── Icon Picker ─── */
         .icon-option {
             aspect-ratio: 1;
@@ -538,25 +584,27 @@ include '../header.php';
 
               <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
               <div id="painelCoAssinaturaEditor" style="display:none;background:#f3faf6;border:1px solid #bbf0d4;border-radius:12px;padding:14px;margin-bottom:16px;">
-                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--sema-green);">
-                      <i class="fas fa-user-plus me-1"></i> Solicitar co-assinatura de:
-                      <span class="text-muted fw-normal" style="font-size:.75rem;">(pode marcar mais de um)</span>
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:8px;display:block;color:var(--sema-green);">
+                      <i class="fas fa-user-plus me-1"></i> Quem mais vai assinar?
+                      <span class="text-muted fw-normal" style="font-size:.75rem;">selecione um ou mais servidores</span>
                   </label>
-                  <div id="coassListaDestinatarios" style="max-height:160px;overflow-y:auto;background:#fff;border:1px solid #d6ece0;border-radius:8px;padding:8px 10px;">
+                  <div id="coassListaDestinatarios" class="coass-grid">
                       <?php
                       $adminLogado = $_SESSION['admin_id'] ?? 0;
                       $stmtAdminsEditor = $pdo->prepare("SELECT id, nome, nivel FROM administradores WHERE ativo = 1 AND id != ? ORDER BY nome");
                       $stmtAdminsEditor->execute([$adminLogado]);
                       $adminsLista = $stmtAdminsEditor->fetchAll();
-                      foreach ($adminsLista as $adm): ?>
-                          <div class="form-check" style="margin-bottom:4px;">
-                              <input class="form-check-input coass-destinatario" type="checkbox"
-                                     value="<?= $adm['id'] ?>" id="coass_adm_<?= $adm['id'] ?>">
-                              <label class="form-check-label" for="coass_adm_<?= $adm['id'] ?>" style="font-size:.83rem;cursor:pointer;">
-                                  <?= htmlspecialchars($adm['nome']) ?>
-                                  <span class="text-muted">(<?= htmlspecialchars($adm['nivel']) ?>)</span>
-                              </label>
-                          </div>
+                      foreach ($adminsLista as $adm):
+                          $inicial = strtoupper(mb_substr(trim($adm['nome']), 0, 1)); ?>
+                          <label class="coass-card" data-coass>
+                              <input type="checkbox" class="coass-destinatario" value="<?= $adm['id'] ?>">
+                              <span class="cc-av"><?= htmlspecialchars($inicial) ?></span>
+                              <span>
+                                  <span class="cc-nome d-block"><?= htmlspecialchars($adm['nome']) ?></span>
+                                  <span class="cc-nivel"><?= htmlspecialchars(ucfirst(str_replace('_',' ',$adm['nivel']))) ?></span>
+                              </span>
+                              <span class="cc-check"><i class="fas fa-check"></i></span>
+                          </label>
                       <?php endforeach; ?>
                   </div>
                   <textarea id="coassMensagem" class="form-control form-control-sm mt-2" rows="2"
@@ -564,16 +612,17 @@ include '../header.php';
                             style="font-size:.82rem;resize:none;"></textarea>
               </div>
 
-              <!-- PIN de assinatura (modos digitais) -->
-              <div id="blocoPin" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:16px;">
-                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:6px;display:block;">
-                      <i class="fas fa-key me-1"></i> PIN de assinatura
-                  </label>
-                  <input type="password" id="pinAssinatura" class="form-control" maxlength="64"
-                         autocomplete="off" placeholder="Digite seu PIN pessoal de assinatura">
-                  <small class="text-muted" style="font-size:.74rem;">
-                      O PIN protege sua chave criptográfica individual (RSA-2048). Só você o conhece — é ele que garante o nível avançado da assinatura.
-                  </small>
+              <!-- PIN de assinatura (modos digitais) — EVIDENCIADO -->
+              <div id="blocoPin" class="pin-box">
+                  <div class="pin-ic"><i class="fas fa-key"></i></div>
+                  <div class="flex-grow-1">
+                      <div class="pin-box-label">PIN de assinatura</div>
+                      <input type="password" id="pinAssinatura" class="form-control form-control-lg mt-1" maxlength="64"
+                             autocomplete="off" placeholder="Digite seu PIN pessoal">
+                      <div class="pin-box-hint mt-1">
+                          <i class="fas fa-lock me-1"></i>Protege sua chave individual (RSA-2048). Só você o conhece — é o que garante a validade jurídica.
+                      </div>
+                  </div>
               </div>
 
               <!-- Primeira configuração de PIN (exibido quando o admin ainda não tem chave) -->
@@ -603,26 +652,26 @@ include '../header.php';
 
                   <!-- Diretrizes (só para modos com assinatura digital) -->
                   <div id="blocoDiretrizes">
-                      <div class="d-flex align-items-start gap-2 p-3 mb-3 border rounded-3" style="border-color:#bbf7d0 !important;background:#f7fefb;">
+                      <label class="aceite-box" id="aceiteDiretrizes" for="checkDiretrizes">
                           <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkDiretrizes"
                                  style="margin-top:2px;">
-                          <label class="form-check-label" for="checkDiretrizes" style="font-size:.84rem;cursor:pointer;">
+                          <span style="font-size:.84rem;cursor:pointer;">
                               Li e aceito as
                               <a href="../diretrizes_assinatura.php" target="_blank" class="fw-bold text-decoration-none" style="color:var(--sema-green);">diretrizes de responsabilidade legal <i class="fas fa-arrow-up-right-from-square" style="font-size:.65rem;"></i></a>
                               da assinatura eletrônica <span class="text-danger">*</span>
-                          </label>
-                      </div>
+                          </span>
+                      </label>
                   </div>
 
                   <!-- Confirmação para modo sem_assinar -->
                   <div id="blocoConfirmacaoManual" style="display:none;">
-                      <div class="d-flex align-items-start gap-2 p-3 mb-3 border rounded-3" style="border-color:#fde68a !important;background:#fffdf5;">
+                      <label class="aceite-box warn" id="aceiteManual" for="checkManual">
                           <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkManual"
                                  style="margin-top:2px;">
-                          <label class="form-check-label" for="checkManual" style="font-size:.84rem;cursor:pointer;">
+                          <span style="font-size:.84rem;cursor:pointer;">
                               Entendo que sem assinatura eletrônica este documento <strong>não pode ser aprovado pelo Secretário</strong> (Setor 3) <span class="text-danger">*</span>
-                          </label>
-                      </div>
+                          </span>
+                      </label>
                   </div>
 
                   <div class="form-check ms-1 mb-3">
@@ -1182,9 +1231,32 @@ include '../header.php';
     function atualizarBlocosPin() {
         const modoAtivo  = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const ehDigital  = modoAtivo !== 'sem_assinar';
-        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'block' : 'none';
+        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'flex' : 'none';
         document.getElementById('blocoPinSetup').style.display = (ehDigital && adminTemChave === false) ? 'block' : 'none';
     }
+
+    /* Feedback visual de aceite não marcado (shake + toast) */
+    function sacudirAceite(boxId, msg) {
+        const box = document.getElementById(boxId);
+        if (box) {
+            box.classList.add('shake');
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => box.classList.remove('shake'), 500);
+        }
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast:true, position:'top', icon:'warning', title: msg, showConfirmButton:false, timer:2800 });
+        }
+    }
+
+    /* Cards de co-assinante: clique alterna o checkbox + estilo .sel */
+    document.addEventListener('click', function(e) {
+        const card = e.target.closest('.coass-card');
+        if (!card) return;
+        const cb = card.querySelector('input[type=checkbox]');
+        // se clicou direto no checkbox, ele já alterna; senão alternamos nós
+        if (e.target !== cb) { cb.checked = !cb.checked; }
+        card.classList.toggle('sel', cb.checked);
+    });
 
     /* ─── Listener do checkbox de diretrizes ─────────────── */
     document.getElementById('checkDiretrizes').addEventListener('change', function() {
@@ -1229,17 +1301,15 @@ include '../header.php';
         const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const isSemAssinar = modoAtivo === 'sem_assinar';
 
-        // Validação dos checkboxes conforme modo
+        // Validação dos checkboxes conforme modo (com feedback visual)
         const checkDiretrizes = document.getElementById('checkDiretrizes');
         const checkManual     = document.getElementById('checkManual');
         if (!isSemAssinar && !checkDiretrizes.checked) {
-            checkDiretrizes.closest('.form-check').scrollIntoView({ behavior: 'smooth' });
-            checkDiretrizes.focus();
+            sacudirAceite('aceiteDiretrizes', 'Confirme que leu e aceita as diretrizes de assinatura.');
             return;
         }
         if (isSemAssinar && !checkManual.checked) {
-            checkManual.closest('.form-check').scrollIntoView({ behavior: 'smooth' });
-            checkManual.focus();
+            sacudirAceite('aceiteManual', 'Confirme que entendeu a observação sobre a assinatura manual.');
             return;
         }
 
@@ -1278,8 +1348,12 @@ include '../header.php';
             } else {
                 pinParaAssinar = document.getElementById('pinAssinatura').value;
                 if (!pinParaAssinar) {
-                    Swal.fire('PIN obrigatório', 'Digite seu PIN de assinatura para assinar eletronicamente.', 'warning');
+                    const box = document.getElementById('blocoPin');
+                    box.classList.add('shake');
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => box.classList.remove('shake'), 500);
                     document.getElementById('pinAssinatura').focus();
+                    Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite seu PIN de assinatura', showConfirmButton:false, timer:2600 });
                     return;
                 }
             }

@@ -1520,6 +1520,35 @@ include 'header.php';
              margin-top: 0.5rem;
          }
      }
+
+     /* ── Botões de ação do processo (sólidos e coesos) ── */
+     .act-btn {
+         display:inline-flex; align-items:center; justify-content:center; gap:7px;
+         padding:9px 15px; border-radius:10px; font-size:.84rem; font-weight:600;
+         border:none; cursor:pointer; text-decoration:none; color:#fff;
+         transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+     }
+     .act-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.16); filter:brightness(1.05); color:#fff; }
+     .act-btn:active { transform:translateY(0); box-shadow:0 2px 6px rgba(0,0,0,.12); }
+     .act-btn i { font-size:.9em; }
+     .act-go      { background:#15803d; }
+     .act-go2     { background:#0f766e; }
+     .act-back    { background:#b45309; }
+     .act-neutral { background:#475569; }
+     .act-info    { background:#0369a1; }
+     .act-danger  { background:#b3261e; }
+     /* Ação primária — Gerar Documento (destaque, largura total) */
+     .act-gerar {
+         width:100%; padding:13px 18px; font-size:.96rem; font-weight:700;
+         background:linear-gradient(135deg, #1c4b36, #0d7f5f); color:#fff;
+         box-shadow:0 5px 18px rgba(13,127,95,.34);
+     }
+     .act-gerar:hover { box-shadow:0 8px 24px rgba(13,127,95,.46); color:#fff; }
+     .act-revisar {
+         width:100%; padding:12px 18px; font-size:.93rem; font-weight:700;
+         background:#0f766e; color:#fff; box-shadow:0 4px 14px rgba(15,118,110,.3);
+     }
+     .act-revisar:hover { box-shadow:0 6px 20px rgba(15,118,110,.42); color:#fff; }
 </style>
 
 <?php
@@ -2638,19 +2667,17 @@ document.addEventListener('DOMContentLoaded', function() {
                               ?>
 
                               <!-- Ações primárias por role -->
-                              <div style="margin-bottom:18px;">
-                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>"
-                                      style="display:block;width:100%;padding:10px 18px;border-radius:10px;background:#3762d9;color:#fff;font-weight:700;text-align:center;text-decoration:none;font-size:.93rem;box-sizing:border-box;">
-                                      <i class="fas fa-file-alt" style="margin-right:8px;"></i>Gerar Documento
+                              <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:10px;">
+                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>" class="act-btn act-gerar">
+                                      <i class="fas fa-file-pen"></i> Gerar Documento
                                   </a>
                                   <?php if ($isSetor3): ?>
                                   <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
-                                      class="btn fw-semibold text-white w-100 tt"
+                                      class="act-btn act-revisar tt"
                                       data-bs-toggle="tooltip" data-bs-placement="top"
-                                      data-bs-title="Abre os documentos gerados para revisão e assinatura final do Secretário."
-                                      style="background:#0f766e;padding:10px 18px;border-radius:10px;">
-                                      <i class="fas fa-file-circle-check me-2"></i>Revisar Documentos
-                                      <i class="fas fa-external-link-alt ms-2" style="font-size:.72rem;opacity:.8"></i>
+                                      data-bs-title="Abre os documentos gerados para revisão e assinatura final do Secretário.">
+                                      <i class="fas fa-file-circle-check"></i> Revisar Documentos
+                                      <i class="fas fa-external-link-alt" style="font-size:.72rem;opacity:.8"></i>
                                   </a>
                                   <?php endif; ?>
                               </div>
@@ -2660,55 +2687,55 @@ document.addEventListener('DOMContentLoaded', function() {
                                   <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Encaminhamento</p>
                                   <div style="display:flex;flex-wrap:wrap;gap:8px;">
                                       <?php if ($setorAtual === 'setor1'): ?>
-                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-go tt"
                                               onclick="abrirFM('fm-setor2')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encaminha o processo para o Setor 2 — Fiscalização de Obras realizar a vistoria técnica.">
-                                              <i class="fas fa-arrow-right me-1"></i>Enviar à Fiscalização de Obras
+                                              <i class="fas fa-arrow-right"></i>Enviar à Fiscalização de Obras
                                           </button>
-                                          <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-neutral tt"
                                               onclick="abrirFM('fm-finalizar-s1')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encerra o processo diretamente na Triagem, sem enviar para Fiscalização ou Secretário. Use quando não há pendências técnicas.">
-                                              <i class="fas fa-check me-1"></i>Marcar como Concluído
+                                              <i class="fas fa-check"></i>Marcar como Concluído
                                           </button>
                                       <?php elseif ($setorAtual === 'setor2'): ?>
-                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-go tt"
                                               onclick="abrirFM('fm-setor3')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encaminha o processo para o Setor 3 — Revisão do Secretário para aprovação e assinatura final.">
-                                              <i class="fas fa-arrow-right me-1"></i>Enviar ao Secretário
+                                              <i class="fas fa-arrow-right"></i>Enviar ao Secretário
                                           </button>
-                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-go2 tt"
                                               data-bs-toggle="modal" data-bs-target="#docFinalModal"
                                               data-bs-placement="top"
                                               data-bs-title="Envia o documento final ao requerente por link seguro e finaliza o processo.">
-                                              <i class="fas fa-file-circle-check me-1"></i>Enviar Doc. Final ao Cidadão
+                                              <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
                                           </button>
-                                          <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-neutral tt"
                                               onclick="abrirFM('fm-finalizar-s2')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encerra o processo na Fiscalização sem enviar para o Secretário. Use quando o processo já está regularizado.">
-                                              <i class="fas fa-check me-1"></i>Marcar como Concluído
+                                              <i class="fas fa-check"></i>Marcar como Concluído
                                           </button>
-                                          <button type="button" class="btn btn-outline-secondary btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-back tt"
                                               onclick="abrirFM('fm-devolver-s1')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Devolve o processo para o Setor 1 — Triagem com um motivo, para correção ou complemento de documentação.">
-                                              <i class="fas fa-arrow-left me-1"></i>Devolver à Triagem
+                                              <i class="fas fa-arrow-left"></i>Devolver à Triagem
                                           </button>
                                       <?php elseif ($setorAtual === 'setor3'): ?>
-                                          <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-go tt"
                                               onclick="abrirFM('fm-setor3-retornar')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Retorna o processo ao Setor 2 após revisão. Use somente após assinar pelo menos um documento.">
-                                              <i class="fas fa-arrow-left me-1"></i>Retornar ao Setor 2
+                                              <i class="fas fa-arrow-left"></i>Retornar ao Setor 2
                                           </button>
-                                          <button type="button" class="btn btn-outline-secondary btn-sm fw-medium tt"
+                                          <button type="button" class="act-btn act-back tt"
                                               onclick="abrirFM('fm-devolver-s2')"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Devolve o processo ao Setor 2 — Fiscalização com uma justificativa obrigatória para revisão ou ajuste.">
-                                              <i class="fas fa-arrow-left me-1"></i>Devolver à Fiscalização
+                                              <i class="fas fa-arrow-left"></i>Devolver à Fiscalização
                                           </button>
                                       <?php endif; ?>
                                   </div>
@@ -2721,41 +2748,41 @@ document.addEventListener('DOMContentLoaded', function() {
                                   <div class="detail-actions-secondary">
 
                                       <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
-                                      <button type="button" class="btn btn-sky btn-sm fw-medium tt"
+                                      <button type="button" class="act-btn act-info tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Envia um e-mail ao requerente com o link seguro para acessar e baixar o boleto de pagamento."
                                           onclick="document.getElementById('boletoModal') && new bootstrap.Modal(document.getElementById('boletoModal')).show()">
-                                          <i class="fas fa-file-invoice me-1"></i>Enviar Boleto
+                                          <i class="fas fa-file-invoice"></i>Enviar Boleto
                                       </button>
                                       <?php endif; ?>
 
-                                      <button type="button" class="btn btn-outline-primary btn-sm fw-medium tt"
+                                      <button type="button" class="act-btn act-neutral tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="<?= $isFiscalPuro ? 'Atualiza o status dentro do fluxo de fiscalização.' : 'Altera manualmente o status do processo (ex.: Em análise, Pendente, Aguardando boleto).' ?>"
                                           onclick="document.getElementById('atualizarStatusModal') && new bootstrap.Modal(document.getElementById('atualizarStatusModal')).show()">
-                                          <i class="fas fa-edit me-1"></i>Atualizar Status
+                                          <i class="fas fa-edit"></i>Atualizar Status
                                       </button>
 
                                       <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
-                                      <button type="button" class="btn btn-outline-success btn-sm fw-medium tt"
+                                      <button type="button" class="act-btn act-go tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Envia por e-mail ao requerente o protocolo oficial com o alvará ou documento final do processo."
                                           onclick="abrirFinalizacaoModal()">
-                                          <i class="fas fa-check-circle me-1"></i>Enviar Protocolo Oficial
+                                          <i class="fas fa-check-circle"></i>Enviar Protocolo Oficial
                                       </button>
 
-                                      <button type="button" class="btn btn-outline-danger btn-sm fw-medium tt"
+                                      <button type="button" class="act-btn act-danger tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Indefere o processo e notifica o requerente por e-mail com o motivo do indeferimento."
                                           onclick="document.getElementById('indeferirInputModal') && new bootstrap.Modal(document.getElementById('indeferirInputModal')).show()">
-                                          <i class="fas fa-times-circle me-1"></i>Indeferir
+                                          <i class="fas fa-times-circle"></i>Indeferir
                                       </button>
 
-                                      <button type="button" class="btn btn-outline-secondary btn-sm fw-medium tt"
+                                      <button type="button" class="act-btn act-neutral tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="Move o processo para o acervo. Ele fica oculto da fila principal mas pode ser consultado pelo histórico."
                                           onclick="showArquivarModal()">
-                                          <i class="fas fa-archive me-1"></i>Arquivar
+                                          <i class="fas fa-archive"></i>Arquivar
                                       </button>
                                       <?php endif; ?>
 

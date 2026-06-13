@@ -375,23 +375,33 @@ function _renderBlocoAssinaturaGov(SEMA_PDF $pdf, array $assinantes, float $bX, 
         $linhaY += 7.5;
     }
 
-    // Rodapé: verificação de autenticidade
+    // Rodapé: código do documento + URL curta de verificação
     if ($verifyUrl !== '' || $docCodigo !== '') {
         $rodapeY = $bY + $bH - 5.6;
         $pdf->SetDrawColor(220, 220, 220);
         $pdf->SetLineWidth(0.15);
         $pdf->Line($textX, $rodapeY - 0.5, $bX + $bW - 2.0, $rodapeY - 0.5);
 
-        $pdf->SetFont('helvetica', '', 4.8);
-        $pdf->SetTextColor(100, 100, 100);
-        $pdf->SetXY($textX, $rodapeY);
-        $pdf->Cell($textW, 2.2, 'Verifique a autenticidade em:', 0, 0, 'L');
+        // Código do documento, em destaque
+        if ($docCodigo !== '') {
+            $pdf->SetFont('helvetica', '', 4.8);
+            $pdf->SetTextColor(120, 120, 120);
+            $pdf->SetXY($textX, $rodapeY);
+            $pdf->Cell(8.0, 2.2, 'Código: ', 0, 0, 'L');
+            $pdf->SetFont('helvetica', 'B', 4.8);
+            $pdf->SetTextColor(40, 40, 40);
+            $pdf->SetXY($textX + 8.0, $rodapeY);
+            $pdf->Cell($textW - 8.0, 2.2, $docCodigo, 0, 0, 'L');
+        }
 
-        $pdf->SetFont('helvetica', 'B', 4.8);
-        $pdf->SetTextColor(28, 75, 54);
-        $pdf->SetXY($textX, $rodapeY + 2.2);
-        $urlExibicao = preg_replace('#^https?://#', '', $verifyUrl);
-        $pdf->Cell($textW, 2.2, $urlExibicao, 0, 0, 'L');
+        // URL curta de verificação (host/verificar, sem caminho longo)
+        if ($verifyUrl !== '') {
+            $pdf->SetFont('helvetica', 'B', 4.8);
+            $pdf->SetTextColor(28, 75, 54);
+            $pdf->SetXY($textX, $rodapeY + 2.3);
+            $urlExibicao = preg_replace('#^https?://#', '', $verifyUrl);
+            $pdf->Cell($textW, 2.2, $urlExibicao, 0, 0, 'L');
+        }
     }
 }
 

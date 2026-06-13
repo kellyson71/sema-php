@@ -121,17 +121,17 @@ if ($salvar_banco && $requerimento_id) {
             mkdir($dirDestino, 0755, true);
         }
 
-        // documento_id forte gerado ANTES do PDF: o QR code de verificação
-        // precisa estar dentro do próprio documento.
-        $documentoId = bin2hex(random_bytes(16));
-        $verifyUrl   = rtrim(BASE_URL, '/') . '/consultar/verificar.php?id=' . $documentoId;
+        // documento_id forte gerado ANTES do PDF (embutido nos metadados).
+        $documentoId    = bin2hex(random_bytes(16));
+        $verifyUrlPdf   = rtrim(BASE_URL, '/') . '/verificar';                   // exibido no bloco (curto)
+        $verifyUrlAcesso = $verifyUrlPdf . '?id=' . $documentoId;                // retorno ao front
 
         $nomeArquivoBase = 'Parecer_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $numero_processo) . '_' . date('His') . '.pdf';
         $caminhoFisico   = $dirDestino . '/' . $nomeArquivoBase;
         $caminhoRelativo = 'pareceres/' . $requerimento_id . '/' . $nomeArquivoBase;
 
         $opcoesPdf = [
-            'verify_url' => $ehAssinaturaDigital ? $verifyUrl : '',
+            'verify_url' => $ehAssinaturaDigital ? $verifyUrlPdf : '',
             'doc_codigo' => $documentoId,
             'sig_pos'    => $sigPos,
         ];
@@ -236,7 +236,7 @@ if ($salvar_banco && $requerimento_id) {
             'url_pdf'      => $caminhoRelativo,
             'nome_arquivo' => $nomeArquivoBase,
             'documento_id' => $documentoId,
-            'verify_url'   => $ehAssinaturaDigital ? $verifyUrl : null,
+            'verify_url'   => $ehAssinaturaDigital ? $verifyUrlAcesso : null,
         ]);
 
     } catch (Exception $e) {

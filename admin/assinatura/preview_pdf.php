@@ -57,7 +57,7 @@ require_once __DIR__ . '/gerar_pdf.php';
 
 // QR de demonstração: aponta para a página de verificação sem código —
 // o código real só existe após a assinatura definitiva
-$verifyUrlDemo = rtrim(BASE_URL, '/') . '/consultar/verificar.php';
+$verifyUrlDemo = rtrim(BASE_URL, '/') . '/verificar';
 
 $opcoes = [
     'verify_url' => ($modoAssinatura !== 'sem_assinar') ? $verifyUrlDemo : '',
