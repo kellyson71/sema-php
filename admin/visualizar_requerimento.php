@@ -4,6 +4,7 @@ require_once 'helpers.php';
 require_once '../includes/email_service.php';
 require_once '../includes/pagamento_helpers.php';
 require_once '../includes/admin_notifications.php';
+require_once '../includes/coassinatura_helper.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -1597,6 +1598,19 @@ if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
     $mensagem = '✅ Fluxo atualizado com sucesso.';
     $mensagemTipo = 'success';
 }
+
+// Co-assinaturas pendentes para o admin logado neste requerimento
+$_adminIdLogado = (int) ($_SESSION['admin_id'] ?? 0);
+$stmtCoPend = $pdo->prepare("
+    SELECT sa.documento_id, sa.mensagem, sa.criado_em,
+           s.nome AS solicitante_nome
+    FROM solicitacoes_assinatura sa
+    JOIN administradores s ON s.id = sa.solicitante_id
+    WHERE sa.requerimento_id = ? AND sa.destinatario_id = ? AND sa.status = 'pendente'
+    ORDER BY sa.criado_em DESC
+");
+$stmtCoPend->execute([$id, $_adminIdLogado]);
+$_coPendsNesteProcesso = $stmtCoPend->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <style>
 /* ---- Stepper de setor ---- */
@@ -2790,6 +2804,33 @@ document.addEventListener('DOMContentLoaded', function() {
                               </div>
                               <?php endif; ?>
                           </div>
+                          <!-- Co-assinaturas pendentes para este admin neste processo -->
+                          <?php if (!empty($_coPendsNesteProcesso)): ?>
+                          <div id="co-pends-card" style="margin:0 16px 12px;background:#fef9f0;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:12px;padding:14px 16px;">
+                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                                  <i class="fas fa-file-signature" style="color:#b45309;font-size:1rem;"></i>
+                                  <strong style="color:#78350f;font-size:.88rem;">Sua assinatura é aguardada neste processo</strong>
+                                  <span style="background:#b45309;color:#fff;font-size:.7rem;font-weight:700;border-radius:20px;padding:1px 8px;margin-left:auto;"><?= count($_coPendsNesteProcesso) ?></span>
+                              </div>
+                              <?php foreach ($_coPendsNesteProcesso as $_cp): ?>
+                              <a href="coassinar_documento.php?documento_id=<?= urlencode($_cp['documento_id']) ?>"
+                                 style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #fcd34d;border-radius:9px;margin-bottom:7px;text-decoration:none;color:inherit;background:#fff;transition:background .12s;"
+                                 onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='#fff'">
+                                  <i class="fas fa-pen-nib" style="color:#b45309;font-size:.9rem;flex-shrink:0;"></i>
+                                  <div style="flex-grow:1;min-width:0;">
+                                      <div style="font-weight:700;color:#1e293b;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                          <?= htmlspecialchars($_cp['documento_id'] ? substr($_cp['documento_id'], 0, 14) . '…' : 'Documento') ?>
+                                      </div>
+                                      <div style="font-size:.74rem;color:#78350f;">
+                                          Solicitado por <?= htmlspecialchars($_cp['solicitante_nome']) ?>
+                                          · <?= date('d/m/Y H:i', strtotime($_cp['criado_em'])) ?>
+                                      </div>
+                                  </div>
+                                  <span style="font-size:.77rem;color:#b45309;font-weight:700;flex-shrink:0;">Assinar <i class="fas fa-chevron-right" style="font-size:.6rem;"></i></span>
+                              </a>
+                              <?php endforeach; ?>
+                          </div>
+                          <?php endif; ?>
                           <!-- Pareceres já gerados -->
                           <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
                       <?php endif; ?>
@@ -3652,9 +3693,76 @@ foreach ($docsDisponiveis as $docRow) {
         modal.show();
     }
 
+     const _adminIdLogado = <?= $_adminIdLogado ?>;
+
      document.addEventListener('DOMContentLoaded', function() {
          carregarPareceresExistentes();
      });
+
+     function renderCoStatus(p) {
+         if (!p.co_total_esperado || p.co_total_esperado <= 1) return '';
+
+         const total    = p.co_total_esperado;
+         const assinado = p.co_total_assinado;
+         const pendentes = p.co_pendentes || [];
+         const recusados = p.co_recusados || [];
+         const euPendente = p.co_eu_pendente;
+         const solicitanteId = p.co_solicitante_id;
+
+         let html = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0;">`;
+
+         // Barra de progresso com contador
+         const pct = total > 0 ? Math.round((assinado / total) * 100) : 0;
+         const corBarra = p.co_completo ? '#15803d' : (recusados.length ? '#b91c1c' : '#b45309');
+         html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+             <div style="flex:1;height:4px;background:#e5e7eb;border-radius:99px;overflow:hidden;">
+                 <div style="width:${pct}%;height:100%;background:${corBarra};border-radius:99px;transition:width .4s;"></div>
+             </div>
+             <span style="font-size:.7rem;font-weight:700;color:${corBarra};white-space:nowrap;">${assinado}/${total} assinaram</span>
+         </div>`;
+
+         // Pendentes
+         pendentes.forEach(pend => {
+             const euSou = pend.destinatario_id === _adminIdLogado;
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#92400e;margin-bottom:3px;">
+                 <i class="fas fa-hourglass-half" style="font-size:.65rem;color:#b45309;"></i>
+                 <span>${escHtml(pend.nome)}${euSou ? ' <strong>(você)</strong>' : ''} — aguardando</span>
+                 ${(solicitanteId === _adminIdLogado) ? `<button onclick="cancelarCoSolic('${p.documento_id}',${pend.destinatario_id})" title="Cancelar pedido" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.7rem;padding:0;"><i class="fas fa-xmark"></i></button>` : ''}
+             </div>`;
+         });
+
+         // Recusados
+         recusados.forEach(rec => {
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#b91c1c;margin-bottom:3px;">
+                 <i class="fas fa-xmark" style="font-size:.65rem;"></i>
+                 <span>${escHtml(rec.nome)} recusou${rec.motivo ? ' — ' + escHtml(rec.motivo) : ''}</span>
+             </div>`;
+         });
+
+         // Botão assinar para este admin
+         if (euPendente) {
+             html += `<a href="coassinar_documento.php?documento_id=${encodeURIComponent(p.documento_id)}"
+                 style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:5px 11px;border-radius:8px;background:#b45309;color:#fff;font-size:.76rem;font-weight:700;text-decoration:none;">
+                 <i class="fas fa-pen-nib"></i> Assinar agora
+             </a>`;
+         }
+
+         html += `</div>`;
+         return html;
+     }
+
+     function cancelarCoSolic(documentoId, destinatarioId) {
+         if (!confirm('Cancelar este pedido de co-assinatura?')) return;
+         const fd = new FormData();
+         fd.append('documento_id', documentoId);
+         fd.append('destinatario_id', destinatarioId);
+         fetch('assinatura/cancelar_solicitacao.php', { method:'POST', body:fd })
+             .then(r => r.json())
+             .then(d => {
+                 if (d.success) carregarPareceresExistentes();
+                 else alert(d.error || 'Erro ao cancelar.');
+             });
+     }
 
      function carregarPareceresExistentes() {
          fetch('parecer_handler.php', {
@@ -3686,19 +3794,21 @@ foreach ($docsDisponiveis as $docRow) {
                  const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                  const nomeLimpo = formatarNomeParecer(p.nome);
                  const seloTipo  = gerarSeloTipoParecer(p.tipo);
+                 const coHtml    = renderCoStatus(p);
 
                  lista.innerHTML += `
-                    <div class="data-row">
+                    <div class="data-row" style="flex-wrap:wrap;">
                         <div class="data-label" style="min-width:40px">
                             <i class="fas ${iconClass}" style="color:${iconColor};font-size:20px"></i>
                         </div>
-                        <div class="data-value">
+                        <div class="data-value" style="flex:1;min-width:0;">
                             <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
                                 <span>${nomeLimpo}</span>${seloTipo}
                             </div>
                             <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}
                                 ${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : ''}
                             </div>
+                            ${coHtml ? `<div style="margin-top:6px;">${coHtml}</div>` : ''}
                         </div>
                         <div class="data-actions">
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
@@ -3716,17 +3826,33 @@ foreach ($docsDisponiveis as $docRow) {
                  const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : null;
                  const iniciais    = (p.assinante || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
                  const nomeLimpo   = formatarNomeParecer(p.nome);
+                 const coHtml      = renderCoStatus(p);
+
+                 // Badge de status de co-assinatura para o topo do card
+                 let coTopBadge = '';
+                 if (p.co_total_esperado > 1) {
+                     if (p.co_completo) {
+                         coTopBadge = '<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;font-size:.62rem;"><i class="fas fa-users-check me-1"></i>Todas assinaram</span>';
+                     } else if ((p.co_pendentes||[]).length > 0) {
+                         coTopBadge = `<span class="badge" style="background:#fffbeb;color:#b45309;border:1px solid #fcd34d;font-size:.62rem;"><i class="fas fa-hourglass-half me-1"></i>${p.co_pendentes.length} aguardando</span>`;
+                     } else if ((p.co_recusados||[]).length > 0) {
+                         coTopBadge = `<span class="badge" style="background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3;font-size:.62rem;"><i class="fas fa-xmark me-1"></i>Recusada</span>`;
+                     }
+                 }
 
                  const docViewerUrl = p.documento_id ? `visualizar_documento.php?requerimento_id=<?php echo $id ?>&documento_id=${encodeURIComponent(p.documento_id)}` : '';
                  grid.innerHTML += `
                     <div class="doc-card-clickable" data-viewer-url="${escHtml(docViewerUrl)}"
-                         style="border:1px solid #e8e8e8;border-radius:8px;padding:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;${docViewerUrl ? 'cursor:pointer;transition:border-color .15s,box-shadow .15s;' : ''}">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;gap:8px;">
+                         style="border:1px solid ${p.co_eu_pendente ? '#fcd34d' : '#e8e8e8'};border-radius:8px;padding:14px;background:${p.co_eu_pendente ? '#fffdf0' : '#fff'};box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;${docViewerUrl ? 'cursor:pointer;transition:border-color .15s,box-shadow .15s;' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;gap:6px;flex-wrap:wrap;">
                             <span style="font-family:monospace;font-size:.68rem;color:#888;background:#f5f5f5;padding:3px 7px;border-radius:4px;">
                                 <i class="fas fa-fingerprint me-1"></i>${p.documento_id ? p.documento_id.substring(0,12) + '…' : '—'}
                             </span>
-                            ${p.apagado ? '<span class="badge bg-danger" style="font-size:.65rem"><i class="fas fa-trash me-1"></i>Apagado</span>' :
-                                          '<span class="badge" style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.65rem"><i class="fas fa-check-circle me-1"></i>Assinado</span>'}
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+                                ${p.apagado ? '<span class="badge bg-danger" style="font-size:.65rem"><i class="fas fa-trash me-1"></i>Apagado</span>' :
+                                              '<span class="badge" style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.65rem"><i class="fas fa-check-circle me-1"></i>Assinado</span>'}
+                                ${coTopBadge}
+                            </div>
                         </div>
                         <div style="font-size:.78rem;font-weight:600;color:#333;margin-bottom:8px;word-break:break-word;">${nomeLimpo}</div>
                         <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fafafa;border-radius:6px;margin-bottom:10px;border:1px solid #f0f0f0;">
@@ -3736,6 +3862,7 @@ foreach ($docsDisponiveis as $docRow) {
                                 <div style="font-size:.7rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.cargo || '')} • ${p.data}</div>
                             </div>
                         </div>
+                        ${coHtml}
                         <div class="doc-card-actions" style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
                             <button data-excluir-doc="${escHtml(p.documento_id)}" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>

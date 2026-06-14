@@ -3,6 +3,7 @@ require_once 'conexao.php';
 require_once '../includes/parecer_service.php';
 require_once '../includes/email_service.php';
 require_once '../includes/functions.php';
+require_once '../includes/coassinatura_helper.php';
 
 verificaLogin();
 
@@ -567,7 +568,8 @@ try {
             $stmtAd->execute([$requerimento_id]);
             $rows = $stmtAd->fetchAll(PDO::FETCH_ASSOC);
 
-            $pareceres = array_map(function($r) {
+            $adminIdSessao = (int) ($_SESSION['admin_id'] ?? 0);
+            $pareceres = array_map(function($r) use ($pdo, $adminIdSessao) {
                 $existe = !empty($r['caminho_arquivo']) && file_exists($r['caminho_arquivo']);
                 $tamanho = $existe ? filesize($r['caminho_arquivo']) : 0;
                 // Converter GROUP_CONCAT string para array de inteiros
@@ -575,18 +577,32 @@ try {
                 if (!empty($r['assinantes_ids'])) {
                     $assinantesIds = array_map('intval', explode(',', $r['assinantes_ids']));
                 }
+                $coStatus = statusAssinaturasDocumento($pdo, $r['documento_id']);
+                // Verificar se o admin logado tem assinatura pendente neste doc
+                $euTenhoPendente = false;
+                foreach ($coStatus['pendentes'] as $p) {
+                    if (($p['destinatario_id'] ?? 0) === $adminIdSessao) { $euTenhoPendente = true; break; }
+                }
                 return [
-                    'documento_id' => $r['documento_id'],
-                    'arquivo'      => $r['nome_arquivo'],
-                    'tipo'         => $r['tipo_documento'] ?? 'parecer',
-                    'nome'         => $r['nome_arquivo'],
-                    'assinante'    => $r['assinante_nome'],
-                    'cargo'        => $r['assinante_cargo'],
-                    'cpf'          => $r['assinante_cpf'],
-                    'data'         => date('d/m/Y H:i', strtotime($r['timestamp_assinatura'])),
-                    'tamanho'      => $tamanho,
-                    'apagado'      => !$existe,
-                    'assinantes'   => $assinantesIds,
+                    'documento_id'      => $r['documento_id'],
+                    'arquivo'           => $r['nome_arquivo'],
+                    'tipo'              => $r['tipo_documento'] ?? 'parecer',
+                    'nome'              => $r['nome_arquivo'],
+                    'assinante'         => $r['assinante_nome'],
+                    'cargo'             => $r['assinante_cargo'],
+                    'cpf'               => $r['assinante_cpf'],
+                    'data'              => date('d/m/Y H:i', strtotime($r['timestamp_assinatura'])),
+                    'tamanho'           => $tamanho,
+                    'apagado'           => !$existe,
+                    'assinantes'        => $assinantesIds,
+                    'co_assinantes'     => $coStatus['assinantes'],
+                    'co_pendentes'      => $coStatus['pendentes'],
+                    'co_recusados'      => $coStatus['recusados'],
+                    'co_total_assinado' => $coStatus['total_assinado'],
+                    'co_total_esperado' => $coStatus['total_esperado'],
+                    'co_completo'       => $coStatus['completo'],
+                    'co_solicitante_id' => $coStatus['solicitante_id'],
+                    'co_eu_pendente'    => $euTenhoPendente,
                 ];
             }, $rows);
 
