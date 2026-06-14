@@ -224,10 +224,14 @@ if ($salvar_banco && $requerimento_id) {
                         status   = 'pendente',
                         criado_em = NOW()
                 ")->execute([$documentoId, $requerimento_id, $admin_id, $destinatarioId, $mensagemCoAs]);
-            }
 
-            if (!empty($destinatarios) && function_exists('createAdminNotificationForRequerimento')) {
-                createAdminNotificationForRequerimento($pdo, $requerimento_id, 'solicitacao_assinatura');
+                // Notificação DIRECIONADA ao destinatário, com link para a tela dedicada
+                if (function_exists('createAdminNotificationForRequerimento')) {
+                    createAdminNotificationForRequerimento($pdo, $requerimento_id, 'coassinatura_solicitada', [
+                        'destinatario_admin_id' => $destinatarioId,
+                        'link_url' => 'coassinar_documento.php?documento_id=' . $documentoId,
+                    ]);
+                }
             }
         }
 

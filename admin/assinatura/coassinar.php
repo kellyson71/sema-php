@@ -7,6 +7,8 @@ $rootDir = dirname(__DIR__, 2);
 require_once $rootDir . '/includes/config.php';
 require_once dirname(__DIR__) . '/conexao.php';
 require_once $rootDir . '/includes/assinatura_avancada_service.php';
+require_once $rootDir . '/includes/coassinatura_helper.php';
+require_once $rootDir . '/includes/admin_notifications.php';
 
 if (function_exists('verificaLogin')) {
     verificaLogin();
@@ -211,8 +213,23 @@ try {
     $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")
         ->execute([$adminId, $requerimentoId, "Co-assinou digitalmente o documento: " . strtoupper($fonte['tipo_documento'] ?? 'DOCUMENTO')]);
 
+    // 11. Se todas as assinaturas solicitadas foram concluídas, avisa o solicitante
+    $coassinaturaCompleta = false;
+    try {
+        $status = statusAssinaturasDocumento($pdo, $documentoId);
+        if ($status['completo'] && $status['solicitante_id'] && $status['solicitante_id'] !== $adminId
+            && function_exists('createAdminNotificationForRequerimento')) {
+            createAdminNotificationForRequerimento($pdo, $requerimentoId, 'coassinatura_concluida', [
+                'destinatario_admin_id' => $status['solicitante_id'],
+                'link_url' => 'visualizar_documento.php?requerimento_id=' . $requerimentoId,
+            ]);
+            $coassinaturaCompleta = true;
+        }
+    } catch (Throwable $e) {
+    }
+
     ob_clean();
-    echo json_encode(['success' => true, 'hash' => $novoHash]);
+    echo json_encode(['success' => true, 'hash' => $novoHash, 'completo' => $coassinaturaCompleta]);
     exit;
 
 } catch (Throwable $e) {

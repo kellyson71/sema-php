@@ -42,8 +42,11 @@ try {
         VALUES (?, ?, ?, ?, ?)
     ")->execute([$documentoId, $requerimentoId, $solicitanteId, $destinatarioId, $mensagem ?: null]);
 
-    // Notificar (broadcast — todos os admins verão, destinatário vê na fila)
-    createAdminNotificationForRequerimento($pdo, $requerimentoId, 'assinatura_solicitada');
+    // Notificação DIRECIONADA ao destinatário, com link para a tela dedicada
+    createAdminNotificationForRequerimento($pdo, $requerimentoId, 'coassinatura_solicitada', [
+        'destinatario_admin_id' => $destinatarioId,
+        'link_url' => 'coassinar_documento.php?documento_id=' . $documentoId,
+    ]);
 
     $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?,?,?)")
         ->execute([$solicitanteId, $requerimentoId, "Solicitou co-assinatura no documento $documentoId"]);

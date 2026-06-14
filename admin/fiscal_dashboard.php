@@ -167,7 +167,7 @@ include 'header.php';
         <div class="card-body p-0">
             <div class="list-group list-group-flush">
                 <?php foreach ($solics as $solic): ?>
-                <a href="visualizar_requerimento.php?id=<?= $solic['requerimento_id'] ?>"
+                <a href="coassinar_documento.php?documento_id=<?= urlencode($solic['documento_id']) ?>"
                    class="list-group-item list-group-item-action py-3 px-4">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
