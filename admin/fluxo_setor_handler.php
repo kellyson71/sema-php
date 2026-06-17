@@ -44,7 +44,50 @@ function atualizaSetor(PDO $pdo, int $id, string $setor, string $acao): void
         ->execute([$setor, $acao, $id]);
 }
 
+function notificarCidadaoConclusao(PDO $pdo, int $id): void
+{
+    global $tipos_alvara;
+    $stmt = $pdo->prepare("
+        SELECT r.protocolo, r.tipo_alvara, re.nome, re.email
+        FROM requerimentos r JOIN requerentes re ON re.id = r.requerente_id
+        WHERE r.id = ?
+    ");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    if (!$row || empty($row['email'])) return;
+    $tipoNome = $tipos_alvara[$row['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $row['tipo_alvara']));
+    (new EmailService())->enviarEmailAprovado($row['email'], $row['nome'], $row['protocolo'], $tipoNome, $id);
+}
+
 $adminId = $_SESSION['admin_id'];
+
+// Autorização por setor: cada ação só pode ser disparada pelo role do setor responsável.
+// admin/admin_geral têm acesso amplo. Defesa em profundidade — a UI já esconde os botões,
+// mas o handler não pode confiar apenas nisso (POST pode ser forjado).
+$nivelAtual = $_SESSION['admin_nivel'] ?? '';
+$isSuper    = in_array($nivelAtual, ['admin', 'admin_geral'], true);
+$rolePorAcao = [
+    'enviar_setor2'      => 'analista',   // Setor 1
+    'concluir_direto'    => 'analista',
+    'enviar_setor3'      => 'fiscal',     // Setor 2
+    'devolver_setor1'    => 'fiscal',
+    'concluir_setor2'    => 'fiscal',
+    'doc_final_envio'    => 'fiscal',
+    'devolver_setor2'    => 'secretario', // Setor 3
+    'setor3_aprovado'    => 'secretario',
+    'setor3_recusado'    => 'secretario',
+    'setor3_sem_decisao' => 'secretario',
+];
+if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$acao]) {
+    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
+    $dest = $fromDocViewer
+        ? "visualizar_documento.php?requerimento_id=$id&error=sem_permissao"
+        : "visualizar_requerimento.php?id=$id&error=sem_permissao";
+    header("Location: $dest");
+    exit;
+}
+
+$notificarConclusao = ($_POST['notificar_cidadao'] ?? '') === '1';
 
 try {
     $pdo->beginTransaction();
@@ -82,14 +125,14 @@ try {
             atualizaSetor($pdo, $id, 'setor1', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : ''));
+            registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));
             break;
 
         case 'concluir_setor2':
             atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, "Concluiu e finalizou processo no Setor 2" . ($motivo ? ": $motivo" : ''));
+            registraHistorico($pdo, $adminId, $id, "Concluiu e finalizou processo no Setor 2" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));
             break;
 
         case 'setor3_aprovado':
@@ -203,6 +246,16 @@ try {
     }
 
     $pdo->commit();
+
+    // Notificação opcional ao cidadão nas conclusões sem documento final (após commit: falha de email não desfaz o fluxo)
+    if ($notificarConclusao && in_array($acao, ['concluir_direto', 'concluir_setor2'], true)) {
+        try {
+            notificarCidadaoConclusao($pdo, $id);
+        } catch (Throwable $eMail) {
+            error_log('[fluxo_setor] Falha ao notificar cidadão da conclusão #' . $id . ': ' . $eMail->getMessage());
+        }
+    }
+
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     if ($fromDocViewer) {
         header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado");

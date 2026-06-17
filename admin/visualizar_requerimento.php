@@ -1594,6 +1594,10 @@ if (isset($_GET['error']) && $_GET['error'] === 'motivo_obrigatorio') {
     $mensagem = 'O motivo da devolução é obrigatório.';
     $mensagemTipo = 'danger';
 }
+if (isset($_GET['error']) && $_GET['error'] === 'sem_permissao') {
+    $mensagem = 'Você não tem permissão para executar essa ação neste setor.';
+    $mensagemTipo = 'danger';
+}
 if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
     $mensagem = '✅ Fluxo atualizado com sucesso.';
     $mensagemTipo = 'success';
@@ -1722,6 +1726,8 @@ $_coPendsNesteProcesso = $stmtCoPend->fetchAll(PDO::FETCH_ASSOC);
 .fm-box .fm-impact { background:#f7f9f7; border:1px solid #e3e8e4; border-radius:8px; padding:8px 12px; font-size:.78rem; color:#374151; margin-bottom:14px; }
 .fm-box textarea { width:100%; padding:9px; border:1px solid #e3e8e4; border-radius:8px; font-size:.83rem; resize:vertical; margin-bottom:12px; outline:none; transition:border-color .15s; }
 .fm-box textarea:focus { border-color:#14532d; }
+.fm-box .fm-check { display:flex; align-items:center; gap:8px; font-size:.82rem; color:#374151; margin-bottom:14px; cursor:pointer; }
+.fm-box .fm-check input { width:16px; height:16px; cursor:pointer; }
 .fm-box .fm-btns { display:flex; gap:8px; justify-content:flex-end; }
 .fm-btn-cancel { padding:7px 14px; border:1px solid #e3e8e4; border-radius:8px; background:#fff; color:#374151; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s, border-color .15s; }
 .fm-btn-cancel:hover { background:#f7f9f7; border-color:#c4c9c5; }
@@ -1820,11 +1826,12 @@ $estadoCls = match($aguardandoAcao) {
     </div>
     <div class="fm-body">
       <p class="fm-sub">O processo é encerrado diretamente pelo Setor 1, sem passar pela fiscalização ou revisão final.</p>
-      <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
+      <div class="fm-impact">Destino: <strong>Concluído</strong> · Notificação ao cidadão é opcional · Irreversível sem intervenção manual</div>
       <form method="post" action="fluxo_setor_handler.php">
         <input type="hidden" name="requerimento_id" value="<?= $id ?>">
         <input type="hidden" name="fluxo_acao" value="concluir_direto">
         <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por email sobre a conclusão</label>
         <div class="fm-btns">
           <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s1')">Cancelar</button>
           <button type="submit" class="fm-btn-confirm"><i class="fas fa-check me-1"></i>Finalizar</button>
@@ -1842,11 +1849,12 @@ $estadoCls = match($aguardandoAcao) {
     </div>
     <div class="fm-body">
       <p class="fm-sub">O processo é encerrado pelo Setor 2. Use após enviar o documento final ao cidadão.</p>
-      <div class="fm-impact">Destino: <strong>Concluído</strong> · Cidadão <em>não</em> é notificado automaticamente · Irreversível sem intervenção manual</div>
+      <div class="fm-impact">Destino: <strong>Concluído</strong> · Notificação ao cidadão é opcional · Irreversível sem intervenção manual</div>
       <form method="post" action="fluxo_setor_handler.php">
         <input type="hidden" name="requerimento_id" value="<?= $id ?>">
         <input type="hidden" name="fluxo_acao" value="concluir_setor2">
         <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
+        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por email sobre a conclusão</label>
         <div class="fm-btns">
           <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s2')">Cancelar</button>
           <button type="submit" class="fm-btn-confirm"><i class="fas fa-check-double me-1"></i>Finalizar</button>
