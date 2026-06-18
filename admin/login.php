@@ -59,11 +59,11 @@ if (time() - $_SESSION['last_attempt_time'] > 900) {
     $_SESSION['login_attempts'] = 0;
 }
 
-if ($_SESSION['login_attempts'] >= 5) {
+if ($_SESSION['login_attempts'] >= 8) {
     $tempo_restante = 900 - (time() - $_SESSION['last_attempt_time']);
     if ($tempo_restante > 0) {
         $erro = "Muitas tentativas de login. Tente novamente em " . ceil($tempo_restante / 60) . " minutos.";
-        $_SESSION['login_attempts'] = 5;
+        $_SESSION['login_attempts'] = 8;
     } else {
         $_SESSION['login_attempts'] = 0;
     }
@@ -121,7 +121,7 @@ function enviarCodigoLoginPorEmail($admin, $codigo) {
 // Processar formulário de login via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
     // Responde JSON mesmo quando bloqueado — evita que o HTML da página seja retornado ao fetch
-    if ($_SESSION['login_attempts'] >= 5) {
+    if ($_SESSION['login_attempts'] >= 8) {
         $tempo_restante = 900 - (time() - ($_SESSION['last_attempt_time'] ?? time()));
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => 'Acesso bloqueado. Muitas tentativas incorretas. Tente novamente em ' . ceil(max($tempo_restante, 60) / 60) . ' minutos.']);
@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
     if (isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
         header('Content-Type: application/json');
 
@@ -202,13 +202,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         } else {
             $_SESSION['login_attempts']++;
             $_SESSION['last_attempt_time'] = time();
-            $tentativas = (int) $_SESSION['login_attempts'];
-            $restantes  = max(0, 5 - $tentativas);
-            $aviso      = $restantes > 0
-                ? " Você ainda tem <strong>{$restantes}</strong> tentativa" . ($restantes > 1 ? 's' : '') . " antes do bloqueio."
-                : '';
+            $restantes = max(0, 8 - (int) $_SESSION['login_attempts']);
             if (ob_get_length()) ob_clean();
-            echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos.{$aviso}"]);
+            echo json_encode([
+                'success' => false,
+                'error'   => 'Usuário ou senha incorretos.',
+                'tentativas_restantes' => $restantes <= 3 ? $restantes : null,
+            ]);
         }
         exit;
     }
@@ -1022,7 +1022,12 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
                 setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
             }
         } else {
-            showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+            let _msg = '<strong>Falha no acesso.</strong> ' + esc(data.error);
+            if (data.tentativas_restantes !== null && data.tentativas_restantes !== undefined) {
+                const r = data.tentativas_restantes;
+                _msg += ' Você ainda tem <strong>' + r + '</strong> tentativa' + (r !== 1 ? 's' : '') + ' antes do bloqueio.';
+            }
+            showAlert('login-err', _msg);
         }
     })
     .catch(() => {
@@ -1059,7 +1064,12 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
                         setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
                     }
                 } else {
-                    showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+                    let _msg = '<strong>Falha no acesso.</strong> ' + esc(data.error);
+            if (data.tentativas_restantes !== null && data.tentativas_restantes !== undefined) {
+                const r = data.tentativas_restantes;
+                _msg += ' Você ainda tem <strong>' + r + '</strong> tentativa' + (r !== 1 ? 's' : '') + ' antes do bloqueio.';
+            }
+            showAlert('login-err', _msg);
                 }
             })
             .catch(() => {
