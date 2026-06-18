@@ -147,12 +147,14 @@ if (!function_exists('acaoLabel')) {
     function acaoLabel(string $acao): string
     {
         $map = [
-            'triagem_setor1'  => 'Gerar documento',
-            'boleto_pendente' => 'Aguardando pagamento',
-            'analise_setor2'  => 'Analisar fiscalização',
-            'revisao_setor3'  => 'Revisar assinatura',
-            'envio_cidadao'   => 'Enviar ao cidadão',
-            'concluido'       => 'Concluído',
+            'triagem_setor1'   => 'Gerar documento',
+            'boleto_pendente'  => 'Aguardando pagamento',
+            'analise_setor2'   => 'Analisar fiscalização',
+            'revisao_setor3'   => 'Revisar assinatura',
+            'retorno_aprovado' => 'Aprovado pelo Secretário',
+            'retorno_recusado' => 'Recusado pelo Secretário',
+            'envio_cidadao'    => 'Enviar ao cidadão',
+            'concluido'        => 'Concluído',
         ];
         return $map[$acao] ?? ucwords(str_replace('_', ' ', $acao));
     }
@@ -166,12 +168,14 @@ if (!function_exists('acaoClass')) {
     function acaoClass(string $acao): string
     {
         $map = [
-            'triagem_setor1'  => 'acao-triagem',
-            'boleto_pendente' => 'acao-boleto',
-            'analise_setor2'  => 'acao-analise',
-            'revisao_setor3'  => 'acao-revisao',
-            'envio_cidadao'   => 'acao-envio',
-            'concluido'       => 'acao-concluido',
+            'triagem_setor1'   => 'acao-triagem',
+            'boleto_pendente'  => 'acao-boleto',
+            'analise_setor2'   => 'acao-analise',
+            'revisao_setor3'   => 'acao-revisao',
+            'retorno_aprovado' => 'acao-retorno-aprovado',
+            'retorno_recusado' => 'acao-retorno-recusado',
+            'envio_cidadao'    => 'acao-envio',
+            'concluido'        => 'acao-concluido',
         ];
         return $map[$acao] ?? 'acao-triagem';
     }

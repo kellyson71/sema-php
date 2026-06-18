@@ -143,7 +143,7 @@ try {
             if (!$temAssinatura) {
                 throw new RuntimeException('Você precisa assinar pelo menos um documento antes de aprovar e retornar.');
             }
-            atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
+            atualizaSetor($pdo, $id, 'setor2', 'retorno_aprovado');
             registraHistorico($pdo, $adminId, $id, "Setor 3 aprovou e retornou ao Setor 2 para envio ao cidadão" . ($motivo ? ": $motivo" : ''));
             createAdminNotificationForRequerimento($pdo, $id, 'setor3_aprovado');
             break;
@@ -157,7 +157,7 @@ try {
                 header("Location: $dest");
                 exit;
             }
-            atualizaSetor($pdo, $id, 'setor2', 'analise_setor2');
+            atualizaSetor($pdo, $id, 'setor2', 'retorno_recusado');
             $pdo->prepare("UPDATE requerimentos SET motivo_devolucao = ?, data_atualizacao = NOW() WHERE id = ?")->execute([$motivo, $id]);
             registraHistorico($pdo, $adminId, $id, "Setor 3 recusou e devolveu ao Setor 2 — Motivo: $motivo");
             createAdminNotificationForRequerimento($pdo, $id, 'devolvido_setor2');
