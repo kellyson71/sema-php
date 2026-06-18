@@ -2005,14 +2005,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (
         !empty($requerimento['motivo_devolucao']) &&
         ($requerimento['setor_atual'] ?? '') === 'setor2' &&
-        ($requerimento['aguardando_acao'] ?? '') === 'analise_setor2' &&
-        !empty($requerimento['devolvido_por'])
+        in_array($requerimento['aguardando_acao'] ?? '', ['retorno_recusado', 'analise_setor2'], true)
     ) {
-        $stmtDev = $pdo->prepare("SELECT id, nome, nome_completo, nivel, cargo FROM administradores WHERE id = ? LIMIT 1");
-        $stmtDev->execute([$requerimento['devolvido_por']]);
-        $devolutorInfo = $stmtDev->fetch();
-        if ($devolutorInfo && $devolutorInfo['nivel'] === 'secretario') {
+        if (!empty($requerimento['devolvido_por'])) {
+            $stmtDev = $pdo->prepare("SELECT id, nome, nome_completo, nivel, cargo FROM administradores WHERE id = ? LIMIT 1");
+            $stmtDev->execute([$requerimento['devolvido_por']]);
+            $devolutorInfo = $stmtDev->fetch();
+            if ($devolutorInfo && $devolutorInfo['nivel'] === 'secretario') {
+                $foiDevolvidoSecretario = true;
+            }
+        } elseif (($requerimento['aguardando_acao'] ?? '') === 'retorno_recusado') {
+            // Retorno via novo fluxo — sem devolvido_por obrigatório, exibe o banner mesmo assim
             $foiDevolvidoSecretario = true;
+            $devolutorInfo = null;
         }
     }
     ?>
@@ -2022,12 +2027,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="banner-devolucao-body">
                 <div class="banner-devolucao-title">
                     Processo devolvido pelo Secretário
+                    <?php if ($devolutorInfo): ?>
                     <span class="banner-devolucao-meta">
                         — <?= htmlspecialchars($devolutorInfo['nome_completo'] ?: $devolutorInfo['nome']) ?>
                         <?php if (!empty($requerimento['devolvido_em'])): ?>
                             · <?= date('d/m/Y \à\s H:i', strtotime($requerimento['devolvido_em'])) ?>
                         <?php endif; ?>
                     </span>
+                    <?php endif; ?>
                 </div>
                 <div class="banner-devolucao-motivo">
                     <strong>Motivo:</strong>
@@ -2064,6 +2071,35 @@ document.addEventListener('DOMContentLoaded', function() {
             font-size:.85rem; color:#3f2c0c; line-height:1.5;
         }
         .banner-devolucao-motivo strong { color:#78350f; }
+        </style>
+    <?php endif; ?>
+    <?php if (($requerimento['aguardando_acao'] ?? '') === 'retorno_aprovado'): ?>
+        <div class="banner-aprovado">
+            <div class="banner-aprovado-icon"><i class="fas fa-circle-check"></i></div>
+            <div class="banner-aprovado-body">
+                <div class="banner-aprovado-title">Secretário aprovou — aguardando envio ao cidadão</div>
+                <div class="banner-aprovado-sub">O documento foi revisado e assinado pelo Secretário. Envie o documento final ao cidadão para concluir o processo.</div>
+            </div>
+        </div>
+        <style>
+        .banner-aprovado {
+            display:flex; gap:14px; align-items:flex-start;
+            background:#f7faf8;
+            border:1px solid #c4d8cc;
+            border-left:3px solid #3d7a56;
+            border-radius:10px;
+            padding:14px 18px;
+            margin-bottom:12px;
+        }
+        .banner-aprovado-icon {
+            width:36px; height:36px; flex-shrink:0;
+            background:#eaf3ee; border-radius:8px;
+            display:flex; align-items:center; justify-content:center;
+            color:#3d7a56; font-size:.95rem;
+        }
+        .banner-aprovado-body { flex:1; min-width:0; }
+        .banner-aprovado-title { font-size:.88rem; font-weight:700; color:#1e3a28; margin-bottom:3px; }
+        .banner-aprovado-sub   { font-size:.82rem; color:#3d5c46; line-height:1.5; }
         </style>
     <?php endif; ?>
 
