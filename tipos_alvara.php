@@ -724,8 +724,7 @@ $tipos_alvara = [
             'Documentações complementares podem ser exigidas pela SEMA.',
         ],
         'contato' => [
-            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
-            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+            'Dúvidas ou informações pelo WhatsApp (84) 99668-6413.',
         ]
     ],
 
@@ -750,8 +749,7 @@ $tipos_alvara = [
             'Documentações complementares podem ser exigidas pela SEMA.',
         ],
         'contato' => [
-            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
-            'Envio de documentação para fiscalizacaosemapdf@gmail.com',
+            'Dúvidas ou informações pelo WhatsApp (84) 99668-6413.',
         ]
     ]
 ];
