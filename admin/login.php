@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($_SESSION['login_attempts'] >= 5) {
         $tempo_restante = 900 - (time() - ($_SESSION['last_attempt_time'] ?? time()));
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'bloqueado', 'message' => 'Acesso bloqueado. Muitas tentativas de login. Tente novamente em ' . ceil(max($tempo_restante, 60) / 60) . ' minutos.']);
+        echo json_encode(['success' => false, 'error' => 'Acesso bloqueado. Muitas tentativas incorretas. Tente novamente em ' . ceil(max($tempo_restante, 60) / 60) . ' minutos.']);
         exit;
     }
 }
@@ -202,8 +202,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         } else {
             $_SESSION['login_attempts']++;
             $_SESSION['last_attempt_time'] = time();
+            $tentativas = (int) $_SESSION['login_attempts'];
+            $restantes  = max(0, 5 - $tentativas);
+            $aviso      = $restantes > 0
+                ? " Você ainda tem <strong>{$restantes}</strong> tentativa" . ($restantes > 1 ? 's' : '') . " antes do bloqueio."
+                : '';
             if (ob_get_length()) ob_clean();
-            echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos."]);
+            echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos.{$aviso}"]);
         }
         exit;
     }
