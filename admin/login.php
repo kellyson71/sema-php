@@ -119,6 +119,16 @@ function enviarCodigoLoginPorEmail($admin, $codigo) {
 }
 
 // Processar formulário de login via AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
+    // Responde JSON mesmo quando bloqueado — evita que o HTML da página seja retornado ao fetch
+    if ($_SESSION['login_attempts'] >= 5) {
+        $tempo_restante = 900 - (time() - ($_SESSION['last_attempt_time'] ?? time()));
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'bloqueado', 'message' => 'Acesso bloqueado. Muitas tentativas de login. Tente novamente em ' . ceil(max($tempo_restante, 60) / 60) . ' minutos.']);
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
     if (isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
         header('Content-Type: application/json');
