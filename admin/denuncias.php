@@ -26,7 +26,7 @@ if (isset($_GET['error'])) {
 }
 
 // Query de Denúncias
-$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.status, a.nome as responsavel 
+$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.status, d.origem, d.protocolo_publico, a.nome as responsavel
         FROM denuncias d
         LEFT JOIN administradores a ON d.admin_id = a.id
         WHERE 1=1";
@@ -160,8 +160,8 @@ include 'header.php';
                     <thead class="bg-gray-50">
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Infrator</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registrado Por</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Infrator / Ocorrência</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
@@ -176,9 +176,20 @@ include 'header.php';
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($denuncia['infrator_nome']); ?></div>
+                                        <?php if (!empty($denuncia['protocolo_publico'])): ?>
+                                        <div class="text-xs text-gray-400 mt-0.5 font-mono"><?php echo htmlspecialchars($denuncia['protocolo_publico']); ?></div>
+                                        <?php endif; ?>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo htmlspecialchars($denuncia['responsavel'] ?? 'Sistema'); ?>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <?php if (($denuncia['origem'] ?? 'admin') === 'publico'): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                <i class="fas fa-globe mr-1"></i> Cidadão
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                <i class="fas fa-user-shield mr-1"></i> Interno
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <?php

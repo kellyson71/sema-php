@@ -136,7 +136,7 @@ include_once 'enquadramento_conema.php';
                 <div class="form-header">
                     <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
-                    <p>REQUERIMENTO DE ALVARÁ AMBIENTAL | PROTOCOLO ELETRÔNICO</p>
+                    <p>PROTOCOLO ELETRÔNICO — ALVARÁS, DENÚNCIAS E AUTORIZAÇÕES</p>
                 </div>
 
                 <div style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
@@ -241,8 +241,8 @@ include_once 'enquadramento_conema.php';
                 </script>
                 <?php endif; ?>
 
-                <!-- Seção 1: Dados do Proprietário -->
-                <div class="form-section">
+                <!-- Seção 1: Dados do Proprietário (oculta em modo denúncia) -->
+                <div class="form-section secao-alvara">
                     <div class="form-section-label">Dados do Proprietário do Imóvel</div>
                     <input type="hidden" name="mesmo_requerente" value="false">
                     <div class="form-part-2" id="proprietario-fields">
@@ -254,54 +254,55 @@ include_once 'enquadramento_conema.php';
                     </div>
                 </div>
 
-                <!-- Seção 2: Dados do Requerente -->
-                <div class="form-section">
+                <!-- Seção 2: Dados do Requerente (oculta em modo denúncia) -->
+                <div class="form-section secao-alvara">
                     <div class="form-section-label">Dados do Requerente</div>
                     <div class="form-part-2">
-                        <input required id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
-                        <input required type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
-                        <input oninput="mascara(this)" type="text" required name="requerente[cpf_cnpj]" id="cpf"
+                        <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
+                        <input data-required="true" type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
+                        <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
                             placeholder="CPF ou CNPJ do Requerente" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
-                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" required
+                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
                             name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
                     </div>
                 </div>
 
-                <!-- Seção 3: Endereço do Objetivo -->
-                <div class="form-section">
+                <!-- Seção 3: Endereço do Objetivo (oculta em modo denúncia) -->
+                <div class="form-section secao-alvara">
                     <div class="form-part-2">
-                        <input required name="endereco_objetivo"
+                        <input data-required="true" name="endereco_objetivo"
                             placeholder="Localização de Obras (Rua, número, bairro, CEP) *" autocomplete="street-address">
                     </div>
                     <div style="margin-top: 24px;">
                         <div class="form-section-label">Notificado pelo Fiscal de Obras? *</div>
                         <div style="display: flex; gap: 16px; margin-top: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
-                                <input type="radio" name="notificado_fiscal_obras" value="1" required style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Sim
+                                <input type="radio" name="notificado_fiscal_obras" value="1" data-required="true" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Sim
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
-                                <input type="radio" name="notificado_fiscal_obras" value="0" required style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Não
+                                <input type="radio" name="notificado_fiscal_obras" value="0" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Não
                             </label>
                         </div>
                     </div>
                 </div>
 
-                <!-- Seção 4: Tipo de Alvará -->
+                <!-- Seção 4: Tipo de Solicitação -->
                 <div class="form-section form-section-alvara">
                     <div class="tipo-alvara-container">
                         <div class="tipo-alvara-titulo">
                             <i class="fas fa-clipboard-list"></i>
-                            SELECIONE O TIPO DE ALVARÁ
+                            SELECIONE O TIPO DE SOLICITAÇÃO
                         </div>
                         <div class="tipo-alvara-content">
                             <div class="tipo-alvara-left">
-                                <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Alvará">
-                                    <option value="" hidden>Selecione um tipo de alvará...</option>
+                                <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Solicitação">
+                                    <option value="" hidden>Selecione o tipo de solicitação...</option>
                                     <?php
                                     $categorias = [
-                                        'obras' => 'Obras e Construção',
-                                        'ambiental' => 'Licenças Ambientais',
-                                        'outro' => 'Outros Serviços',
+                                        'obras'              => 'Obras e Construção',
+                                        'ambiental'          => 'Licenças Ambientais',
+                                        'outro'              => 'Outros Serviços',
+                                        'denuncia_autoriza'  => 'Denúncias e Autorizações',
                                     ];
                                     foreach ($categorias as $catSlug => $catNome):
                                         $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
@@ -737,18 +738,48 @@ include_once 'enquadramento_conema.php';
             </div>
         `;
 
-            // Carregamento de campos para o tipo de alvará
+            // Carregamento de campos para o tipo de solicitação
             const tipoAlvaraSelect = document.getElementById('tipo_alvara');
+            const secoesAlvara = document.querySelectorAll('.secao-alvara');
+            const form = document.getElementById('form');
+
+            function ativarModoAlvara() {
+                secoesAlvara.forEach(s => { s.style.display = ''; });
+                s.querySelectorAll('[data-required]') && secoesAlvara.forEach(s => {
+                    s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
+                });
+                form.action = 'processar_formulario.php';
+            }
+
+            function ativarModoDenuncia() {
+                secoesAlvara.forEach(s => {
+                    s.style.display = 'none';
+                    s.querySelectorAll('[data-required]').forEach(el => { el.required = false; });
+                });
+                form.action = 'processar_denuncia_publica.php';
+            }
+
+            // Inicializa required corretamente no load
+            secoesAlvara.forEach(s => {
+                s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
+            });
 
             if (tipoAlvaraSelect) {
                 tipoAlvaraSelect.addEventListener('change', function() {
                     const tipo = this.value;
 
+                    // Modo denúncia: esconde seções de alvará, muda action do form
+                    if (tipo === 'denuncia') {
+                        ativarModoDenuncia();
+                    } else {
+                        ativarModoAlvara();
+                    }
+
                     // Mostrar loading enquanto carrega
                     documentosDiv.innerHTML = `
                     <div class="mensagem-carregando">
                         <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #009640; margin-bottom: 15px;"></div>
-                        <p>Carregando documentos necessários...</p>
+                        <p>Carregando informações...</p>
                     </div>
                 `;
 
@@ -788,10 +819,11 @@ include_once 'enquadramento_conema.php';
 
                     if (tipo === '') {
                         camposDinamicos.innerHTML = '';
+                        ativarModoAlvara();
                         documentosDiv.innerHTML = `
                         <div class="mensagem-inicial">
                             <i class="fas fa-file-alt"></i>
-                            <p>Selecione um tipo de alvará acima para visualizar os documentos necessários e iniciar o processo de requerimento.</p>
+                            <p>Selecione o tipo de solicitação acima para visualizar os documentos necessários e iniciar o processo.</p>
                         </div>
                     `;
                         return;
@@ -822,7 +854,123 @@ include_once 'enquadramento_conema.php';
                     const tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
 
                     let campos = '';
-                    if (tipo === 'construcao') {
+
+                    // ── Campos específicos da denúncia pública ────────────────
+                    if (tipo === 'denuncia') {
+                        campos = `
+                        <div style="margin-bottom:10px;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.9rem;">
+                                <input type="checkbox" name="anonimo" id="chk_anonimo" value="1"
+                                    style="width:16px;height:16px;accent-color:#ef4444;cursor:pointer;">
+                                Realizar denúncia anônima (sua identidade não será registrada)
+                            </label>
+                        </div>
+                        <div id="bloco_denunciante">
+                            <div class="form-grid-2" style="margin-top:8px;">
+                                <input id="denunciante_nome" name="denunciante_nome"
+                                    placeholder="Seu nome completo *">
+                                <input name="denunciante_endereco"
+                                    placeholder="Seu endereço (opcional)">
+                            </div>
+                        </div>
+                        <div class="form-section-label" style="margin-top:18px;">Dados do Proprietário / Responsável pela Área (opcional)</div>
+                        <div class="form-grid-2" style="margin-top:8px;">
+                            <input name="proprietario_nome" placeholder="Nome do proprietário">
+                            <input name="proprietario_contato" placeholder="Contato (telefone, e-mail)">
+                        </div>
+                        <div style="margin-top:8px;">
+                            <input name="proprietario_endereco" placeholder="Endereço / local da ocorrência" style="width:100%">
+                        </div>
+                        <div class="form-section-label" style="margin-top:18px;">Tipo de Ocorrência <span style="color:#f87171">*</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;" id="tipos_denuncia_grid">
+                            ${[
+                                ['obstrucao_via',       'Obstrução de via'],
+                                ['terreno_sujo',        'Terreno sujo'],
+                                ['terreno_baldio',      'Terreno baldio'],
+                                ['esgoto_via',          'Esgoto em via pública'],
+                                ['construcao_irregular','Construção irregular'],
+                                ['entulho_construcao',  'Entulho em construção civil'],
+                                ['entulho_via',         'Entulho em via pública'],
+                                ['outros',              'Outros'],
+                            ].map(([val, label]) => `
+                                <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.85rem;min-width:170px;">
+                                    <input type="checkbox" name="tipos_denuncia[]" value="${val}"
+                                        style="width:15px;height:15px;accent-color:#ef4444;cursor:pointer;"
+                                        onchange="toggleOutros(this)">
+                                    ${label}
+                                </label>
+                            `).join('')}
+                        </div>
+                        <div id="bloco_outros" style="display:none;margin-top:10px;">
+                            <input name="outros_descricao" placeholder="Descreva a ocorrência *" style="width:100%">
+                        </div>
+                        <div class="form-section-label" style="margin-top:18px;">Detalhes adicionais</div>
+                        <textarea name="observacoes" rows="4"
+                            style="width:100%;margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);font-size:.9rem;resize:vertical;"
+                            placeholder="Descreva os fatos com o máximo de detalhes possível..."></textarea>
+                        <div class="form-section-label" style="margin-top:18px;">Evidências (opcional)</div>
+                        <div style="margin-top:8px;">
+                            <input type="file" name="evidencias[]" multiple form="form"
+                                accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime"
+                                style="color:rgba(255,255,255,0.75);font-size:.85rem;">
+                            <small style="color:rgba(255,255,255,0.45);font-size:.78rem;display:block;margin-top:4px;">
+                                Formatos aceitos: JPG, PNG, PDF, MP4 (máx. 20MB por arquivo)
+                            </small>
+                        </div>
+                        `;
+                        camposDinamicos.innerHTML = campos;
+
+                        // Toggle anônimo
+                        document.getElementById('chk_anonimo').addEventListener('change', function() {
+                            const bloco = document.getElementById('bloco_denunciante');
+                            const nomeInput = document.getElementById('denunciante_nome');
+                            bloco.style.display = this.checked ? 'none' : '';
+                            nomeInput.required = !this.checked;
+                        });
+                        // required inicial no nome do denunciante
+                        document.getElementById('denunciante_nome').required = true;
+
+                        return; // não carrega campos de alvará
+                    }
+
+                    // ── Campos dos tipos de alvará / autorização ────────────
+                    if (tipo === 'autorizacao_area_publica') {
+                        campos = `
+                            <div class="form-grid-2">
+                                <input required name="localizacao_area" placeholder="Localização da área / logradouro *">
+                                <input name="informacoes_evento" placeholder="Nome / descrição do evento">
+                            </div>
+                            <div style="margin-top:8px;">
+                                <input name="cro_cronograma" placeholder="CRO / cronograma do evento (datas e horários)"
+                                    style="width:100%">
+                            </div>
+                            <div style="margin-top:8px;">
+                                <textarea name="detalhamento" rows="3"
+                                    style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
+                                    placeholder="Detalhamento da solicitação..."></textarea>
+                            </div>
+                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
+                                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
+                                Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
+                            </div>
+                        `;
+                    } else if (tipo === 'licenca_uso_ocupacao_solo') {
+                        campos = `
+                            <div class="form-grid-2">
+                                <input required name="endereco_imovel" placeholder="Endereço do imóvel *">
+                                <input name="numero_cadastro" placeholder="Nº do cadastro imobiliário (se souber)">
+                            </div>
+                            <div style="margin-top:8px;">
+                                <textarea name="observacoes_solo" rows="3"
+                                    style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
+                                    placeholder="Observações sobre o uso pretendido..."></textarea>
+                            </div>
+                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
+                                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
+                                Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
+                            </div>
+                        `;
+                    } else if (tipo === 'construcao') {
                         campos = `
                             <div class="form-grid-2">
                                 <input required name="area_construcao" placeholder="Área total de construção (m²) *">
@@ -1019,6 +1167,13 @@ include_once 'enquadramento_conema.php';
             }
 
             return true;
+        }
+
+        function toggleOutros(checkbox) {
+            if (checkbox.value !== 'outros') return;
+            const bloco = document.getElementById('bloco_outros');
+            if (!bloco) return;
+            bloco.style.display = checkbox.checked ? '' : 'none';
         }
 
     </script>

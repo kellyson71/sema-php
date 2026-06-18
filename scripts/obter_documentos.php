@@ -12,6 +12,21 @@ if (!isset($_POST['tipo']) || !isset($tipos_alvara[$_POST['tipo']])) {
 
 $tipo = $_POST['tipo'];
 $alvara = $tipos_alvara[$tipo];
+
+// Denúncia: campos injetados diretamente no formulário via JS — sem lista de uploads aqui
+if ($tipo === 'denuncia') {
+    echo '<div class="documentos-lista" style="padding:20px;">
+        <h3 style="color:#009640;font-size:1.1rem;margin-bottom:12px;text-align:center;">
+            <i class="fas fa-camera me-1"></i> Evidências (opcional)
+        </h3>
+        <p style="color:#6c757d;font-size:.88rem;text-align:center;margin:0;">
+            Você pode anexar fotos, vídeos ou documentos como evidências.<br>
+            Use o campo de upload abaixo nos campos da denúncia.
+        </p>
+    </div>';
+    exit;
+}
+
 $limiteLabel = ($alvara['categoria'] ?? '') === 'ambiental' ? '40MB' : '10MB';
 
 echo '<div class="documentos-lista">';

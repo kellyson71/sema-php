@@ -32,8 +32,8 @@ if ($acao === 'cadastrar') {
     try {
         $pdo->beginTransaction();
 
-        $sql = "INSERT INTO denuncias (infrator_nome, infrator_cpf_cnpj, infrator_endereco, observacoes, admin_id) 
-                VALUES (?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO denuncias (infrator_nome, infrator_cpf_cnpj, infrator_endereco, observacoes, admin_id, origem)
+                VALUES (?, ?, ?, ?, ?, 'admin')";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $admin_id]);
         
