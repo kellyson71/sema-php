@@ -306,38 +306,42 @@ $statusOperacionais = adminStatusFluxoPrincipal();
 .acao-revisao          { background:#f3e8ff; color:#7e22ce; }
 .acao-envio            { background:#e0f2fe; color:#0369a1; }
 .acao-concluido        { background:#f1f5f0; color:#666; }
-.acao-retorno-aprovado { background:#dcfce7; color:#14532d; border:1px solid #86efac; font-weight:700; }
-.acao-retorno-recusado { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-weight:700; }
+.acao-retorno-aprovado { background:#f1f5f2; color:#1e3a28; border:1px solid #b8cfc0; font-weight:600; letter-spacing:.01em; }
+.acao-retorno-recusado { background:#f5f1f1; color:#3a1e1e; border:1px solid #cfb8b8; font-weight:600; letter-spacing:.01em; }
 
-/* Cards que precisam de ação urgente — borda esquerda colorida */
-.req-list-item.retorno-aprovado { border-left:4px solid #16a34a; background:#f0fdf4; }
-.req-list-item.retorno-recusado { border-left:4px solid #dc2626; background:#fef2f2; }
+/* Destaque sutil — apenas borda esquerda, sem fundo berrante */
+.req-list-item.retorno-aprovado { border-left:3px solid #3d7a56; }
+.req-list-item.retorno-recusado { border-left:3px solid #8b3a3a; }
 
 .badge-retorno-aprovado {
-    background:#dcfce7; color:#14532d;
-    border:1px solid #86efac;
-    font-size:.7rem; font-weight:700;
-    padding:3px 9px; border-radius:999px;
-    display:inline-flex; align-items:center;
+    background:#f1f5f2;
+    color:#1e3a28;
+    border:1px solid #b8cfc0;
+    font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    padding:2px 8px; border-radius:4px;
+    display:inline-flex; align-items:center; gap:5px;
+    text-transform:uppercase;
 }
 .badge-retorno-recusado {
-    background:#fee2e2; color:#991b1b;
-    border:1px solid #fca5a5;
-    font-size:.7rem; font-weight:700;
-    padding:3px 9px; border-radius:999px;
-    display:inline-flex; align-items:center; cursor:help;
+    background:#f5f1f1;
+    color:#3a1e1e;
+    border:1px solid #cfb8b8;
+    font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    padding:2px 8px; border-radius:4px;
+    display:inline-flex; align-items:center; gap:5px;
+    text-transform:uppercase; cursor:help;
 }
 .badge-devolvido-sec {
-    background:#fef3c7;
-    color:#92400e;
-    border:1px solid #fcd34d;
-    font-size:.7rem;
-    font-weight:700;
-    padding:3px 9px;
-    border-radius:999px;
+    background:#f5f3ee;
+    color:#5c4a1e;
+    border:1px solid #d4c5a0;
+    font-size:.68rem;
+    font-weight:600; letter-spacing:.03em;
+    padding:2px 8px;
+    border-radius:4px;
     display:inline-flex;
-    align-items:center;
-    cursor:help;
+    align-items:center; gap:5px;
+    text-transform:uppercase; cursor:help;
 }
 </style>
 
@@ -397,7 +401,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             ?>
             <a href="<?= htmlspecialchars($summaryUrl) ?>"
                class="summary-chip <?= $isActive ? 'active' : '' ?> <?= !empty($card['unread']) ? 'summary-chip-unread' : '' ?>"
-               <?= $isDestaque ? 'style="background:#dcfce7;border-color:#86efac;color:#14532d;font-weight:700;box-shadow:0 0 0 2px #bbf7d0;"' : '' ?>>
+               <?= $isDestaque ? 'style="background:#f1f5f2;border-color:#b8cfc0;color:#1e3a28;font-weight:600;letter-spacing:.01em;"' : '' ?>>
                 <span><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i><?= htmlspecialchars($card['label']) ?></span>
                 <strong><?= (int) $card['value'] ?></strong>
             </a>
@@ -588,11 +592,11 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                             <?php if ($acaoAtual === 'retorno_aprovado'): ?>
                                 <span class="badge badge-retorno-aprovado">
-                                    <i class="fas fa-check-circle me-1"></i>Aprovado pelo Secretário — pronto para enviar
+                                    <i class="fas fa-circle-check" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário aprovou
                                 </span>
                             <?php elseif ($acaoAtual === 'retorno_recusado'): ?>
                                 <span class="badge badge-retorno-recusado" title="<?= htmlspecialchars($req['motivo_devolucao'] ?? '') ?>">
-                                    <i class="fas fa-times-circle me-1"></i>Recusado pelo Secretário
+                                    <i class="fas fa-circle-xmark" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário não aprovou
                                 </span>
                             <?php elseif ($setorFiltro && !empty($acaoAtual)): ?>
                                 <span class="badge <?= htmlspecialchars(acaoClass($acaoAtual)) ?>" style="font-size:.7rem;">
