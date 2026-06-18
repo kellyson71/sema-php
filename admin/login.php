@@ -59,11 +59,11 @@ if (time() - $_SESSION['last_attempt_time'] > 900) {
     $_SESSION['login_attempts'] = 0;
 }
 
-if ($_SESSION['login_attempts'] >= 5) {
+if ($_SESSION['login_attempts'] >= 8) {
     $tempo_restante = 900 - (time() - $_SESSION['last_attempt_time']);
     if ($tempo_restante > 0) {
         $erro = "Muitas tentativas de login. Tente novamente em " . ceil($tempo_restante / 60) . " minutos.";
-        $_SESSION['login_attempts'] = 5;
+        $_SESSION['login_attempts'] = 8;
     } else {
         $_SESSION['login_attempts'] = 0;
     }
@@ -119,7 +119,17 @@ function enviarCodigoLoginPorEmail($admin, $codigo) {
 }
 
 // Processar formulário de login via AJAX
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
+    // Responde JSON mesmo quando bloqueado — evita que o HTML da página seja retornado ao fetch
+    if ($_SESSION['login_attempts'] >= 8) {
+        $tempo_restante = 900 - (time() - ($_SESSION['last_attempt_time'] ?? time()));
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Acesso bloqueado. Muitas tentativas incorretas. Tente novamente em ' . ceil(max($tempo_restante, 60) / 60) . ' minutos.']);
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
     if (isset($_POST['action']) && $_POST['action'] === 'validar_credenciais') {
         header('Content-Type: application/json');
 
@@ -149,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            if (dispositivoConfiado($pdo)) {
+            if (!empty($admin['bypass_2fa'] ?? null) || dispositivoConfiado($pdo)) {
                 criarSessaoAdmin($pdo, $admin);
                 $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
                 unset($_SESSION['login_redirect_url']);
@@ -192,8 +202,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 5) {
         } else {
             $_SESSION['login_attempts']++;
             $_SESSION['last_attempt_time'] = time();
+            $restantes = max(0, 8 - (int) $_SESSION['login_attempts']);
             if (ob_get_length()) ob_clean();
-            echo json_encode(['success' => false, 'error' => "Usuário ou senha incorretos."]);
+            echo json_encode([
+                'success' => false,
+                'error'   => 'Usuário ou senha incorretos.',
+                'tentativas_restantes' => $restantes <= 3 ? $restantes : null,
+            ]);
         }
         exit;
     }
@@ -314,7 +329,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <?php if (!MODO_HOMOLOG): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
+    <?php endif; ?>
     <style>
         :root {
             --primary: #009851;
@@ -641,7 +658,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <div style="margin-bottom:22px">
                     <div class="mono" style="font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase">Painel Administrativo</div>
                     <h2 class="display" style="margin:6px 0 0;font-size:28px;font-weight:700">Bem-vindo de volta</h2>
-                    <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Informe suas credenciais institucionais.</p>
                 </div>
 
                 <?php if ($erro): ?>
@@ -981,6 +997,45 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     setLoading(btn, true, 'Verificando…');
     clearAlert('login-err');
 
+    <?php if (MODO_HOMOLOG): ?>
+    fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
+    .then(r => r.json())
+    .then(data => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Entrar no painel ' + iconArrow();
+        if (data.success) {
+            if (data.skip_2fa) { window.location.href = data.redirect || 'index.php'; return; }
+            state.user = usuario;
+            state.maskedEmail = data.email_mascarado || '';
+            state.hasTotp     = !!data.has_totp;
+            document.getElementById('mc-app').classList.add('hidden');
+
+            if (state.hasTotp && state.maskedEmail) {
+                document.getElementById('method-user').textContent = usuario;
+                document.getElementById('method-email-masked').textContent = state.maskedEmail;
+                document.getElementById('mc-app').classList.remove('hidden');
+                goTo('method');
+            } else {
+                state.method = state.hasTotp ? 'app' : 'email';
+                renderOtp();
+                goTo('otp');
+                setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
+            }
+        } else {
+            let _msg = '<strong>Falha no acesso.</strong> ' + esc(data.error);
+            if (data.tentativas_restantes !== null && data.tentativas_restantes !== undefined) {
+                const r = data.tentativas_restantes;
+                _msg += ' Você ainda tem <strong>' + r + '</strong> tentativa' + (r !== 1 ? 's' : '') + ' antes do bloqueio.';
+            }
+            showAlert('login-err', _msg);
+        }
+    })
+    .catch(() => {
+        setLoading(btn, false);
+        btn.innerHTML = 'Entrar no painel ' + iconArrow();
+        showAlert('login-err', 'Erro de rede. Tente novamente.');
+    });
+    <?php else: ?>
     grecaptcha.ready(() => {
         grecaptcha.execute('<?= RECAPTCHA_SITE_KEY ?>', { action: 'login' }).then(token => {
             document.getElementById('recaptcha-token').value = token;
@@ -1009,7 +1064,12 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
                         setTimeout(() => document.querySelector('.otp-digit')?.focus(), 80);
                     }
                 } else {
-                    showAlert('login-err', '<strong>Falha no acesso.</strong> ' + esc(data.error));
+                    let _msg = '<strong>Falha no acesso.</strong> ' + esc(data.error);
+            if (data.tentativas_restantes !== null && data.tentativas_restantes !== undefined) {
+                const r = data.tentativas_restantes;
+                _msg += ' Você ainda tem <strong>' + r + '</strong> tentativa' + (r !== 1 ? 's' : '') + ' antes do bloqueio.';
+            }
+            showAlert('login-err', _msg);
                 }
             })
             .catch(() => {
@@ -1019,6 +1079,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
             });
         });
     });
+    <?php endif; ?>
 });
 
 /* ── 2FA method selection ── */

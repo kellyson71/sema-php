@@ -4,6 +4,7 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
 require_once __DIR__ . '/../includes/admin_release_reads.php';
+require_once __DIR__ . '/../includes/coassinatura_helper.php';
 
 // Impede que navegadores sirvam HTML cacheado do admin — garante que
 // mudanças nos <style> inline deste header cheguem ao usuário sem exigir
@@ -29,6 +30,7 @@ $totalNotificacoes = $notificationCounts['total'];
 $notificationTotal = $notificationCounts['unread'];
 $notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'unread', 20, 0);
 $notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'read', 20, 0);
+$assinaturasPendentes = contarAssinaturasPendentesPara($pdo, (int) $_SESSION['admin_id']);
 
 $pageTitles = [
     'index.php' => 'Dashboard',
@@ -46,7 +48,8 @@ $pageTitles = [
     'fluxo_setor_handler.php' => 'Fluxo de Setor',
     'logs_email.php' => 'Histórico de Envios',
     'notificacoes.php' => 'Notificações',
-    'testes.php' => 'Painel de Testes',
+    'minhas_assinaturas.php' => 'Para assinar',
+    'coassinar_documento.php' => 'Co-assinatura',
 ];
 $pageTitle = $pageTitles[$currentPage] ?? 'Painel Administrativo';
 
@@ -93,9 +96,6 @@ if ($isAnalista) {
         'url' => $adminBase . ($isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente'),
         'icon' => 'fa-magnifying-glass',
     ];
-}
-if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
-    $searchItems[] = ['label' => 'Painel de Testes', 'caption' => 'Ferramentas de homologação', 'url' => $adminBase . 'testes.php', 'icon' => 'fa-vial'];
 }
 ?>
 <!DOCTYPE html>
@@ -1407,6 +1407,20 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         </a>
                     </li>
                     <li>
+                        <a href="<?= $adminBase ?>minhas_assinaturas.php" class="sidebar-link <?= $currentPage === 'minhas_assinaturas.php' ? 'active' : '' ?>" title="Para assinar">
+                            <span class="sidebar-link-icon"><i class="fas fa-file-signature"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Para assinar</span>
+                                    <span class="sidebar-link-caption">Co-assinaturas pendentes</span>
+                                </span>
+                                <?php if ($assinaturasPendentes > 0): ?>
+                                    <span class="badge bg-danger sidebar-link-badge"><?= $assinaturasPendentes > 99 ? '99+' : $assinaturasPendentes ?></span>
+                                <?php endif; ?>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
                             <span class="sidebar-link-icon"><i class="fas fa-layer-group"></i></span>
                             <span class="sidebar-link-content">
@@ -1431,6 +1445,7 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 </ul>
             </div>
 
+            <?php if ($isAdmin): /* Operação = simulação de perfil, só faz sentido para admin */ ?>
             <div class="sidebar-section">
                 <ul>
                     <li class="nav-item">
@@ -1446,24 +1461,22 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                         </a>
                         <div class="collapse <?= $isOperacaoSectionOpen ? 'show' : '' ?>" id="submenuOperacao">
                             <ul class="sidebar-submenu">
-                                <?php if ($isAnalista): ?>
-                                    <li>
-                                        <a href="<?= $adminBase ?><?= $isAdmin ? 'simular_perfil.php?role=analista' : 'requerimentos.php?status=Pendente' ?>" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
-                                            <span class="sidebar-link-icon"><i class="fas fa-magnifying-glass" style="color:#86efac;"></i></span>
-                                            <span class="sidebar-link-content">
-                                                <span class="sidebar-link-text">
-                                                    <span class="sidebar-link-title">Triagem de Protocolos</span>
-                                                </span>
+                                <li>
+                                    <a href="<?= $adminBase ?>simular_perfil.php?role=analista" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
+                                        <span class="sidebar-link-icon"><i class="fas fa-magnifying-glass" style="color:#86efac;"></i></span>
+                                        <span class="sidebar-link-content">
+                                            <span class="sidebar-link-text">
+                                                <span class="sidebar-link-title">Triagem de Protocolos</span>
                                             </span>
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
-
+                                        </span>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </li>
                 </ul>
             </div>
+            <?php endif; ?>
 
             <div class="sidebar-section">
                 <div class="menu-header"><span>Acervo e Dados</span></div>
@@ -1527,24 +1540,6 @@ if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)) {
                 </ul>
             </div>
 
-            <?php if ($isHomologHost || (defined('MODO_HOMOLOG') && MODO_HOMOLOG)): ?>
-                <div class="sidebar-section">
-                    <div class="menu-header"><span>Homologação</span></div>
-                    <ul>
-                        <li>
-                            <a href="<?= $adminBase ?>testes.php" class="sidebar-link <?= $currentPage === 'testes.php' ? 'active' : '' ?>" title="Painel de Testes">
-                                <span class="sidebar-link-icon"><i class="fas fa-vial" style="color:#fbbf24;"></i></span>
-                                <span class="sidebar-link-content">
-                                    <span class="sidebar-link-text">
-                                        <span class="sidebar-link-title">Painel de Testes</span>
-                                        <span class="sidebar-link-caption">Ferramentas do ambiente de homologação</span>
-                                    </span>
-                                </span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            <?php endif; ?>
 
             <div class="sidebar-section">
                 <div class="menu-header"><span>Administração</span></div>

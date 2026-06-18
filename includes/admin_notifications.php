@@ -19,10 +19,13 @@ if (!function_exists('ensureAdminNotificationTables')) {
                     descricao TEXT NOT NULL,
                     link_url VARCHAR(255) DEFAULT NULL,
                     requerimento_id INTEGER DEFAULT NULL,
+                    destinatario_admin_id INTEGER DEFAULT NULL,
                     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
                 )
             ");
+            // Direcionamento (idempotente p/ bases já existentes)
+            try { $pdo->exec("ALTER TABLE admin_notifications ADD COLUMN destinatario_admin_id INTEGER DEFAULT NULL"); } catch (Throwable $e) {}
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS admin_notification_reads (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,13 +63,17 @@ if (!function_exists('ensureAdminNotificationTables')) {
                     descricao TEXT NOT NULL,
                     link_url VARCHAR(255) NULL,
                     requerimento_id INT NULL,
+                    destinatario_admin_id INT NULL,
                     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_admin_notifications_criado_em (criado_em),
                     INDEX idx_admin_notifications_requerimento (requerimento_id),
+                    INDEX idx_notif_destinatario (destinatario_admin_id),
                     CONSTRAINT fk_admin_notifications_requerimento
                         FOREIGN KEY (requerimento_id) REFERENCES requerimentos(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
+            // Direcionamento (idempotente p/ bases já existentes)
+            try { $pdo->exec("ALTER TABLE admin_notifications ADD COLUMN destinatario_admin_id INT NULL"); } catch (Throwable $e) {}
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS admin_notification_reads (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,6 +125,9 @@ if (!function_exists('adminNotificationIcon')) {
             'devolvido_setor2'     => 'fa-reply',
             'setor3_aprovado'      => 'fa-check-double',
             'assinatura_solicitada' => 'fa-file-signature',
+            'coassinatura_solicitada' => 'fa-file-signature',
+            'coassinatura_recusada'   => 'fa-file-circle-xmark',
+            'coassinatura_concluida'  => 'fa-file-circle-check',
             default                => 'fa-bell',
         };
     }
@@ -148,6 +158,9 @@ if (!function_exists('adminNotificationAccent')) {
             'devolvido_setor2'     => 'accent-amber',
             'setor3_aprovado'      => 'accent-teal',
             'assinatura_solicitada' => 'accent-green',
+            'coassinatura_solicitada' => 'accent-green',
+            'coassinatura_recusada'   => 'accent-amber',
+            'coassinatura_concluida'  => 'accent-teal',
             default                => 'accent-green',
         };
     }
@@ -159,8 +172,8 @@ if (!function_exists('createAdminNotification')) {
         ensureAdminNotificationTables($pdo);
 
         $stmt = $pdo->prepare("
-            INSERT INTO admin_notifications (tipo, titulo, descricao, link_url, requerimento_id)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO admin_notifications (tipo, titulo, descricao, link_url, requerimento_id, destinatario_admin_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['tipo'],
@@ -168,6 +181,7 @@ if (!function_exists('createAdminNotification')) {
             $data['descricao'],
             $data['link_url'] ?? null,
             $data['requerimento_id'] ?? null,
+            $data['destinatario_admin_id'] ?? null,
         ]);
 
         return (int) $pdo->lastInsertId();
@@ -252,8 +266,17 @@ if (!function_exists('createAdminNotificationForRequerimento')) {
                     $descricao = $descricao !== '' ? $descricao : sprintf('#%s foi aprovado pelo Secretário e retornou ao Setor 2 para envio ao cidadão.', $row['protocolo']);
                     break;
                 case 'assinatura_solicitada':
+                case 'coassinatura_solicitada':
                     $titulo = $titulo !== '' ? $titulo : 'Assinatura solicitada';
                     $descricao = $descricao !== '' ? $descricao : sprintf('#%s · Sua assinatura foi solicitada em um documento.', $row['protocolo']);
+                    break;
+                case 'coassinatura_recusada':
+                    $titulo = $titulo !== '' ? $titulo : 'Co-assinatura recusada';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s · Um servidor recusou assinar um documento.', $row['protocolo']);
+                    break;
+                case 'coassinatura_concluida':
+                    $titulo = $titulo !== '' ? $titulo : 'Documento totalmente assinado';
+                    $descricao = $descricao !== '' ? $descricao : sprintf('#%s · Todas as assinaturas solicitadas foram concluídas.', $row['protocolo']);
                     break;
                 default:
                     $titulo = $titulo !== '' ? $titulo : 'Atualização de processo';
@@ -272,6 +295,7 @@ if (!function_exists('createAdminNotificationForRequerimento')) {
             'descricao' => $descricao,
             'link_url' => $override['link_url'] ?? ('visualizar_requerimento.php?id=' . $row['id']),
             'requerimento_id' => $row['id'],
+            'destinatario_admin_id' => $override['destinatario_admin_id'] ?? null,
         ]);
     }
 }
@@ -311,9 +335,10 @@ if (!function_exists('markAllAdminNotificationsAsRead')) {
             LEFT JOIN admin_notification_reads r
                 ON r.notification_id = n.id AND r.admin_id = ?
             WHERE r.id IS NULL
+              AND (n.destinatario_admin_id IS NULL OR n.destinatario_admin_id = ?)
             ORDER BY n.criado_em DESC
         ");
-        $stmt->execute([$adminId]);
+        $stmt->execute([$adminId, $adminId]);
         $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         foreach ($ids as $notificationId) {
@@ -337,8 +362,9 @@ if (!function_exists('fetchAdminNotificationCounts')) {
             FROM admin_notifications n
             LEFT JOIN admin_notification_reads r
                 ON r.notification_id = n.id AND r.admin_id = ?
+            WHERE (n.destinatario_admin_id IS NULL OR n.destinatario_admin_id = ?)
         ");
-        $stmt->execute([$adminId]);
+        $stmt->execute([$adminId, $adminId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return [
@@ -357,12 +383,13 @@ if (!function_exists('fetchAdminNotifications')) {
         $limit = max(1, (int) $limit);
         $offset = max(0, (int) $offset);
 
-        $where = '';
+        $cond = ['(n.destinatario_admin_id IS NULL OR n.destinatario_admin_id = ?)'];
         if ($tab === 'unread') {
-            $where = 'WHERE r.id IS NULL';
+            $cond[] = 'r.id IS NULL';
         } elseif ($tab === 'read') {
-            $where = 'WHERE r.id IS NOT NULL';
+            $cond[] = 'r.id IS NOT NULL';
         }
+        $where = 'WHERE ' . implode(' AND ', $cond);
 
         $stmt = $pdo->prepare("
             SELECT
@@ -378,7 +405,7 @@ if (!function_exists('fetchAdminNotifications')) {
                 n.criado_em DESC
             LIMIT {$limit} OFFSET {$offset}
         ");
-        $stmt->execute([$adminId]);
+        $stmt->execute([$adminId, $adminId]);
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         foreach ($items as &$item) {

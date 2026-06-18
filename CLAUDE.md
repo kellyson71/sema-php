@@ -126,13 +126,16 @@ lftp -u "u492577848.semapmpfestagio,Pmpfestagio2021" ftp://46.202.145.215 -e \
 
 ## Estrutura de deploy no servidor
 
-O servidor tem dois ambientes no mesmo host:
+O servidor tem dois ambientes em domínios separados:
 
 - `~/domains/sema.protocolosead.com/public_html/` → branch **main** (produção)
-- `~/domains/sema.protocolosead.com/public_html/homologacao/` → branch **homologacao** (staging)
+- `~/domains/semaholog.protocolosead.com/public_html/` → branch **homologacao** (staging)
+
+> ⚠️ A pasta `sema.protocolosead.com/public_html/homologacao/` existe mas NÃO é o ambiente de homologação ativo.  
+> O ambiente real de homologação é **semaholog.protocolosead.com**.
 
 Deploy da branch `homologacao`:
 ```bash
 ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "cd ~/domains/sema.protocolosead.com/public_html/homologacao && git pull"
+  "cd ~/domains/semaholog.protocolosead.com/public_html && git pull"
 ```

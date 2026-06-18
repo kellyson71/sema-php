@@ -1,9 +1,13 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/assinatura_avancada_service.php';
 verificaLogin();
 
 $adminId = (int) $_SESSION['admin_id'];
 $admin = getDadosAdmin($pdo, $adminId);
+
+// Estado da chave de assinatura eletrônica (para a seção de PIN)
+$temChaveAssinatura = (new AssinaturaAvancadaService($pdo))->temChave($adminId);
 
 $uploadDir = '../uploads/perfil/';
 if (!file_exists($uploadDir)) {
@@ -244,6 +248,28 @@ include 'header.php';
     .profile-btn-danger:hover { background:#fff6f6; color:#9a2323; }
     .profile-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:20px; }
     .profile-alert { border:none; border-radius:16px; box-shadow:var(--card-shadow); }
+    /* Card de status do PIN de assinatura */
+    .pin-status-card { display:flex; align-items:center; gap:16px; padding:18px 20px; border-radius:16px; border:1px solid var(--line); background:#fff; margin-top:14px; }
+    .pin-status-card.ativo   { border-color:#bbf0d4; background:linear-gradient(180deg,#f3faf6,#fff); }
+    .pin-status-card.inativo { border-color:#fde6c7; background:linear-gradient(180deg,#fffaf2,#fff); }
+    .pin-status-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    .pin-status-card.ativo   .pin-status-icon { background:#1c4b36; color:#fff; }
+    .pin-status-card.inativo .pin-status-icon { background:#f59e0b; color:#fff; }
+    .pin-status-title { font-size:.98rem; font-weight:700; margin:0 0 2px; color:var(--ink); }
+    .pin-status-desc  { font-size:.82rem; color:var(--muted, #64748b); margin:0; line-height:1.4; }
+    @media (max-width:640px){ .pin-status-card { flex-direction:column; align-items:flex-start; } }
+    /* Avatar com botão de editar foto */
+    .profile-avatar-wrap { position:relative; display:inline-block; }
+    .avatar-edit { position:absolute; right:4px; bottom:4px; width:34px; height:34px; border-radius:50%; background:var(--primary); color:#fff; border:2.5px solid #fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.22); transition:transform .12s, background .12s; }
+    .avatar-edit:hover { transform:scale(1.08); background:var(--primary-strong); }
+    /* Itens de segurança compactos */
+    .sec-item { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--line); border-radius:14px; margin-bottom:10px; background:#fff; }
+    .sec-item .sec-ic { width:42px; height:42px; border-radius:12px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
+    .sec-item.ok .sec-ic { background:#dcfce7; color:#15803d; }
+    .sec-item .sec-tit { font-weight:700; font-size:.92rem; color:var(--ink); }
+    .sec-item .sec-sub { font-size:.78rem; color:var(--muted); margin-top:1px; }
+    .sec-item .sec-act { margin-left:auto; flex-shrink:0; }
+    @media (max-width:640px){ .sec-item { flex-wrap:wrap; } .sec-item .sec-act { margin-left:0; width:100%; } .sec-item .sec-act .profile-btn { width:100%; } }
     .totp-modal .modal-content { border-radius:24px; border:1px solid var(--line); overflow:hidden; box-shadow:0 28px 52px rgba(16, 33, 23, .18); }
     .totp-modal-header { background:linear-gradient(135deg, var(--primary) 0%, #0f4425 100%); color:#fff; border-bottom:none; padding:22px 24px 18px; }
     .totp-modal-title { margin:0 0 6px; font-size:1.18rem; font-weight:800; color:#fff; }
@@ -280,19 +306,6 @@ include 'header.php';
 </style>
 
 <div class="profile-shell">
-    <section class="profile-hero">
-        <div>
-            <span class="profile-hero-kicker"><i class="fas fa-user-gear"></i> Área da conta</span>
-            <h1>Meu perfil administrativo.</h1>
-            <p>Atualize seus dados principais, mantenha a conta protegida com autenticador e ajuste a senha sem sair do fluxo visual do painel.</p>
-        </div>
-        <div class="profile-hero-note">
-            <span>Status atual</span>
-            <strong><?= htmlspecialchars($nivelLabel) ?></strong>
-            <small class="text-muted d-block mt-2">Último acesso: <?= htmlspecialchars($ultimoAcesso) ?></small>
-        </div>
-    </section>
-
     <?php if ($mensagem): ?>
         <div class="alert alert-<?= htmlspecialchars($mensagemTipo) ?> alert-dismissible fade show profile-alert" role="alert">
             <?= htmlspecialchars($mensagem) ?>
@@ -308,6 +321,9 @@ include 'header.php';
                 <?php else: ?>
                     <div class="profile-avatar-fallback"><?= htmlspecialchars($iniciais) ?></div>
                 <?php endif; ?>
+                <button type="button" class="avatar-edit" title="Trocar foto" onclick="document.getElementById('foto').click()">
+                    <i class="fas fa-pen"></i>
+                </button>
             </div>
 
             <h2 class="profile-name"><?= htmlspecialchars($admin['nome']) ?></h2>
@@ -333,112 +349,171 @@ include 'header.php';
                         <strong><?= htmlspecialchars($ultimoAcesso) ?></strong>
                     </div>
                 </div>
-                <div class="profile-meta-item">
-                    <div class="profile-meta-icon"><i class="fas fa-shield-halved"></i></div>
-                    <div>
-                        <span>Proteção adicional</span>
-                        <strong><?= $totpAtivo ? 'App autenticador ativo' : 'App autenticador desativado' ?></strong>
-                    </div>
-                </div>
             </div>
         </aside>
 
         <div class="profile-panels">
-            <form method="post" action="" enctype="multipart/form-data" class="profile-panel">
+            <!-- Dados da conta -->
+            <form method="post" action="" enctype="multipart/form-data" class="profile-panel" id="formDados">
                 <div class="panel-head">
                     <div>
-                        <span class="panel-kicker">Dados da conta</span>
-                        <h2>Informações principais</h2>
-                        <p>Esses dados são usados no acesso ao painel e na identificação do administrador dentro do fluxo interno.</p>
+                        <span class="panel-kicker">Conta</span>
+                        <h2>Dados da conta</h2>
                     </div>
                 </div>
-
                 <div class="profile-form-grid">
                     <div>
-                        <label for="nome" class="profile-label">Nome exibido no sistema</label>
+                        <label for="nome" class="profile-label">Nome</label>
                         <input type="text" class="profile-input" id="nome" name="nome" value="<?= htmlspecialchars($admin['nome']) ?>" required>
                     </div>
                     <div>
-                        <label for="email" class="profile-label">E-mail de acesso e verificação</label>
+                        <label for="email" class="profile-label">E-mail</label>
                         <input type="email" class="profile-input" id="email" name="email" value="<?= htmlspecialchars($admin['email']) ?>" required>
                     </div>
-                    <div class="field-span-2">
-                        <label for="foto" class="profile-label">Foto de perfil</label>
-                        <input type="file" class="profile-file" id="foto" name="foto" accept="image/*">
-                        <div class="profile-help">Formatos aceitos: JPG, PNG e GIF. A foto é usada apenas no contexto administrativo.</div>
-                    </div>
                 </div>
+                <!-- input de foto acionado pelo lápis no avatar (auto-submete) -->
+                <input type="file" id="foto" name="foto" accept="image/*" class="d-none" onchange="document.getElementById('formDados').submit()">
+                <div class="profile-actions">
+                    <button type="submit" class="profile-btn profile-btn-primary">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </form>
 
-                <div class="profile-divider"></div>
-
-                <div class="panel-head" style="margin-top:18px;">
+            <!-- Segurança -->
+            <div class="profile-panel">
+                <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Segurança</span>
-                        <h2>Autenticação em duas etapas</h2>
-                        <p>Use um aplicativo autenticador para adicionar uma camada extra de proteção ao login administrativo.</p>
+                        <h2>Acesso e assinatura</h2>
                     </div>
                 </div>
 
-                <div id="totp-status-container" class="security-card <?= $totpAtivo ? 'is-active' : 'is-inactive' ?>">
-                    <div class="security-state">
-                        <div class="security-state-icon">
-                            <i class="fas <?= $totpAtivo ? 'fa-check' : 'fa-shield-halved' ?>"></i>
-                        </div>
-                        <div>
-                            <h3><?= $totpAtivo ? 'Autenticador ativo' : 'Autenticador ainda não configurado' ?></h3>
-                            <p>
-                                <?= $totpAtivo
-                                    ? 'Sua conta já exige validação adicional por aplicativo. Isso reduz risco de acesso indevido mesmo quando a senha é conhecida.'
-                                    : 'Recomendamos ativar o autenticador para reforçar a conta usada no painel. O processo é rápido e fica vinculado ao seu aplicativo de segurança.' ?>
-                            </p>
-                        </div>
+                <div class="sec-item">
+                    <div class="sec-ic"><i class="fas fa-lock"></i></div>
+                    <div>
+                        <div class="sec-tit">Senha de acesso</div>
+                        <div class="sec-sub">Usada para entrar no painel</div>
                     </div>
-                    <div class="security-actions">
+                    <div class="sec-act">
+                        <button type="button" class="profile-btn profile-btn-secondary" onclick="abrirModalSenha()">
+                            <i class="fas fa-key"></i> Alterar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sec-item <?= $totpAtivo ? 'ok' : '' ?>">
+                    <div class="sec-ic"><i class="fas fa-shield-halved"></i></div>
+                    <div>
+                        <div class="sec-tit">Verificação em duas etapas</div>
+                        <div class="sec-sub"><?= $totpAtivo ? 'Ativada — app autenticador' : 'Desativada' ?></div>
+                    </div>
+                    <div class="sec-act">
                         <?php if ($totpAtivo): ?>
                             <button type="button" class="profile-btn profile-btn-danger" onclick="desativarTotp()">
-                                <i class="fas fa-power-off"></i> Desativar autenticador
+                                <i class="fas fa-power-off"></i> Desativar
                             </button>
                         <?php else: ?>
                             <button type="button" class="profile-btn profile-btn-primary" onclick="iniciarSetupTotp()">
-                                <i class="fas fa-qrcode"></i> Configurar agora
+                                <i class="fas fa-qrcode"></i> Ativar
                             </button>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="profile-divider"></div>
-
-                <div class="panel-head" style="margin-top:18px;">
+                <div class="sec-item <?= $temChaveAssinatura ? 'ok' : '' ?>" style="margin-bottom:0;">
+                    <div class="sec-ic"><i class="fas fa-file-signature"></i></div>
                     <div>
-                        <span class="panel-kicker">Credenciais</span>
-                        <h2>Alterar senha</h2>
-                        <p>Preencha somente se quiser trocar a senha atual. Caso contrário, deixe os campos abaixo em branco.</p>
+                        <div class="sec-tit">PIN de assinatura</div>
+                        <div class="sec-sub"><?= $temChaveAssinatura ? 'Configurado — chave RSA ativa' : 'Não configurado' ?></div>
+                    </div>
+                    <div class="sec-act">
+                        <button type="button" class="profile-btn <?= $temChaveAssinatura ? 'profile-btn-secondary' : 'profile-btn-primary' ?>" onclick="abrirModalPin()">
+                            <i class="fas <?= $temChaveAssinatura ? 'fa-rotate' : 'fa-key' ?>"></i>
+                            <?= $temChaveAssinatura ? 'Redefinir' : 'Configurar' ?>
+                        </button>
                     </div>
                 </div>
-
-                <div class="profile-form-grid">
-                    <div>
-                        <label for="senha_atual" class="profile-label">Senha atual</label>
-                        <input type="password" class="profile-input" id="senha_atual" name="senha_atual">
-                    </div>
-                    <div>
-                        <label for="nova_senha" class="profile-label">Nova senha</label>
-                        <input type="password" class="profile-input" id="nova_senha" name="nova_senha">
-                    </div>
-                    <div class="field-span-2">
-                        <label for="confirmar_senha" class="profile-label">Confirmar nova senha</label>
-                        <input type="password" class="profile-input" id="confirmar_senha" name="confirmar_senha">
-                    </div>
-                </div>
-
-                <div class="profile-actions">
-                    <button type="submit" class="profile-btn profile-btn-primary">
-                        <i class="fas fa-save"></i> Salvar alterações
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
+</div>
+
+<!-- Modal Alterar senha -->
+<div class="modal fade" id="modalSenha" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header px-4 py-3" style="background:linear-gradient(135deg,#1c4b36,#0d7f5f);">
+        <h5 class="modal-title fw-bold text-white"><i class="fas fa-lock me-2"></i>Alterar senha</h5>
+        <button type="button" class="btn-close" style="filter:brightness(0) invert(1);" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="">
+        <div class="modal-body p-4">
+          <input type="hidden" name="nome" value="<?= htmlspecialchars($admin['nome']) ?>">
+          <input type="hidden" name="email" value="<?= htmlspecialchars($admin['email']) ?>">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Senha atual</label>
+            <input type="password" class="form-control" name="senha_atual" required autocomplete="current-password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Nova senha</label>
+            <input type="password" class="form-control" name="nova_senha" required autocomplete="new-password">
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold small">Confirmar nova senha</label>
+            <input type="password" class="form-control" name="confirmar_senha" required autocomplete="new-password">
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn text-white fw-semibold" style="background:#1c4b36;">
+            <i class="fas fa-check me-1"></i> Alterar senha
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal PIN de assinatura -->
+<div class="modal fade" id="modalPin" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header px-4 py-3" style="background:linear-gradient(135deg,#1c4b36,#0d7f5f);">
+        <h5 class="modal-title fw-bold text-white">
+          <i class="fas fa-key me-2"></i><?= $temChaveAssinatura ? 'Redefinir PIN de assinatura' : 'Configurar PIN de assinatura' ?>
+        </h5>
+        <button type="button" class="btn-close" style="filter:brightness(0) invert(1);" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <?php if ($temChaveAssinatura): ?>
+          <div class="alert alert-warning py-2" style="font-size:.82rem;">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            Redefinir gera uma <strong>nova chave</strong>. O PIN antigo deixa de funcionar. Documentos já assinados permanecem válidos.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Senha de login (confirmação)</label>
+            <input type="password" id="pinSenhaLogin" class="form-control" autocomplete="current-password" placeholder="Sua senha de acesso ao painel">
+          </div>
+        <?php endif; ?>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Novo PIN <span class="text-muted">(mínimo 6 caracteres)</span></label>
+          <input type="password" id="pinNovoPerfil" class="form-control" maxlength="64" autocomplete="new-password" placeholder="Crie seu PIN">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">Confirmar PIN</label>
+          <input type="password" id="pinConfirmaPerfil" class="form-control" maxlength="64" autocomplete="new-password" placeholder="Repita o PIN">
+        </div>
+        <div id="pinErroPerfil" class="text-danger small mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white fw-semibold" style="background:#1c4b36;" id="btnSalvarPin" onclick="salvarPin()">
+          <i class="fas fa-check me-1"></i> <?= $temChaveAssinatura ? 'Redefinir' : 'Configurar' ?>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="modal fade" id="modalSetupTotp" tabindex="-1" aria-labelledby="modalSetupTotpLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -478,10 +553,91 @@ include 'header.php';
 
 <script>
     let setupModal;
+    let pinModal;
+    let senhaModal;
 
     document.addEventListener('DOMContentLoaded', function() {
         setupModal = new bootstrap.Modal(document.getElementById('modalSetupTotp'));
+        pinModal = new bootstrap.Modal(document.getElementById('modalPin'));
+        senhaModal = new bootstrap.Modal(document.getElementById('modalSenha'));
     });
+
+    function abrirModalSenha() { senhaModal.show(); }
+
+    const temChaveAssinatura = <?= $temChaveAssinatura ? 'true' : 'false' ?>;
+
+    function abrirModalPin() {
+        document.getElementById('pinNovoPerfil').value = '';
+        document.getElementById('pinConfirmaPerfil').value = '';
+        const sl = document.getElementById('pinSenhaLogin');
+        if (sl) sl.value = '';
+        document.getElementById('pinErroPerfil').style.display = 'none';
+        pinModal.show();
+    }
+
+    function salvarPin() {
+        const erro = document.getElementById('pinErroPerfil');
+        const pin = document.getElementById('pinNovoPerfil').value;
+        const pin2 = document.getElementById('pinConfirmaPerfil').value;
+        const senhaEl = document.getElementById('pinSenhaLogin');
+        erro.style.display = 'none';
+
+        if (temChaveAssinatura && senhaEl && !senhaEl.value) {
+            erro.textContent = 'Informe sua senha de login para confirmar.';
+            erro.style.display = 'block'; return;
+        }
+        if (pin.length < 6) {
+            erro.textContent = 'O PIN deve ter no mínimo 6 caracteres.';
+            erro.style.display = 'block'; return;
+        }
+        if (pin !== pin2) {
+            erro.textContent = 'Os PINs não coincidem.';
+            erro.style.display = 'block'; return;
+        }
+
+        const btn = document.getElementById('btnSalvarPin');
+        btn.disabled = true;
+        const txtOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Salvando...';
+
+        const body = new URLSearchParams({
+            acao: 'criar',
+            pin: pin,
+            pin_confirmacao: pin2,
+            confirmar_recriacao: temChaveAssinatura ? '1' : '0',
+        });
+        if (temChaveAssinatura && senhaEl) body.append('senha_login', senhaEl.value);
+
+        fetch('assinatura/chave_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        })
+        .then(r => r.json())
+        .then(ret => {
+            btn.disabled = false;
+            btn.innerHTML = txtOriginal;
+            if (ret.success) {
+                pinModal.hide();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ title: 'PIN configurado', text: 'Sua chave de assinatura está pronta.', icon: 'success', timer: 2200, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    alert('PIN configurado com sucesso.');
+                    location.reload();
+                }
+            } else {
+                erro.textContent = ret.error || 'Não foi possível salvar o PIN.';
+                erro.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = txtOriginal;
+            erro.textContent = 'Falha de conexão. Tente novamente.';
+            erro.style.display = 'block';
+        });
+    }
 
     function iniciarSetupTotp() {
         setupModal.show();

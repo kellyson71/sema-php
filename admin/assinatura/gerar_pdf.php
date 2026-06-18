@@ -116,7 +116,8 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     $html = trim($conteudo_html);
 
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
-    $html = preg_replace('/<div[^>]+class="page-break-indicator"[^>]*><\/div>/i', '', $html);
+    // Marcadores visuais de corte/separação de página do editor — nunca vão para o PDF
+    $html = preg_replace('/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
     $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
     // Summernote injeta <p><br></p> ao apertar Enter — no editor viram "respiros"
     // visualmente discretos, mas no TCPDF cada um vira uma linha cheia. Removemos
@@ -245,9 +246,36 @@ function renderizarParecerPdf(string $conteudo_html, array $assinantes, string $
 }
 
 /**
- * Posiciona os blocos de assinatura digital sem interferir na paginação do conteúdo.
+ * Mascara CPF para exibição pública no carimbo: 123.456.789-01 → ***.456.789-**
  */
-function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
+function _mascararCpfCarimbo(string $cpf): string
+{
+    $dig = preg_replace('/\D/', '', $cpf);
+    if (strlen($dig) !== 11) return '';
+    return '***.' . substr($dig, 3, 3) . '.' . substr($dig, 6, 3) . '-**';
+}
+
+/**
+ * Dimensões do bloco de assinatura digital (mm) conforme nº de assinantes.
+ * Centralizado para que preview (editor) e PDF usem os mesmos números.
+ */
+function dimensoesBlocoAssinatura(int $nAssinantes): array
+{
+    $w = 88.0;
+    $h = 20.0 + max(0, $nAssinantes - 1) * 7.5;
+    return [$w, $h];
+}
+
+/**
+ * Posiciona o bloco de assinatura digital sem interferir na paginação.
+ *
+ * $opcoes:
+ *   verify_url  — URL completa de verificação pública (vira QR code)
+ *   doc_codigo  — código curto exibido ao lado do QR
+ *   sig_pos     — ['x' => mm, 'y' => mm] canto superior-esquerdo do bloco
+ *                 na última página; null = inferior-direito padrão
+ */
+function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes, array $opcoes = []): void
 {
     if (empty($assinantes)) return;
 
@@ -256,34 +284,124 @@ function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes): void
 
     $pw = $pdf->getPageWidth();
     $ph = $pdf->getPageHeight();
-    $bH = 13;
-    $bY = $ph - 14 - $bH;
 
     // Modo linha manual: apenas um assinante com tipo='manual'
     if (($assinantes[0]['tipo'] ?? '') === 'manual') {
         $bW = 70;
         $bX = ($pw - $bW) / 2;
+        $bY = $ph - 14 - 13;
         _renderLinhaAssinaturaManual($pdf, $assinantes[0], $bX, $bY, $bW);
         return;
     }
 
-    $n = count($assinantes);
+    [$bW, $bH] = dimensoesBlocoAssinatura(count($assinantes));
 
-    if ($n === 1) {
-        $bW = 62;
+    $pos = $opcoes['sig_pos'] ?? null;
+    if (is_array($pos) && isset($pos['x'], $pos['y'])) {
+        // Limita dentro da área útil da página
+        $bX = max(10.0, min((float) $pos['x'], $pw - $bW - 10.0));
+        $bY = max(25.0, min((float) $pos['y'], $ph - $bH - 12.0));
+    } else {
         $bX = $pw - 15 - $bW;
-        _renderBlocoAssinatura($pdf, $assinantes[0], $bX, $bY, $bW, $bH);
-        return;
+        $bY = $ph - 14 - $bH;
     }
 
-    $bW = ($n <= 2) ? 62 : 55;
-    $gap = 4;
-    $totalW = $n * $bW + ($n - 1) * $gap;
-    $startX = ($pw - $totalW) / 2;
+    _renderBlocoAssinaturaGov($pdf, $assinantes, $bX, $bY, $bW, $bH, $opcoes);
+}
 
-    foreach ($assinantes as $i => $assinante) {
-        $bX = $startX + $i * ($bW + $gap);
-        _renderBlocoAssinatura($pdf, $assinante, $bX, $bY, $bW, $bH);
+/**
+ * Bloco de assinatura institucional: logo da SEMA à esquerda, relação de
+ * assinantes à direita, rodapé com URL/código de verificação.
+ */
+function _renderBlocoAssinaturaGov(SEMA_PDF $pdf, array $assinantes, float $bX, float $bY, float $bW, float $bH, array $opcoes): void
+{
+    $verifyUrl = $opcoes['verify_url'] ?? '';
+    $docCodigo = $opcoes['doc_codigo'] ?? '';
+
+    // Moldura
+    $pdf->SetFillColor(255, 255, 255);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'F');
+    $pdf->SetDrawColor(150, 150, 150);
+    $pdf->SetLineWidth(0.2);
+    $pdf->Rect($bX, $bY, $bW, $bH, 'D');
+
+    // Barra de acento verde SEMA no topo
+    $pdf->SetFillColor(28, 75, 54);
+    $pdf->Rect($bX, $bY, $bW, 1.1, 'F');
+
+    // Logo SEMA à esquerda (no lugar do antigo QR code)
+    $logoSize = 15.0;
+    $logoX = $bX + 2.5;
+    $logoY = $bY + 2.8;
+    $logoFile = dirname(__DIR__, 2) . '/assets/SEMA/PNG/Azul/Logo SEMA Vertical.png';
+    $textX = $bX + 2.0;
+    if (is_file($logoFile)) {
+        $pdf->Image($logoFile, $logoX, $logoY, $logoSize, 0, 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        $textX = $logoX + $logoSize + 3.0;
+    }
+    $textW = $bX + $bW - 2.0 - $textX;
+
+    // Cabeçalho
+    $pdf->SetFont('helvetica', 'B', 6.2);
+    $pdf->SetTextColor(28, 75, 54);
+    $pdf->SetXY($textX, $bY + 2.4);
+    $titulo = count($assinantes) > 1
+        ? 'DOCUMENTO ASSINADO ELETRONICAMENTE POR'
+        : 'DOCUMENTO ASSINADO ELETRONICAMENTE';
+    $pdf->Cell($textW, 2.8, $titulo, 0, 0, 'L');
+
+    // Assinantes
+    $linhaY = $bY + 5.6;
+    foreach ($assinantes as $assinante) {
+        $nome  = strtoupper($assinante['nome'] ?? '');
+        $cargo = $assinante['cargo'] ?? '';
+        $cpfM  = _mascararCpfCarimbo($assinante['cpf'] ?? '');
+        $data  = $assinante['data_hora'] ?? '';
+
+        $pdf->SetFont('helvetica', 'B', 6.4);
+        $pdf->SetTextColor(20, 20, 20);
+        $pdf->SetXY($textX, $linhaY);
+        $pdf->Cell($textW, 2.8, $nome, 0, 0, 'L');
+
+        $detalhe = $cargo;
+        if ($cpfM)  $detalhe .= ($detalhe ? '  |  ' : '') . 'CPF ' . $cpfM;
+        if ($data)  $detalhe .= ($detalhe ? '  |  ' : '') . $data;
+
+        $pdf->SetFont('helvetica', '', 5.4);
+        $pdf->SetTextColor(85, 85, 85);
+        $pdf->SetXY($textX, $linhaY + 2.9);
+        $pdf->Cell($textW, 2.4, $detalhe, 0, 0, 'L');
+
+        $linhaY += 7.5;
+    }
+
+    // Rodapé: código do documento + URL curta de verificação
+    if ($verifyUrl !== '' || $docCodigo !== '') {
+        $rodapeY = $bY + $bH - 5.6;
+        $pdf->SetDrawColor(220, 220, 220);
+        $pdf->SetLineWidth(0.15);
+        $pdf->Line($textX, $rodapeY - 0.5, $bX + $bW - 2.0, $rodapeY - 0.5);
+
+        // Código do documento, em destaque
+        if ($docCodigo !== '') {
+            $pdf->SetFont('helvetica', '', 4.8);
+            $pdf->SetTextColor(120, 120, 120);
+            $pdf->SetXY($textX, $rodapeY);
+            $pdf->Cell(8.0, 2.2, 'Código: ', 0, 0, 'L');
+            $pdf->SetFont('helvetica', 'B', 4.8);
+            $pdf->SetTextColor(40, 40, 40);
+            $pdf->SetXY($textX + 8.0, $rodapeY);
+            $pdf->Cell($textW - 8.0, 2.2, $docCodigo, 0, 0, 'L');
+        }
+
+        // URL curta de verificação (host/verificar, sem caminho longo)
+        if ($verifyUrl !== '') {
+            $pdf->SetFont('helvetica', 'B', 4.8);
+            $pdf->SetTextColor(28, 75, 54);
+            $pdf->SetXY($textX, $rodapeY + 2.3);
+            $urlExibicao = preg_replace('#^https?://#', '', $verifyUrl);
+            $pdf->Cell($textW, 2.2, $urlExibicao, 0, 0, 'L');
+        }
     }
 }
 
@@ -312,55 +430,18 @@ function _renderLinhaAssinaturaManual(SEMA_PDF $pdf, array $assinante, float $bX
 }
 
 /**
- * Renderiza um bloco de assinatura digital no PDF.
- */
-function _renderBlocoAssinatura(SEMA_PDF $pdf, array $assinante, float $bX, float $bY, float $bW, float $bH): void {
-    $nome      = strtoupper($assinante['nome'] ?? '');
-    $cargo     = $assinante['cargo'] ?? '';
-    $cpf       = $assinante['cpf'] ?? '';
-    $data_hora = $assinante['data_hora'] ?? '';
-
-    $pdf->SetFillColor(255, 255, 255);
-    $pdf->Rect($bX, $bY, $bW, $bH, 'F');
-
-    $pdf->SetDrawColor(160, 160, 160);
-    $pdf->SetLineWidth(0.25);
-    $pdf->Rect($bX, $bY, $bW, $bH, 'D');
-
-    $pdf->SetFillColor(220, 220, 220);
-    $pdf->Rect($bX, $bY, $bW, 4, 'F');
-
-    $pdf->SetFillColor(50, 50, 50);
-    $pdf->Rect($bX + 2, $bY + 1.2, 1.8, 1.8, 'F');
-
-    $pdf->SetFont('helvetica', 'B', 5);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetXY($bX + 5, $bY + 0.7);
-    $pdf->Cell($bW - 6, 2.8, 'ASSINADO DIGITALMENTE', 0, 0, 'L');
-
-    $pdf->SetFont('helvetica', 'B', 5.5);
-    $pdf->SetXY($bX + 2, $bY + 4.5);
-    $pdf->Cell($bW - 4, 2.8, $nome, 0, 0);
-
-    $pdf->SetFont('helvetica', '', 5);
-    $linha2 = $cargo;
-    if (!empty($cpf)) $linha2 .= '  |  CPF: ' . $cpf;
-    $pdf->SetXY($bX + 2, $bY + 7.3);
-    $pdf->Cell($bW - 4, 2.5, $linha2, 0, 0);
-
-    $pdf->SetTextColor(80, 80, 80);
-    $pdf->SetXY($bX + 2, $bY + 10);
-    $pdf->Cell($bW - 4, 2.5, $data_hora, 0, 0);
-}
-
-/**
  * Gera e baixa/salva o PDF assinado.
  *
  * $assinante_ou_assinantes aceita:
  *   - array simples com 'nome' (1 assinante, retrocompatível)
  *   - array indexado de arrays de assinante (múltiplos)
+ *
+ * $opcoes (todas opcionais):
+ *   verify_url — URL de verificação pública (gera QR no carimbo)
+ *   doc_codigo — código curto do documento
+ *   sig_pos    — ['x' => mm, 'y' => mm] posição do bloco na última página
  */
-function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero_processo, $modo_saida = 'D', $caminho_salvar = null) {
+function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero_processo, $modo_saida = 'D', $caminho_salvar = null, array $opcoes = []) {
 
     if (isset($assinante_ou_assinantes['nome'])) {
         $assinantes = [$assinante_ou_assinantes];
@@ -385,7 +466,15 @@ function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero
 
     $pdf = renderizarParecerPdf($conteudo_html, $assinantes, $numero_processo, $layout);
 
-    aplicarBlocosAssinaturaNoPdf($pdf, $assinantes);
+    aplicarBlocosAssinaturaNoPdf($pdf, $assinantes, $opcoes);
+
+    // Embute o documento_id nos metadados (Keywords) para o verificador por
+    // upload reconhecer o documento mesmo se o hash do arquivo mudar. Ignora o
+    // valor 'PREVIEW' (pré-visualização não registra nem deve ser rastreável).
+    $docCodigo = $opcoes['doc_codigo'] ?? '';
+    if ($docCodigo !== '' && $docCodigo !== 'PREVIEW') {
+        $pdf->SetKeywords('SEMA-DOC-ID:' . $docCodigo);
+    }
 
     if (ob_get_length()) {
        ob_clean();

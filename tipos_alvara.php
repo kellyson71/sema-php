@@ -684,5 +684,72 @@ $tipos_alvara = [
             'Dúvidas ou informações pelo WhatsApp 99668-6413.',
             'Envio de documentação para fiscalizacaosemapdf@gmail.com',
         ]
+    ],
+
+    // ── Denúncias e Autorizações ──────────────────────────────────────────────
+
+    'denuncia' => [
+        'nome' => 'DENÚNCIA AMBIENTAL / URBANA',
+        'categoria' => 'denuncia_autoriza',
+        'formulario_proprio' => true,  // flag: JS troca action do form
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [],
+        'observacoes' => [
+            'Sua identidade será mantida em sigilo caso opte pela denúncia anônima.',
+            'Você pode anexar fotos, vídeos ou documentos como evidências (opcional).',
+            'Guarde o número de protocolo para acompanhar sua denúncia.',
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp 99668-6413.',
+        ]
+    ],
+
+    'autorizacao_area_publica' => [
+        'nome' => 'AUTORIZAÇÃO DE USO E OCUPAÇÃO DE ÁREA PÚBLICA',
+        'categoria' => 'denuncia_autoriza',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Documento pessoal com foto e CPF/CNPJ do solicitante;',
+            '2. Parecer técnico do DEMUTRAN;',
+            '3. Ofício(s) informando a solicitação;',
+        ],
+        'documentos_opcionais' => [
+            '4. Comprovante de pagamento de taxas (quando aplicável);',
+            '5. CRO/Cronograma do evento;',
+        ],
+        'observacoes' => [
+            'Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.',
+            'Documentações complementares podem ser exigidas pela SEMA.',
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp (84) 99668-6413.',
+        ]
+    ],
+
+    'licenca_uso_ocupacao_solo' => [
+        'nome' => 'LICENÇA DE USO E OCUPAÇÃO DO SOLO',
+        'categoria' => 'denuncia_autoriza',
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
+        'documentos' => [
+            '1. Documento pessoal com foto e CPF/CNPJ do requerente;',
+            '2. Documento pessoal com foto e CPF/CNPJ do proprietário;',
+            '3. Comprovante de residência;',
+            '4. Documento do imóvel (escritura, contrato, certidão);',
+            '5. Cadastro imobiliário;',
+        ],
+        'documentos_opcionais' => [
+            '6. Croqui ou planta do local;',
+            '7. Outros documentos comprobatórios;',
+        ],
+        'observacoes' => [
+            'Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.',
+            'Documentações complementares podem ser exigidas pela SEMA.',
+        ],
+        'contato' => [
+            'Dúvidas ou informações pelo WhatsApp (84) 99668-6413.',
+        ]
     ]
 ];

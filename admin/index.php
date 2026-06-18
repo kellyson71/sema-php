@@ -251,6 +251,8 @@ if ($setorFiltro) {
         </div>
     </section>
 
+    <?php include __DIR__ . '/includes/card_assinaturas_pendentes.php'; ?>
+
     <section class="setor-hub">
         <?php
         $hubMeta = [

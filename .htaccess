@@ -1,1 +1,5 @@
 ErrorDocument 404 /404.php
+
+# Rota amigável do verificador público: /verificar → verificar.php
+RewriteEngine On
+RewriteRule ^verificar/?$ verificar.php [L,QSA]

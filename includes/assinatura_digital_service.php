@@ -155,54 +155,220 @@ class AssinaturaDigitalService
         ];
     }
 
+    /**
+     * Resolve o caminho físico do PDF. Os registros guardam caminhos relativos
+     * à pasta admin/ (ex: 'pareceres/12/arquivo.pdf'); este resolvedor aceita
+     * também caminhos absolutos e relativos à raiz do projeto, para que a
+     * verificação funcione independente de onde o script foi chamado.
+     */
+    public function resolverCaminhoArquivo(string $caminho): ?string
+    {
+        if ($caminho === '') return null;
+        $raiz = dirname(__DIR__);
+        $candidatos = [
+            $caminho,                                       // absoluto ou relativo ao cwd
+            $raiz . '/admin/' . ltrim($caminho, '/'),       // relativo a admin/ (padrão)
+            $raiz . '/' . ltrim($caminho, '/'),             // relativo à raiz
+        ];
+        foreach ($candidatos as $c) {
+            if (is_file($c)) return $c;
+        }
+        return null;
+    }
+
+    /**
+     * Extrai o documento_id embutido nos metadados do PDF (Keywords
+     * 'SEMA-DOC-ID:<hex>'). Best-effort: o TCPDF grava o dicionário Info de
+     * forma legível, mas um re-save externo pode remover/reescrever — nesse
+     * caso retorna null e o documento cai no estado DESCONHECIDO.
+     */
+    public function extrairDocumentoIdDeArquivo(string $caminho): ?string
+    {
+        if (!is_file($caminho)) return null;
+        $bytes = file_get_contents($caminho);
+        if ($bytes === false) return null;
+        if (preg_match('/SEMA-DOC-ID:([a-f0-9]{16,64})/', $bytes, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Verifica a autenticidade a partir do ARQUIVO enviado (upload público).
+     * Retorna um dos estados: 'autentico', 'alterado', 'desconhecido'.
+     * Não armazena o arquivo — apenas registra um log da verificação.
+     *
+     * @param string $caminhoTmp caminho temporário do upload ($_FILES[...]['tmp_name'])
+     */
+    public function verificarPorArquivo(string $caminhoTmp): array
+    {
+        if (!is_file($caminhoTmp)) {
+            return ['estado' => 'desconhecido', 'erro' => 'Arquivo não recebido.'];
+        }
+
+        $hashEnviado = hash_file('sha256', $caminhoTmp);
+
+        // 1. Match exato por hash do PDF → documento íntegro e autêntico
+        $stmt = $this->pdo->prepare("
+            SELECT documento_id FROM assinaturas_digitais
+            WHERE hash_documento = ?
+            ORDER BY timestamp_assinatura DESC, id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$hashEnviado]);
+        $docId = $stmt->fetchColumn();
+
+        if ($docId) {
+            $res = $this->verificarDocumento($docId);
+            $res['estado'] = !empty($res['valido']) ? 'autentico' : 'alterado';
+            $this->registrarVerificacao($docId, $hashEnviado, $res['estado'], 'upload');
+            return $res;
+        }
+
+        // 2. Hash não bateu → tenta o ID embutido nos metadados
+        $idEmbutido = $this->extrairDocumentoIdDeArquivo($caminhoTmp);
+        if ($idEmbutido) {
+            $stmt = $this->pdo->prepare("
+                SELECT * FROM assinaturas_digitais
+                WHERE documento_id = ?
+                ORDER BY timestamp_assinatura ASC, id ASC
+                LIMIT 1
+            ");
+            $stmt->execute([$idEmbutido]);
+            $registro = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($registro) {
+                // Documento é da SEMA, mas o arquivo não corresponde ao oficial
+                $this->registrarVerificacao($idEmbutido, $hashEnviado, 'alterado', 'upload');
+                return [
+                    'valido'      => false,
+                    'estado'      => 'alterado',
+                    'erro'        => 'Este documento foi emitido pelo SEMA, mas o arquivo enviado foi alterado após a assinatura (não corresponde à versão oficial registrada).',
+                    'dados'       => $registro,
+                ];
+            }
+        }
+
+        // 3. Nada reconhecido
+        $this->registrarVerificacao(null, $hashEnviado, 'desconhecido', 'upload');
+        return [
+            'valido' => false,
+            'estado' => 'desconhecido',
+            'erro'   => 'Este arquivo não foi emitido pelo SEMA ou não pôde ser reconhecido.',
+        ];
+    }
+
+    /**
+     * Registra a verificação para auditoria (sem armazenar o arquivo).
+     * Silencioso: falha de log nunca deve quebrar a verificação.
+     */
+    public function registrarVerificacao(?string $documentoId, ?string $hashEnviado, string $resultado, string $metodo = 'upload'): void
+    {
+        try {
+            $this->pdo->prepare("
+                INSERT INTO verificacoes_log (documento_id, hash_enviado, metodo, resultado, ip_origem)
+                VALUES (?, ?, ?, ?, ?)
+            ")->execute([
+                $documentoId,
+                $hashEnviado,
+                $metodo,
+                $resultado,
+                $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+        } catch (Throwable $e) {
+            error_log('[verificacoes_log] ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verifica um documento e TODAS as suas assinaturas.
+     *
+     * Documentos novos (nivel 'avancada'): cada assinante tem RSA própria sobre
+     * o hash do conteúdo-fonte, verificada com a chave pública snapshot.
+     * Documentos legados (sem chave_publica): valida-se apenas o registro e a
+     * integridade do PDF — exibidos como "registro eletrônico simples".
+     */
     public function verificarDocumento($documentoId)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM assinaturas_digitais WHERE documento_id = ?");
+        require_once __DIR__ . '/assinatura_avancada_service.php';
+
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM assinaturas_digitais
+            WHERE documento_id = ?
+            ORDER BY timestamp_assinatura ASC, id ASC
+        ");
         $stmt->execute([$documentoId]);
-        $assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
+        $linhas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!$assinatura) {
+        if (!$linhas) {
+            return ['valido' => false, 'erro' => 'Documento não encontrado no sistema'];
+        }
+
+        $principal = $linhas[0];
+
+        $caminhoFisico = $this->resolverCaminhoArquivo($principal['caminho_arquivo']);
+        if ($caminhoFisico === null) {
             return [
                 'valido' => false,
-                'erro' => 'Documento não encontrado no sistema'
+                'erro'   => 'Arquivo físico não encontrado no servidor',
+                'dados'  => $principal,
             ];
         }
 
-        if (!file_exists($assinatura['caminho_arquivo'])) {
+        // Integridade do PDF: o hash mais recente reflete a última regravação
+        // legítima (co-assinatura atualiza todas as linhas).
+        $hashAtual = $this->calcularHashDocumento($caminhoFisico);
+        $hashEsperado = end($linhas)['hash_documento'];
+
+        if ($hashAtual !== $hashEsperado) {
             return [
                 'valido' => false,
-                'erro' => 'Arquivo físico não encontrado',
-                'dados' => $assinatura
+                'erro'   => 'Documento foi modificado após a assinatura (hash divergente)',
+                'dados'  => $principal,
             ];
         }
 
-        $hashAtual = $this->calcularHashDocumento($assinatura['caminho_arquivo']);
-
-        if ($hashAtual !== $assinatura['hash_documento']) {
-            return [
-                'valido' => false,
-                'erro' => 'Documento foi modificado após assinatura (hash divergente)',
-                'dados' => $assinatura
+        // Verificação criptográfica por assinante
+        $assinantes = [];
+        $todasValidas = true;
+        foreach ($linhas as $linha) {
+            if ($linha['tipo_assinatura'] === 'sem_assinatura') {
+                continue; // linha de geração sem assinatura não conta como assinante
+            }
+            $temRsa = !empty($linha['chave_publica']) && !empty($linha['hash_conteudo']);
+            $rsaOk  = $temRsa && AssinaturaAvancadaService::verificar(
+                $linha['hash_conteudo'],
+                $linha['assinatura_criptografada'],
+                $linha['chave_publica']
+            );
+            if ($temRsa && !$rsaOk) {
+                $todasValidas = false;
+            }
+            $assinantes[] = [
+                'nome'      => $linha['assinante_nome'],
+                'cpf'       => $linha['assinante_cpf'],
+                'cargo'     => $linha['assinante_cargo'],
+                'data'      => $linha['timestamp_assinatura'],
+                'nivel'     => $temRsa ? 'avancada' : 'simples',
+                'rsa_valida' => $temRsa ? $rsaOk : null, // null = legado, sem RSA para conferir
             ];
         }
 
-        $assinaturaValida = $this->verificarAssinatura(
-            $assinatura['hash_documento'],
-            $assinatura['assinatura_criptografada']
-        );
-
-        if (!$assinaturaValida) {
+        if (!$todasValidas) {
             return [
                 'valido' => false,
-                'erro' => 'Assinatura digital inválida',
-                'dados' => $assinatura
+                'erro'   => 'Uma ou mais assinaturas eletrônicas falharam na verificação criptográfica',
+                'dados'  => $principal,
+                'assinantes' => $assinantes,
             ];
         }
 
         return [
-            'valido' => true,
-            'dados' => $assinatura,
-            'metadados' => !empty($assinatura['metadados_json']) ? json_decode($assinatura['metadados_json'], true) : null
+            'valido'         => true,
+            'dados'          => $principal,
+            'assinantes'     => $assinantes,
+            'caminho_fisico' => $caminhoFisico,
+            'metadados'      => !empty($principal['metadados_json']) ? json_decode($principal['metadados_json'], true) : null,
         ];
     }
 }

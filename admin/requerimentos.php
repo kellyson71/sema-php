@@ -52,6 +52,7 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 $filtroStatus = $_GET['status'] ?? '';
 $filtroTipo = $_GET['tipo'] ?? '';
 $filtroCategoria = $_GET['categoria'] ?? '';
+$filtroAcao = $_GET['acao'] ?? '';
 if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
     $filtroCategoria = '';
 }
@@ -149,6 +150,12 @@ if ($filtroBusca !== '') {
     $params[] = $termoBusca;
 }
 
+if ($filtroAcao !== '') {
+    $sql .= " AND r.aguardando_acao = ?";
+    $sqlCount .= " AND r.aguardando_acao = ?";
+    $params[] = $filtroAcao;
+}
+
 if ($filtroNaoVisualizados) {
     $sql .= " AND r.visualizado = 0";
     $sqlCount .= " AND r.visualizado = 0";
@@ -197,18 +204,31 @@ function contarReq(PDO $pdo, ?string $setor, string $extraWhere = '1=1', array $
 if ($setorFiltro) {
     // Cards focados na fila do setor (fiscal / secretário)
     $acaoFila = $setorFiltro === 'setor2' ? 'analise_setor2' : 'revisao_setor3';
+    $retornosSetor2 = $setorFiltro === 'setor2'
+        ? contarReq($pdo, 'setor2', "(aguardando_acao = ? OR aguardando_acao = ?)", ['retorno_aprovado', 'retorno_recusado'])
+        : 0;
     $estatisticas = [
         'na_fila'     => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", [$acaoFila]),
+        'retornos'    => $retornosSetor2,
         'em_processo' => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", ['revisao_setor3']),
         'concluidos'  => contarReq($pdo, $setorFiltro, "aguardando_acao = ?", ['concluido']),
         'total'       => contarReq($pdo, $setorFiltro),
     ];
     $statusCards = [
-        ['label' => 'Na fila',       'value' => $estatisticas['na_fila'],     'acao' => $acaoFila,          'icon' => 'fa-inbox'],
-        ['label' => 'Em processo',   'value' => $estatisticas['em_processo'], 'acao' => 'revisao_setor3',   'icon' => 'fa-hourglass-half'],
-        ['label' => 'Concluídos',    'value' => $estatisticas['concluidos'],  'acao' => 'concluido',         'icon' => 'fa-check-circle'],
-        ['label' => 'Total recebido','value' => $estatisticas['total'],       'acao' => '',                  'icon' => 'fa-layer-group'],
+        ['label' => 'Na fila',        'value' => $estatisticas['na_fila'],     'acao' => $acaoFila,          'icon' => 'fa-inbox'],
+        ['label' => 'Em processo',    'value' => $estatisticas['em_processo'], 'acao' => 'revisao_setor3',   'icon' => 'fa-hourglass-half'],
+        ['label' => 'Concluídos',     'value' => $estatisticas['concluidos'],  'acao' => 'concluido',         'icon' => 'fa-check-circle'],
+        ['label' => 'Total recebido', 'value' => $estatisticas['total'],       'acao' => '',                  'icon' => 'fa-layer-group'],
     ];
+    if ($setorFiltro === 'setor2' && $retornosSetor2 > 0) {
+        array_unshift($statusCards, [
+            'label' => 'Retorno do Secretário',
+            'value' => $retornosSetor2,
+            'acao'  => 'retorno_aprovado',
+            'icon'  => 'fa-rotate-left',
+            'destaque' => true,
+        ]);
+    }
 } else {
     $estatisticas = [
         'total'      => contarReq($pdo, null),
@@ -280,23 +300,48 @@ $statusOperacionais = adminStatusFluxoPrincipal();
 <link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
 <style>
 /* Pills de aguardando_acao — reusados da fila_setor.php */
-.acao-triagem  { background:#e8effd; color:#3762d9; }
-.acao-boleto   { background:#fff3dc; color:#b7791f; }
-.acao-analise  { background:#e3f3e8; color:#14532d; }
-.acao-revisao  { background:#f3e8ff; color:#7e22ce; }
-.acao-envio    { background:#e0f2fe; color:#0369a1; }
-.acao-concluido{ background:#f1f5f0; color:#666; }
+.acao-triagem          { background:#e8effd; color:#3762d9; }
+.acao-boleto           { background:#fff3dc; color:#b7791f; }
+.acao-analise          { background:#e3f3e8; color:#14532d; }
+.acao-revisao          { background:#f3e8ff; color:#7e22ce; }
+.acao-envio            { background:#e0f2fe; color:#0369a1; }
+.acao-concluido        { background:#f1f5f0; color:#666; }
+.acao-retorno-aprovado { background:#f1f5f2; color:#1e3a28; border:1px solid #b8cfc0; font-weight:600; letter-spacing:.01em; }
+.acao-retorno-recusado { background:#f5f1f1; color:#3a1e1e; border:1px solid #cfb8b8; font-weight:600; letter-spacing:.01em; }
+
+/* Destaque sutil — apenas borda esquerda, sem fundo berrante */
+.req-list-item.retorno-aprovado { border-left:3px solid #3d7a56; }
+.req-list-item.retorno-recusado { border-left:3px solid #8b3a3a; }
+
+.badge-retorno-aprovado {
+    background:#f1f5f2;
+    color:#1e3a28;
+    border:1px solid #b8cfc0;
+    font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    padding:2px 8px; border-radius:4px;
+    display:inline-flex; align-items:center; gap:5px;
+    text-transform:uppercase;
+}
+.badge-retorno-recusado {
+    background:#f5f1f1;
+    color:#3a1e1e;
+    border:1px solid #cfb8b8;
+    font-size:.68rem; font-weight:600; letter-spacing:.03em;
+    padding:2px 8px; border-radius:4px;
+    display:inline-flex; align-items:center; gap:5px;
+    text-transform:uppercase; cursor:help;
+}
 .badge-devolvido-sec {
-    background:#fef3c7;
-    color:#92400e;
-    border:1px solid #fcd34d;
-    font-size:.7rem;
-    font-weight:700;
-    padding:3px 9px;
-    border-radius:999px;
+    background:#f5f3ee;
+    color:#5c4a1e;
+    border:1px solid #d4c5a0;
+    font-size:.68rem;
+    font-weight:600; letter-spacing:.03em;
+    padding:2px 8px;
+    border-radius:4px;
     display:inline-flex;
-    align-items:center;
-    cursor:help;
+    align-items:center; gap:5px;
+    text-transform:uppercase; cursor:help;
 }
 </style>
 
@@ -337,10 +382,13 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
     <section class="req-summary-strip">
         <?php foreach ($statusCards as $card): ?>
             <?php
+            $isDestaque = !empty($card['destaque']);
             if ($setorFiltro) {
-                // Cards de setor: sem link de filtro (apenas informativos)
-                $isActive = false;
-                $summaryUrl = buildReqUrl(['pagina' => 1]);
+                // Cards de setor: filtram por aguardando_acao quando possível
+                $isActive = !empty($card['acao']) && ($filtroAcao ?? '') === $card['acao'];
+                $summaryUrl = !empty($card['acao'])
+                    ? buildReqUrl(['acao' => $card['acao'], 'pagina' => 1])
+                    : buildReqUrl(['acao' => '', 'pagina' => 1]);
             } else {
                 $isUnreadCard = !empty($card['unread']);
                 $isActive = $isUnreadCard
@@ -351,7 +399,9 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     : buildReqUrl(['status' => $card['status'] ?? '', 'nao_visualizados' => '', 'pagina' => 1]);
             }
             ?>
-            <a href="<?= htmlspecialchars($summaryUrl) ?>" class="summary-chip <?= $isActive ? 'active' : '' ?> <?= !empty($card['unread']) ? 'summary-chip-unread' : '' ?>">
+            <a href="<?= htmlspecialchars($summaryUrl) ?>"
+               class="summary-chip <?= $isActive ? 'active' : '' ?> <?= !empty($card['unread']) ? 'summary-chip-unread' : '' ?>"
+               <?= $isDestaque ? 'style="background:#f1f5f2;border-color:#b8cfc0;color:#1e3a28;font-weight:600;letter-spacing:.01em;"' : '' ?>>
                 <span><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i><?= htmlspecialchars($card['label']) ?></span>
                 <strong><?= (int) $card['value'] ?></strong>
             </a>
@@ -518,7 +568,15 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                 };
                 $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
                 ?>
-                <article class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?>" data-id="<?= (int) $req['id'] ?>">
+                <?php
+                $acaoAtual = $req['aguardando_acao'] ?? '';
+                $extraCardClass = match($acaoAtual) {
+                    'retorno_aprovado' => 'retorno-aprovado',
+                    'retorno_recusado' => 'retorno-recusado',
+                    default => '',
+                };
+                ?>
+                <article class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?> <?= $extraCardClass ?>" data-id="<?= (int) $req['id'] ?>">
                     <div class="req-list-check">
                         <input
                             type="checkbox"
@@ -532,21 +590,17 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     <button type="button" class="req-list-main" onclick="abrirRequerimento(<?= (int) $req['id'] ?>)">
                         <div class="req-list-top">
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
-                            <?php
-                            $foiDevolvidoSec = (
-                                !empty($req['motivo_devolucao']) &&
-                                ($req['setor_atual'] ?? '') === 'setor2' &&
-                                ($req['aguardando_acao'] ?? '') === 'analise_setor2' &&
-                                ($req['devolvido_por_nivel'] ?? '') === 'secretario'
-                            );
-                            ?>
-                            <?php if ($foiDevolvidoSec): ?>
-                                <span class="badge badge-devolvido-sec" title="<?= htmlspecialchars($req['motivo_devolucao']) ?>">
-                                    <i class="fas fa-rotate-left me-1"></i>Devolvido pelo Setor 3
+                            <?php if ($acaoAtual === 'retorno_aprovado'): ?>
+                                <span class="badge badge-retorno-aprovado">
+                                    <i class="fas fa-circle-check" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário aprovou
                                 </span>
-                            <?php elseif ($setorFiltro && !empty($req['aguardando_acao'])): ?>
-                                <span class="badge <?= htmlspecialchars(acaoClass($req['aguardando_acao'])) ?>" style="font-size:.7rem;">
-                                    <?= htmlspecialchars(acaoLabel($req['aguardando_acao'])) ?>
+                            <?php elseif ($acaoAtual === 'retorno_recusado'): ?>
+                                <span class="badge badge-retorno-recusado" title="<?= htmlspecialchars($req['motivo_devolucao'] ?? '') ?>">
+                                    <i class="fas fa-circle-xmark" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário não aprovou
+                                </span>
+                            <?php elseif ($setorFiltro && !empty($acaoAtual)): ?>
+                                <span class="badge <?= htmlspecialchars(acaoClass($acaoAtual)) ?>" style="font-size:.7rem;">
+                                    <?= htmlspecialchars(acaoLabel($acaoAtual)) ?>
                                 </span>
                             <?php else: ?>
                                 <span class="badge badge-status <?= htmlspecialchars($metaClass) ?>"><?= htmlspecialchars($req['status']) ?></span>

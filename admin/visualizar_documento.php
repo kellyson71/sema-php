@@ -1,6 +1,7 @@
 <?php
 require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/coassinatura_helper.php';
 verificaLogin();
 
 $requerimentoId = (int) ($_GET['requerimento_id'] ?? 0);
@@ -261,6 +262,35 @@ include 'header.php';
                             </div>
                         <?php endforeach; ?>
 
+                        <?php
+                        // Progresso de co-assinatura (pendentes / recusados)
+                        $coStatus = statusAssinaturasDocumento($pdo, $doc['documento_id']);
+                        if (!empty($coStatus['pendentes']) || !empty($coStatus['recusados'])): ?>
+                            <div class="mt-2 pt-2" style="border-top:1px dashed #e2e8f0;">
+                                <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;margin-bottom:5px;">
+                                    <?= (int) $coStatus['total_assinado'] ?> de <?= (int) $coStatus['total_esperado'] ?> assinaram
+                                </div>
+                                <?php foreach ($coStatus['pendentes'] as $pend): ?>
+                                    <div class="d-flex align-items-center gap-2 mb-1" style="font-size:.74rem;color:#92722a;">
+                                        <i class="fas fa-hourglass-half"></i>
+                                        <span class="flex-grow-1">Aguardando <strong><?= htmlspecialchars($pend['nome']) ?></strong></span>
+                                        <?php if ((int) $coStatus['solicitante_id'] === (int) $adminId): ?>
+                                            <button type="button" class="btn btn-link p-0 text-danger" style="font-size:.72rem;"
+                                                onclick="cancelarSolic('<?= htmlspecialchars($doc['documento_id']) ?>', <?= (int) $pend['destinatario_id'] ?>)">
+                                                cancelar
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                                <?php foreach ($coStatus['recusados'] as $rec): ?>
+                                    <div class="mb-1" style="font-size:.74rem;color:#b91c1c;">
+                                        <i class="fas fa-xmark me-1"></i>
+                                        <strong><?= htmlspecialchars($rec['nome']) ?></strong> recusou<?= !empty($rec['motivo']) ? ' — ' . htmlspecialchars($rec['motivo']) : '' ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if ($doc['tem_fonte']): ?>
                             <?php if ($doc['ja_assinei']): ?>
                                 <div class="mt-2 text-center" style="font-size:.75rem;color:#059669;">
@@ -506,6 +536,15 @@ include 'header.php';
         <input type="checkbox" id="chk-coassinar" style="margin-top:3px;flex-shrink:0;">
         <span>Declaro que revisei o conteúdo deste documento e concordo em assiná-lo digitalmente em nome da SEMA.</span>
       </label>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">
+          <i class="fas fa-key me-1"></i> PIN de assinatura
+        </label>
+        <input type="password" id="pin-coassinar" maxlength="64" autocomplete="off"
+               placeholder="Seu PIN pessoal de assinatura"
+               style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:.85rem;">
+        <small style="font-size:.7rem;color:#6b7280;">Protege sua chave criptográfica individual (assinatura avançada). Primeira vez? Configure o PIN ao assinar um documento no editor.</small>
+      </div>
       <div id="coassinar-error" style="display:none;color:#8f2222;font-size:.8rem;margin-bottom:8px;"></div>
       <div class="fm-btns">
         <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-coassinar')">Cancelar</button>
@@ -537,6 +576,13 @@ function confirmarCoAssinar() {
         err.style.display = 'block';
         return;
     }
+    const pinCoassinar = document.getElementById('pin-coassinar').value;
+    if (!pinCoassinar) {
+        const err = document.getElementById('coassinar-error');
+        err.textContent = 'Digite seu PIN de assinatura.';
+        err.style.display = 'block';
+        return;
+    }
     const btn = document.getElementById('btn-confirmar-coassinar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assinando...';
@@ -544,6 +590,7 @@ function confirmarCoAssinar() {
     const fd = new FormData();
     fd.append('documento_id', _coAssinarDocId);
     fd.append('requerimento_id', '<?= $requerimentoId ?>');
+    fd.append('pin_assinatura', pinCoassinar);
 
     fetch('assinatura/coassinar.php', { method: 'POST', body: fd })
         .then(r => r.json())
@@ -567,6 +614,20 @@ function confirmarCoAssinar() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-file-signature me-1"></i>Assinar';
         });
+}
+
+function cancelarSolic(docId, destinatarioId) {
+    if (!confirm('Cancelar esta solicitação de assinatura?')) return;
+    const fd = new FormData();
+    fd.append('documento_id', docId);
+    fd.append('destinatario_id', destinatarioId);
+    fetch('assinatura/cancelar_solicitacao.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showToast('Solicitação cancelada.', 'success'); setTimeout(() => location.reload(), 1200); }
+            else { showToast(d.error || 'Erro ao cancelar.', 'error'); }
+        })
+        .catch(() => showToast('Falha de comunicação.', 'error'));
 }
 
 function carregarDocumento(el, docId) {
