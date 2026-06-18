@@ -908,15 +908,6 @@ include_once 'enquadramento_conema.php';
                         <textarea name="observacoes" rows="4"
                             style="width:100%;margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);font-size:.9rem;resize:vertical;"
                             placeholder="Descreva os fatos com o máximo de detalhes possível..."></textarea>
-                        <div class="form-section-label" style="margin-top:18px;">Evidências (opcional)</div>
-                        <div style="margin-top:8px;">
-                            <input type="file" name="evidencias[]" multiple form="form"
-                                accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime"
-                                style="color:rgba(255,255,255,0.75);font-size:.85rem;">
-                            <small style="color:rgba(255,255,255,0.45);font-size:.78rem;display:block;margin-top:4px;">
-                                Formatos aceitos: JPG, PNG, PDF, MP4 (máx. 20MB por arquivo)
-                            </small>
-                        </div>
                         `;
                         camposDinamicos.innerHTML = campos;
 

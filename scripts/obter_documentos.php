@@ -13,16 +13,27 @@ if (!isset($_POST['tipo']) || !isset($tipos_alvara[$_POST['tipo']])) {
 $tipo = $_POST['tipo'];
 $alvara = $tipos_alvara[$tipo];
 
-// Denúncia: campos injetados diretamente no formulário via JS — sem lista de uploads aqui
+// Denúncia: exibe upload de evidências no painel direito (mesmo padrão visual dos alvarás)
 if ($tipo === 'denuncia') {
-    echo '<div class="documentos-lista" style="padding:20px;">
-        <h3 style="color:#009640;font-size:1.1rem;margin-bottom:12px;text-align:center;">
-            <i class="fas fa-camera me-1"></i> Evidências (opcional)
-        </h3>
-        <p style="color:#6c757d;font-size:.88rem;text-align:center;margin:0;">
-            Você pode anexar fotos, vídeos ou documentos como evidências.<br>
-            Use o campo de upload abaixo nos campos da denúncia.
-        </p>
+    echo '<div class="documentos-lista">
+        <h3 style="color:#b91c1c;">DENÚNCIA AMBIENTAL / URBANA</h3>
+        <div class="documentos-section">
+            <h4 style="color:#b91c1c;">Evidências (opcional)</h4>
+            <div class="file-input-container">
+                <label>Fotos, vídeos ou documentos da ocorrência</label>
+                <input type="file" name="evidencias[]" multiple
+                    accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime"
+                    style="border-color:#e5e7eb;">
+                <small class="formato-arquivo">Formatos aceitos: JPG, PNG, PDF, MP4 (Máx. 20MB por arquivo)</small>
+            </div>
+        </div>
+        <div class="documentos-section" style="background:#fef2f2;padding:14px;border-radius:8px;margin-top:8px;">
+            <ul class="observacoes-lista" style="margin:0;">
+                <li>Sua identidade será mantida em sigilo caso opte pela denúncia anônima.</li>
+                <li>Guarde o número de protocolo para acompanhar sua denúncia.</li>
+                <li>Dúvidas pelo WhatsApp (84) 99668-6413.</li>
+            </ul>
+        </div>
     </div>';
     exit;
 }
