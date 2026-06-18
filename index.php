@@ -744,8 +744,8 @@ include_once 'enquadramento_conema.php';
             const form = document.getElementById('form');
 
             function ativarModoAlvara() {
-                secoesAlvara.forEach(s => { s.style.display = ''; });
-                s.querySelectorAll('[data-required]') && secoesAlvara.forEach(s => {
+                secoesAlvara.forEach(s => {
+                    s.style.display = '';
                     s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
                 });
                 form.action = 'processar_formulario.php';
