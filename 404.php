@@ -1,92 +1,247 @@
 <?php
 http_response_code(404);
 
-$referer = $_SERVER['HTTP_REFERER'] ?? '';
-$voltarUrl = $referer ?: '/';
-
-// Detectar se veio de uma URL de arquivo (uploads, pareceres, etc.)
+$referer    = $_SERVER['HTTP_REFERER'] ?? '';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-$isArquivo = preg_match('#/(uploads|pareceres|pareceres_denuncia)/#', $requestUri);
+$isArquivo  = (bool) preg_match('#/(uploads|pareceres|pareceres_denuncia)/#', $requestUri);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página não encontrada - SEMA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title><?= $isArquivo ? 'Arquivo não encontrado' : 'Página não encontrada' ?> — SEMA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #f8faf9;
+            color: #1a2e22;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Cabeçalho ── */
+        .site-header {
+            background: #fff;
+            border-bottom: 1px solid #e5ece8;
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+        }
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            text-decoration: none;
+        }
+        .header-icon {
+            width: 34px; height: 34px;
+            background: #009851;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .header-icon i { color: #fff; font-size: 14px; }
+        .header-label-top  { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b8c75; line-height: 1; }
+        .header-label-main { font-size: 13px; font-weight: 700; color: #1a2e22; line-height: 1.2; }
+
+        /* ── Conteúdo central ── */
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 24px;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #e5ece8;
+            border-radius: 16px;
+            padding: 52px 48px 44px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 12px 32px -8px rgba(0,40,20,.07);
+        }
+
+        .error-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: #d1e4d9;
+            line-height: 1;
+            letter-spacing: -.04em;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .icon-wrap {
+            width: 56px; height: 56px;
+            background: #f0f7f3;
+            border: 1px solid #d1e4d9;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .icon-wrap i {
+            font-size: 22px;
+            color: #5a9470;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a2e22;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .card-desc {
+            font-size: 13.5px;
+            color: #5a7060;
+            line-height: 1.65;
+            margin-bottom: 32px;
+        }
+        .card-desc strong { color: #1a2e22; font-weight: 600; }
+
+        /* ── Ações ── */
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 20px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity .15s, background .15s;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #009851;
+            color: #fff;
+        }
+        .btn-primary:hover { opacity: .88; }
+        .btn-secondary {
+            background: #fff;
+            color: #2d4a35;
+            border-color: #c5d9cc;
+        }
+        .btn-secondary:hover { background: #f4f8f5; }
+        .btn i { font-size: 12px; }
+
+        /* ── Divisor ── */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #9ab5a3;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin: 4px 0;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5ece8;
+        }
+
+        /* ── Rodapé ── */
+        .site-footer {
+            border-top: 1px solid #e5ece8;
+            padding: 16px 32px;
+            text-align: center;
+            font-size: 11.5px;
+            color: #8aaa94;
+        }
+
+        @media (max-width: 540px) {
+            .card { padding: 36px 24px 32px; }
+            .error-code { font-size: 56px; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+<body>
 
-    <!-- Cabeçalho mínimo -->
-    <header class="bg-white border-b border-gray-200 px-6 py-4">
-        <div class="max-w-5xl mx-auto flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background-color:#009851;">
-                <i class="fas fa-leaf text-white text-base"></i>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider leading-none">SEMA</p>
-                <p class="text-sm font-bold text-gray-800 leading-tight">Secretaria de Meio Ambiente</p>
-            </div>
+<header class="site-header">
+    <a href="/" class="header-brand">
+        <div class="header-icon"><i class="fas fa-leaf"></i></div>
+        <div>
+            <div class="header-label-top">SEMA</div>
+            <div class="header-label-main">Secretaria de Meio Ambiente</div>
         </div>
-    </header>
+    </a>
+</header>
 
-    <!-- Conteúdo central -->
-    <main class="flex-1 flex items-center justify-center px-4 py-16">
-        <div class="max-w-md w-full text-center">
+<main class="main">
+    <div class="card">
+        <div class="error-code">404</div>
 
-            <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-file-excel text-gray-300 text-4xl"></i>
-            </div>
-
-            <p class="text-6xl font-black text-gray-200 mb-2 leading-none">404</p>
-
-            <h1 class="text-xl font-bold text-gray-800 mb-2">
-                <?php if ($isArquivo): ?>
-                    Arquivo não encontrado
-                <?php else: ?>
-                    Página não encontrada
-                <?php endif; ?>
-            </h1>
-
-            <p class="text-sm text-gray-500 mb-8 leading-relaxed">
-                <?php if ($isArquivo): ?>
-                    O arquivo solicitado não existe ou foi removido do sistema.<br>
-                    Entre em contato com a SEMA caso precise de uma cópia.
-                <?php else: ?>
-                    O endereço que você acessou não existe ou foi removido.<br>
-                    Verifique o link e tente novamente.
-                <?php endif; ?>
-            </p>
-
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <?php if ($referer && $referer !== $_SERVER['REQUEST_URI']): ?>
-                <a href="<?php echo htmlspecialchars($voltarUrl); ?>"
-                   class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-arrow-left text-xs"></i> Voltar
-                </a>
-                <?php endif; ?>
-                <a href="/"
-                   class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-white rounded-lg text-sm font-medium transition-colors"
-                   style="background-color:#009851;">
-                    <i class="fas fa-home text-xs"></i> Página inicial
-                </a>
-                <a href="/consultar/"
-                   class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-search text-xs"></i> Consultar protocolo
-                </a>
-            </div>
-
+        <div class="icon-wrap">
+            <i class="fas <?= $isArquivo ? 'fa-file-slash' : 'fa-map-pin' ?>"></i>
         </div>
-    </main>
 
-    <!-- Rodapé mínimo -->
-    <footer class="border-t border-gray-200 py-4 text-center">
-        <p class="text-xs text-gray-400">
-            Prefeitura Municipal de Pau dos Ferros &mdash; SEMA
+        <h1 class="card-title">
+            <?= $isArquivo ? 'Documento não encontrado' : 'Página não encontrada' ?>
+        </h1>
+
+        <p class="card-desc">
+            <?php if ($isArquivo): ?>
+                O arquivo solicitado não existe ou foi removido do servidor.<br>
+                Se você precisa de uma cópia, <strong>entre em contato com a SEMA</strong><br>
+                ou solicite ao responsável pelo processo.
+            <?php else: ?>
+                O endereço que você acessou não existe ou foi movido.<br>
+                Verifique o link ou use uma das opções abaixo.
+            <?php endif; ?>
         </p>
-    </footer>
+
+        <div class="actions">
+            <?php if ($isArquivo): ?>
+                <a href="/consultar/" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Consultar protocolo
+                </a>
+                <div class="divider">ou</div>
+                <a href="/" class="btn btn-secondary">
+                    <i class="fas fa-house"></i> Voltar ao início
+                </a>
+            <?php else: ?>
+                <?php if ($referer && parse_url($referer, PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? '')): ?>
+                <a href="<?= htmlspecialchars($referer) ?>" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <?php endif; ?>
+                <a href="/" class="btn btn-primary">
+                    <i class="fas fa-house"></i> Página inicial
+                </a>
+                <a href="/consultar/" class="btn btn-secondary">
+                    <i class="fas fa-search"></i> Consultar protocolo
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    Prefeitura Municipal de Pau dos Ferros &mdash; Secretaria Municipal de Meio Ambiente
+</footer>
 
 </body>
 </html>

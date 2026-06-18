@@ -190,6 +190,10 @@ try {
                 $stmtDoc->execute([$docId, $id]);
                 $docRow = $stmtDoc->fetch();
                 if (!$docRow) continue;
+                $caminhoFisico = UPLOAD_DIR . ltrim($docRow['caminho_arquivo'], '/');
+                if (!file_exists($caminhoFisico)) {
+                    throw new RuntimeException('O arquivo "' . $docRow['nome_arquivo'] . '" não foi encontrado no servidor. O documento pode ter sido removido. Gere um novo documento antes de enviar.');
+                }
                 $stmtInsert->execute([$id, $docRow['caminho_arquivo'], $docRow['nome_arquivo'], $instrucoes, $token, $adminId]);
                 // Tokens subsequentes usam ID de lote para unicidade
                 $token = $loteId . '_' . $docId;
