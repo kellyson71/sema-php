@@ -320,6 +320,83 @@ try {
             // Favoritos primeiro, personalizados depois
             $userTemplates = array_merge($favTemplates, $userTemplates);
 
+            // 7. Score de preenchimento: detecta o template com melhor cobertura das variáveis
+            if ($requerimento_id > 0 && $templatesDiretorio) {
+                $stmtScore = $pdo->prepare("
+                    SELECT r.*,
+                           req.nome  as requerente_nome,   req.cpf_cnpj  as requerente_cpf_cnpj,
+                           req.telefone as requerente_telefone, req.email as requerente_email,
+                           p.nome    as proprietario_nome, p.cpf_cnpj   as proprietario_cpf_cnpj
+                    FROM requerimentos r
+                    JOIN requerentes  req ON r.requerente_id = req.id
+                    LEFT JOIN proprietarios p  ON r.proprietario_id = p.id
+                    WHERE r.id = ?
+                ");
+                $stmtScore->execute([$requerimento_id]);
+                $reqDados = $stmtScore->fetch(PDO::FETCH_ASSOC);
+
+                if ($reqDados) {
+                    $camposSempre  = ['protocolo', 'data_atual', 'numero_documento_ano', 'ano_atual', 'tipo_alvara'];
+                    $mapaVarCampo  = [
+                        'nome_requerente'                => ['requerente_nome'],
+                        'cpf_cnpj_requerente'            => ['requerente_cpf_cnpj'],
+                        'email_requerente'               => ['requerente_email'],
+                        'telefone_requerente'            => ['requerente_telefone'],
+                        'endereco_objetivo'              => ['endereco_objetivo'],
+                        'nome_proprietario'              => ['proprietario_nome'],
+                        'cpf_cnpj_proprietario'          => ['proprietario_cpf_cnpj'],
+                        'responsavel_tecnico_nome'       => ['responsavel_tecnico_nome'],
+                        'responsavel_tecnico_registro'   => ['responsavel_tecnico_registro'],
+                        'responsavel_tecnico_numero'     => ['responsavel_tecnico_numero', 'responsavel_tecnico_registro'],
+                        'responsavel_tecnico_tipo_documento' => ['responsavel_tecnico_tipo_documento'],
+                        'especificacao'                  => ['especificacao'],
+                        'art_numero'                     => ['responsavel_tecnico_numero', 'responsavel_tecnico_registro'],
+                        'area_construida'                => ['area_construida', 'area_construcao', 'area_lote'],
+                        'area'                           => ['area_construida', 'area_construcao', 'area_lote'],
+                        'detalhes_imovel'                => ['especificacao'],
+                        'area_lote'                      => ['area_lote'],
+                        'nome_interessado'               => ['proprietario_nome', 'requerente_nome'],
+                        'cpf_interessado'                => ['proprietario_cpf_cnpj', 'requerente_cpf_cnpj'],
+                        'atividade'                      => ['atividade', 'especificacao'],
+                        'cnae_descricao'                 => ['cnae_descricao', 'especificacao'],
+                        'observacoes'                    => ['observacoes'],
+                    ];
+
+                    $melhorScore = -1;
+                    $melhorIdx   = -1;
+
+                    foreach ($templates as $idx => &$t) {
+                        if ($t['nome'] === 'em_branco') { $t['fill_score'] = 0; continue; }
+                        $caminhoHtml = $templatesDiretorio . $t['nome'] . '.html';
+                        if (!file_exists($caminhoHtml)) { $t['fill_score'] = 0; continue; }
+
+                        preg_match_all('/\{\{([^}]+)\}\}/', file_get_contents($caminhoHtml), $m);
+                        $varsTemplate = array_unique($m[1]);
+                        if (empty($varsTemplate)) { $t['fill_score'] = 0; continue; }
+
+                        $preenchidas = 0;
+                        foreach ($varsTemplate as $var) {
+                            if (in_array($var, $camposSempre)) { $preenchidas++; continue; }
+                            foreach ($mapaVarCampo[$var] ?? [$var] as $campo) {
+                                if (!empty($reqDados[$campo]) && trim($reqDados[$campo]) !== '') {
+                                    $preenchidas++; break;
+                                }
+                            }
+                        }
+
+                        $score = $preenchidas / count($varsTemplate);
+                        $t['fill_score'] = (int) round($score * 100);
+
+                        if ($score > $melhorScore) { $melhorScore = $score; $melhorIdx = $idx; }
+                    }
+                    unset($t);
+
+                    if ($melhorIdx >= 0 && $melhorScore >= 0.5) {
+                        $templates[$melhorIdx]['melhor_match'] = true;
+                    }
+                }
+            }
+
             echo json_encode([
                 'success'           => true,
                 'historico_recente' => $historicoRecente,

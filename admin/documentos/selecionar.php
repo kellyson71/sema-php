@@ -133,6 +133,36 @@ include '../header.php';
             box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
         }
 
+        /* Melhor match — borda dourada pulsante */
+        @keyframes goldPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.55), 0 8px 24px rgba(234, 179, 8, 0.18); }
+            50%       { box-shadow: 0 0 0 5px rgba(234, 179, 8, 0),   0 8px 24px rgba(234, 179, 8, 0.18); }
+        }
+        .template-card.melhor-match {
+            border: 2px solid #eab308 !important;
+            border-bottom: 3px solid #ca8a04 !important;
+            animation: goldPulse 2.2s ease-in-out infinite;
+        }
+        .template-card.melhor-match:hover {
+            border-color: #ca8a04 !important;
+            box-shadow: 0 14px 32px rgba(234, 179, 8, 0.28) !important;
+        }
+        .badge-melhor-match {
+            position: absolute;
+            top: -1px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(90deg, #eab308, #f59e0b);
+            color: #1a1a1a;
+            font-size: 0.6rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 10px;
+            border-radius: 0 0 8px 8px;
+            white-space: nowrap;
+            z-index: 3;
+            box-shadow: 0 2px 6px rgba(234, 179, 8, 0.4);
+        }
+
         /* Preview de texto do template */
         .preview-miniature {
             font-size: 0.72rem;
@@ -356,21 +386,30 @@ include '../header.php';
 
     /* ─── Montar HTML de um card de template ───────────────── */
     function buildCardTemplate(t, idx) {
-        const nome    = t.nome  || t;
-        const label   = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const desc    = t.descricao  || 'Modelo padrão oficial da secretaria.';
-        const icone   = t.icone      || 'fa-file-signature';
-        const cor     = t.icone_cor  || 'text-secondary';
-        const badge   = t.badge      || 'Parecer';
-        const preview = t.preview    || desc;
-        const delay   = (idx * 0.06).toFixed(2);
-        const isFav   = favoritosSet.has(nome);
-        const favIcon = isFav ? 'fas fa-star text-warning' : 'far fa-star text-muted';
-        const favTitle= isFav ? 'Remover dos Meus Modelos' : 'Adicionar aos Meus Modelos';
+        const nome       = t.nome  || t;
+        const label      = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const desc       = t.descricao  || 'Modelo padrão oficial da secretaria.';
+        const icone      = t.icone      || 'fa-file-signature';
+        const cor        = t.icone_cor  || 'text-secondary';
+        const badge      = t.badge      || 'Parecer';
+        const preview    = t.preview    || desc;
+        const delay      = (idx * 0.06).toFixed(2);
+        const isFav      = favoritosSet.has(nome);
+        const favIcon    = isFav ? 'fas fa-star text-warning' : 'far fa-star text-muted';
+        const favTitle   = isFav ? 'Remover dos Meus Modelos' : 'Adicionar aos Meus Modelos';
+        const isMelhor   = t.melhor_match === true;
+        const extraClass = isMelhor ? ' melhor-match' : '';
+        const melhorBadge= isMelhor
+            ? `<span class="badge-melhor-match"><i class="fas fa-star me-1" style="font-size:.55rem"></i>Melhor encaixe</span>`
+            : '';
+        const fillScore  = (t.fill_score != null && t.fill_score > 0)
+            ? `<div class="mt-1" style="font-size:.62rem;color:#94a3b8;text-align:right">${t.fill_score}% preenchível</div>`
+            : '';
 
         return `
         <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="tpl-card-${escapeHtml(nome)}" style="animation-delay:${delay}s">
-            <div class="card template-card border-0 shadow-sm h-100 position-relative">
+            <div class="card template-card border-0 shadow-sm h-100 position-relative${extraClass}">
+                ${melhorBadge}
                 <button class="btn btn-sm position-absolute top-0 end-0 m-2 p-1 border-0 bg-transparent"
                         style="z-index:2;line-height:1" title="${favTitle}"
                         onclick="toggleFavorito('${escaparAttr(nome)}', this)">
@@ -385,6 +424,7 @@ include '../header.php';
                     <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
                     <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
                     <div class="preview-miniature">${escapeHtml(preview)}</div>
+                    ${fillScore}
                 </a>
             </div>
         </div>`;
