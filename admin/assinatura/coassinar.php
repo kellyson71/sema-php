@@ -42,6 +42,7 @@ try {
     $fonte = $stmtFonte->fetch(PDO::FETCH_ASSOC);
 
     if (!$fonte) {
+        $pdo->rollBack();
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Este documento foi criado antes da atualização de co-assinatura e não suporta múltiplas assinaturas.']);
         exit;
@@ -51,6 +52,7 @@ try {
     $stmtCheck = $pdo->prepare("SELECT id FROM assinaturas_digitais WHERE documento_id = ? AND assinante_id = ?");
     $stmtCheck->execute([$documentoId, $adminId]);
     if ($stmtCheck->fetch()) {
+        $pdo->rollBack();
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Você já assinou este documento.']);
         exit;
