@@ -83,18 +83,28 @@ $servicoAvancada = new AssinaturaAvancadaService($pdo);
 
 if ($ehAssinaturaDigital && $salvar_banco) {
     $pin = trim($_POST['pin_assinatura'] ?? '');
-    // PIN é opcional: só tenta RSA se o admin já configurou a chave e forneceu o PIN.
-    // Sem PIN → nível simples; com PIN + chave → nível avançado.
-    if ($pin !== '' && $servicoAvancada->temChave((int) $admin_id)) {
-        try {
-            $assinaturaRsa = $servicoAvancada->assinar((int) $admin_id, $pin, $hashConteudo);
-        } catch (RuntimeException $e) {
-            if ($e->getMessage() === 'PIN_INCORRETO') {
-                respostaJson(['success' => false, 'code' => 'pin_incorreto',
-                    'error' => 'PIN de assinatura incorreto.']);
+
+    if ($pin !== '') {
+        if ($servicoAvancada->temChave((int) $admin_id)) {
+            // Admin com PIN configurado → tenta RSA avançado
+            try {
+                $assinaturaRsa = $servicoAvancada->assinar((int) $admin_id, $pin, $hashConteudo);
+            } catch (RuntimeException $e) {
+                if ($e->getMessage() === 'PIN_INCORRETO') {
+                    respostaJson(['success' => false, 'code' => 'senha_incorreta',
+                        'error' => 'Senha de acesso incorreta.']);
+                }
+                error_log('[processa_assinatura] Erro RSA: ' . $e->getMessage());
             }
-            error_log('[processa_assinatura] Erro RSA: ' . $e->getMessage());
-            // Falha inesperada na crypto → continua sem componente RSA
+        } else {
+            // Sem PIN configurado → usa campo como confirmação por senha de login
+            $stSenha = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
+            $stSenha->execute([$admin_id]);
+            $hashSenha = $stSenha->fetchColumn();
+            if (!$hashSenha || !password_verify($pin, $hashSenha)) {
+                respostaJson(['success' => false, 'code' => 'senha_incorreta',
+                    'error' => 'Senha de acesso incorreta.']);
+            }
         }
     }
 }

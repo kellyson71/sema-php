@@ -403,7 +403,7 @@ include '../header.php';
             padding:12px 14px; margin-bottom:16px;
         }
         .pin-box-label { font-weight:700; font-size:.82rem; color: var(--sema-green); display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-        .pin-box .form-control { border:1px solid #cfe1d7; letter-spacing:.14em; }
+        .pin-box .form-control { border:1px solid #cfe1d7; }
         .pin-box .form-control:focus { border-color: var(--sema-green); box-shadow:0 0 0 .18rem rgba(28,75,54,.13); }
         .pin-box-hint { font-size:.71rem; color:#6b8377; margin-top:5px; }
 
@@ -603,13 +603,13 @@ include '../header.php';
                             style="font-size:.82rem;resize:none;"></textarea>
               </div>
 
-              <!-- PIN de assinatura (modos digitais) -->
-              <div id="blocoPin" class="pin-box">
-                  <div class="pin-box-label"><i class="fas fa-key"></i> PIN de assinatura</div>
-                  <input type="password" id="pinAssinatura" class="form-control" maxlength="64"
-                         autocomplete="off" placeholder="Digite seu PIN pessoal">
+              <!-- Confirmação por senha (modos digitais) -->
+              <div id="blocoPin" class="pin-box" style="display:none;">
+                  <div class="pin-box-label"><i class="fas fa-lock"></i> Confirme sua identidade</div>
+                  <input type="password" id="pinAssinatura" class="form-control" maxlength="128"
+                         autocomplete="current-password" placeholder="Digite sua senha de acesso">
                   <div class="pin-box-hint">
-                      <i class="fas fa-lock me-1"></i>Protege sua chave individual e garante a validade jurídica da assinatura.
+                      <i class="fas fa-shield-halved me-1"></i>Confirma que esta assinatura eletrônica foi feita por você.
                   </div>
               </div>
 
@@ -1198,12 +1198,14 @@ include '../header.php';
         document.getElementById('pinNovo').value = '';
         document.getElementById('pinNovoConfirma').value = '';
 
+        atualizarBlocosPin();
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
     }
 
-    /* PIN oculto — autenticação por login é suficiente neste momento */
+    /* Mostra confirmação de senha nos modos digitais */
     function atualizarBlocosPin() {
-        document.getElementById('blocoPin').style.display     = 'none';
+        const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
+        document.getElementById('blocoPin').style.display      = modoAtivo !== 'sem_assinar' ? 'block' : 'none';
         document.getElementById('blocoPinSetup').style.display = 'none';
     }
 
@@ -1284,8 +1286,20 @@ include '../header.php';
             return;
         }
 
-        // PIN opcional — o login já autentica o signatário neste momento
-        const pinParaAssinar = '';
+        // Confirmação de identidade por senha
+        let pinParaAssinar = '';
+        if (!isSemAssinar) {
+            pinParaAssinar = document.getElementById('pinAssinatura').value;
+            if (!pinParaAssinar) {
+                const box = document.getElementById('blocoPin');
+                box.classList.add('shake');
+                box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => box.classList.remove('shake'), 500);
+                document.getElementById('pinAssinatura').focus();
+                Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite sua senha de acesso para confirmar', showConfirmButton:false, timer:2800 });
+                return;
+            }
+        }
 
         // Co-assinatura: exige pelo menos um destinatário marcado
         let destinatarios = [];
@@ -1352,6 +1366,10 @@ include '../header.php';
                         window.location.href = '../visualizar_requerimento.php?id=' + reqId;
                     }, 500);
                 });
+            } else if (ret.code === 'senha_incorreta') {
+                Swal.fire('Senha incorreta', 'A senha de acesso informada não confere. Tente novamente.', 'error');
+                document.getElementById('pinAssinatura').value = '';
+                document.getElementById('pinAssinatura').focus();
             } else {
                 Swal.fire('Erro Interno', ret.error || 'Não foi possível registrar o documento.', 'error');
             }

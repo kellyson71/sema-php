@@ -73,21 +73,36 @@ try {
     //     usa RSA (nível avançado). Caso contrário, registra como nível simples.
     $servicoAvancada = new AssinaturaAvancadaService($pdo);
     $hashConteudo    = AssinaturaAvancadaService::hashConteudo($fonte['conteudo_html']);
-    $assinaturaRsa   = null;
-    $pinAssinatura   = trim($pinAssinatura);
-    if ($pinAssinatura !== '' && $servicoAvancada->temChave((int) $adminId)) {
-        try {
-            $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
-        } catch (RuntimeException $eRsa) {
-            if ($eRsa->getMessage() === 'PIN_INCORRETO') {
+    $assinaturaRsa = null;
+    $pinAssinatura = trim($pinAssinatura);
+
+    if ($pinAssinatura !== '') {
+        if ($servicoAvancada->temChave((int) $adminId)) {
+            // Admin com PIN configurado → RSA avançado
+            try {
+                $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
+            } catch (RuntimeException $eRsa) {
+                if ($eRsa->getMessage() === 'PIN_INCORRETO') {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    ob_clean();
+                    echo json_encode(['success' => false, 'code' => 'senha_incorreta',
+                        'error' => 'Senha de acesso incorreta.']);
+                    exit;
+                }
+                error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
+            }
+        } else {
+            // Sem PIN → verifica senha de login como confirmação de identidade
+            $stSenha = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
+            $stSenha->execute([$adminId]);
+            $hashSenha = $stSenha->fetchColumn();
+            if (!$hashSenha || !password_verify($pinAssinatura, $hashSenha)) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 ob_clean();
-                echo json_encode(['success' => false, 'code' => 'pin_incorreto',
-                    'error' => 'PIN de assinatura incorreto.']);
+                echo json_encode(['success' => false, 'code' => 'senha_incorreta',
+                    'error' => 'Senha de acesso incorreta.']);
                 exit;
             }
-            error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
-            // Falha inesperada → continua sem componente RSA
         }
     }
     $nivelCoAs = $assinaturaRsa !== null ? 'avancada' : 'simples';

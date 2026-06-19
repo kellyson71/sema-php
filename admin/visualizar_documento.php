@@ -536,7 +536,15 @@ include 'header.php';
         <input type="checkbox" id="chk-coassinar" style="margin-top:3px;flex-shrink:0;">
         <span>Declaro que revisei o conteúdo deste documento e concordo em assiná-lo digitalmente em nome da SEMA.</span>
       </label>
-      <input type="hidden" id="pin-coassinar" value="">
+      <div style="margin-bottom:12px;">
+        <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">
+          <i class="fas fa-lock me-1"></i> Confirme sua identidade
+        </label>
+        <input type="password" id="pin-coassinar" maxlength="128" autocomplete="current-password"
+               placeholder="Digite sua senha de acesso"
+               style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:.85rem;">
+        <small style="font-size:.7rem;color:#6b7280;">Confirma que esta assinatura eletrônica foi feita por você.</small>
+      </div>
       <div id="coassinar-error" style="display:none;color:#8f2222;font-size:.8rem;margin-bottom:8px;"></div>
       <div class="fm-btns">
         <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-coassinar')">Cancelar</button>
@@ -568,7 +576,14 @@ function confirmarCoAssinar() {
         err.style.display = 'block';
         return;
     }
-    const pinCoassinar = '';
+    const pinCoassinar = document.getElementById('pin-coassinar').value;
+    if (!pinCoassinar) {
+        const err = document.getElementById('coassinar-error');
+        err.textContent = 'Digite sua senha de acesso para confirmar.';
+        err.style.display = 'block';
+        document.getElementById('pin-coassinar').focus();
+        return;
+    }
     const btn = document.getElementById('btn-confirmar-coassinar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assinando...';
@@ -585,6 +600,14 @@ function confirmarCoAssinar() {
                 fecharFM('fm-coassinar');
                 showToast('Assinatura adicionada com sucesso! Recarregando...', 'success');
                 setTimeout(() => location.reload(), 1800);
+            } else if (data.code === 'senha_incorreta') {
+                const err = document.getElementById('coassinar-error');
+                err.textContent = 'Senha de acesso incorreta. Tente novamente.';
+                err.style.display = 'block';
+                document.getElementById('pin-coassinar').value = '';
+                document.getElementById('pin-coassinar').focus();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-signature me-1"></i>Assinar';
             } else {
                 const err = document.getElementById('coassinar-error');
                 err.textContent = data.error || 'Erro ao assinar.';

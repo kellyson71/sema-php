@@ -164,7 +164,11 @@ include 'header.php';
 
         <?php if ($minhaPendencia && !$jaAssinei): ?>
             <div class="co-actions">
-                <input type="hidden" id="pinCo" value="">
+                <div class="co-pinwrap">
+                    <label><i class="fas fa-lock"></i> Confirme sua identidade</label>
+                    <input type="password" id="pinCo" class="form-control" maxlength="128"
+                           autocomplete="current-password" placeholder="Digite sua senha de acesso">
+                </div>
                 <button class="co-btn co-btn-assinar" onclick="assinarDoc()">
                     <i class="fas fa-signature"></i> Assinar documento
                 </button>
@@ -186,7 +190,12 @@ const _docId = <?= json_encode($documentoId) ?>;
 const _reqId = <?= (int) $requerimentoId ?>;
 
 function assinarDoc() {
-    const pin = '';
+    const pin = document.getElementById('pinCo').value;
+    if (!pin) {
+        Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite sua senha de acesso para confirmar', showConfirmButton:false, timer:2800 });
+        document.getElementById('pinCo').focus();
+        return;
+    }
     Swal.fire({ title:'Assinando…', didOpen:()=>Swal.showLoading(), allowOutsideClick:false });
     const fd = new FormData();
     fd.append('documento_id', _docId);
@@ -198,6 +207,10 @@ function assinarDoc() {
             if (d.success) {
                 Swal.fire({ icon:'success', title:'Assinatura registrada!', text:'O documento foi atualizado com a sua assinatura.', timer:2600, showConfirmButton:false })
                     .then(() => location.reload());
+            } else if (d.code === 'senha_incorreta') {
+                Swal.fire('Senha incorreta', 'A senha de acesso informada não confere.', 'error');
+                document.getElementById('pinCo').value = '';
+                document.getElementById('pinCo').focus();
             } else {
                 Swal.fire('Erro', d.error || 'Não foi possível assinar.', 'error');
             }
