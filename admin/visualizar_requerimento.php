@@ -2648,32 +2648,124 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ($isIndeferido ? 'indeferido-body' : ''); ?>">
                     <?php if ($isFinalized): ?>
-                        <!-- Processo Finalizado — painel compacto -->
+                        <!-- Processo Finalizado — painel informativo -->
                         <?php
-                        $ultimaAcaoEnc = '';
+                        // Quem finalizou e quando
+                        $hFinalizacao = null;
                         foreach (array_reverse($historico) as $h) {
-                            if (stripos($h['acao'],'Finaliz') !== false || stripos($h['acao'],'Concluiu') !== false) {
-                                $ultimaAcaoEnc = $h['acao'];
+                            if (stripos($h['acao'],'Finaliz') !== false || stripos($h['acao'],'Concluiu') !== false
+                                || stripos($h['acao'],'protocolo oficial') !== false) {
+                                $hFinalizacao = $h;
                                 break;
                             }
                         }
-                        if (!$ultimaAcaoEnc && !empty($historico)) $ultimaAcaoEnc = end($historico)['acao'];
+                        if (!$hFinalizacao && !empty($historico)) $hFinalizacao = $historico[0];
+
+                        // Documentos assinados gerados para este processo
+                        $stmtDocsF = $pdo->prepare("
+                            SELECT MIN(timestamp_assinatura) AS primeira_assinatura,
+                                   tipo_documento, documento_id,
+                                   GROUP_CONCAT(DISTINCT assinante_nome ORDER BY timestamp_assinatura ASC SEPARATOR ', ') AS assinantes,
+                                   nivel_assinatura
+                            FROM assinaturas_digitais
+                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura'
+                            GROUP BY documento_id
+                            ORDER BY primeira_assinatura ASC
+                        ");
+                        $stmtDocsF->execute([$id]);
+                        $docsAssinadosF = $stmtDocsF->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Tempo total formatado
+                        function formatarTempoCurto(int $seg): string {
+                            if ($seg < 60) return $seg . 's';
+                            if ($seg < 3600) return round($seg/60) . 'min';
+                            if ($seg < 86400) return round($seg/3600, 1) . 'h';
+                            $d = floor($seg/86400); $h = round(($seg%86400)/3600);
+                            return $d . 'd' . ($h > 0 ? ' '.$h.'h' : '');
+                        }
                         ?>
-                        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;">
-                            <span style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;">
-                                <i class="fas fa-check-circle" style="color:#2e7d32;font-size:1.1rem;"></i>
-                            </span>
-                            <div style="flex:1;min-width:0;">
-                                <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo encerrado</p>
-                                <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">Status: <strong><?= htmlspecialchars($requerimento['status']) ?></strong><?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
-                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
-                                        <i class="fas fa-unlock me-1"></i>Reabrir
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger btn-sm fw-medium" onclick="showArquivarModal()">
-                                        <i class="fas fa-archive me-1"></i>Arquivar
-                                    </button>
+                        <div style="padding:20px 22px;">
+                            <!-- Cabeçalho -->
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2ede8;">
+                                <span style="flex-shrink:0;width:40px;height:40px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;">
+                                    <i class="fas fa-check-circle" style="color:#2e7d32;font-size:1.2rem;"></i>
+                                </span>
+                                <div>
+                                    <div style="font-weight:800;font-size:.95rem;color:#1a2e1e;">Processo encerrado com sucesso</div>
+                                    <?php if ($hFinalizacao): ?>
+                                        <div style="font-size:.78rem;color:#64748b;">
+                                            <?php if (!empty($hFinalizacao['admin_nome'])): ?>
+                                                Encerrado por <strong><?= htmlspecialchars($hFinalizacao['admin_nome']) ?></strong>
+                                                em <?= date('d/m/Y \à\s H:i', strtotime($hFinalizacao['data_acao'])) ?>
+                                            <?php else: ?>
+                                                <?= date('d/m/Y \à\s H:i', strtotime($hFinalizacao['data_acao'])) ?>
+                                            <?php endif; ?>
+                                            <?php if ($tempoTotalProcesso): ?>
+                                                · Duração total: <strong><?= formatarTempoCurto($tempoTotalProcesso) ?></strong>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
+                            </div>
+
+                            <!-- Documentos gerados -->
+                            <?php if (!empty($docsAssinadosF)): ?>
+                                <div style="margin-bottom:16px;">
+                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px;">
+                                        <i class="fas fa-file-signature me-1"></i>Documentos gerados (<?= count($docsAssinadosF) ?>)
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;gap:6px;">
+                                        <?php foreach ($docsAssinadosF as $dF):
+                                            $nomeDocF = htmlspecialchars(ucfirst(str_replace('_',' ', $dF['tipo_documento'])));
+                                            $isAvancado = ($dF['nivel_assinatura'] === 'avancada');
+                                        ?>
+                                            <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;">
+                                                <i class="fas fa-file-pdf" style="color:#dc2626;font-size:.85rem;flex-shrink:0;"></i>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:.8rem;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= $nomeDocF ?></div>
+                                                    <div style="font-size:.7rem;color:#94a3b8;">
+                                                        <?= htmlspecialchars($dF['assinantes']) ?>
+                                                        · <?= date('d/m/Y', strtotime($dF['primeira_assinatura'])) ?>
+                                                    </div>
+                                                </div>
+                                                <?php if ($isAvancado): ?>
+                                                    <span style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700;flex-shrink:0;">AVANÇADA</span>
+                                                <?php else: ?>
+                                                    <span style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;flex-shrink:0;">ELETRÔNICA</span>
+                                                <?php endif; ?>
+                                                <a href="assinatura/redownload_pdf.php?id=<?= urlencode($dF['documento_id']) ?>&inline=1"
+                                                   target="_blank" title="Visualizar"
+                                                   style="color:#2563eb;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-eye"></i></a>
+                                                <a href="assinatura/redownload_pdf.php?id=<?= urlencode($dF['documento_id']) ?>"
+                                                   title="Baixar"
+                                                   style="color:#64748b;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-download"></i></a>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <!-- Docs enviados pelo cidadão -->
+                            <?php if (!empty($documentos)): ?>
+                                <div style="margin-bottom:16px;">
+                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:6px;">
+                                        <i class="fas fa-folder-open me-1"></i>Documentação do requerente (<?= count($documentos) ?> arquivo<?= count($documentos)>1?'s':'' ?>)
+                                    </div>
+                                    <div style="font-size:.78rem;color:#475569;padding:6px 10px;background:#f8fafc;border-radius:7px;border:1px solid #e8edf2;">
+                                        <?php $nomes = array_map(fn($d)=>htmlspecialchars(basename($d['arquivo']??$d['nome_arquivo']??'')), $documentos);
+                                              echo implode(' · ', array_filter($nomes)); ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <!-- Ações -->
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
+                                <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
+                                    <i class="fas fa-unlock me-1"></i>Reabrir
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm fw-medium" onclick="showArquivarModal()">
+                                    <i class="fas fa-archive me-1"></i>Arquivar
+                                </button>
                             </div>
                         </div>
                     <?php elseif ($isIndeferido): ?>
