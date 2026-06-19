@@ -3855,6 +3855,7 @@ foreach ($docsDisponiveis as $docRow) {
                             ${coHtml ? `<div style="margin-top:6px;">${coHtml}</div>` : ''}
                         </div>
                         <div class="data-actions">
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}&inline=1" class="copy-btn me-1" title="Visualizar PDF" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb"><i class="fas fa-eye"></i></a>` : ''}
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
                             <button onclick="event.stopPropagation();excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
                         </div>
@@ -3908,7 +3909,8 @@ foreach ($docsDisponiveis as $docRow) {
                         </div>
                         ${coHtml}
                         <div class="doc-card-actions" style="display:flex;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #f0f0f0;">
-                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF"><i class="fas fa-download"></i></a>` : ''}
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}&inline=1" class="btn btn-sm btn-outline-primary" style="font-size:.75rem" title="Visualizar PDF" target="_blank" onclick="event.stopPropagation()"><i class="fas fa-eye"></i></a>` : ''}
+                            ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
                             <button data-excluir-doc="${escHtml(p.documento_id)}" class="btn btn-sm btn-outline-danger" style="font-size:.75rem" title="Excluir"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>`;
