@@ -349,8 +349,8 @@ class AssinaturaDigitalService
                 'cpf'       => $linha['assinante_cpf'],
                 'cargo'     => $linha['assinante_cargo'],
                 'data'      => $linha['timestamp_assinatura'],
-                'nivel'     => $temRsa ? 'avancada' : 'simples',
-                'rsa_valida' => $temRsa ? $rsaOk : null, // null = legado, sem RSA para conferir
+                'nivel'     => $linha['nivel_assinatura'] ?? ($temRsa ? 'avancada' : 'simples'),
+                'rsa_valida' => $temRsa ? $rsaOk : null,
             ];
         }
 
