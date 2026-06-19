@@ -82,12 +82,12 @@ $searchItems = [
     ['label' => 'Estatísticas', 'caption' => 'Indicadores e relatórios', 'url' => $adminBase . 'estatisticas.php', 'icon' => 'fa-chart-column'],
     ['label' => 'Arquivados', 'caption' => 'Consultar requerimentos arquivados', 'url' => $adminBase . 'requerimentos_arquivados.php', 'icon' => 'fa-box-archive'],
     ['label' => 'Documentos Assinados', 'caption' => 'Acervo de documentos assinados', 'url' => $adminBase . 'documentos_assinados.php', 'icon' => 'fa-file-signature'],
-    ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'],
     ['label' => 'Histórico de Envios', 'caption' => 'Logs de emails enviados', 'url' => $adminBase . 'logs_email.php', 'icon' => 'fa-envelope-open-text'],
     ['label' => 'Meu Perfil', 'caption' => 'Dados do usuário logado', 'url' => $adminBase . 'perfil.php', 'icon' => 'fa-user-gear'],
 ];
 
 if ($isAdmin) {
+    $searchItems[] = ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'];
     $searchItems[] = ['label' => 'Gerenciar Usuários', 'caption' => 'Administradores e acessos', 'url' => $adminBase . 'administradores.php', 'icon' => 'fa-users-gear'];
 }
 if ($isAnalista) {
@@ -1546,6 +1546,17 @@ if ($isAnalista) {
                 <div class="menu-header"><span>Administração</span></div>
                 <ul>
                     <?php if ($isAdmin): ?>
+                        <li>
+                            <a href="<?= $adminBase ?>sugestoes.php" class="sidebar-link <?= $currentPage === 'sugestoes.php' ? 'active' : '' ?>" title="Sugestões">
+                                <span class="sidebar-link-icon"><i class="fas fa-lightbulb"></i></span>
+                                <span class="sidebar-link-content">
+                                    <span class="sidebar-link-text">
+                                        <span class="sidebar-link-title">Sugestões</span>
+                                        <span class="sidebar-link-caption">Melhorias enviadas pelos cidadãos</span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
                         <li>
                             <a href="<?= $adminBase ?>administradores.php" class="sidebar-link <?= $currentPage === 'administradores.php' ? 'active' : '' ?>" title="Gerenciar Usuários">
                                 <span class="sidebar-link-icon"><i class="fas fa-users-gear"></i></span>

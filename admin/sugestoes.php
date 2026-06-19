@@ -3,6 +3,12 @@ require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
+$nivelAtual = $_SESSION['admin_nivel'] ?? '';
+if (!in_array($nivelAtual, ['admin', 'admin_geral'], true)) {
+    header('Location: index.php');
+    exit;
+}
+
 // Atualizar status via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
