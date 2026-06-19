@@ -1384,6 +1384,306 @@ include_once 'enquadramento_conema.php';
             to { transform: rotate(360deg); }
         }
     </style>
+
+    <!-- ── Widget de Sugestões ─────────────────────────────────────────── -->
+    <style>
+        #sg-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1050;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1c4b36, #0d7f5f);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(0,0,0,.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: transform .15s, box-shadow .15s;
+        }
+        #sg-fab:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(0,0,0,.28); }
+        #sg-fab .sg-tooltip {
+            position: absolute;
+            right: 62px;
+            white-space: nowrap;
+            background: #1e293b;
+            color: #fff;
+            font-size: .72rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .15s;
+        }
+        #sg-fab:hover .sg-tooltip { opacity: 1; }
+
+        #sg-drawer {
+            position: fixed;
+            bottom: 88px;
+            right: 24px;
+            width: 340px;
+            max-width: calc(100vw - 32px);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,.18);
+            z-index: 1049;
+            transform: scale(.92) translateY(12px);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform .2s cubic-bezier(.34,1.56,.64,1), opacity .18s;
+            transform-origin: bottom right;
+        }
+        #sg-drawer.open {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .sg-dw-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .sg-dw-header .sg-ic {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg,#1c4b36,#0d7f5f);
+            color: #fff; display: flex; align-items: center;
+            justify-content: center; font-size: .95rem; flex-shrink: 0;
+        }
+        .sg-dw-title { font-weight: 800; font-size: .9rem; color: #1e293b; line-height: 1.2; }
+        .sg-dw-sub { font-size: .72rem; color: #94a3b8; }
+        .sg-dw-close {
+            margin-left: auto; background: none; border: none;
+            color: #94a3b8; cursor: pointer; font-size: 1rem; padding: 2px 6px;
+            border-radius: 6px; transition: background .12s;
+        }
+        .sg-dw-close:hover { background: #f1f5f9; color: #475569; }
+        .sg-dw-body { padding: 14px 18px 18px; }
+        .sg-tipo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+        .sg-tipo-opt {
+            display: flex; align-items: center; gap: 7px;
+            padding: 8px 10px; border: 1.5px solid #e8edf2;
+            border-radius: 10px; cursor: pointer;
+            font-size: .78rem; font-weight: 600; color: #475569;
+            transition: .12s; user-select: none;
+        }
+        .sg-tipo-opt:hover { border-color: #1c4b36; color: #1c4b36; background: #f0f7f3; }
+        .sg-tipo-opt.selected { border-color: #1c4b36; background: #e8f5ee; color: #1a3d2b; }
+        .sg-tipo-opt input { display: none; }
+        .sg-field {
+            width: 100%; padding: 9px 12px;
+            border: 1.5px solid #e8edf2; border-radius: 10px;
+            font-size: .82rem; color: #1e293b; outline: none;
+            transition: border-color .15s; font-family: inherit;
+        }
+        .sg-field:focus { border-color: #1c4b36; }
+        .sg-field.error { border-color: #ef4444; }
+        .sg-textarea { resize: vertical; min-height: 90px; margin-bottom: 10px; }
+        .sg-optional { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .sg-submit {
+            width: 100%; padding: 10px;
+            background: linear-gradient(135deg, #1c4b36, #0d7f5f);
+            color: #fff; border: none; border-radius: 10px;
+            font-weight: 700; font-size: .88rem; cursor: pointer;
+            transition: filter .15s;
+        }
+        .sg-submit:hover { filter: brightness(1.08); }
+        .sg-submit:disabled { opacity: .6; cursor: not-allowed; }
+        .sg-error-msg { font-size: .75rem; color: #ef4444; margin-top: 4px; display: none; }
+        .sg-success {
+            text-align: center; padding: 24px 16px;
+            display: none;
+        }
+        .sg-success .sg-ok-ic {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: #e8f5e9; display: flex; align-items: center;
+            justify-content: center; margin: 0 auto 12px;
+            font-size: 1.4rem; color: #2e7d32;
+        }
+        .sg-badge-pulse {
+            position: absolute; top: -4px; right: -4px;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: #ef4444; border: 2px solid #fff;
+            animation: sg-pulse 2s infinite;
+            display: none;
+        }
+        @keyframes sg-pulse {
+            0%,100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: .7; }
+        }
+    </style>
+
+    <!-- Botão flutuante -->
+    <button id="sg-fab" onclick="sgToggle()" aria-label="Enviar sugestão">
+        <span class="sg-tooltip">Enviar sugestão</span>
+        <span class="sg-badge-pulse" id="sg-badge"></span>
+        <i class="fas fa-lightbulb"></i>
+    </button>
+
+    <!-- Drawer de sugestão -->
+    <div id="sg-drawer" role="dialog" aria-label="Formulário de sugestão">
+        <div class="sg-dw-header">
+            <div class="sg-ic"><i class="fas fa-lightbulb"></i></div>
+            <div>
+                <div class="sg-dw-title">Mande sua sugestão</div>
+                <div class="sg-dw-sub">Ajude a melhorar o portal</div>
+            </div>
+            <button class="sg-dw-close" onclick="sgToggle()" aria-label="Fechar">✕</button>
+        </div>
+
+        <div class="sg-dw-body">
+            <!-- Estado: formulário -->
+            <div id="sg-form-state">
+                <!-- Tipo -->
+                <div class="sg-tipo-grid" id="sg-tipo-grid">
+                    <label class="sg-tipo-opt selected">
+                        <input type="radio" name="sg_tipo" value="melhoria" checked>
+                        💡 Melhoria
+                    </label>
+                    <label class="sg-tipo-opt">
+                        <input type="radio" name="sg_tipo" value="dificuldade">
+                        ⚠️ Dificuldade
+                    </label>
+                    <label class="sg-tipo-opt">
+                        <input type="radio" name="sg_tipo" value="elogio">
+                        ⭐ Elogio
+                    </label>
+                    <label class="sg-tipo-opt">
+                        <input type="radio" name="sg_tipo" value="outro">
+                        💬 Outro
+                    </label>
+                </div>
+
+                <!-- Texto -->
+                <textarea id="sg-texto" class="sg-field sg-textarea"
+                          placeholder="Descreva sua sugestão, dificuldade ou elogio…"
+                          maxlength="2000"></textarea>
+                <div class="sg-error-msg" id="sg-texto-err">Por favor, descreva com pelo menos 10 caracteres.</div>
+
+                <!-- Opcionais -->
+                <div class="sg-optional">
+                    <input id="sg-nome" type="text" class="sg-field" placeholder="Nome (opcional)" maxlength="120">
+                    <input id="sg-email" type="email" class="sg-field" placeholder="E-mail (opcional)" maxlength="120">
+                </div>
+
+                <button class="sg-submit" id="sg-submit-btn" onclick="sgEnviar()">
+                    <i class="fas fa-paper-plane me-1"></i> Enviar sugestão
+                </button>
+            </div>
+
+            <!-- Estado: sucesso -->
+            <div class="sg-success" id="sg-success-state">
+                <div class="sg-ok-ic"><i class="fas fa-check"></i></div>
+                <div style="font-weight:800;font-size:.95rem;color:#1e293b;margin-bottom:4px;">Obrigado!</div>
+                <div style="font-size:.82rem;color:#64748b;">Sua sugestão foi registrada e será analisada pela equipe da SEMA.</div>
+                <button onclick="sgReset()" style="margin-top:14px;padding:8px 20px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;font-size:.8rem;font-weight:600;color:#475569;cursor:pointer;">
+                    Enviar outra
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        let _open = false;
+
+        window.sgToggle = function() {
+            _open = !_open;
+            document.getElementById('sg-drawer').classList.toggle('open', _open);
+            if (_open) {
+                setTimeout(() => document.getElementById('sg-texto').focus(), 200);
+            }
+        };
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!_open) return;
+            const drawer = document.getElementById('sg-drawer');
+            const fab    = document.getElementById('sg-fab');
+            if (!drawer.contains(e.target) && !fab.contains(e.target)) {
+                _open = false;
+                drawer.classList.remove('open');
+            }
+        });
+
+        // Seleção de tipo via rádio
+        document.querySelectorAll('.sg-tipo-opt').forEach(label => {
+            label.addEventListener('click', function() {
+                document.querySelectorAll('.sg-tipo-opt').forEach(l => l.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        window.sgEnviar = function() {
+            const texto = document.getElementById('sg-texto').value.trim();
+            const errEl = document.getElementById('sg-texto-err');
+            if (texto.length < 10) {
+                document.getElementById('sg-texto').classList.add('error');
+                errEl.style.display = 'block';
+                return;
+            }
+            document.getElementById('sg-texto').classList.remove('error');
+            errEl.style.display = 'none';
+
+            const tipo  = document.querySelector('input[name="sg_tipo"]:checked')?.value ?? 'melhoria';
+            const nome  = document.getElementById('sg-nome').value.trim();
+            const email = document.getElementById('sg-email').value.trim();
+
+            const btn = document.getElementById('sg-submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enviando…';
+
+            const fd = new FormData();
+            fd.append('tipo',  tipo);
+            fd.append('texto', texto);
+            fd.append('nome',  nome);
+            fd.append('email', email);
+
+            fetch('sugestao_handler.php', { method:'POST', body:fd })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        document.getElementById('sg-form-state').style.display    = 'none';
+                        document.getElementById('sg-success-state').style.display = 'block';
+                    } else {
+                        alert(d.error || 'Erro ao enviar. Tente novamente.');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Enviar sugestão';
+                    }
+                })
+                .catch(() => {
+                    alert('Falha de comunicação. Verifique sua conexão.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Enviar sugestão';
+                });
+        };
+
+        window.sgReset = function() {
+            document.getElementById('sg-texto').value  = '';
+            document.getElementById('sg-nome').value   = '';
+            document.getElementById('sg-email').value  = '';
+            document.querySelectorAll('.sg-tipo-opt').forEach((l,i) => l.classList.toggle('selected', i===0));
+            document.querySelector('input[name="sg_tipo"][value="melhoria"]').checked = true;
+            document.getElementById('sg-form-state').style.display    = 'block';
+            document.getElementById('sg-success-state').style.display = 'none';
+            const btn = document.getElementById('sg-submit-btn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Enviar sugestão';
+        };
+    })();
+    </script>
 </body>
 
 </html>

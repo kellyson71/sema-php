@@ -82,6 +82,7 @@ $searchItems = [
     ['label' => 'Estatísticas', 'caption' => 'Indicadores e relatórios', 'url' => $adminBase . 'estatisticas.php', 'icon' => 'fa-chart-column'],
     ['label' => 'Arquivados', 'caption' => 'Consultar requerimentos arquivados', 'url' => $adminBase . 'requerimentos_arquivados.php', 'icon' => 'fa-box-archive'],
     ['label' => 'Documentos Assinados', 'caption' => 'Acervo de documentos assinados', 'url' => $adminBase . 'documentos_assinados.php', 'icon' => 'fa-file-signature'],
+    ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'],
     ['label' => 'Histórico de Envios', 'caption' => 'Logs de emails enviados', 'url' => $adminBase . 'logs_email.php', 'icon' => 'fa-envelope-open-text'],
     ['label' => 'Meu Perfil', 'caption' => 'Dados do usuário logado', 'url' => $adminBase . 'perfil.php', 'icon' => 'fa-user-gear'],
 ];
