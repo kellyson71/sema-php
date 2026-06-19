@@ -57,7 +57,7 @@ class TiposAlvaraTest extends TestCase
     {
         $this->assertContains(
             $tipo['categoria'],
-            ['obras', 'ambiental', 'outro'],
+            ['obras', 'ambiental', 'outro', 'denuncia_autoriza'],
             "Tipo '{$slug}' tem categoria inválida: '{$tipo['categoria']}'."
         );
     }

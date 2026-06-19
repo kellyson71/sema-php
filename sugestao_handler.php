@@ -7,6 +7,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+$csrfToken = $_POST['csrf_token'] ?? '';
+if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+    echo json_encode(['success' => false, 'error' => 'Sessão expirada. Recarregue a página e tente novamente.']);
+    exit;
+}
+
+if (!empty($_POST['site_empresa'] ?? '')) {
+    echo json_encode(['success' => false, 'error' => 'Não foi possível validar o envio.']);
+    exit;
+}
+
+$agora = time();
+$ultimoEnvio = (int) ($_SESSION['ultima_sugestao_em'] ?? 0);
+if ($ultimoEnvio && $agora - $ultimoEnvio < 15) {
+    echo json_encode(['success' => false, 'error' => 'Aguarde alguns segundos antes de enviar outro feedback.']);
+    exit;
+}
+
 $tipo  = trim($_POST['tipo']  ?? 'melhoria');
 $texto = trim($_POST['texto'] ?? '');
 $nome  = trim($_POST['nome']  ?? '');
@@ -48,6 +66,7 @@ try {
     ]);
 
     echo json_encode(['success' => true]);
+    $_SESSION['ultima_sugestao_em'] = $agora;
 
 } catch (Throwable $e) {
     error_log('[sugestao_handler] ' . $e->getMessage());

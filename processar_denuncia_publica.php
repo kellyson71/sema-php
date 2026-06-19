@@ -19,6 +19,26 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+$csrfToken = $_POST['csrf_token'] ?? '';
+if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+    $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Sessão expirada. Recarregue a página e tente novamente.'];
+    header('Location: index.php');
+    exit;
+}
+
+if (!empty($_POST['site_empresa'] ?? '')) {
+    $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Não foi possível validar o envio.'];
+    header('Location: index.php');
+    exit;
+}
+
+$formLoadedAt = (int) ($_POST['form_loaded_at'] ?? 0);
+if ($formLoadedAt > 0 && time() - $formLoadedAt < 3) {
+    $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Envio muito rápido. Revise o formulário e tente novamente.'];
+    header('Location: index.php');
+    exit;
+}
+
 // ── Coletar e validar dados ────────────────────────────────────────────────
 
 $anonimo           = isset($_POST['anonimo']) && $_POST['anonimo'] === '1';
@@ -66,6 +86,49 @@ if (empty($tiposFiltrados)) {
     $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Tipo de ocorrência inválido.'];
     header('Location: index.php');
     exit;
+}
+
+$extensoesPermitidas = [
+    'jpg' => ['image/jpeg'],
+    'jpeg' => ['image/jpeg'],
+    'png' => ['image/png'],
+    'pdf' => ['application/pdf'],
+    'mp4' => ['video/mp4'],
+    'mov' => ['video/quicktime'],
+];
+$limiteEvidencia = 20 * 1024 * 1024;
+if (!empty($_FILES['evidencias']['name'][0])) {
+    $arquivos = $_FILES['evidencias'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+    for ($i = 0; $i < count($arquivos['name']); $i++) {
+        if (($arquivos['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+
+        if (($arquivos['error'][$i] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            if ($finfo) finfo_close($finfo);
+            $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Não foi possível receber uma das evidências.'];
+            header('Location: index.php');
+            exit;
+        }
+
+        if (($arquivos['size'][$i] ?? 0) > $limiteEvidencia) {
+            if ($finfo) finfo_close($finfo);
+            $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Cada evidência deve ter no máximo 20MB.'];
+            header('Location: index.php');
+            exit;
+        }
+
+        $ext = strtolower(pathinfo($arquivos['name'][$i] ?? '', PATHINFO_EXTENSION));
+        $mime = $finfo ? finfo_file($finfo, $arquivos['tmp_name'][$i]) : '';
+        if (!isset($extensoesPermitidas[$ext]) || !in_array($mime, $extensoesPermitidas[$ext], true)) {
+            if ($finfo) finfo_close($finfo);
+            $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Evidências devem ser JPG, PNG, PDF, MP4 ou MOV válidos.'];
+            header('Location: index.php');
+            exit;
+        }
+    }
+
+    if ($finfo) finfo_close($finfo);
 }
 
 // Incorporar descrição de "Outros" às observações
@@ -117,13 +180,12 @@ try {
             mkdir($uploadFisico, 0755, true);
         }
 
-        $tiposPermitidos = ['jpg', 'jpeg', 'png', 'pdf', 'mp4', 'mov'];
         $arquivos        = $_FILES['evidencias'];
 
         for ($i = 0; $i < count($arquivos['name']); $i++) {
             if ($arquivos['error'][$i] !== UPLOAD_ERR_OK) continue;
             $ext = strtolower(pathinfo($arquivos['name'][$i], PATHINFO_EXTENSION));
-            if (!in_array($ext, $tiposPermitidos, true)) continue;
+            if (!isset($extensoesPermitidas[$ext])) continue;
 
             $nomeSeguro    = md5(uniqid('', true)) . '.' . $ext;
             $caminhoFisico = $uploadFisico . $nomeSeguro;

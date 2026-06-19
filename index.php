@@ -16,13 +16,31 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 include_once 'tipos_alvara.php';
 // Inclui tabela de enquadramento CONEMA para licenciamento ambiental
 include_once 'enquadramento_conema.php';
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+$tipoRules = [];
+foreach ($tipos_alvara as $slug => $tipo) {
+    $isAmbiental = ($tipo['categoria'] ?? '') === 'ambiental';
+    $tipoRules[$slug] = [
+        'categoria' => $tipo['categoria'] ?? '',
+        'ambiental' => $isAmbiental,
+        'exige_diario_oficial' => $isAmbiental && ($tipo['exige_diario_oficial'] ?? true),
+        'exige_ctf' => (bool) ($tipo['exige_ctf'] ?? false),
+        'exige_licenca_anterior' => (bool) ($tipo['exige_licenca_anterior'] ?? false),
+        'limite_upload' => $isAmbiental ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE,
+        'limite_upload_label' => $isAmbiental ? '40MB' : '10MB',
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Requerimento de Alvará - Secretaria Municipal de Meio Ambiente</title>
     <link rel="icon" href="./assets/img/favicon.ico" type="image/x-icon">
@@ -66,8 +84,6 @@ include_once 'enquadramento_conema.php';
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- JavaScript -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="./js/index.js" defer></script>
 </head>
 
@@ -133,6 +149,12 @@ include_once 'enquadramento_conema.php';
     <main>
         <section>
             <form id="form" enctype="multipart/form-data" method="post" action="processar_formulario.php">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="form_loaded_at" value="<?= time() ?>">
+                <div class="hp-field" aria-hidden="true">
+                    <label for="site_empresa">Site</label>
+                    <input type="text" id="site_empresa" name="site_empresa" tabindex="-1" autocomplete="off">
+                </div>
                 <div class="form-header">
                     <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
@@ -355,107 +377,129 @@ include_once 'enquadramento_conema.php';
                     <i class="fas fa-paper-plane"></i> Enviar Requerimento
                 </button>
             </form>
+
+            <script>
+                window.SEMA_FORM_CONFIG = {
+                    csrfToken: <?= json_encode($_SESSION['csrf_token']) ?>,
+                    tipoRules: <?= json_encode($tipoRules, JSON_UNESCAPED_UNICODE) ?>,
+                    denunciaUpload: {
+                        maxBytes: 20 * 1024 * 1024,
+                        maxLabel: '20MB',
+                        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'mp4', 'mov'],
+                        allowedTypes: ['image/jpeg', 'image/png', 'application/pdf', 'video/mp4', 'video/quicktime']
+                    }
+                };
+            </script>
             
             <script>
-            // Validação em tempo real do formulário
             document.getElementById('form').addEventListener('submit', function(e) {
-                const erros = [];
-                
-                // Validar campos do requerente
-                const nomeRequerente = document.querySelector('input[name="requerente[nome]"]').value.trim();
-                const emailRequerente = document.querySelector('input[name="requerente[email]"]').value.trim();
-                const cpfRequerente = document.querySelector('input[name="requerente[cpf_cnpj]"]').value.trim();
-                const telefoneRequerente = document.querySelector('input[name="requerente[telefone]"]').value.trim();
-                
-                if (!nomeRequerente) erros.push('Nome do requerente é obrigatório');
-                if (!emailRequerente) erros.push('Email do requerente é obrigatório');
-                if (!cpfRequerente) erros.push('CPF/CNPJ do requerente é obrigatório');
-                if (!telefoneRequerente) erros.push('Telefone do requerente é obrigatório');
-                
-                // Validar email
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (emailRequerente && !emailRegex.test(emailRequerente)) {
-                    erros.push('Email inválido');
-                }
-                
-                // Validar endereço
-                const endereco = document.querySelector('input[name="endereco_objetivo"]').value.trim();
-                if (!endereco) erros.push('Endereço do objetivo é obrigatório');
-                
-                // Validar tipo de alvará
+                clearFormErrors();
+
                 const tipoAlvara = document.getElementById('tipo_alvara').value;
-                if (!tipoAlvara) erros.push('Selecione um tipo de alvará');
-                
-                // Validar proprietário
-                const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]')?.value.trim();
-                const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]')?.value.trim();
-                if (nomeProprietario || cpfProprietario) {
-                    if (!nomeProprietario) erros.push('Nome do proprietário é obrigatório');
-                    if (!cpfProprietario) erros.push('CPF/CNPJ do proprietário é obrigatório');
-                }
-                
-                // Validar campos específicos de licenças ambientais
-                const tiposAmbientais = [
-                    'licenca_previa_ambiental',
-                    'licenca_previa_instalacao',
-                    'declaracao_inexigibilidade',
-                    'dispensa_licenca',
-                    'licenca_instalacao_operacao',
-                    'licenca_operacao',
-                    'licenca_ambiental_unica',
-                    'licenca_ampliacao',
-                    'licenca_operacional_corretiva',
-                    'autorizacao_supressao',
-                    'lac'
-                ];
-                const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
+                let firstInvalid = null;
 
-                if (tiposAmbientais.includes(tipoAlvara)) {
-                    const publicacaoDO = document.querySelector('input[name="publicacao_diario_oficial"]')?.value.trim();
-
-                    if (tiposExigemDO.includes(tipoAlvara) && !publicacaoDO) erros.push('Dados da publicação em Diário Oficial são obrigatórios');
-                    
-                    // Validar estudo ambiental
-                    const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
-                    if (!possuiEstudo) {
-                        erros.push('Informe se há estudo ambiental');
-                    } else if (possuiEstudo.value === '1') {
-                        const tipoEstudo = document.querySelector('input[name="tipo_estudo_ambiental"]')?.value.trim();
-                        if (!tipoEstudo) erros.push('Informe o tipo de estudo ambiental');
+                function markInvalid(field, message) {
+                    if (!field) return;
+                    field.classList.add('field-invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    const host = field.closest('.form-toggle') || field.closest('.form-part-4') || field.parentElement;
+                    let error = host.querySelector(':scope > .field-error');
+                    if (!error) {
+                        error = document.createElement('div');
+                        error.className = 'field-error';
+                        host.appendChild(error);
                     }
-                    
-                    // Validar CTF para tipos específicos
-                    const tiposExigemCTF = [
-                        'licenca_operacao',
-                        'licenca_instalacao_operacao',
-                        'licenca_ambiental_unica',
-                        'licenca_ampliacao',
-                        'licenca_operacional_corretiva'
-                    ];
-                    if (tiposExigemCTF.includes(tipoAlvara)) {
-                        const ctf = document.querySelector('input[name="ctf_numero"]')?.value.trim();
-                        if (!ctf) erros.push('Número do CTF é obrigatório para este tipo de licença');
-                    }
-                    
-                    // Validar licença anterior
-                    const tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
-                    if (tiposExigemLicencaAnterior.includes(tipoAlvara)) {
-                        const licencaAnterior = document.querySelector('input[name="licenca_anterior_numero"]')?.value.trim();
-                        if (!licencaAnterior) erros.push('Número da licença anterior é obrigatório');
-                    }
+                    error.textContent = message;
+                    if (!firstInvalid) firstInvalid = field;
                 }
-                
-                // Se houver erros, mostrar e impedir envio
-                if (erros.length > 0) {
-                    e.preventDefault();
-                    alert('❌ Corrija os seguintes erros antes de enviar:\n\n' + erros.map((erro, i) => `${i + 1}. ${erro}`).join('\n'));
+
+                function requireValue(selector, message) {
+                    const field = document.querySelector(selector);
+                    if (!field || !field.value.trim()) {
+                        markInvalid(field, message);
+                        return false;
+                    }
+                    return true;
+                }
+
+                function requireChecked(selector, hostSelector, message) {
+                    if (document.querySelector(selector)) return true;
+                    const host = document.querySelector(hostSelector);
+                    markInvalid(host?.querySelector('input, select, textarea') || host, message);
                     return false;
                 }
-                
-                // Mostrar loading
+
+                if (!tipoAlvara) {
+                    markInvalid(document.getElementById('tipo_alvara'), 'Selecione o tipo de solicitação.');
+                }
+
+                if (tipoAlvara === 'denuncia') {
+                    const anonimo = document.getElementById('chk_anonimo')?.checked;
+                    if (!anonimo) {
+                        requireValue('input[name="denunciante_nome"]', 'Informe seu nome ou marque denúncia anônima.');
+                    }
+                    requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
+                    if (document.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
+                        requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
+                    }
+                } else {
+                    requireValue('input[name="requerente[nome]"]', 'Informe o nome do requerente.');
+                    requireValue('input[name="requerente[email]"]', 'Informe o e-mail do requerente.');
+                    requireValue('input[name="requerente[cpf_cnpj]"]', 'Informe o CPF ou CNPJ do requerente.');
+                    requireValue('input[name="requerente[telefone]"]', 'Informe o telefone do requerente.');
+                    requireValue('input[name="endereco_objetivo"]', 'Informe a localização da obra ou objetivo.');
+                    requireChecked('input[name="notificado_fiscal_obras"]:checked', 'input[name="notificado_fiscal_obras"]', 'Informe se houve notificação pelo fiscal de obras.');
+
+                    const email = document.querySelector('input[name="requerente[email]"]');
+                    if (email?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+                        markInvalid(email, 'Informe um e-mail válido.');
+                    }
+
+                    const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]');
+                    const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
+                    if (nomeProprietario?.value.trim() || cpfProprietario?.value.trim()) {
+                        if (!nomeProprietario.value.trim()) markInvalid(nomeProprietario, 'Informe o nome do proprietário.');
+                        if (!cpfProprietario.value.trim()) markInvalid(cpfProprietario, 'Informe o CPF ou CNPJ do proprietário.');
+                    }
+
+                    const rules = window.SEMA_FORM_CONFIG?.tipoRules?.[tipoAlvara] || {};
+                    if (rules.ambiental) {
+                        if (rules.exige_diario_oficial) {
+                            requireValue('input[name="publicacao_diario_oficial"]', 'Informe os dados da publicação em Diário Oficial.');
+                        }
+                        if (rules.exige_ctf) {
+                            requireValue('input[name="ctf_numero"]', 'Informe o número do Cadastro Técnico Federal.');
+                        }
+                        if (rules.exige_licenca_anterior) {
+                            requireValue('input[name="licenca_anterior_numero"]', 'Informe o número da licença anterior.');
+                        }
+                        const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
+                        if (!possuiEstudo) {
+                            requireChecked('input[name="possui_estudo_ambiental"]:checked', 'input[name="possui_estudo_ambiental"]', 'Informe se há estudo ambiental.');
+                        } else if (possuiEstudo.value === '1') {
+                            requireValue('input[name="tipo_estudo_ambiental"]', 'Informe o tipo de estudo ambiental.');
+                        }
+                    }
+                }
+
+                if (firstInvalid) {
+                    e.preventDefault();
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof firstInvalid.focus === 'function') firstInvalid.focus({ preventScroll: true });
+                    return false;
+                }
+
                 document.getElementById('loading').style.display = 'flex';
                 document.getElementById('botao').disabled = true;
             });
+
+            function clearFormErrors() {
+                document.querySelectorAll('.field-invalid').forEach(el => {
+                    el.classList.remove('field-invalid');
+                    el.removeAttribute('aria-invalid');
+                });
+                document.querySelectorAll('.field-error').forEach(el => el.remove());
+            }
             </script>
         </section>
     </main>
@@ -742,12 +786,14 @@ include_once 'enquadramento_conema.php';
             const tipoAlvaraSelect = document.getElementById('tipo_alvara');
             const secoesAlvara = document.querySelectorAll('.secao-alvara');
             const form = document.getElementById('form');
+            const declaracaoVeracidade = document.getElementById('declaracao_veracidade');
 
             function ativarModoAlvara() {
                 secoesAlvara.forEach(s => {
                     s.style.display = '';
                     s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
                 });
+                if (declaracaoVeracidade) declaracaoVeracidade.required = true;
                 form.action = 'processar_formulario.php';
             }
 
@@ -756,6 +802,7 @@ include_once 'enquadramento_conema.php';
                     s.style.display = 'none';
                     s.querySelectorAll('[data-required]').forEach(el => { el.required = false; });
                 });
+                if (declaracaoVeracidade) declaracaoVeracidade.required = false;
                 form.action = 'processar_denuncia_publica.php';
             }
 
@@ -789,7 +836,7 @@ include_once 'enquadramento_conema.php';
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                             },
-                            body: 'tipo=' + tipo
+                            body: 'tipo=' + encodeURIComponent(tipo)
                         })
                         .then(response => response.text())
                         .then(data => {
@@ -800,7 +847,7 @@ include_once 'enquadramento_conema.php';
                             inputsFile.forEach(input => {
                                 input.setAttribute('form', 'form');
                                 input.addEventListener('change', function() {
-                                    validarArquivoPDF(this);
+                                    validarArquivoUpload(this);
                                 });
                             });
                         })
@@ -829,29 +876,8 @@ include_once 'enquadramento_conema.php';
                         return;
                     }
 
-                    // Campos específicos para cada tipo
-                    const tiposAmbientais = [
-                        'licenca_previa_ambiental',
-                        'licenca_previa_instalacao',
-                        'declaracao_inexigibilidade',
-                        'dispensa_licenca',
-                        'licenca_instalacao_operacao',
-                        'licenca_operacao',
-                        'licenca_ambiental_unica',
-                        'licenca_ampliacao',
-                        'licenca_operacional_corretiva',
-                        'autorizacao_supressao',
-                        'lac'
-                    ];
-                    const tiposExigemDO = tiposAmbientais.filter(t => t !== 'lac');
-                    const tiposExigemCTF = [
-                        'licenca_operacao',
-                        'licenca_instalacao_operacao',
-                        'licenca_ambiental_unica',
-                        'licenca_ampliacao',
-                        'licenca_operacional_corretiva'
-                    ];
-                    const tiposExigemLicencaAnterior = ['licenca_operacao', 'licenca_instalacao_operacao'];
+                    const tipoRules = window.SEMA_FORM_CONFIG?.tipoRules || {};
+                    const currentRules = tipoRules[tipo] || {};
 
                     let campos = '';
 
@@ -1025,7 +1051,7 @@ include_once 'enquadramento_conema.php';
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
                         `;
-                    } else if (tiposAmbientais.includes(tipo)) {
+                    } else if (currentRules.ambiental) {
                         campos = `
                             <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
                                 <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">
@@ -1050,13 +1076,13 @@ include_once 'enquadramento_conema.php';
                                 </small>
                             </div>
                             <div class="form-grid-2">
-                                <input ${tiposExigemCTF.includes(tipo) ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${tiposExigemCTF.includes(tipo) ? '*' : '(se houver)'}">
-                                <input ${tiposExigemLicencaAnterior.includes(tipo) ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${tiposExigemLicencaAnterior.includes(tipo) ? '*' : '(se aplicável)'}">
+                                <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${currentRules.exige_ctf ? '*' : '(se houver)'}">
+                                <input ${currentRules.exige_licenca_anterior ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${currentRules.exige_licenca_anterior ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
                                 <div>
-                                    <input ${tiposExigemDO.includes(tipo) ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${tiposExigemDO.includes(tipo) ? ' *' : ''}" style="width:100%;">
-                                    ${!tiposExigemDO.includes(tipo) ? '<small style="display:block;margin-top:5px;color:rgba(255,255,255,0.45);font-size:0.75rem;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Campo opcional para este tipo de licença</small>' : ''}
+                                    <input ${currentRules.exige_diario_oficial ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${currentRules.exige_diario_oficial ? ' *' : ''}" style="width:100%;">
+                                    ${!currentRules.exige_diario_oficial ? '<small style="display:block;margin-top:5px;color:rgba(255,255,255,0.45);font-size:0.75rem;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Campo opcional para este tipo de licença</small>' : ''}
                                 </div>
                                 <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
                             </div>
@@ -1127,37 +1153,54 @@ include_once 'enquadramento_conema.php';
             }
         });
 
-        // Função para validar que apenas arquivos PDF sejam enviados
-        function validarArquivoPDF(input) {
+        function validarArquivoUpload(input) {
+            clearUploadMessage(input);
             if (!input.files || input.files.length === 0) {
-                return true; // Se não há arquivo, não precisa validar
+                return true;
             }
 
-            var file = input.files[0];
-            var fileName = file.name.toLowerCase();
+            const tipoSelecionado = document.querySelector('select[name="tipo_alvara"]')?.value || '';
+            const isDenuncia = tipoSelecionado === 'denuncia';
+            const denunciaConfig = window.SEMA_FORM_CONFIG?.denunciaUpload || {};
+            const tipoConfig = window.SEMA_FORM_CONFIG?.tipoRules?.[tipoSelecionado] || {};
+            const limiteBytes = isDenuncia ? denunciaConfig.maxBytes : (tipoConfig.limite_upload || 10485760);
+            const limiteLabel = isDenuncia ? denunciaConfig.maxLabel : (tipoConfig.limite_upload_label || '10MB');
+            const extensoesPermitidas = isDenuncia ? denunciaConfig.allowedExtensions : ['pdf'];
+            const tiposPermitidos = isDenuncia ? denunciaConfig.allowedTypes : ['application/pdf'];
 
-            if (!fileName.endsWith('.pdf')) {
-                alert('Por favor, selecione apenas arquivos em formato PDF.');
-                input.value = '';
-                return false;
+            for (const file of Array.from(input.files)) {
+                const ext = file.name.toLowerCase().split('.').pop();
+                if (!extensoesPermitidas.includes(ext) || (file.type && !tiposPermitidos.includes(file.type))) {
+                    input.value = '';
+                    setUploadMessage(input, isDenuncia
+                        ? 'Envie apenas JPG, PNG, PDF, MP4 ou MOV.'
+                        : 'Envie apenas arquivos em PDF.');
+                    return false;
+                }
+                if (file.size > limiteBytes) {
+                    input.value = '';
+                    setUploadMessage(input, 'O arquivo "' + file.name + '" ultrapassa o limite de ' + limiteLabel + '.');
+                    return false;
+                }
             }
 
-            var tipoSelecionado = document.querySelector('select[name="tipo_alvara"]')?.value || '';
-            var tiposAmbientaisUpload = [
-                'licenca_previa_ambiental','licenca_previa_instalacao','declaracao_inexigibilidade',
-                'dispensa_licenca','licenca_instalacao_operacao','licenca_operacao',
-                'licenca_ambiental_unica','licenca_ampliacao','licenca_operacional_corretiva',
-                'autorizacao_supressao','lac'
-            ];
-            var limiteBytes = tiposAmbientaisUpload.includes(tipoSelecionado) ? 41943040 : 10485760; // 40MB ou 10MB
-            var limiteMB = tiposAmbientaisUpload.includes(tipoSelecionado) ? '40MB' : '10MB';
-            if (file.size > limiteBytes) {
-                alert('O arquivo é muito grande. O limite para este tipo de processo é ' + limiteMB + '.');
-                input.value = '';
-                return false;
-            }
-
+            setUploadMessage(input, Array.from(input.files).map(file => file.name).join(', '), true);
             return true;
+        }
+
+        function clearUploadMessage(input) {
+            const current = input.parentElement?.querySelector('.upload-feedback');
+            if (current) current.remove();
+            input.classList.remove('field-invalid');
+        }
+
+        function setUploadMessage(input, message, success = false) {
+            clearUploadMessage(input);
+            const el = document.createElement('div');
+            el.className = success ? 'upload-feedback upload-feedback-ok' : 'upload-feedback upload-feedback-error';
+            el.textContent = message;
+            input.parentElement?.appendChild(el);
+            if (!success) input.classList.add('field-invalid');
         }
 
         function toggleOutros(checkbox) {
@@ -1170,6 +1213,45 @@ include_once 'enquadramento_conema.php';
     </script>
 
     <style>
+        .hp-field {
+            position: absolute !important;
+            left: -10000px !important;
+            top: auto !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+        }
+
+        .field-invalid {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18) !important;
+        }
+
+        .field-error,
+        .upload-feedback-error {
+            margin-top: 6px;
+            color: #fecaca;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .upload-feedback-ok {
+            margin-top: 6px;
+            color: #bbf7d0;
+            font-size: 0.76rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .documentos-container .upload-feedback-error,
+        .documentos-container .field-error {
+            color: #b91c1c;
+        }
+
+        .documentos-container .upload-feedback-ok {
+            color: #15803d;
+        }
 
         /* Estilo para a mensagem de formato de arquivo */
         .formato-arquivo {
@@ -1568,13 +1650,13 @@ include_once 'enquadramento_conema.php';
     </style>
 
     <!-- Tab lateral -->
-    <button id="sg-tab" onclick="sgToggle()" aria-label="Enviar feedback">
+    <button id="sg-tab" onclick="sgToggle()" aria-label="Enviar feedback" aria-controls="sg-panel" aria-expanded="false">
         <i class="fas fa-comment-dots"></i>
         Feedback
     </button>
 
     <!-- Painel deslizante -->
-    <div id="sg-panel" role="dialog" aria-label="Enviar feedback">
+    <div id="sg-panel" role="dialog" aria-modal="true" aria-label="Enviar feedback">
         <div class="sg-panel-head">
             <div>
                 <div class="sg-panel-head-title">Envie seu feedback</div>
@@ -1609,6 +1691,10 @@ include_once 'enquadramento_conema.php';
                     <input id="sg-nome"  type="text"  class="sg-input" placeholder="Nome" maxlength="120">
                     <input id="sg-email" type="email" class="sg-input" placeholder="E-mail" maxlength="120">
                 </div>
+                <div class="hp-field" aria-hidden="true">
+                    <label for="sg-site">Site</label>
+                    <input type="text" id="sg-site" tabindex="-1" autocomplete="off">
+                </div>
 
                 <button class="sg-btn" id="sg-submit-btn" onclick="sgEnviar()">Enviar</button>
             </div>
@@ -1629,17 +1715,27 @@ include_once 'enquadramento_conema.php';
         window.sgToggle = function() {
             _open = !_open;
             document.getElementById('sg-panel').classList.toggle('open', _open);
+            document.getElementById('sg-tab').setAttribute('aria-expanded', _open ? 'true' : 'false');
             if (_open) setTimeout(() => document.getElementById('sg-texto').focus(), 260);
         };
+
+        function sgClose() {
+            _open = false;
+            document.getElementById('sg-panel').classList.remove('open');
+            document.getElementById('sg-tab').setAttribute('aria-expanded', 'false');
+        }
 
         document.addEventListener('click', function(e) {
             if (!_open) return;
             const panel = document.getElementById('sg-panel');
             const tab   = document.getElementById('sg-tab');
             if (!panel.contains(e.target) && !tab.contains(e.target)) {
-                _open = false;
-                panel.classList.remove('open');
+                sgClose();
             }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (_open && e.key === 'Escape') sgClose();
         });
 
         window.sgEnviar = function() {
@@ -1660,6 +1756,8 @@ include_once 'enquadramento_conema.php';
             btn.textContent = 'Enviando…';
 
             const fd = new FormData();
+            fd.append('csrf_token', window.SEMA_FORM_CONFIG?.csrfToken || '');
+            fd.append('site_empresa', document.getElementById('sg-site').value.trim());
             fd.append('tipo',  document.querySelector('input[name="sg_tipo"]:checked')?.value ?? 'melhoria');
             fd.append('texto', texto);
             fd.append('nome',  document.getElementById('sg-nome').value.trim());

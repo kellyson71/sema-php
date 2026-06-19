@@ -362,6 +362,8 @@ $tipos_alvara = [
         'nome'      => 'LP — Licença Prévia (legado)',
         'categoria' => 'obras',
         'oculto'    => true,
+        'exige_ctf' => false,
+        'exige_licenca_anterior' => false,
         'documentos' => [],
     ],
     'licenca_previa_obras' => [

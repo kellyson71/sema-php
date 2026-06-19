@@ -15,7 +15,9 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
 include_once 'tipos_alvara.php';
 
 // Iniciar sessão para mensagens flash
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Inclusão de arquivos necessários
 require_once 'includes/functions.php';
@@ -25,6 +27,24 @@ require_once 'includes/admin_notifications.php';
 
 // Verificar se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+        $_SESSION['form_data'] = $_POST;
+        setMensagem('erro', 'Sessão expirada. Recarregue a página e tente novamente.');
+        redirect('index.php');
+    }
+
+    if (!empty($_POST['site_empresa'] ?? '')) {
+        setMensagem('erro', 'Não foi possível validar o envio.');
+        redirect('index.php');
+    }
+
+    $formLoadedAt = (int) ($_POST['form_loaded_at'] ?? 0);
+    if ($formLoadedAt > 0 && time() - $formLoadedAt < 3) {
+        setMensagem('erro', 'Envio muito rápido. Revise o formulário e tente novamente.');
+        redirect('index.php');
+    }
+
     // Verificar se o tipo de alvará foi informado
     if (empty($_POST['tipo_alvara'])) {
         $_SESSION['form_data'] = $_POST;
@@ -241,6 +261,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php');
     }
 
+    $limiteArquivo = $isAmbiental ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE;
+    foreach ($_FILES as $campo => $arquivo) {
+        if (($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+
+        if (($arquivo['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Não foi possível receber um dos arquivos. Verifique o tamanho e tente novamente.');
+            redirect('index.php');
+        }
+
+        if (($arquivo['size'] ?? 0) > $limiteArquivo) {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Um dos arquivos ultrapassa o limite permitido para este tipo de solicitação.');
+            redirect('index.php');
+        }
+
+        $extensao = strtolower(pathinfo($arquivo['name'] ?? '', PATHINFO_EXTENSION));
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeReal = $finfo ? finfo_file($finfo, $arquivo['tmp_name']) : '';
+        if ($finfo) finfo_close($finfo);
+
+        if ($extensao !== 'pdf' || $mimeReal !== 'application/pdf') {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Apenas arquivos PDF válidos são permitidos.');
+            redirect('index.php');
+        }
+    }
+
     // Salvar requerimento
     $requerimento_id = $requerimentoModel->criar($requerimento);
     createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
@@ -248,22 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Diretório para upload dos arquivos
     $diretorio_upload = UPLOAD_DIR . $protocolo;
 
-    // Verificar tipos de arquivo antes de processar
-    $erro_arquivo = false;
-    foreach ($_FILES as $campo => $arquivo) {
-        if ($arquivo['error'] === UPLOAD_ERR_OK) {
-            $nome_original = $arquivo['name'];
-            $extensao = strtolower(pathinfo($nome_original, PATHINFO_EXTENSION));
-            $tipo = $arquivo['type'];
-
-            if ($extensao !== 'pdf' || $tipo !== 'application/pdf') {
-                $erro_arquivo = true;
-                $_SESSION['form_data'] = $_POST;
-                setMensagem('erro', 'Apenas arquivos PDF são permitidos. Por favor, converta seus documentos para PDF e tente novamente.');
-                redirect('index.php');
-            }
-        }
-    }    // Processar os arquivos enviados
+    // Processar os arquivos enviados
     foreach ($_FILES as $campo => $arquivo) {
         // Verificar se é um documento opcional que foi marcado como "não preciso enviar"
         $checkbox_nao_preciso = $campo . '_nao_preciso';
