@@ -1198,29 +1198,13 @@ include '../header.php';
         document.getElementById('pinNovo').value = '';
         document.getElementById('pinNovoConfirma').value = '';
 
-        // Consulta se o admin já tem chave de assinatura → decide entre
-        // pedir o PIN ou exibir o fluxo de primeira configuração
-        fetch('../assinatura/chave_handler.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ acao: 'status' })
-        })
-        .then(r => r.json())
-        .then(ret => {
-            adminTemChave = !!(ret.success && ret.tem_chave);
-            atualizarBlocosPin();
-        })
-        .catch(() => { adminTemChave = null; atualizarBlocosPin(); });
-
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
     }
 
-    /* Exibe o bloco certo de PIN conforme modo selecionado + estado da chave */
+    /* PIN oculto — autenticação por login é suficiente neste momento */
     function atualizarBlocosPin() {
-        const modoAtivo  = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
-        const ehDigital  = modoAtivo !== 'sem_assinar';
-        document.getElementById('blocoPin').style.display      = (ehDigital && adminTemChave !== false) ? 'block' : 'none';
-        document.getElementById('blocoPinSetup').style.display = (ehDigital && adminTemChave === false) ? 'block' : 'none';
+        document.getElementById('blocoPin').style.display     = 'none';
+        document.getElementById('blocoPinSetup').style.display = 'none';
     }
 
     /* Feedback visual de aceite não marcado (shake + toast) */
@@ -1300,51 +1284,8 @@ include '../header.php';
             return;
         }
 
-        // Modo digital: garante chave + PIN antes de prosseguir
-        let pinParaAssinar = '';
-        if (!isSemAssinar) {
-            if (adminTemChave === false) {
-                // Primeira configuração: cria a chave com o PIN escolhido
-                const p1 = document.getElementById('pinNovo').value;
-                const p2 = document.getElementById('pinNovoConfirma').value;
-                if (p1.length < 6) {
-                    Swal.fire('PIN muito curto', 'O PIN de assinatura deve ter no mínimo 6 caracteres.', 'warning');
-                    return;
-                }
-                if (p1 !== p2) {
-                    Swal.fire('PINs diferentes', 'Os dois campos de PIN não coincidem.', 'warning');
-                    return;
-                }
-                try {
-                    const r = await fetch('../assinatura/chave_handler.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ acao: 'criar', pin: p1, pin_confirmacao: p2 })
-                    });
-                    const ret = await r.json();
-                    if (!ret.success) {
-                        Swal.fire('Erro', ret.error || 'Falha ao criar sua chave de assinatura.', 'error');
-                        return;
-                    }
-                    adminTemChave = true;
-                    pinParaAssinar = p1;
-                } catch (e) {
-                    Swal.fire('Erro', 'Falha de conexão ao criar a chave de assinatura.', 'error');
-                    return;
-                }
-            } else {
-                pinParaAssinar = document.getElementById('pinAssinatura').value;
-                if (!pinParaAssinar) {
-                    const box = document.getElementById('blocoPin');
-                    box.classList.add('shake');
-                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    setTimeout(() => box.classList.remove('shake'), 500);
-                    document.getElementById('pinAssinatura').focus();
-                    Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite seu PIN de assinatura', showConfirmButton:false, timer:2600 });
-                    return;
-                }
-            }
-        }
+        // PIN opcional — o login já autentica o signatário neste momento
+        const pinParaAssinar = '';
 
         // Co-assinatura: exige pelo menos um destinatário marcado
         let destinatarios = [];
@@ -1411,14 +1352,6 @@ include '../header.php';
                         window.location.href = '../visualizar_requerimento.php?id=' + reqId;
                     }, 500);
                 });
-            } else if (ret.code === 'pin_incorreto') {
-                Swal.fire('PIN incorreto', 'O PIN de assinatura informado está errado. Tente novamente.', 'error');
-                document.getElementById('pinAssinatura').value = '';
-                document.getElementById('pinAssinatura').focus();
-            } else if (ret.code === 'pin_setup_required') {
-                adminTemChave = false;
-                atualizarBlocosPin();
-                Swal.fire('Configure seu PIN', 'Você ainda não tem chave de assinatura. Crie seu PIN no campo exibido.', 'info');
             } else {
                 Swal.fire('Erro Interno', ret.error || 'Não foi possível registrar o documento.', 'error');
             }

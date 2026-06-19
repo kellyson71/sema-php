@@ -536,15 +536,7 @@ include 'header.php';
         <input type="checkbox" id="chk-coassinar" style="margin-top:3px;flex-shrink:0;">
         <span>Declaro que revisei o conteúdo deste documento e concordo em assiná-lo digitalmente em nome da SEMA.</span>
       </label>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">
-          <i class="fas fa-key me-1"></i> PIN de assinatura
-        </label>
-        <input type="password" id="pin-coassinar" maxlength="64" autocomplete="off"
-               placeholder="Seu PIN pessoal de assinatura"
-               style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:.85rem;">
-        <small style="font-size:.7rem;color:#6b7280;">Protege sua chave criptográfica individual (assinatura avançada). Primeira vez? Configure o PIN ao assinar um documento no editor.</small>
-      </div>
+      <input type="hidden" id="pin-coassinar" value="">
       <div id="coassinar-error" style="display:none;color:#8f2222;font-size:.8rem;margin-bottom:8px;"></div>
       <div class="fm-btns">
         <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-coassinar')">Cancelar</button>
@@ -576,13 +568,7 @@ function confirmarCoAssinar() {
         err.style.display = 'block';
         return;
     }
-    const pinCoassinar = document.getElementById('pin-coassinar').value;
-    if (!pinCoassinar) {
-        const err = document.getElementById('coassinar-error');
-        err.textContent = 'Digite seu PIN de assinatura.';
-        err.style.display = 'block';
-        return;
-    }
+    const pinCoassinar = '';
     const btn = document.getElementById('btn-confirmar-coassinar');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assinando...';

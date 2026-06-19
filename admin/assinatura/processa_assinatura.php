@@ -82,20 +82,20 @@ $hashConteudo   = AssinaturaAvancadaService::hashConteudo($conteudo);
 $servicoAvancada = new AssinaturaAvancadaService($pdo);
 
 if ($ehAssinaturaDigital && $salvar_banco) {
-    $pin = $_POST['pin_assinatura'] ?? '';
-    try {
-        $assinaturaRsa = $servicoAvancada->assinar((int) $admin_id, $pin, $hashConteudo);
-    } catch (RuntimeException $e) {
-        if ($e->getMessage() === 'PIN_SETUP_REQUIRED') {
-            respostaJson(['success' => false, 'code' => 'pin_setup_required',
-                'error' => 'Você ainda não configurou seu PIN de assinatura. Configure-o para assinar digitalmente.']);
+    $pin = trim($_POST['pin_assinatura'] ?? '');
+    // PIN é opcional: só tenta RSA se o admin já configurou a chave e forneceu o PIN.
+    // Sem PIN → nível simples; com PIN + chave → nível avançado.
+    if ($pin !== '' && $servicoAvancada->temChave((int) $admin_id)) {
+        try {
+            $assinaturaRsa = $servicoAvancada->assinar((int) $admin_id, $pin, $hashConteudo);
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() === 'PIN_INCORRETO') {
+                respostaJson(['success' => false, 'code' => 'pin_incorreto',
+                    'error' => 'PIN de assinatura incorreto.']);
+            }
+            error_log('[processa_assinatura] Erro RSA: ' . $e->getMessage());
+            // Falha inesperada na crypto → continua sem componente RSA
         }
-        if ($e->getMessage() === 'PIN_INCORRETO') {
-            respostaJson(['success' => false, 'code' => 'pin_incorreto',
-                'error' => 'PIN de assinatura incorreto.']);
-        }
-        error_log('[processa_assinatura] Erro RSA: ' . $e->getMessage());
-        respostaJson(['success' => false, 'error' => 'Falha na operação criptográfica de assinatura.']);
     }
 }
 
@@ -153,7 +153,9 @@ if ($salvar_banco && $requerimento_id) {
         $nomeCurto_template = preg_replace('/\.html$/i', '', $template_salvo);
 
         $tipoAssinatura    = $ehAssinaturaDigital ? 'digital_sema' : 'sem_assinatura';
-        $nivelAssinatura   = $ehAssinaturaDigital ? 'avancada' : 'sem_assinatura';
+        $nivelAssinatura   = $ehAssinaturaDigital
+            ? ($assinaturaRsa !== null ? 'avancada' : 'simples')
+            : 'sem_assinatura';
         $assinanteCpfReg   = $ehAssinaturaDigital ? $assinante['cpf'] : '';
 
         // 3. Persistência — assinatura_criptografada agora é a assinatura RSA

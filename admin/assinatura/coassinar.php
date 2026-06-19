@@ -67,28 +67,28 @@ try {
         exit;
     }
 
-    // 3b. Assinatura avançada: o co-assinante assina o hash do conteúdo-fonte
-    //     com a SUA chave RSA (PIN obrigatório). O conteúdo-fonte é imutável,
-    //     então a assinatura do primeiro signatário permanece válida.
+    // 3b. Assinatura avançada: PIN é opcional. Se fornecido e a chave existir,
+    //     usa RSA (nível avançado). Caso contrário, registra como nível simples.
     $servicoAvancada = new AssinaturaAvancadaService($pdo);
-    $hashConteudo = AssinaturaAvancadaService::hashConteudo($fonte['conteudo_html']);
-    try {
-        $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
-    } catch (RuntimeException $eRsa) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        ob_clean();
-        if ($eRsa->getMessage() === 'PIN_SETUP_REQUIRED') {
-            echo json_encode(['success' => false, 'code' => 'pin_setup_required',
-                'error' => 'Você ainda não configurou seu PIN de assinatura.']);
-        } elseif ($eRsa->getMessage() === 'PIN_INCORRETO') {
-            echo json_encode(['success' => false, 'code' => 'pin_incorreto',
-                'error' => 'PIN de assinatura incorreto.']);
-        } else {
+    $hashConteudo    = AssinaturaAvancadaService::hashConteudo($fonte['conteudo_html']);
+    $assinaturaRsa   = null;
+    $pinAssinatura   = trim($pinAssinatura);
+    if ($pinAssinatura !== '' && $servicoAvancada->temChave((int) $adminId)) {
+        try {
+            $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
+        } catch (RuntimeException $eRsa) {
+            if ($eRsa->getMessage() === 'PIN_INCORRETO') {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                ob_clean();
+                echo json_encode(['success' => false, 'code' => 'pin_incorreto',
+                    'error' => 'PIN de assinatura incorreto.']);
+                exit;
+            }
             error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
-            echo json_encode(['success' => false, 'error' => 'Falha na operação criptográfica de assinatura.']);
+            // Falha inesperada → continua sem componente RSA
         }
-        exit;
     }
+    $nivelCoAs = $assinaturaRsa !== null ? 'avancada' : 'simples';
 
     // 4. Buscar todos os assinantes existentes (ordem cronológica)
     $stmtSigs = $pdo->prepare("
@@ -171,7 +171,7 @@ try {
              hash_documento, hash_conteudo, assinante_id, assinante_nome, assinante_cpf, assinante_cargo,
              tipo_assinatura, nivel_assinatura, assinatura_visual, assinatura_criptografada, chave_publica,
              timestamp_assinatura, ip_assinante)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'digital_sema', 'avancada', '{}', ?, ?, NOW(), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'digital_sema', ?, '{}', ?, ?, NOW(), ?)
     ")->execute([
         $documentoId,
         $requerimentoId,
@@ -184,8 +184,9 @@ try {
         $admin['nome_completo'] ?: $admin['nome'],
         $admin['cpf'] ?? '',
         $admin['cargo'] ?? '',
-        $assinaturaRsa['assinatura'],
-        $assinaturaRsa['chave_publica'],
+        $nivelCoAs,
+        $assinaturaRsa['assinatura'] ?? '',
+        $assinaturaRsa['chave_publica'] ?? null,
         $_SERVER['REMOTE_ADDR'] ?? null,
     ]);
 

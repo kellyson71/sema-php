@@ -164,10 +164,7 @@ include 'header.php';
 
         <?php if ($minhaPendencia && !$jaAssinei): ?>
             <div class="co-actions">
-                <div class="co-pinwrap">
-                    <label><i class="fas fa-key"></i> PIN de assinatura</label>
-                    <input type="password" id="pinCo" class="form-control" maxlength="64" autocomplete="off" placeholder="Seu PIN pessoal">
-                </div>
+                <input type="hidden" id="pinCo" value="">
                 <button class="co-btn co-btn-assinar" onclick="assinarDoc()">
                     <i class="fas fa-signature"></i> Assinar documento
                 </button>
@@ -189,12 +186,7 @@ const _docId = <?= json_encode($documentoId) ?>;
 const _reqId = <?= (int) $requerimentoId ?>;
 
 function assinarDoc() {
-    const pin = document.getElementById('pinCo').value;
-    if (!pin) {
-        Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite seu PIN de assinatura', showConfirmButton:false, timer:2600 });
-        document.getElementById('pinCo').focus();
-        return;
-    }
+    const pin = '';
     Swal.fire({ title:'Assinando…', didOpen:()=>Swal.showLoading(), allowOutsideClick:false });
     const fd = new FormData();
     fd.append('documento_id', _docId);
@@ -206,10 +198,6 @@ function assinarDoc() {
             if (d.success) {
                 Swal.fire({ icon:'success', title:'Assinatura registrada!', text:'O documento foi atualizado com a sua assinatura.', timer:2600, showConfirmButton:false })
                     .then(() => location.reload());
-            } else if (d.code === 'pin_incorreto') {
-                Swal.fire('PIN incorreto', 'O PIN informado está errado.', 'error');
-            } else if (d.code === 'pin_setup_required') {
-                Swal.fire('Configure seu PIN', 'Você ainda não tem chave de assinatura. Configure no seu Perfil.', 'info');
             } else {
                 Swal.fire('Erro', d.error || 'Não foi possível assinar.', 'error');
             }
