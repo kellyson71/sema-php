@@ -72,10 +72,10 @@ $labelStatus = [
     'descartada'   => ['Descartada',    'bg-danger'],
 ];
 $labelTipo = [
-    'melhoria'    => ['💡 Melhoria',    '#eff6ff','#1d4ed8'],
-    'dificuldade' => ['⚠️ Dificuldade', '#fff7ed','#c2410c'],
-    'elogio'      => ['⭐ Elogio',      '#f0fdf4','#15803d'],
-    'outro'       => ['💬 Outro',       '#faf5ff','#7e22ce'],
+    'melhoria'    => ['Melhoria',    '#eff6ff','#1d4ed8'],
+    'dificuldade' => ['Dificuldade', '#fff7ed','#c2410c'],
+    'elogio'      => ['Elogio',      '#f0fdf4','#15803d'],
+    'outro'       => ['Outro',       '#faf5ff','#7e22ce'],
 ];
 ?>
 <style>
