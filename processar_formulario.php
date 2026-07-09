@@ -154,7 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
     $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? $_POST['responsavel_tecnico_numero'] ?? '');
     $descricao_atividade = trim($_POST['especificacao'] ?? $_POST['descricao_atividade'] ?? '');
-    
+    $padrao_popular = trim($_POST['padrao_popular'] ?? '');
+    $data_inicio_obra = $_POST['data_inicio_obra'] ?? '';
+    $data_termino_obra = $_POST['data_termino_obra'] ?? '';
+
     $observacoes = '';
 
     $requerimento = [
@@ -182,6 +185,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
         'enquadramento_atividade' => $enquadramento_atividade ?: null,
         'localizacao_google_maps' => $localizacao_google_maps ?: null,
+        'padrao_popular' => $padrao_popular ?: null,
+        'data_inicio_obra' => $data_inicio_obra ?: null,
+        'data_termino_obra' => $data_termino_obra ?: null,
         'status' => 'Em análise'
     ];
 

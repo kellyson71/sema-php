@@ -301,13 +301,13 @@ class EmailService
      * @param int|null $requerimento_id ID do requerimento
      * @return bool True se enviado com sucesso, false caso contrário
      */
-    public function enviarEmailPendencia($to_email, $to_name, $protocolo, $tipo_alvara, $pendencias, $requerimento_id = null)
+    public function enviarEmailPendencia($to_email, $to_name, $protocolo, $tipo_alvara, $pendencias, $requerimento_id = null, $link_complementacao = '')
     {
         try {
             $subject = "[SEMA] Protocolo #{$protocolo} - Documentação Pendente";
 
             $nome_destinatario = $to_name;
-            $body = $this->carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias);
+            $body = $this->carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias, $link_complementacao);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
         } catch (Exception $e) {
@@ -382,7 +382,7 @@ class EmailService
     /**
      * Carregar template de email para pendências de documentação
      */
-    private function carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias)
+    private function carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias, $link_complementacao = '')
     {
         ob_start();
         include __DIR__ . '/../templates/email_pendencia.php';

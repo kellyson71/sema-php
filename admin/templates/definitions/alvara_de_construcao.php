@@ -57,7 +57,10 @@ return [
             'linhas' => [
                 ['Endereço da Obra',     '{{endereco_objetivo}}'],
                 ['Protocolo',            '{{protocolo}}'],
+                ['Protocolo Oficial',    '{{protocolo_oficial}}'],
                 ['Área Construída',      '{{area_construida}} m²'],
+                ['Padrão Popular (<70m²)', '{{padrao_popular}}'],
+                ['Previsão de Início/Término da Obra', '{{data_inicio_obra}} a {{data_termino_obra}}'],
                 ['Cadastro Imobiliário', '{{detalhes_imovel}}'],
                 ['ART',                  '{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}'],
             ],

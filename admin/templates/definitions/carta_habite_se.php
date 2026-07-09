@@ -36,7 +36,9 @@ return [
             'tipo'   => 'tabela',
             'linhas' => [
                 ['Endereço da Obra',       '{{endereco_objetivo}}'],
+                ['Protocolo Oficial',      '{{protocolo_oficial}}'],
                 ['Área Construída',        '{{area_construida}} m²'],
+                ['Padrão Popular (<70m²)', '{{padrao_popular}}'],
                 ['Cadastro Imobiliário',   '{{detalhes_imovel}}'],
                 ['Alvará de Construção',   'N° {{numero_documento_ano}}'],
             ],

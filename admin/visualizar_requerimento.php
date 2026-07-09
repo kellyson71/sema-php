@@ -3,10 +3,16 @@ require_once 'conexao.php';
 require_once 'helpers.php';
 require_once '../includes/email_service.php';
 require_once '../includes/pagamento_helpers.php';
+require_once '../includes/pendencia_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../includes/coassinatura_helper.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
+
+// CSRF — este arquivo ainda não era coberto pelo token do portal público
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
@@ -175,6 +181,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
                 $pdo->rollBack();
             }
             $mensagem = "Erro ao enviar boleto: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
+    }
+}
+
+// Processar solicitação de complementação (reabertura do formulário para o cidadão)
+$linkPendenciaGerado = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_complementacao'])) {
+    $tituloPendencia = trim($_POST['titulo_pendencia'] ?? '');
+    $descricaoPendencia = trim($_POST['descricao_pendencia'] ?? '');
+    $csrfEnviado = $_POST['csrf_token'] ?? '';
+
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfEnviado)) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif ($tituloPendencia === '' || $descricaoPendencia === '') {
+        $mensagem = "Informe o título e a descrição do que está faltando.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                INSERT INTO requerimento_pendencias (requerimento_id, titulo, descricao, admin_id)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$id, $tituloPendencia, $descricaoPendencia, $_SESSION['admin_id']]);
+            $pendenciaId = (int) $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando complementação', aguardando_acao = 'pendencia_aberta', data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, "Solicitou complementação ao requerente: " . $tituloPendencia]);
+
+            $pdo->commit();
+
+            $linkPendenciaGerado = gerarUrlPendencia($pendenciaId, $requerimento['protocolo']);
+
+            $emailService = new EmailService();
+            $emailEnviado = $emailService->enviarEmailPendencia(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
+                $tituloPendencia . "\n\n" . $descricaoPendencia,
+                $id,
+                $linkPendenciaGerado
+            );
+
+            $requerimento = buscarDadosRequerimento($pdo, $id);
+            $mensagem = $emailEnviado
+                ? "✅ Solicitação de complementação enviada ao requerente."
+                : "⚠️ Solicitação registrada, mas houve falha no envio do email. Repasse o link manualmente.";
+            $mensagemTipo = $emailEnviado ? "success" : "warning";
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $mensagem = "Erro ao solicitar complementação: " . $e->getMessage();
             $mensagemTipo = "danger";
         }
     }
@@ -389,9 +455,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
                 try {
                     $pdo->beginTransaction();
 
-                    // Atualizar status para "Finalizado" automaticamente
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', aguardando_acao = 'concluido', data_atualizacao = NOW() WHERE id = ?");
-                    $stmt->execute([$id]);
+                    // Atualizar status para "Finalizado" automaticamente e persistir o protocolo oficial
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', aguardando_acao = 'concluido', protocolo_oficial = ?, data_atualizacao = NOW() WHERE id = ?");
+                    $stmt->execute([$protocolo_oficial, $id]);
 
                     // Registrar no histórico de ações
                     $acao = "Enviou email com protocolo oficial: {$protocolo_oficial} e marcou como Finalizado";
@@ -418,6 +484,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
             $mensagem = "Erro ao enviar email: " . $e->getMessage();
             $mensagemTipo = "danger";
         }
+    }
+}
+
+// Salvar/editar o protocolo oficial da prefeitura sem disparar o email de finalização
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_protocolo_oficial'])) {
+    $protocolo_oficial_novo = trim($_POST['protocolo_oficial_novo'] ?? '');
+
+    try {
+        $stmt = $pdo->prepare("UPDATE requerimentos SET protocolo_oficial = ?, data_atualizacao = NOW() WHERE id = ?");
+        $stmt->execute([$protocolo_oficial_novo ?: null, $id]);
+
+        $requerimento = buscarDadosRequerimento($pdo, $id);
+
+        $mensagem = "Protocolo oficial atualizado com sucesso.";
+        $mensagemTipo = "success";
+    } catch (PDOException $e) {
+        $mensagem = "Erro ao salvar o protocolo oficial: " . $e->getMessage();
+        $mensagemTipo = "danger";
     }
 }
 
@@ -480,6 +564,8 @@ $documentos = $stmt->fetchAll();
 $pagamento = buscarPagamentoRequerimento($pdo, $id);
 $documentoBoleto = buscarDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
 $documentoComprovanteBoleto = buscarDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
+
+$pendencias = listarPendenciasRequerimento($pdo, $id);
 
 // Buscar histórico de ações
 $stmt = $pdo->prepare("
@@ -2216,6 +2302,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="info-kv">
                         <span class="info-k">Protocolo</span>
                         <span class="info-v" style="font-weight:800;"><?= htmlspecialchars($requerimento['protocolo']) ?> <button class="copy-btn" onclick="copyToClipboard('<?= $requerimento['protocolo'] ?>',this)" style="margin-left:4px"><i class="fas fa-copy"></i></button></span>
+                        <span class="info-k">Protocolo Oficial</span>
+                        <span class="info-v">
+                            <form method="POST" style="display:flex;gap:6px;align-items:center;" onsubmit="return this.querySelector('input[name=protocolo_oficial_novo]').value.trim() !== '' || confirm('Salvar protocolo oficial vazio?');">
+                                <input type="text" name="protocolo_oficial_novo" value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>" placeholder="Ex: 2025001234-SEMA" class="form-control form-control-sm" style="max-width:180px;">
+                                <button type="submit" name="salvar_protocolo_oficial" class="btn btn-sm btn-outline-success"><i class="fas fa-save"></i></button>
+                            </form>
+                        </span>
                         <span class="info-k">Status</span>
                         <span class="info-v"><span class="rounded-circle me-1" style="display:inline-block;width:8px;height:8px;background:<?= getStatusDotColor($requerimento['status']) ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
                         <span class="info-k">Tipo</span>
@@ -2323,7 +2416,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <?php endif; ?>
 
-                <!-- Pagamento -->
+                <!-- Complementações solicitadas ao requerente -->
+                <?php if ($pendencias): ?>
+                <div class="info-card info-card-full">
+                    <div class="info-card-head"><i class="fas fa-folder-open"></i><span>Complementações</span></div>
+                    <div style="padding:4px 0;">
+                        <?php foreach ($pendencias as $p): ?>
+                            <?php $anexosP = listarAnexosPendencia($pdo, $id, (int) $p['id']); ?>
+                            <div style="border-left:3px solid <?= $p['status'] === 'respondida' ? '#059669' : '#f59e0b' ?>;padding:8px 0 8px 12px;margin-bottom:14px;">
+                                <div style="font-weight:600;color:#0f172a;font-size:.9rem;">
+                                    <?= htmlspecialchars($p['titulo']) ?>
+                                    <span style="font-weight:500;font-size:.75rem;color:<?= $p['status'] === 'respondida' ? '#059669' : '#b45309' ?>;">
+                                        &mdash; <?= $p['status'] === 'respondida' ? 'respondida' : 'aguardando o requerente' ?>
+                                    </span>
+                                </div>
+                                <div style="font-size:.84rem;color:var(--req-muted);margin:4px 0;">
+                                    <?= nl2br(htmlspecialchars($p['descricao'])) ?>
+                                </div>
+                                <div style="font-size:.75rem;color:var(--req-muted);">
+                                    Solicitado por <?= htmlspecialchars($p['admin_nome'] ?? 'sistema') ?> em <?= formataData($p['criado_em']) ?>
+                                </div>
+
+                                <?php if ($p['status'] === 'aberta'): ?>
+                                    <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+                                        <input type="text" readonly class="form-control form-control-sm" style="font-size:.75rem;max-width:520px;"
+                                               value="<?= htmlspecialchars(gerarUrlPendencia((int) $p['id'], $requerimento['protocolo'])) ?>"
+                                               onclick="this.select()">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.innerHTML='<i class=\'fas fa-check\'></i>';">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($p['resposta'])): ?>
+                                    <div style="background:#f0fdf4;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:.85rem;color:#065f46;">
+                                        <strong>Resposta do requerente:</strong><br>
+                                        <?= nl2br(htmlspecialchars($p['resposta'])) ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($anexosP): ?>
+                                    <div style="margin-top:6px;">
+                                        <?php foreach ($anexosP as $anexo): ?>
+                                            <a href="../uploads/<?= ltrim($anexo['caminho'], '/\\') ?>" target="_blank" rel="noopener"
+                                               style="display:inline-block;margin-right:12px;font-size:.83rem;">
+                                                <i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($anexo['nome_original']) ?>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($p['status'] === 'respondida' && !empty($p['respondido_em'])): ?>
+                                    <div style="font-size:.75rem;color:var(--req-muted);margin-top:4px;">
+                                        Respondido em <?= formataData($p['respondido_em']) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Pagamento — só existe se houver boleto -->
+                <?php if ($pagamento): ?>
                 <div class="info-card">
                     <div class="info-card-head"><i class="fas fa-receipt"></i><span>Pagamento</span></div>
                     <div class="info-kv">
@@ -2344,11 +2500,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="info-k">Obs.</span>
                             <span class="info-v"><?= nl2br(htmlspecialchars($pagamento['instrucoes'])) ?></span>
                             <?php endif; ?>
-                        <?php else: ?>
-                            <span class="info-k" style="grid-column:1/-1;color:var(--req-muted);font-size:.8rem;font-style:italic;padding:4px 0;">Nenhum boleto enviado ainda.</span>
                         <?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <!-- Publicação / Observações -->
                 <?php if (!empty($requerimento['publicacao_diario_oficial']) || !empty($requerimento['observacoes'])): ?>
@@ -2906,6 +3061,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                       </button>
                                       <?php endif; ?>
 
+                                      <button type="button" class="act-btn act-warning tt"
+                                          data-bs-toggle="tooltip" data-bs-placement="top"
+                                          data-bs-title="Reabre o formulário para o requerente complementar uma informação ou anexar um documento faltante, sem precisar reenviar tudo."
+                                          onclick="document.getElementById('complementacaoModal') && new bootstrap.Modal(document.getElementById('complementacaoModal')).show()">
+                                          <i class="fas fa-folder-open"></i>Solicitar Complementação
+                                      </button>
+
                                       <button type="button" class="act-btn act-neutral tt"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
                                           data-bs-title="<?= $isFiscalPuro ? 'Atualiza o status dentro do fluxo de fiscalização.' : 'Altera manualmente o status do processo (ex.: Em análise, Pendente, Aguardando boleto).' ?>"
@@ -2980,6 +3142,50 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- ══════════════════════════════════════════════════
      MODAIS DE AÇÕES ADMINISTRATIVAS
 ══════════════════════════════════════════════════ -->
+
+<!-- Modal: Solicitar Complementação -->
+<div class="modal fade" id="complementacaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="post" action="">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="width:36px;height:36px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;display:inline-flex;align-items:center;justify-content:center;color:#b45309;">
+                            <i class="fas fa-folder-open"></i>
+                        </span>
+                        <h5 class="modal-title mb-0">Solicitar Complementação</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body px-4 pt-3">
+                    <p class="text-muted" style="font-size:.86rem;">
+                        O requerente receberá um e-mail com um link para complementar o processo &mdash; sem precisar reenviar o formulário inteiro.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="titulo_pendencia" class="form-label fw-semibold">O que está faltando</label>
+                        <input type="text" class="form-control" id="titulo_pendencia" name="titulo_pendencia" maxlength="255" required
+                               placeholder="Ex.: Falta a cópia do RG do proprietário">
+                        <div class="form-text">Aparece como título na página do requerente.</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="descricao_pendencia" class="form-label fw-semibold">Detalhamento</label>
+                        <textarea class="form-control" id="descricao_pendencia" name="descricao_pendencia" rows="4" required
+                                  placeholder="Explique o que o requerente precisa enviar ou corrigir."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="solicitar_complementacao" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar solicitação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Modal: Enviar Boleto -->
 <div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
@@ -3268,6 +3474,7 @@ foreach ($docsDisponiveis as $docRow) {
                 </div>
                 <label for="protocolo_oficial" class="form-label fw-semibold">Protocolo Oficial da Prefeitura</label>
                 <input type="text" class="form-control form-control-lg" id="protocolo_oficial"
+                    value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>"
                     placeholder="Ex: 2025001234-SEMA">
             </div>
             <div class="modal-footer d-flex justify-content-between">

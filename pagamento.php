@@ -569,11 +569,6 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         </form>
                     <?php endif; ?>
 
-                <?php elseif ($mensagem === ''): ?>
-                    <div class="empty-state">
-                        <i class="fas fa-clock"></i>
-                        <p>Este requerimento ainda não possui boleto disponível para pagamento.<br>Aguarde o contato da equipe da SEMA.</p>
-                    </div>
                 <?php endif; ?>
 
             </div><!-- /.card-body -->

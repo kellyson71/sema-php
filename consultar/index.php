@@ -23,6 +23,7 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
                 $requerente = null;
                 $proprietario = null;
                 $documentos = [];
+                $pendencias = [];
 
                 // Processar formulário de consulta
                 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['protocolo'])) {
@@ -62,6 +63,10 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
                                 $stmt = $pdo->prepare("SELECT * FROM documentos WHERE requerimento_id = ? ORDER BY campo_formulario");
                                 $stmt->execute([$requerimento['id']]);
                                 $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                // Complementações solicitadas ao requerente
+                                require_once '../includes/pendencia_helpers.php';
+                                $pendencias = listarPendenciasRequerimento($pdo, (int) $requerimento['id']);
                             } else {
                                 $mensagem = [
                                     'tipo' => 'erro',
@@ -524,6 +529,39 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
                                             </div>
                                         <?php endif; ?>
                                     </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if ($pendencias): ?>
+                                <div class="mt-6">
+                                    <div class="section-title"><i class="fas fa-folder-open mr-2"></i> Complementações</div>
+                                    <?php foreach ($pendencias as $p): ?>
+                                        <?php $anexosP = listarAnexosPendencia($pdo, (int) $requerimento['id'], (int) $p['id']); ?>
+                                        <div class="py-3 border-l-4 pl-3 mb-3" style="border-color: <?= $p['status'] === 'respondida' ? '#059669' : '#f59e0b' ?>;">
+                                            <div class="font-semibold text-gray-800"><?= htmlspecialchars($p['titulo']) ?></div>
+                                            <div class="text-sm text-gray-600 mt-1"><?= nl2br(htmlspecialchars($p['descricao'])) ?></div>
+
+                                            <?php if ($p['status'] === 'aberta'): ?>
+                                                <div class="mt-2">
+                                                    <a href="<?= htmlspecialchars(gerarUrlPendencia((int) $p['id'], $requerimento['protocolo'])) ?>"
+                                                       class="inline-block text-sm font-semibold text-white bg-green-700 hover:bg-green-800 rounded px-3 py-2">
+                                                        <i class="fas fa-paper-plane mr-1"></i> Enviar complementação
+                                                    </a>
+                                                </div>
+                                            <?php else: ?>
+                                                <?php if (!empty($p['resposta'])): ?>
+                                                    <div class="mt-2 text-sm text-green-800 bg-green-50 rounded p-2">
+                                                        <strong>Sua resposta:</strong><br><?= nl2br(htmlspecialchars($p['resposta'])) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php foreach ($anexosP as $anexo): ?>
+                                                    <div class="text-sm mt-1">
+                                                        <i class="fas fa-file-pdf text-red-500 mr-1"></i><?= htmlspecialchars($anexo['nome_original']) ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
 

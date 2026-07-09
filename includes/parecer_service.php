@@ -160,7 +160,11 @@ class ParecerService
             'nome_interessado' => $nomeInteressado,
             'cpf_interessado' => $cpfInteressado,
             'atividade' => $atividade,
-            'cnae_descricao' => $cnaeDescricao
+            'cnae_descricao' => $cnaeDescricao,
+            'protocolo_oficial' => $requerimento['protocolo_oficial'] ?? '',
+            'padrao_popular' => (($requerimento['padrao_popular'] ?? '') === 'sim') ? 'Sim' : ((($requerimento['padrao_popular'] ?? '') === 'nao') ? 'Não' : ''),
+            'data_inicio_obra' => !empty($requerimento['data_inicio_obra']) ? date('d/m/Y', strtotime($requerimento['data_inicio_obra'])) : '',
+            'data_termino_obra' => !empty($requerimento['data_termino_obra']) ? date('d/m/Y', strtotime($requerimento['data_termino_obra'])) : ''
         ];
 
         if ($adminData !== null) {

@@ -30,6 +30,8 @@ return [
                 ['Proprietário',            '{{nome_proprietario}}'],
                 ['CPF/CNPJ',                '{{cpf_cnpj_proprietario}}'],
                 ['Endereço / Localização',   '{{endereco_objetivo}}'],
+                ['Protocolo Oficial',        '{{protocolo_oficial}}'],
+                ['Padrão Popular (<70m²)',   '{{padrao_popular}}'],
                 ['Descrição do Lote',        '{{detalhes_imovel}}'],
                 ['ART de Desmembramento',    '{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}'],
             ],

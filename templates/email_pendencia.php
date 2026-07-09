@@ -145,14 +145,36 @@
             <?php endif; ?>
         </div>
 
-        <div class="info-box">
-            <strong>Como resolver:</strong>
-            <ul>
-                <li>Providencie os documentos listados acima.</li>
-                <li>Entre em contato com nossa equipe pelo WhatsApp ou email informados abaixo.</li>
-                <li>Após regularizar a situação, seu processo continuará a análise normalmente.</li>
-            </ul>
-        </div>
+        <?php if (!empty($link_complementacao)): ?>
+            <div style="text-align:center;margin:26px 0;">
+                <a href="<?= htmlspecialchars($link_complementacao) ?>"
+                   style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px;">
+                    Enviar complementação
+                </a>
+                <p style="font-size:12px;color:#64748b;margin-top:12px;">
+                    Ou copie este endereço no navegador:<br>
+                    <span style="word-break:break-all;"><?= htmlspecialchars($link_complementacao) ?></span>
+                </p>
+            </div>
+
+            <div class="info-box">
+                <strong>Como resolver:</strong>
+                <ul>
+                    <li>Clique no botão acima para abrir o formulário de complementação.</li>
+                    <li>Escreva a informação solicitada e anexe os documentos necessários (PDF).</li>
+                    <li>Após o envio, seu processo volta automaticamente para análise.</li>
+                </ul>
+            </div>
+        <?php else: ?>
+            <div class="info-box">
+                <strong>Como resolver:</strong>
+                <ul>
+                    <li>Providencie os documentos listados acima.</li>
+                    <li>Entre em contato com nossa equipe pelo WhatsApp ou email informados abaixo.</li>
+                    <li>Após regularizar a situação, seu processo continuará a análise normalmente.</li>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <p>Em caso de dúvidas, entre em contato conosco:</p>
         <p>

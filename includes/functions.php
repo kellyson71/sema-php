@@ -83,6 +83,41 @@ function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
 }
 
 /**
+ * Gera token estável para acesso à página pública de complementação (pendência).
+ *
+ * Diferente do token de pagamento, o identificador é o da PENDÊNCIA, não o do
+ * requerimento — um mesmo requerimento pode ter várias pendências ao longo do
+ * tempo, e cada link deve valer só para a sua.
+ */
+function gerarTokenPendencia(int $pendenciaId, string $protocolo): string
+{
+    $assinatura = hash_hmac('sha256', $pendenciaId . '|pendencia|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
+    return $pendenciaId . '.pn.' . substr($assinatura, 0, 32);
+}
+
+function validarTokenPendencia(string $token, int $pendenciaId, string $protocolo): bool
+{
+    if ($token === '') {
+        return false;
+    }
+    return hash_equals(gerarTokenPendencia($pendenciaId, $protocolo), $token);
+}
+
+/**
+ * Monta a URL pública da página de complementação.
+ */
+function gerarUrlPendencia(int $pendenciaId, string $protocolo): string
+{
+    $base = rtrim(BASE_URL, '/');
+    if (!preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $base = rtrim($protocol . '://' . $host . '/' . ltrim($base, '/'), '/');
+    }
+    return $base . '/pendencia.php?token=' . urlencode(gerarTokenPendencia($pendenciaId, $protocolo));
+}
+
+/**
  * Gera token seguro para acesso público ao documento final (Setor 2).
  */
 function gerarTokenDocumentoFinal(int $requerimentoId, string $protocolo): string

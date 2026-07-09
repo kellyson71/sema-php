@@ -60,6 +60,25 @@ if (!$admin_id) {
     die("ERRO: Sessão expirada ou não encontrada.");
 }
 
+// Alvará de construção, habite-se e desmembramento só podem ser assinados
+// diretamente pelo Secretário (ou admin/admin_geral). Outros níveis só podem
+// gerar o documento via "assinar e requisitar", roteando para o secretário.
+$tiposRestritosAoSecretario = ['construcao', 'habite_se', 'habite_se_simples', 'desmembramento'];
+$nivelAtualAssinatura = $_SESSION['admin_nivel'] ?? 'operador';
+$isSecretarioOuAdmin = in_array($nivelAtualAssinatura, ['secretario', 'admin', 'admin_geral'], true);
+
+if ($modoAssinatura === 'assinar' && $ehAssinaturaDigital && $requerimento_id && !$isSecretarioOuAdmin) {
+    $stmtTipo = $pdo->prepare("SELECT tipo_alvara FROM requerimentos WHERE id = ?");
+    $stmtTipo->execute([$requerimento_id]);
+    $tipoAlvaraDoc = $stmtTipo->fetchColumn();
+
+    if (in_array($tipoAlvaraDoc, $tiposRestritosAoSecretario, true)) {
+        $erroRestricao = 'Este tipo de documento (alvará de construção, habite-se ou desmembramento) só pode ser assinado diretamente pelo(a) Secretário(a). Utilize a opção "assinar e requisitar" para enviar ao secretário.';
+        if ($salvar_banco) respostaJson(['success' => false, 'error' => $erroRestricao]);
+        die("ERRO: " . $erroRestricao);
+    }
+}
+
 try {
     $stmt = $pdo->prepare("SELECT nome, nome_completo, cargo, cpf, matricula_portaria FROM administradores WHERE id = ?");
     $stmt->execute([$admin_id]);

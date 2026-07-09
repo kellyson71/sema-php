@@ -13,13 +13,18 @@ if (!$requerimento_id || empty($template)) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT protocolo, status FROM requerimentos WHERE id = ?");
+$stmt = $pdo->prepare("SELECT protocolo, status, tipo_alvara FROM requerimentos WHERE id = ?");
 $stmt->execute([$requerimento_id]);
 $req = $stmt->fetch();
 if (!$req) die("Erro: Requerimento não encontrado.");
 
 $titulo_pagina = 'Editor de Documento';
 include '../header.php';
+
+// Alvará de construção, habite-se e desmembramento só podem ser assinados
+// diretamente pelo Secretário (ou admin/admin_geral) — ver $isSecretario em header.php.
+$tiposRestritosAoSecretario = ['construcao', 'habite_se', 'habite_se_simples', 'desmembramento'];
+$bloquearAssinaturaDireta = in_array($req['tipo_alvara'] ?? '', $tiposRestritosAoSecretario, true) && !$isSecretario;
 ?>
     <!-- Assets Extras Específicos do Editor -->
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
@@ -543,9 +548,15 @@ include '../header.php';
               <!-- Seletor de modo: lista vertical com hierarquia clara -->
               <div class="mb-1 etapa-kicker">Etapa 1 de 2</div>
               <p class="fw-bold mb-3" style="font-size:.95rem;">Como este documento será finalizado?</p>
+              <?php if ($bloquearAssinaturaDireta): ?>
+              <div class="alert alert-warning d-flex gap-2 mb-3" style="font-size:.85rem;">
+                  <i class="fas fa-lock mt-1 flex-shrink-0"></i>
+                  <span>Alvará de construção, habite-se e desmembramento só podem ser assinados diretamente pelo(a) Secretário(a). Use "assinar e solicitar co-assinatura" apontando para o(a) secretário(a).</span>
+              </div>
+              <?php endif; ?>
               <div class="modo-lista mb-4" id="modoCards">
-                  <label class="modo-card selected" data-modo="assinar">
-                      <input type="radio" name="modo_assinatura_radio" value="assinar" checked style="display:none;">
+                  <label class="modo-card<?= $bloquearAssinaturaDireta ? ' disabled' : ' selected' ?>" data-modo="assinar"<?= $bloquearAssinaturaDireta ? ' style="opacity:.45;pointer-events:none;"' : '' ?>>
+                      <input type="radio" name="modo_assinatura_radio" value="assinar" <?= $bloquearAssinaturaDireta ? 'disabled' : 'checked' ?> style="display:none;">
                       <div class="mc-icon"><i class="fas fa-file-signature"></i></div>
                       <div>
                           <div class="mc-title">Assinar eletronicamente</div>
@@ -553,8 +564,8 @@ include '../header.php';
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
-                  <label class="modo-card" data-modo="assinar_e_requisitar">
-                      <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" style="display:none;">
+                  <label class="modo-card<?= $bloquearAssinaturaDireta ? ' selected' : '' ?>" data-modo="assinar_e_requisitar">
+                      <input type="radio" name="modo_assinatura_radio" value="assinar_e_requisitar" <?= $bloquearAssinaturaDireta ? 'checked' : '' ?> style="display:none;">
                       <div class="mc-icon"><i class="fas fa-users"></i></div>
                       <div>
                           <div class="mc-title">Assinar e solicitar co-assinatura</div>
@@ -1245,6 +1256,22 @@ include '../header.php';
             assinar_e_requisitar: 'Assinar e Solicitar',
         };
 
+        function aplicarModo(modo) {
+            document.getElementById('btnAssinarLabel').textContent = btnLabels[modo] || 'Confirmar';
+
+            const isSemAssinar = modo === 'sem_assinar';
+            const isRequisitar = modo === 'assinar_e_requisitar';
+
+            document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
+            document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
+            document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
+
+            document.getElementById('checkDiretrizes').required = !isSemAssinar;
+            document.getElementById('checkManual').required     = isSemAssinar;
+
+            atualizarBlocosPin();
+        }
+
         cards.forEach(card => {
             card.addEventListener('click', () => {
                 const modo = card.dataset.modo;
@@ -1252,21 +1279,14 @@ include '../header.php';
                 cards.forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
 
-                document.getElementById('btnAssinarLabel').textContent = btnLabels[modo] || 'Confirmar';
-
-                const isSemAssinar = modo === 'sem_assinar';
-                const isRequisitar = modo === 'assinar_e_requisitar';
-
-                document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
-                document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
-                document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
-
-                document.getElementById('checkDiretrizes').required = !isSemAssinar;
-                document.getElementById('checkManual').required     = isSemAssinar;
-
-                atualizarBlocosPin();
+                aplicarModo(modo);
             });
         });
+
+        // Sincroniza o painel com o card já marcado como "selected" no carregamento
+        // (relevante quando a assinatura direta está bloqueada e outro card vem pré-selecionado).
+        const cardInicial = document.querySelector('.modo-card.selected');
+        if (cardInicial) aplicarModo(cardInicial.dataset.modo);
     })();
 
     /* ─── Finalizar assinatura ─────────────────────────────── */

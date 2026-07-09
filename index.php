@@ -1007,6 +1007,25 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </select>
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
+                            <div class="form-grid-2">
+                                <label class="form-toggle">
+                                    <span>Obra padrão popular (menor que 70m²)? *</span>
+                                    <div class="toggle-options">
+                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
+                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="form-grid-2">
+                                <label>
+                                    Previsão de início da obra *
+                                    <input required type="date" name="data_inicio_obra">
+                                </label>
+                                <label>
+                                    Previsão de término da obra *
+                                    <input required type="date" name="data_termino_obra">
+                                </label>
+                            </div>
                         `;
                     } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
                         campos = `
@@ -1029,6 +1048,15 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
                             </div>
                             <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
+                            <div class="form-grid-2">
+                                <label class="form-toggle">
+                                    <span>Obra padrão popular (menor que 70m²)? *</span>
+                                    <div class="toggle-options">
+                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
+                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
+                                    </div>
+                                </label>
+                            </div>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `
@@ -1050,6 +1078,15 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </div>
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
+                            <div class="form-grid-2">
+                                <label class="form-toggle">
+                                    <span>Obra padrão popular (menor que 70m²)? *</span>
+                                    <div class="toggle-options">
+                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
+                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
+                                    </div>
+                                </label>
+                            </div>
                         `;
                     } else if (currentRules.ambiental) {
                         campos = `
@@ -1126,6 +1163,25 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </div>
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
+                            <div class="form-grid-2">
+                                <label class="form-toggle">
+                                    <span>Obra padrão popular (menor que 70m²)? *</span>
+                                    <div class="toggle-options">
+                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
+                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="form-grid-2">
+                                <label>
+                                    Previsão de início da obra *
+                                    <input required type="date" name="data_inicio_obra">
+                                </label>
+                                <label>
+                                    Previsão de término da obra *
+                                    <input required type="date" name="data_termino_obra">
+                                </label>
+                            </div>
                         `;
                     } else {
                         campos = `
