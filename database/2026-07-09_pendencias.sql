@@ -18,16 +18,31 @@ CREATE TABLE IF NOT EXISTS `requerimento_pendencias` (
     REFERENCES `requerimentos` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Novo status. Mantém todos os valores já existentes em produção.
+-- Novo status.
+--
+-- ATENÇÃO: esta lista foi extraída do enum REAL do banco (15 valores), não do
+-- schema.sql, que está desatualizado. Um MODIFY com a lista do schema.sql
+-- silenciosamente zera as linhas cujo status não estiver na nova lista
+-- (havia 3 delas em homologação: 'Aguardando Fiscalização' e
+-- 'Aguardando Secretaria'). Antes de reaplicar isto em outro ambiente,
+-- reconfira com:
+--   SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+--    WHERE TABLE_NAME='requerimentos' AND COLUMN_NAME='status';
 ALTER TABLE `requerimentos` MODIFY `status` ENUM(
   'Pendente',
   'Em análise',
+  'Aguardando Fiscalização',
   'Aprovado',
   'Reprovado',
-  'Finalizado',
   'Cancelado',
   'Indeferido',
+  'Finalizado',
+  'Apto a gerar alvará',
+  'Alvará Emitido',
   'Aguardando boleto',
   'Boleto pago',
+  'Aguardando Secretaria',
+  'Devolvido pela Secretaria',
+  'Documento Final Enviado',
   'Aguardando complementação'
 ) NOT NULL DEFAULT 'Pendente';
