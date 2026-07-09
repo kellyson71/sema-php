@@ -84,17 +84,19 @@ Schema completo em `database/u492577848_SEMA.sql`. Migrations incrementais em `d
 
 Arquivos ficam em `uploads/{protocolo}/` (formulário público) e `uploads/pareceres/{requerimento_id}/` (pareceres gerados). Apenas PDFs são aceitos, máximo 10MB. Validação dupla: extensão e MIME type.
 
-## Acesso ao banco de dados em produção via SSH
+## Credenciais e acessos
 
+Todas as credenciais (SSH, FTP, banco de produção e de homologação) estão em **`ACESSOS.md`**, na raiz do projeto. Esse arquivo é ignorado pelo git — **nunca copiar senhas dele para cá**, este arquivo é versionado e vai para o GitHub.
+
+## Acesso ao banco de dados via SSH
+
+Produção e homologação usam **bancos separados** no mesmo host `srv1844.hstgr.io`:
+`u492577848_SEMA` (produção) e `u492577848_SEMA_hmg` (homologação). Migrations em homologação não afetam produção.
+
+Credenciais em `ACESSOS.md`. Forma do comando:
 ```bash
 ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "mysql -h srv1844.hstgr.io -u u492577848_SEMA -pPmpfestagio2021 u492577848_SEMA -e 'SUA QUERY;'"
-```
-
-Exemplo — listar tabelas:
-```bash
-ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "mysql -h srv1844.hstgr.io -u u492577848_SEMA -pPmpfestagio2021 u492577848_SEMA -e 'SHOW TABLES;'"
+  "mysql -h srv1844.hstgr.io -u USUARIO -pSENHA BANCO -e 'SUA QUERY;'"
 ```
 
 Deploy manual (quando o painel falhar):
@@ -112,12 +114,14 @@ ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
   "cd ~/domains/sema.protocolosead.com/public_html && git pull"
 ```
 
-**Arquivos no `.gitignore`** (como `includes/config.php` e `admin/conexao.php`) não vão pelo git. Se forem modificados, atualizar via FTP:
+**Arquivos no `.gitignore`** (como `includes/config.php` e `admin/conexao.php`) não vão pelo git. Se forem modificados, atualizar via FTP (credenciais em `ACESSOS.md`):
 
 ```bash
-lftp -u "u492577848.semapmpfestagio,Pmpfestagio2021" ftp://46.202.145.215 -e \
-  "set ftp:ssl-allow no; put arquivo_local -o public_html/caminho/arquivo; quit"
+lftp -u "USUARIO,SENHA" ftp://HOST -e \
+  "set ftp:ssl-allow no; put arquivo_local -o includes/config.php; quit"
 ```
+
+Cada ambiente tem sua própria conta FTP, chrootada no respectivo `public_html` — a de produção não alcança homologação. E os dois `config.php` são arquivos distintos, não o mesmo com valores trocados: **uma constante nova precisa ser adicionada manualmente nos dois**.
 
 ## Branches
 

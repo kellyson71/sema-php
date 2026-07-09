@@ -154,6 +154,9 @@ opcache/
 secrets.txt
 passwords.txt
 
+# Credenciais e acessos (nunca versionar)
+ACESSOS.md
+
 # ===== ARQUIVOS ESPECÍFICOS DO PROJETO =====
 # Diretórios removidos/antigos
 php/
