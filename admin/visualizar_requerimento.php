@@ -2627,12 +2627,18 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <!-- Seção de Ações Administrativas -->
+    <?php
+    // Temporário: setor 2 continua podendo gerar/tratar documentos normalmente
+    // mesmo em processos já Finalizados/Indeferidos vindos do Setor 1.
+    $tratarComoAtivoParaSetor2 = $isFiscalPuro;
+    $mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
+    ?>
     <div class="row mt-4">
         <div class="col-12">
-            <div class="modern-card <?php echo $isFinalized ? 'finalized-card' : ($isIndeferido ? 'indeferido-card' : ''); ?>">
-                <div class="modern-card-header <?php echo $isFinalized ? 'finalized-header' : ($isIndeferido ? 'indeferido-header' : ''); ?>">
-                    <i class="fas fa-cog icon <?php echo $isBlocked ? 'text-muted' : ''; ?>"></i>
-                    <h6 class="<?php echo $isBlocked ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
+            <div class="modern-card <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-card' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-card' : ''); ?>">
+                <div class="modern-card-header <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-header' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-header' : ''); ?>">
+                    <i class="fas fa-cog icon <?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>"></i>
+                    <h6 class="<?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
                     <?php if ($isFinalized): ?>
                         <div class="ms-auto">
                             <span class="badge bg-secondary">
@@ -2647,8 +2653,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ($isIndeferido ? 'indeferido-body' : ''); ?>">
-                    <?php if ($isFinalized): ?>
+                <div class="card-body <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-body' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-body' : ''); ?>">
+                    <?php if ($isFinalized && $mostrarPainelEncerrado): ?>
                         <!-- Processo Finalizado — painel informativo -->
                         <?php
                         // Quem finalizou e quando
@@ -2790,7 +2796,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <?php endif; ?>
                         </div>
-                    <?php elseif ($isIndeferido): ?>
+                    <?php elseif ($isIndeferido && $mostrarPainelEncerrado): ?>
                         <!-- Processo Indeferido — painel compacto -->
                         <?php
                         $ultimaAcaoEnc = '';
