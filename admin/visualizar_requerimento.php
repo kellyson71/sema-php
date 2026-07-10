@@ -1624,6 +1624,7 @@ include 'header.php';
      .act-neutral { background:#475569; }
      .act-info    { background:#0369a1; }
      .act-danger  { background:#b3261e; }
+     .act-warning { background:#a16207; }
      /* Ação primária — Gerar Documento (destaque, largura total) */
      .act-gerar {
          width:100%; padding:13px 18px; font-size:.96rem; font-weight:700;
