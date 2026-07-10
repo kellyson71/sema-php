@@ -31,7 +31,8 @@
         }
 
         .logo {
-            max-width: 150px;
+            max-width: 110px;
+            max-height: 110px;
             margin-bottom: 10px;
         }
 
@@ -109,7 +110,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="<?= BASE_URL ?>/assets/img/Logo_sema.png" alt="SEMA" class="logo">
+            <img src="<?= BASE_URL ?>/assets/SEMA/PNG/Azul/Logo%20SEMA%20Vertical.png" alt="SEMA" class="logo">
             <h1>Secretaria Municipal de Meio Ambiente</h1>
             <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros - RN</p>
         </div>
