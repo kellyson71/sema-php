@@ -2362,7 +2362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <!-- Imóvel / Objeto -->
                 <?php
-                $temImovel = $exibirTecnicos || !empty($requerimento['especificacao']) || !empty($requerimento['enquadramento_atividade']) || !empty($requerimento['ctf_numero']) || !empty($requerimento['licenca_anterior_numero']) || $requerimento['possui_estudo_ambiental'] !== null;
+                $temImovel = $exibirTecnicos || !empty($requerimento['especificacao']) || !empty($requerimento['enquadramento_atividade']) || !empty($requerimento['ctf_numero']) || !empty($requerimento['licenca_anterior_numero']) || $requerimento['possui_estudo_ambiental'] !== null || $requerimento['notificado_fiscal_obras'] !== null;
                 if ($temImovel):
                 ?>
                 <div class="info-card">
@@ -2406,6 +2406,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
                             <span class="info-k">Estudo ambiental</span>
                             <span class="info-v"><?= $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não' ?><?php if(!empty($requerimento['tipo_estudo_ambiental'])): ?> <span class="text-muted">(<?= htmlspecialchars($requerimento['tipo_estudo_ambiental']) ?>)</span><?php endif; ?></span>
+                        <?php endif; ?>
+                        <?php if ($requerimento['notificado_fiscal_obras'] !== null): ?>
+                            <span class="info-k">Notificado pelo Fiscal de Obras</span>
+                            <span class="info-v"><?= $requerimento['notificado_fiscal_obras'] ? 'Sim' : 'Não' ?></span>
                         <?php endif; ?>
                     </div>
                 </div>
