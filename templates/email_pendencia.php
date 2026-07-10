@@ -30,6 +30,11 @@
             margin-bottom: 25px;
         }
 
+        .logo {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+
         .header h1 {
             color: #009851;
             font-size: 22px;
@@ -43,11 +48,6 @@
             border-radius: 8px;
             text-align: center;
             margin: 20px 0;
-        }
-
-        .status-box .icon {
-            font-size: 36px;
-            margin-bottom: 8px;
         }
 
         .status-box .label {
@@ -109,6 +109,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <img src="<?= BASE_URL ?>/assets/img/Logo_sema.png" alt="SEMA" class="logo">
             <h1>Secretaria Municipal de Meio Ambiente</h1>
             <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros - RN</p>
         </div>
@@ -118,7 +119,6 @@
         <p>Seu requerimento de protocolo <span class="protocol-number">#<?= htmlspecialchars($protocolo) ?></span> está em análise pela nossa equipe técnica. Durante a verificação, identificamos <strong>pendências na documentação</strong> que precisam ser resolvidas para que o processo possa avançar.</p>
 
         <div class="status-box">
-            <div class="icon">📋</div>
             <div class="label">Documentação Pendente</div>
             <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">
                 Protocolo: <strong>#<?= htmlspecialchars($protocolo) ?></strong>
@@ -129,7 +129,7 @@
         </div>
 
         <div class="pendencias-box">
-            <strong>⚠️ Pendências identificadas:</strong>
+            <strong>Pendências identificadas:</strong>
             <?php if (!empty($pendencias)): ?>
                 <?php if (is_array($pendencias)): ?>
                     <ul>

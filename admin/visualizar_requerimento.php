@@ -71,6 +71,12 @@ if (!$requerimento) {
 $mensagem = '';
 $mensagemTipo = '';
 
+$flash = getMensagem();
+if ($flash) {
+    $mensagem = $flash['texto'];
+    $mensagemTipo = $flash['tipo'];
+}
+
 // Processar marcar como não lido
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
     try {
@@ -173,8 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
 
             $requerimento = buscarDadosRequerimento($pdo, $id);
             $mensagem = $emailEnviado
-                ? "✅ Boleto enviado para pagamento com sucesso."
-                : "⚠️ Boleto registrado no sistema, mas houve falha no envio do email. O link pode ser reenviado depois.";
+                ? "Boleto enviado para pagamento com sucesso."
+                : "Boleto registrado no sistema, mas houve falha no envio do email. O link pode ser reenviado depois.";
             $mensagemTipo = $emailEnviado ? "success" : "warning";
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -231,11 +237,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_complementa
                 $linkPendenciaGerado
             );
 
-            $requerimento = buscarDadosRequerimento($pdo, $id);
             $mensagem = $emailEnviado
-                ? "✅ Solicitação de complementação enviada ao requerente."
-                : "⚠️ Solicitação registrada, mas houve falha no envio do email. Repasse o link manualmente.";
+                ? "Solicitação de complementação enviada ao requerente."
+                : "Solicitação registrada, mas houve falha no envio do email. Repasse o link manualmente.";
             $mensagemTipo = $emailEnviado ? "success" : "warning";
+            setMensagem($mensagemTipo, $mensagem);
+            header("Location: visualizar_requerimento.php?id=$id");
+            exit;
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -295,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     // Recarregar dados do requerimento para refletir as mudanças
                     $requerimento = buscarDadosRequerimento($pdo, $id);
 
-                    $mensagem = "✅ Processo indeferido com sucesso! O requerente foi notificado por email.";
+                    $mensagem = "Processo indeferido com sucesso! O requerente foi notificado por email.";
                     $mensagemTipo = "success";
                 } catch (PDOException $e) {
                     $pdo->rollBack();
@@ -422,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_processo'])) 
         // Recarregar dados do requerimento para refletir as mudanças
         $requerimento = buscarDadosRequerimento($pdo, $id);
 
-        $mensagem = "✅ Processo reaberto com sucesso! Status alterado para '{$novoStatus}'.";
+        $mensagem = "Processo reaberto com sucesso! Status alterado para '{$novoStatus}'.";
         $mensagemTipo = "success";
     } catch (PDOException $e) {
         $pdo->rollBack();
@@ -439,7 +447,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
         $mensagem = "É necessário informar o protocolo oficial da prefeitura.";
         $mensagemTipo = "danger";
     } elseif (strtolower($requerimento['status']) === 'finalizado') {
-        $mensagem = "⚠️ Este requerimento já está finalizado. Tem certeza que deseja enviar o email novamente?";
+        $mensagem = "Este requerimento já está finalizado. Tem certeza que deseja enviar o email novamente?";
         $mensagemTipo = "warning";
     } else {
         try {
@@ -469,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
                     // Recarregar dados do requerimento para refletir as mudanças
                     $requerimento = buscarDadosRequerimento($pdo, $id);
 
-                    $mensagem = "✅ Email com protocolo oficial enviado com sucesso! O requerimento foi automaticamente marcado como Finalizado.";
+                    $mensagem = "Email com protocolo oficial enviado com sucesso! O requerimento foi automaticamente marcado como Finalizado.";
                     $mensagemTipo = "success";
                 } catch (PDOException $e) {
                     $pdo->rollBack();
@@ -1686,7 +1694,7 @@ if (isset($_GET['error']) && $_GET['error'] === 'sem_permissao') {
     $mensagemTipo = 'danger';
 }
 if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
-    $mensagem = '✅ Fluxo atualizado com sucesso.';
+    $mensagem = 'Fluxo atualizado com sucesso.';
     $mensagemTipo = 'success';
 }
 
@@ -2215,10 +2223,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <?php if ($mensagem): ?>
-        <div class="alert alert-<?php echo $mensagemTipo; ?> alert-dismissible fade show mb-3" role="alert" style="border-radius:10px;border:none;box-shadow:0 2px 8px rgba(0,0,0,.07)">
-            <?php echo $mensagem; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                showToast(<?= json_encode($mensagem, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($mensagemTipo) ?>);
+            });
+        </script>
     <?php endif; ?>
 
     <?php if ($isSecretarioPuro && $setorAtual === 'setor3'): ?>
@@ -2306,8 +2315,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="info-k">Protocolo Oficial</span>
                         <span class="info-v">
                             <form method="POST" style="display:flex;gap:6px;align-items:center;" onsubmit="return this.querySelector('input[name=protocolo_oficial_novo]').value.trim() !== '' || confirm('Salvar protocolo oficial vazio?');">
-                                <input type="text" name="protocolo_oficial_novo" value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>" placeholder="Ex: 2025001234-SEMA" class="form-control form-control-sm" style="max-width:180px;">
-                                <button type="submit" name="salvar_protocolo_oficial" class="btn btn-sm btn-outline-success"><i class="fas fa-save"></i></button>
+                                <input type="text" name="protocolo_oficial_novo" value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>" placeholder="Ex: 2025001234-SEMA" style="max-width:180px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:0.3rem 0.5rem;font-size:.8rem;color:#1a2e1e;">
+                                <button type="submit" name="salvar_protocolo_oficial" class="copy-btn" title="Salvar protocolo oficial"><i class="fas fa-save"></i></button>
                             </form>
                         </span>
                         <span class="info-k">Status</span>
@@ -2425,10 +2434,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php foreach ($pendencias as $p): ?>
                             <?php $anexosP = listarAnexosPendencia($pdo, $id, (int) $p['id']); ?>
                             <div style="border-left:3px solid <?= $p['status'] === 'respondida' ? '#059669' : '#f59e0b' ?>;padding:8px 0 8px 12px;margin-bottom:14px;">
-                                <div style="font-weight:600;color:#0f172a;font-size:.9rem;">
+                                <div style="font-weight:600;color:#0f172a;font-size:.9rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                     <?= htmlspecialchars($p['titulo']) ?>
-                                    <span style="font-weight:500;font-size:.75rem;color:<?= $p['status'] === 'respondida' ? '#059669' : '#b45309' ?>;">
-                                        &mdash; <?= $p['status'] === 'respondida' ? 'respondida' : 'aguardando o requerente' ?>
+                                    <span style="font-weight:700;font-size:.68rem;padding:2px 8px;border-radius:99px;background:<?= $p['status'] === 'respondida' ? '#ecfdf5' : '#fffbeb' ?>;color:<?= $p['status'] === 'respondida' ? '#059669' : '#b45309' ?>;">
+                                        <?= $p['status'] === 'respondida' ? 'Respondida' : 'Aguardando o requerente' ?>
                                     </span>
                                 </div>
                                 <div style="font-size:.84rem;color:var(--req-muted);margin:4px 0;">
@@ -2458,12 +2467,22 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <?php endif; ?>
 
                                 <?php if ($anexosP): ?>
-                                    <div style="margin-top:6px;">
+                                    <div style="margin-top:8px;">
                                         <?php foreach ($anexosP as $anexo): ?>
-                                            <a href="../uploads/<?= ltrim($anexo['caminho'], '/\\') ?>" target="_blank" rel="noopener"
-                                               style="display:inline-block;margin-right:12px;font-size:.83rem;">
-                                                <i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($anexo['nome_original']) ?>
-                                            </a>
+                                            <div class="data-row">
+                                                <div class="data-label" style="min-width: 32px;">
+                                                    <i class="fas fa-file-pdf" style="color:#dc2626;font-size:18px;"></i>
+                                                </div>
+                                                <div class="data-value">
+                                                    <div class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($anexo['nome_original']) ?></div>
+                                                    <div class="text-muted small"><?= number_format($anexo['tamanho'] / 1024, 2) ?> KB</div>
+                                                </div>
+                                                <div class="data-actions">
+                                                    <a href="../uploads/<?= ltrim($anexo['caminho'], '/\\') ?>" class="copy-btn" target="_blank" rel="noopener" title="Visualizar arquivo">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -3161,7 +3180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="modal-body px-4 pt-3">
                     <p class="text-muted" style="font-size:.86rem;">
-                        O requerente receberá um e-mail com um link para complementar o processo &mdash; sem precisar reenviar o formulário inteiro.
+                        O requerente receberá por e-mail um link para complementar o processo, sem precisar reenviar o formulário inteiro. O mesmo link também fica disponível aqui na tela, no card "Complementações", caso seja preciso repassá-lo manualmente (WhatsApp, telefone etc.).
                     </p>
 
                     <div class="mb-3">
@@ -4518,14 +4537,22 @@ function getStatusDotColor($status)
         toastDiv.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
         
         // Add new class based on type
+        const toastIcon = document.querySelector('#liveToast .toast-body i');
+        toastIcon.className = 'fa-lg fas ' + (
+            type === 'success' ? 'fa-check-circle' :
+            (type === 'error' || type === 'danger') ? 'fa-exclamation-circle' :
+            type === 'warning' ? 'fa-triangle-exclamation' :
+            type === 'info' ? 'fa-circle-info' : 'fa-check-circle'
+        );
         switch(type) {
             case 'success': toastDiv.classList.add('bg-success'); break;
-            case 'error': toastDiv.classList.add('bg-danger'); break;
+            case 'error':
+            case 'danger': toastDiv.classList.add('bg-danger'); break;
             case 'warning': toastDiv.classList.add('bg-warning'); break;
             case 'info': toastDiv.classList.add('bg-info'); break;
             default: toastDiv.classList.add('bg-primary');
         }
-        
+
         if (toastInstance) {
             toastInstance.show();
         } else {
