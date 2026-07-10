@@ -122,7 +122,7 @@ try {
             break;
 
         case 'concluir_direto':
-            atualizaSetor($pdo, $id, 'setor1', 'concluido');
+            atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
             registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));

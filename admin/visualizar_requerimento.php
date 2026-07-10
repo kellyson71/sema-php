@@ -214,7 +214,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     }
 
                     // Atualizar status para "Indeferido" automaticamente
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', aguardando_acao = 'concluido', observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+                    // Se o indeferimento aconteceu no Setor 1, o processo passa a ficar visível para o Setor 2
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', aguardando_acao = 'concluido', setor_atual = IF(setor_atual = 'setor1', 'setor2', setor_atual), observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
                     $stmt->execute([$observacoesCombinadas, $id]);
 
                     // Registrar no histórico de ações
@@ -2759,6 +2760,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php endif; ?>
 
                             <!-- Ações -->
+                            <?php if (!$isFiscalPuro): ?>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
                                 <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
                                     <i class="fas fa-unlock me-1"></i>Reabrir
@@ -2767,6 +2769,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <i class="fas fa-archive me-1"></i>Arquivar
                                 </button>
                             </div>
+                            <?php endif; ?>
                         </div>
                     <?php elseif ($isIndeferido): ?>
                         <!-- Processo Indeferido — painel compacto -->
@@ -2784,6 +2787,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div style="flex:1;min-width:0;">
                                 <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo indeferido</p>
                                 <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">O requerente foi notificado por e-mail<?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
+                                <?php if (!$isFiscalPuro): ?>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                     <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
                                         <i class="fas fa-unlock me-1"></i>Reabrir
@@ -2792,6 +2796,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <i class="fas fa-archive me-1"></i>Arquivar
                                     </button>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                                          <?php else: ?>
