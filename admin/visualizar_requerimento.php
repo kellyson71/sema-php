@@ -2749,12 +2749,31 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Docs enviados pelo cidadão -->
                             <?php if (!empty($documentos)): ?>
                                 <div style="margin-bottom:16px;">
-                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:6px;">
+                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px;">
                                         <i class="fas fa-folder-open me-1"></i>Documentação do requerente (<?= count($documentos) ?> arquivo<?= count($documentos)>1?'s':'' ?>)
                                     </div>
-                                    <div style="font-size:.78rem;color:#475569;padding:6px 10px;background:#f8fafc;border-radius:7px;border:1px solid #e8edf2;">
-                                        <?php $nomes = array_map(fn($d)=>htmlspecialchars(basename($d['arquivo']??$d['nome_arquivo']??'')), $documentos);
-                                              echo implode(' · ', array_filter($nomes)); ?>
+                                    <div style="display:flex;flex-direction:column;gap:6px;">
+                                        <?php foreach ($documentos as $docReq):
+                                            $tituloDocReq = $docReq['nome_original'];
+                                            if ($docReq['campo_formulario'] === 'boleto_pagamento_admin') {
+                                                $tituloDocReq = 'Boleto enviado pela equipe';
+                                            } elseif ($docReq['campo_formulario'] === 'comprovante_pagamento_boleto') {
+                                                $tituloDocReq = 'Comprovante de pagamento do requerente';
+                                            }
+                                            $urlDocReq = '../uploads/' . ltrim($docReq['caminho'], '/\\');
+                                        ?>
+                                            <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;">
+                                                <i class="fas fa-file-pdf" style="color:#dc2626;font-size:.85rem;flex-shrink:0;"></i>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:.8rem;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($tituloDocReq) ?></div>
+                                                    <div style="font-size:.7rem;color:#94a3b8;"><?= number_format($docReq['tamanho'] / 1024, 2) ?> KB</div>
+                                                </div>
+                                                <a href="<?= htmlspecialchars($urlDocReq) ?>" target="_blank"
+                                                   title="Visualizar" style="color:#2563eb;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-eye"></i></a>
+                                                <a href="<?= htmlspecialchars($urlDocReq) ?>" download
+                                                   title="Baixar" style="color:#64748b;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-download"></i></a>
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
                             <?php endif; ?>
