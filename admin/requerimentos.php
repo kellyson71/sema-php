@@ -161,7 +161,9 @@ if ($filtroNaoVisualizados) {
     $sqlCount .= " AND r.visualizado = 0";
 }
 
-if (!$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
+// Para fiscal/secretário (visão travada num setor), "encerrado" não se aplica:
+// o processo acabou de chegar ao setor deles, não é um processo arquivado.
+if (!$setorFiltro && !$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
     $placeholdersEnc = implode(',', array_fill(0, count($statusEncerrados), '?'));
     $sql .= " AND r.status NOT IN ($placeholdersEnc)";
     $sqlCount .= " AND r.status NOT IN ($placeholdersEnc)";
@@ -493,7 +495,8 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                 </a>
             <?php endif; ?>
         </form>
-        <!-- Toggle encerrados -->
+        <!-- Toggle encerrados: não se aplica à visão travada por setor (fiscal/secretário já veem tudo do próprio setor) -->
+        <?php if (!$setorFiltro): ?>
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--req-line,#e5e8e6);">
         <?php if (!$mostrarEncerrados): ?>
             <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
@@ -508,6 +511,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             </a>
         <?php endif; ?>
         </div>
+        <?php endif; ?>
         <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
                 <span class="active-filter-chip">
