@@ -629,6 +629,10 @@ try {
             $requerimento_id = (int)($input['requerimento_id'] ?? 0);
             if (!$requerimento_id) throw new Exception('requerimento_id obrigatório');
 
+            // Assinaturas de teste da conta Kellyson (e variações) ficam ocultas para os
+            // demais usuários — precaução até a limpeza definitiva desses dados.
+            $souContaKellyson = stripos($_SESSION['admin_email'] ?? '', 'kellyson') !== false;
+            $filtroKellyson = $souContaKellyson ? "" : "AND ad.assinante_nome NOT LIKE '%kellyson%'";
             $stmtAd = $pdo->prepare("
                 SELECT ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
                        ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo,
@@ -637,7 +641,7 @@ try {
                 FROM assinaturas_digitais ad
                 LEFT JOIN assinaturas_digitais ad2
                     ON (ad2.documento_id = ad.documento_id)
-                WHERE ad.requerimento_id = ?
+                WHERE ad.requerimento_id = ? $filtroKellyson
                 GROUP BY ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
                          ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo, ad.timestamp_assinatura
                 ORDER BY ad.timestamp_assinatura DESC

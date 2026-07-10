@@ -2669,13 +2669,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!$hFinalizacao && !empty($historico)) $hFinalizacao = $historico[0];
 
                         // Documentos assinados gerados para este processo
+                        // Assinaturas de teste da conta Kellyson (e variações) ficam ocultas
+                        // para os demais usuários — precaução até a limpeza definitiva desses dados.
+                        $souContaKellyson = stripos($_SESSION['admin_email'] ?? '', 'kellyson') !== false;
+                        $filtroKellyson = $souContaKellyson ? "" : "AND assinante_nome NOT LIKE '%kellyson%'";
                         $stmtDocsF = $pdo->prepare("
                             SELECT MIN(timestamp_assinatura) AS primeira_assinatura,
                                    tipo_documento, documento_id,
                                    GROUP_CONCAT(DISTINCT assinante_nome ORDER BY timestamp_assinatura ASC SEPARATOR ', ') AS assinantes,
                                    nivel_assinatura
                             FROM assinaturas_digitais
-                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura'
+                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura' $filtroKellyson
                             GROUP BY documento_id
                             ORDER BY primeira_assinatura ASC
                         ");

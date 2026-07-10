@@ -170,8 +170,8 @@ if (!$setorFiltro && !$mostrarEncerrados && $filtroStatus === '' && $filtroBusca
     foreach ($statusEncerrados as $se) { $params[] = $se; }
 }
 
-// Fiscal e secretário veem a fila em ordem FIFO (mais antigo primeiro)
-$ordenacao = $setorFiltro ? "r.data_envio ASC" : "r.visualizado ASC, r.data_envio DESC";
+// Fiscal e secretário veem a fila do mais recente pro mais antigo
+$ordenacao = $setorFiltro ? "r.data_envio DESC" : "r.visualizado ASC, r.data_envio DESC";
 $sql .= " ORDER BY {$ordenacao} LIMIT {$itensPorPagina} OFFSET {$offset}";
 
 $stmt = $pdo->prepare($sql);
@@ -602,7 +602,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                                 <span class="badge badge-retorno-recusado" title="<?= htmlspecialchars($req['motivo_devolucao'] ?? '') ?>">
                                     <i class="fas fa-circle-xmark" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário não aprovou
                                 </span>
-                            <?php elseif ($setorFiltro && !empty($acaoAtual)): ?>
+                            <?php elseif ($setorFiltro && !empty($acaoAtual) && $acaoAtual !== 'concluido'): ?>
                                 <span class="badge <?= htmlspecialchars(acaoClass($acaoAtual)) ?>" style="font-size:.7rem;">
                                     <?= htmlspecialchars(acaoLabel($acaoAtual)) ?>
                                 </span>
