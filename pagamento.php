@@ -440,6 +440,7 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
             .page-title h1 { font-size: 1.4rem; }
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
 

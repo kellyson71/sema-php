@@ -196,6 +196,7 @@
             .content-panel { padding: 40px 20px; }
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
 

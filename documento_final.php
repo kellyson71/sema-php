@@ -219,6 +219,7 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
             margin-top: 20px;
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
 

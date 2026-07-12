@@ -46,6 +46,7 @@
         }
         a { color: var(--primary); }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
     <main>

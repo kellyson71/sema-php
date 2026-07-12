@@ -114,6 +114,7 @@ unset($_SESSION['denuncia_protocolo'], $_SESSION['denuncia_anonimo']);
             .protocolo-box .numero { font-size: 1.25rem; }
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
     <header>

@@ -361,6 +361,7 @@ if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host))
             flex-wrap: wrap;
         }
     </style>
+    <?php include dirname(__DIR__) . '/includes/posthog.php'; ?>
 </head>
 
 <body>
