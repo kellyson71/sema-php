@@ -85,6 +85,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <script src="./js/index.js" defer></script>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 
 <body>

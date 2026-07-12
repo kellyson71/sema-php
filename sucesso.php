@@ -214,6 +214,7 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
             .protocolo-box .numero { font-size: 1.3rem; }
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
     <header>

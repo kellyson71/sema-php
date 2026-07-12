@@ -1,5 +1,12 @@
 ErrorDocument 404 /404.php
 
+# Analytics (PostHog) — includes/posthog.php só renderiza o snippet se POSTHOG_KEY existir.
+# O SetEnvIf casa apenas com o domínio de produção: em localhost e em homologação
+# (semaholog) a variável não é definida e o analytics fica desligado.
+# A Project API key é pública (write-only, vai no HTML) — não é segredo.
+SetEnvIf Host "^sema\.protocolosead\.com$" POSTHOG_KEY=phc_qD3BA74cJFiUdBoEysjwaE4Tj3mD9tyb3E7rEcK92MCB
+SetEnvIf Host "^sema\.protocolosead\.com$" POSTHOG_HOST=https://us.i.posthog.com
+
 # Rota amigável do verificador público: /verificar → verificar.php
 RewriteEngine On
 RewriteRule ^verificar/?$ verificar.php [L,QSA]

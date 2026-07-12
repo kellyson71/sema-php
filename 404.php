@@ -177,6 +177,7 @@ $isArquivo  = (bool) preg_match('#/(uploads|pareceres|pareceres_denuncia)/#', $r
             .error-code { font-size: 56px; }
         }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
 
