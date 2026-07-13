@@ -1370,6 +1370,7 @@ if ($isAnalista) {
             line-height: 1.45;
         }
     </style>
+    <?php include dirname(__DIR__) . '/includes/posthog.php'; ?>
 </head>
 <body class="<?= (defined('MODO_HOMOLOG') && MODO_HOMOLOG) ? 'env-homolog' : '' ?>">
     <aside class="sidebar" id="adminSidebar">

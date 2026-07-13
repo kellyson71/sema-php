@@ -46,21 +46,43 @@
                 'excluded_exceptions' => [
                     \InvalidArgumentException::class,
                 ],
-                'context_provider' => static function (array $payload): array {
-                    // Identifica pelo ADMIN logado. O cidadão nunca é identificado:
-                    // o formulário público tem nome, CPF, e-mail e telefone, e isso
-                    // não vai para o PostHog.
-                    $adminId = $_SESSION['admin_id'] ?? null;
+                'context_provider' => static function (array $payload) use ($key): array {
+                    // Ponte com o browser. O posthog-js guarda distinct_id e session id num
+                    // cookie; reusar o mesmo distinct_id aqui é o que cola o erro do servidor
+                    // à sessão de quem o provocou — sem isso, o PHP inventa um ID aleatório e
+                    // o erro fica órfão, sem ligação com o pageview da pessoa.
+                    $browser = ['distinct_id' => null, 'session_id' => null];
+                    $raw = $_COOKIE['ph_' . $key . '_posthog'] ?? null;
+                    if (is_string($raw)) {
+                        $data = json_decode($raw, true);
+                        if (is_array($data)) {
+                            $browser['distinct_id'] = $data['distinct_id'] ?? null;
+                            // $sesid = [timestamp, sessionId, startTimestamp]
+                            if (isset($data['$sesid'][1]) && is_string($data['$sesid'][1])) {
+                                $browser['session_id'] = $data['$sesid'][1];
+                            }
+                        }
+                    }
+
+                    // Admin logado vira admin_<id> — o mesmo ID que o posthog.identify() usa
+                    // no painel, então browser e servidor viram a mesma pessoa.
+                    // O cidadão continua anônimo: cai no distinct_id de dispositivo do cookie,
+                    // que não tem nome nem CPF.
+                    $adminId    = $_SESSION['admin_id'] ?? null;
+                    $distinctId = $adminId ? 'admin_' . $adminId : $browser['distinct_id'];
 
                     return [
-                        'distinctId' => $adminId ? 'admin_' . $adminId : null,
+                        'distinctId' => $distinctId,
                         'properties' => [
                             // Caminho sem query string: protocolo e CPF costumam viajar
                             // na URL e não podem virar propriedade de evento.
-                            '$current_url'       => strtok($_SERVER['REQUEST_URI'] ?? '', '?'),
-                            '$request_method'    => $_SERVER['REQUEST_METHOD'] ?? null,
-                            '$exception_source'  => $payload['source'] ?? null,
-                            'ambiente'           => defined('MODO_HOMOLOG') && MODO_HOMOLOG ? 'homologacao' : 'producao',
+                            '$current_url'      => strtok($_SERVER['REQUEST_URI'] ?? '', '?'),
+                            '$request_method'   => $_SERVER['REQUEST_METHOD'] ?? null,
+                            '$exception_source' => $payload['source'] ?? null,
+                            // Amarra o erro à gravação/linha do tempo da sessão no PostHog.
+                            '$session_id'       => $browser['session_id'],
+                            'ambiente'          => defined('MODO_HOMOLOG') && MODO_HOMOLOG ? 'homologacao' : 'producao',
+                            'area'              => strpos($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') !== false ? 'admin' : 'publico',
                         ],
                     ];
                 },

@@ -103,6 +103,47 @@ function criarSessaoAdmin($pdo, $admin) {
 
     $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
     $stmt->execute([$admin['id']]);
+
+    registrarLoginPostHog($admin);
+}
+
+/**
+ * Trilha de acesso da equipe no PostHog: quem entrou, de onde e com qual dispositivo.
+ *
+ * Vai pelo servidor de propósito — evento de segurança não pode depender de JS, que
+ * bloqueador de anúncio derruba. O PostHog deriva navegador, SO e tipo de dispositivo
+ * a partir do $raw_user_agent, e cidade/país a partir do $ip.
+ *
+ * Nunca derruba o login: sem SDK ou sem chave, é no-op; qualquer falha é engolida.
+ */
+function registrarLoginPostHog(array $admin): void
+{
+    if (!class_exists('\PostHog\PostHog')) {
+        return; // sem SDK/chave: error_tracking.php não inicializou
+    }
+
+    try {
+        \PostHog\PostHog::capture([
+            'distinctId' => 'admin_' . $admin['id'],
+            'event'      => 'admin_login',
+            'properties' => [
+                '$ip'              => $_SERVER['REMOTE_ADDR'] ?? null,
+                '$raw_user_agent'  => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                // O painel já tem controle de dispositivo confiável (sema_device_token).
+                // Um login de dispositivo NÃO confiável é o sinal que interessa vigiar.
+                'dispositivo_confiavel' => isset($_COOKIE['sema_device_token']),
+                'nivel'            => $admin['nivel'] ?? null,
+                // Propriedades da pessoa. Sem CPF: ele está na sessão, mas não vai para cá.
+                '$set'             => [
+                    'nome'  => $admin['nome'] ?? null,
+                    'nivel' => $admin['nivel'] ?? null,
+                    'cargo' => $admin['cargo'] ?? 'Administrador',
+                ],
+            ],
+        ]);
+    } catch (\Throwable $e) {
+        // Silêncio proposital: telemetria não pode impedir alguém de logar.
+    }
 }
 
 function mascararEmail($email) {
