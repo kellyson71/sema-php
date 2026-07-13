@@ -35,9 +35,12 @@ $posthogIsAdmin = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') !== false;
 $posthogAdmin = null;
 if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
     $posthogAdmin = [
+        // O ID continua sendo admin_<id>: precisa ser estável e único (nome repete e muda).
+        // Quem vira rótulo na tela é a propriedade 'name', que o PostHog usa para exibir a pessoa.
         'distinct_id' => 'admin_' . $_SESSION['admin_id'],
         // Só dado funcional. CPF e e-mail do admin ficam de fora de propósito.
         'props' => [
+            'name'  => $_SESSION['admin_nome'] ?? null,
             'nome'  => $_SESSION['admin_nome'] ?? null,
             'nivel' => $_SESSION['admin_nivel'] ?? null,
             'cargo' => $_SESSION['admin_cargo'] ?? null,

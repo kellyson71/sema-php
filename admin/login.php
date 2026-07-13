@@ -134,7 +134,9 @@ function registrarLoginPostHog(array $admin): void
                 'dispositivo_confiavel' => isset($_COOKIE['sema_device_token']),
                 'nivel'            => $admin['nivel'] ?? null,
                 // Propriedades da pessoa. Sem CPF: ele está na sessão, mas não vai para cá.
+                // 'name' é a chave que o PostHog usa para exibir a pessoa (em vez do admin_<id>).
                 '$set'             => [
+                    'name'  => $admin['nome'] ?? null,
                     'nome'  => $admin['nome'] ?? null,
                     'nivel' => $admin['nivel'] ?? null,
                     'cargo' => $admin['cargo'] ?? 'Administrador',
