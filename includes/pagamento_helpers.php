@@ -83,10 +83,6 @@ function salvarDocumentoPagamento(PDO $pdo, int $requerimentoId, string $protoco
     return $arquivoInfo;
 }
 
-/**
- * Constrói a URL pública de um arquivo salvo em uploads.
- */
-function urlPublicaUpload(string $caminhoRelativo): string
-{
-    return './uploads/' . ltrim(str_replace('\\', '/', $caminhoRelativo), '/');
-}
+// A antiga urlPublicaUpload() apontava direto para ./uploads/, que agora é fechado
+// por .htaccess. Use urlArquivo() (includes/functions.php), que passa por arquivo.php
+// e exige sessão de admin ou token válido.

@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
 // Verificar se o usuário é admin
@@ -189,7 +190,7 @@ include 'header.php';
                         <tr>
                             <td>
                                 <?php if (!empty($admin['foto_perfil']) && file_exists('../uploads/perfil/' . $admin['foto_perfil'])): ?>
-                                    <img src="<?php echo '../uploads/perfil/' . $admin['foto_perfil']; ?>" alt="Foto" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                    <img src="<?php echo htmlspecialchars('../' . urlArquivo('perfil/' . $admin['foto_perfil'])); ?>" alt="Foto" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
                                 <?php else: ?>
                                     <i class="fas fa-user-circle me-2 text-secondary" style="font-size: 24px;"></i>
                                 <?php endif; ?>

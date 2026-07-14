@@ -513,7 +513,7 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
                             </a>
                         <?php endif; ?>
                         <?php if ($documentoBoleto): ?>
-                            <a class="btn btn-dark" href="<?php echo htmlspecialchars(urlPublicaUpload($documentoBoleto['caminho'])); ?>" target="_blank" rel="noopener">
+                            <a class="btn btn-dark" href="<?php echo htmlspecialchars(urlArquivo($documentoBoleto['caminho'], $token)); ?>" target="_blank" rel="noopener">
                                 <i class="fas fa-file-pdf"></i>
                                 Baixar PDF do boleto
                             </a>

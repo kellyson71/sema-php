@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/assinatura_avancada_service.php';
 verificaLogin();
 
@@ -176,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
 }
 
 $fotoAtual = getFotoPerfil($adminId, $uploadDir);
-$fotoSrc = ($fotoAtual && file_exists($uploadDir . $fotoAtual)) ? '../uploads/perfil/' . $fotoAtual : null;
+$fotoSrc = ($fotoAtual && file_exists($uploadDir . $fotoAtual)) ? '../' . urlArquivo('perfil/' . $fotoAtual) : null;
 $nivelLabel = nomeNivelPerfil((string) ($admin['nivel'] ?? 'operador'));
 $ultimoAcesso = !empty($admin['ultimo_acesso']) ? formataData($admin['ultimo_acesso']) : 'Ainda sem registro';
 $totpAtivo = !empty($admin['totp_secret']);

@@ -409,7 +409,7 @@ class EmailService
         return ob_get_clean();
     }
 
-    public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null)
+    public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null, $url_portal = '', $validade_dias = null)
     {
         try {
             $subject = "[SEMA] Protocolo #{$protocolo} - Seu documento final está disponível";

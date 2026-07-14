@@ -83,32 +83,93 @@ function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
 }
 
 /**
- * Gera token seguro para acesso público ao documento final (Setor 2).
+ * Prazo de validade do link de entrega de documentos ao cidadão.
  */
-function gerarTokenDocumentoFinal(int $requerimentoId, string $protocolo): string
-{
-    $assinatura = hash_hmac('sha256', $requerimentoId . '|docfinal|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
-    return $requerimentoId . '.df.' . substr($assinatura, 0, 32);
+if (!defined('ENTREGA_LINK_VALIDADE_DIAS')) {
+    define('ENTREGA_LINK_VALIDADE_DIAS', 180);
 }
 
-function validarTokenDocumentoFinal(string $token, int $requerimentoId, string $protocolo): bool
+/**
+ * Gera o token de um lote de entrega de documentos ao cidadão.
+ *
+ * O token é aleatório (não derivado do protocolo): dois envios do mesmo
+ * requerimento geram links diferentes, e revogar um não afeta o outro. O ID do
+ * requerimento vai no prefixo apenas para a página pública localizar o processo
+ * antes de validar o token no banco — ele não autentica nada sozinho.
+ */
+function gerarTokenDocumentoFinal(int $requerimentoId): string
+{
+    return $requerimentoId . '.df.' . bin2hex(random_bytes(24));
+}
+
+/**
+ * Extrai o ID do requerimento embutido no prefixo do token.
+ */
+function requerimentoIdDoToken(string $token): int
+{
+    $partes = explode('.', $token, 3);
+    return isset($partes[0]) ? (int) $partes[0] : 0;
+}
+
+/**
+ * Busca o lote de entrega válido para um token: existe, não foi revogado e não
+ * expirou. Retorna as linhas do lote (uma por documento) ou [] se inválido.
+ *
+ * Esta é a única autenticação do link público — não há HMAC a conferir.
+ */
+function buscarLoteEntregaValido(PDO $pdo, string $token): array
 {
     if ($token === '') {
-        return false;
+        return [];
     }
-    return hash_equals(gerarTokenDocumentoFinal($requerimentoId, $protocolo), $token);
+
+    $stmt = $pdo->prepare("
+        SELECT id, requerimento_id, lote_id, caminho_arquivo, nome_arquivo,
+               instrucoes, enviado_em, expira_em, visualizado_em
+        FROM documentos_finais
+        WHERE token_acesso = ?
+          AND revogado_em IS NULL
+          AND (expira_em IS NULL OR expira_em > NOW())
+        ORDER BY id ASC
+    ");
+    $stmt->execute([$token]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function gerarUrlDocumentoFinal(int $requerimentoId, string $protocolo): string
+function gerarUrlDocumentoFinal(string $token): string
+{
+    return urlBasePublica() . '/documento_final.php?token=' . urlencode($token);
+}
+
+/**
+ * URL absoluta da raiz pública, mesmo quando BASE_URL é relativa.
+ */
+function urlBasePublica(): string
 {
     $base = rtrim(BASE_URL, '/');
     if (!preg_match('#^https?://#i', $base)) {
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-        $base = $protocol . '://' . $host . '/' . ltrim($base, '/');
-        $base = rtrim($base, '/');
+        $base = rtrim($protocol . '://' . $host . '/' . ltrim($base, '/'), '/');
     }
-    return $base . '/documento_final.php?token=' . urlencode(gerarTokenDocumentoFinal($requerimentoId, $protocolo));
+    return $base;
+}
+
+/**
+ * URL de download de um arquivo de uploads, servido por arquivo.php.
+ *
+ * A pasta uploads/ é fechada no .htaccess: nada lá é acessível por URL direta.
+ * Sem $token, arquivo.php só entrega o arquivo para admin logado.
+ */
+function urlArquivo(string $caminhoRelativo, string $token = '', bool $absoluta = false): string
+{
+    $caminho = ltrim(str_replace('\\', '/', $caminhoRelativo), '/');
+    $url = 'arquivo.php?path=' . rawurlencode($caminho);
+    if ($token !== '') {
+        $url .= '&token=' . urlencode($token);
+    }
+    return $absoluta ? urlBasePublica() . '/' . $url : $url;
 }
 
 /**

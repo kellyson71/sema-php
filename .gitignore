@@ -199,3 +199,6 @@ test-results/
 tests/results/phpunit-junit.xml
 tests/results/playwright-raw.json
 tests/results/playwright-artifacts/
+
+# Credenciais — nunca versionar
+ACESSOS.md

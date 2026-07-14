@@ -106,6 +106,28 @@
                         </table>
                         <?php endforeach; ?>
 
+                        <?php if (!empty($url_portal)): ?>
+                        <!-- ── Página de acompanhamento (mesmo link seguro) ── -->
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:6px;">
+                            <tr>
+                                <td align="center" style="padding:6px 0 2px;">
+                                    <a href="<?php echo htmlspecialchars($url_portal); ?>"
+                                       style="color:#007a30;font-size:13px;font-weight:700;text-decoration:underline;">
+                                        Ver todos os documentos deste processo
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                        <?php endif; ?>
+
+                        <?php if (!empty($validade_dias)): ?>
+                        <p style="margin:14px 0 0;font-size:12px;color:#64748b;line-height:1.6;text-align:center;">
+                            🔒 Estes links são pessoais e ficam disponíveis por
+                            <strong><?php echo (int) $validade_dias; ?> dias</strong>.
+                            Baixe e guarde os arquivos. Não repasse este e-mail a terceiros.
+                        </p>
+                        <?php endif; ?>
+
                         <?php if (!empty($instrucoes)): ?>
                         <!-- ── Observações do Secretário ── -->
                         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;margin-bottom:24px;">

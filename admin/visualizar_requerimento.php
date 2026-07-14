@@ -1591,6 +1591,18 @@ $isSetor1  = ($nivelAtual === 'analista'  || $isAdmin);
 // Fiscal puro e secretário puro (sem privilégio admin_geral)
 $isFiscalPuro     = ($nivelAtual === 'fiscal');
 $isSecretarioPuro = ($nivelAtual === 'secretario');
+
+// Quem pode movimentar o processo: o role dono do setor onde ele está (ou admin).
+// Os botões eram renderizados só por $setorAtual, então um fiscal abrindo um
+// processo da Triagem via botões que o handler recusava com "sem permissão".
+$rolePorSetor    = ['setor1' => 'analista', 'setor2' => 'fiscal', 'setor3' => 'secretario'];
+$roleDoSetor     = $rolePorSetor[$setorAtual] ?? 'analista';
+$podeAgirNoSetor = $isAdmin || ($nivelAtual === $roleDoSetor);
+$labelSetorAtual = [
+    'setor1' => 'Triagem Ambiental',
+    'setor2' => 'Fiscalização de Obras',
+    'setor3' => 'Revisão do Secretário',
+][$setorAtual] ?? $setorAtual;
 if (isset($_GET['error']) && $_GET['error'] === 'motivo_obrigatorio') {
     $mensagem = 'O motivo da devolução é obrigatório.';
     $mensagemTipo = 'danger';
@@ -2339,11 +2351,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="info-v"><?= !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : $ni ?></span>
                             <?php if ($documentoBoleto): ?>
                             <span class="info-k">Boleto (PDF)</span>
-                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
+                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])) ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
                             <?php endif; ?>
                             <?php if ($documentoComprovanteBoleto): ?>
                             <span class="info-k">Comprovante</span>
-                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoComprovanteBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
+                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoComprovanteBoleto['caminho'])) ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
                             <?php endif; ?>
                             <?php if (!empty($pagamento['instrucoes'])): ?>
                             <span class="info-k">Obs.</span>
@@ -2438,13 +2450,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="text-muted small"><?php echo number_format($doc['tamanho'] / 1024, 2) . ' KB'; ?></div>
                                 </div>
                                 <div class="data-actions">
-                                    <a href="<?php echo '../uploads/' . ltrim($doc['caminho'], '/\\'); ?>"
+                                    <a href="<?php echo htmlspecialchars('../' . urlArquivo($doc['caminho'])); ?>"
                                         class="copy-btn me-1"
                                         target="_blank"
                                         title="Visualizar arquivo">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="<?php echo '../uploads/' . ltrim($doc['caminho'], '/\\'); ?>"
+                                    <a href="<?php echo htmlspecialchars('../' . urlArquivo($doc['caminho']) . '&download=1'); ?>"
                                         class="copy-btn"
                                         download
                                         title="Baixar arquivo">
@@ -2774,7 +2786,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                             } elseif ($docReq['campo_formulario'] === 'comprovante_pagamento_boleto') {
                                                 $tituloDocReq = 'Comprovante de pagamento do requerente';
                                             }
-                                            $urlDocReq = '../uploads/' . ltrim($docReq['caminho'], '/\\');
+                                            $urlDocReq = '../' . urlArquivo($docReq['caminho']);
                                         ?>
                                             <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;">
                                                 <i class="fas fa-file-pdf" style="color:#dc2626;font-size:.85rem;flex-shrink:0;"></i>
@@ -2873,6 +2885,13 @@ document.addEventListener('DOMContentLoaded', function() {
                               <!-- Encaminhamento de fluxo -->
                               <div style="margin-bottom:20px;">
                                   <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Encaminhamento</p>
+                                  <?php if (!$podeAgirNoSetor): ?>
+                                  <div class="aviso-inline" style="width:100%;">
+                                      <i class="fas fa-lock"></i>
+                                      Este processo está em <strong><?= htmlspecialchars($labelSetorAtual) ?></strong>.
+                                      Só a equipe daquele setor pode movimentá-lo.
+                                  </div>
+                                  <?php else: ?>
                                   <div style="display:flex;flex-wrap:wrap;gap:8px;">
                                       <?php if ($setorAtual === 'setor1'): ?>
                                           <button type="button" class="act-btn act-go tt"
@@ -2893,12 +2912,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encaminha o processo para o Setor 3 — Revisão do Secretário para aprovação e assinatura final.">
                                               <i class="fas fa-arrow-right"></i>Enviar ao Secretário
-                                          </button>
-                                          <button type="button" class="act-btn act-go2 tt"
-                                              data-bs-toggle="modal" data-bs-target="#docFinalModal"
-                                              data-bs-placement="top"
-                                              data-bs-title="Envia o documento final ao requerente por link seguro e finaliza o processo.">
-                                              <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
                                           </button>
                                           <button type="button" class="act-btn act-neutral tt"
                                               onclick="abrirFM('fm-finalizar-s2')"
@@ -2926,7 +2939,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                               <i class="fas fa-arrow-left"></i>Devolver à Fiscalização
                                           </button>
                                       <?php endif; ?>
+
+                                      <?php // Entregar documento ao cidadão: disponível em qualquer setor, para quem
+                                            // está com o processo. Antes era exclusivo do Setor 2, e a Triagem — que
+                                            // conclui a maioria dos processos — só podia mandar o número do protocolo. ?>
+                                      <button type="button" class="act-btn act-go2 tt"
+                                          data-bs-toggle="modal" data-bs-target="#docFinalModal"
+                                          data-bs-placement="top"
+                                          data-bs-title="Envia os documentos assinados ao requerente por link seguro e finaliza o processo.">
+                                          <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
+                                      </button>
                                   </div>
+                                  <?php endif; ?>
                               </div>
 
                               <!-- Outras ações — exibição condicional por setor -->
@@ -3047,7 +3071,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php if ($documentoBoleto): ?>
                             <div class="mt-2 d-flex align-items-center gap-2 small" style="color:var(--teal-text);">
                                 <i class="fas fa-file-pdf"></i>
-                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>"
+                                Atual: <a href="<?php echo htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])); ?>"
                                           target="_blank" rel="noopener" style="color:inherit;">
                                     <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
                                 </a>
@@ -3963,8 +3987,8 @@ foreach ($docsDisponiveis as $docRow) {
              // ── Mini-lista na seção de ações (compacta) ──────────
              lista.innerHTML = '';
              data.pareceres.forEach(p => {
-                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
+                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
                  const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                  const nomeLimpo = formatarNomeParecer(p.nome);
                  const seloTipo  = gerarSeloTipoParecer(p.tipo);
@@ -4084,7 +4108,7 @@ foreach ($docsDisponiveis as $docRow) {
              pareceresSection.style.display = 'block';
              let html = '';
              pareceres.forEach(p => {
-                 const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
                 const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                 const nomeLimpo = formatarNomeParecer(p.nome);
                 const seloTipo = gerarSeloTipoParecer(p.tipo);

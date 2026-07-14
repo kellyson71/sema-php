@@ -10,8 +10,6 @@ $docFinal = null;
 $docsFinal = [];
 
 $token = trim($_GET['token'] ?? '');
-$partesToken = explode('.', $token, 3);
-$requerimentoId = isset($partesToken[0]) ? (int) $partesToken[0] : 0;
 
 try {
     $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS, [
@@ -20,37 +18,33 @@ try {
     ]);
     $pdo->exec("SET time_zone = '" . date('P') . "'");
 
-    if ($requerimentoId > 0) {
-        $stmt = $pdo->prepare("
-            SELECT r.id, r.protocolo, r.status, r.tipo_alvara, r.endereco_objetivo,
-                   req.nome AS requerente_nome, req.email AS requerente_email
-            FROM requerimentos r
-            JOIN requerentes req ON req.id = r.requerente_id
-            WHERE r.id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$requerimentoId]);
-        $requerimento = $stmt->fetch();
-    }
-
-    if (!$requerimento || !validarTokenDocumentoFinal($token, (int) $requerimento['id'], $requerimento['protocolo'])) {
-        throw new RuntimeException('Link de documento inválido ou expirado.');
-    }
-
-    // Buscar apenas documentos finais associados diretamente a este token
-    $stmt = $pdo->prepare("
-        SELECT df.id, df.caminho_arquivo, df.nome_arquivo, df.instrucoes, df.enviado_em, df.visualizado_em
-        FROM documentos_finais df
-        WHERE df.requerimento_id = ? AND df.token_acesso = ?
-        ORDER BY df.id ASC
-    ");
-    $stmt->execute([$requerimentoId, $token]);
-    $docsFinal = $stmt->fetchAll();
-    $docFinal = !empty($docsFinal) ? $docsFinal[0] : null;
+    // O token é aleatório e vive no banco: quem autentica o acesso é a própria
+    // existência de um lote válido (não revogado, não expirado) com este token.
+    // Todos os documentos do lote vêm juntos — antes só o primeiro aparecia.
+    $docsFinal = buscarLoteEntregaValido($pdo, $token);
 
     if (empty($docsFinal)) {
-        throw new RuntimeException('Documento não encontrado. Verifique se o link está correto.');
+        throw new RuntimeException('Link de documento inválido, revogado ou expirado. Se você recebeu um e-mail mais recente da SEMA, use o link dele.');
     }
+
+    $requerimentoId = (int) $docsFinal[0]['requerimento_id'];
+
+    $stmt = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.status, r.tipo_alvara, r.endereco_objetivo,
+               req.nome AS requerente_nome, req.email AS requerente_email
+        FROM requerimentos r
+        JOIN requerentes req ON req.id = r.requerente_id
+        WHERE r.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$requerimentoId]);
+    $requerimento = $stmt->fetch();
+
+    if (!$requerimento) {
+        throw new RuntimeException('Processo não encontrado.');
+    }
+
+    $docFinal = $docsFinal[0];
 
     // Registrar primeiro acesso nos documentos ainda não visualizados
     foreach ($docsFinal as $df) {
@@ -283,11 +277,9 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <?php endif; ?>
 
                     <?php foreach ($docsFinal as $df): ?>
-                        <?php $caminhoDownload = BASE_URL . 'uploads/' . ltrim($df['caminho_arquivo'], '/'); ?>
-                        <a href="<?= htmlspecialchars($caminhoDownload) ?>"
+                        <a href="<?= htmlspecialchars(urlArquivo($df['caminho_arquivo'], $token) . '&download=1') ?>"
                            class="btn-download"
-                           style="margin-bottom:10px;"
-                           download="<?= htmlspecialchars($df['nome_arquivo']) ?>">
+                           style="margin-bottom:10px;">
                             <i class="fas fa-download"></i>
                             <?= htmlspecialchars($df['nome_arquivo']) ?>
                         </a>
@@ -298,6 +290,9 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         Enviado em <?= date('d/m/Y \à\s H:i', strtotime($docsFinal[0]['enviado_em'])) ?>
                         &nbsp;·&nbsp;
                         <?= count($docsFinal) ?> documento(s)
+                        <?php if (!empty($docsFinal[0]['expira_em'])): ?>
+                        <br>Este link fica disponível até <?= date('d/m/Y', strtotime($docsFinal[0]['expira_em'])) ?> — baixe e guarde os arquivos.
+                        <?php endif; ?>
                     </p>
 
                 <?php elseif (!$mensagem): ?>

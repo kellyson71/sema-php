@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/../includes/admin_notifications.php';
@@ -67,7 +68,7 @@ $roleLabel = $labelSetor[$nivelAtual] ?? ucfirst($nivelAtual);
 $isAdmin = in_array($nivelAtual, ['admin', 'admin_geral'], true);
 $isAnalista = ($nivelAtual === 'analista' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
-$avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../uploads/perfil/' . $adminData['foto_perfil'] : null;
+$avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../' . urlArquivo('perfil/' . $adminData['foto_perfil']) : null;
 $isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php'], true);
 $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente';
 

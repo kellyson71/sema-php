@@ -23,7 +23,7 @@ if (!$id || !$acao) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT id, status, setor_atual, aguardando_acao, protocolo FROM requerimentos WHERE id = ?");
+$stmt = $pdo->prepare("SELECT id, status, setor_atual, aguardando_acao, protocolo, requerente_id FROM requerimentos WHERE id = ?");
 $stmt->execute([$id]);
 $req = $stmt->fetch();
 
@@ -72,12 +72,20 @@ $rolePorAcao = [
     'enviar_setor3'      => 'fiscal',     // Setor 2
     'devolver_setor1'    => 'fiscal',
     'concluir_setor2'    => 'fiscal',
-    'doc_final_envio'    => 'fiscal',
     'devolver_setor2'    => 'secretario', // Setor 3
     'setor3_aprovado'    => 'secretario',
     'setor3_recusado'    => 'secretario',
     'setor3_sem_decisao' => 'secretario',
 ];
+
+// A entrega de documentos ao cidadão não pertence a um setor: quem está com o
+// processo em mãos entrega. O Setor 1 conclui a maioria dos processos sozinho e
+// até aqui só podia mandar um número de protocolo, sem o documento.
+$rolePorSetor = ['setor1' => 'analista', 'setor2' => 'fiscal', 'setor3' => 'secretario'];
+if ($acao === 'doc_final_envio') {
+    $rolePorAcao['doc_final_envio'] = $rolePorSetor[$req['setor_atual']] ?? 'fiscal';
+}
+
 if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$acao]) {
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     $dest = $fromDocViewer
@@ -122,7 +130,9 @@ try {
             break;
 
         case 'concluir_direto':
-            atualizaSetor($pdo, $id, 'setor2', 'concluido');
+            // Conclui NO Setor 1. Antes gravava setor_atual='setor2', o que fazia o
+            // processo constar como concluído pela Fiscalização — que nunca o viu.
+            atualizaSetor($pdo, $id, 'setor1', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
             registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));
@@ -175,38 +185,60 @@ try {
                 throw new RuntimeException('Selecione pelo menos um documento para enviar ao cidadão.');
             }
             $instrucoes = trim($_POST['instrucoes_doc_final'] ?? '');
-            $loteId = bin2hex(random_bytes(16));
-            $token = gerarTokenDocumentoFinal((int) $id, $req['protocolo']);
 
-            // Limpar envios anteriores deste requerimento
-            $pdo->prepare("DELETE FROM documentos_finais WHERE requerimento_id = ?")->execute([$id]);
+            // Um token por LOTE, compartilhado por todos os documentos deste envio.
+            // Antes cada linha recebia um token diferente e a página pública filtrava
+            // por token, então o cidadão só enxergava o primeiro documento da lista.
+            $loteId    = bin2hex(random_bytes(16));
+            $token     = gerarTokenDocumentoFinal((int) $id);
+            $expiraEm  = date('Y-m-d H:i:s', strtotime('+' . ENTREGA_LINK_VALIDADE_DIAS . ' days'));
+
+            // Entregas anteriores são revogadas, não apagadas: o link antigo para de
+            // funcionar mas o registro de o quê / quem / quando permanece auditável.
+            $pdo->prepare("
+                UPDATE documentos_finais SET revogado_em = NOW()
+                WHERE requerimento_id = ? AND revogado_em IS NULL
+            ")->execute([$id]);
 
             $stmtDoc = $pdo->prepare("SELECT id, nome_arquivo, caminho_arquivo FROM assinaturas_digitais WHERE id = ? AND requerimento_id = ?");
             $stmtInsert = $pdo->prepare("
-                INSERT INTO documentos_finais (requerimento_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO documentos_finais
+                    (requerimento_id, lote_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id, expira_em)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
+
+            $docsEmail = [];
             foreach ($documentoIds as $docId) {
                 $stmtDoc->execute([$docId, $id]);
                 $docRow = $stmtDoc->fetch();
                 if (!$docRow) continue;
+
                 $caminhoFisico = UPLOAD_DIR . ltrim($docRow['caminho_arquivo'], '/');
                 if (!file_exists($caminhoFisico)) {
                     throw new RuntimeException('O arquivo "' . $docRow['nome_arquivo'] . '" não foi encontrado no servidor. O documento pode ter sido removido. Gere um novo documento antes de enviar.');
                 }
-                $stmtInsert->execute([$id, $docRow['caminho_arquivo'], $docRow['nome_arquivo'], $instrucoes, $token, $adminId]);
-                // Tokens subsequentes usam ID de lote para unicidade
-                $token = $loteId . '_' . $docId;
+
+                $stmtInsert->execute([
+                    $id, $loteId, $docRow['caminho_arquivo'], $docRow['nome_arquivo'],
+                    $instrucoes, $token, $adminId, $expiraEm,
+                ]);
+
+                $docsEmail[] = [
+                    'nome' => $docRow['nome_arquivo'],
+                    // Download autenticado pelo token do lote — nunca a URL crua de uploads/
+                    'url'  => urlArquivo($docRow['caminho_arquivo'], $token, true),
+                ];
             }
-            // Restaurar o token real no primeiro registro para compatibilidade com documento_final.php
-            $tokenFinal = gerarTokenDocumentoFinal((int) $id, $req['protocolo']);
-            $pdo->prepare("UPDATE documentos_finais SET token_acesso = ? WHERE requerimento_id = ? ORDER BY id ASC LIMIT 1")->execute([$tokenFinal, $id]);
 
-            atualizaSetor($pdo, $id, 'setor2', 'concluido');
+            if (empty($docsEmail)) {
+                throw new RuntimeException('Nenhum dos documentos selecionados pertence a este processo.');
+            }
+
+            // O processo é concluído no setor em que está, não sempre no Setor 2.
+            atualizaSetor($pdo, $id, $req['setor_atual'], 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando ' . count($documentoIds) . ' documento(s) final(is) ao requerente');
+            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando ' . count($docsEmail) . ' documento(s) final(is) ao requerente');
 
-            // Enviar email ao requerente com links diretos para os PDFs
             $stmtReq = $pdo->prepare("
                 SELECT r.tipo_alvara, re.nome AS requerente_nome, re.email AS requerente_email
                 FROM requerimentos r
@@ -218,17 +250,6 @@ try {
 
             if ($reqData && !empty($reqData['requerente_email'])) {
                 $tipoNome = $tipos_alvara[$reqData['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $reqData['tipo_alvara']));
-                $baseUrl  = rtrim(BASE_URL, '/') . '/';
-
-                $docsEmail = [];
-                $stmtDocUrls = $pdo->prepare("SELECT nome_arquivo, caminho_arquivo FROM documentos_finais WHERE requerimento_id = ? ORDER BY id ASC");
-                $stmtDocUrls->execute([$id]);
-                foreach ($stmtDocUrls->fetchAll() as $dfRow) {
-                    $docsEmail[] = [
-                        'nome' => $dfRow['nome_arquivo'],
-                        'url'  => $baseUrl . 'uploads/' . ltrim($dfRow['caminho_arquivo'], '/'),
-                    ];
-                }
 
                 $emailService = new EmailService();
                 $emailService->enviarEmailDocumentoFinal(
@@ -238,7 +259,9 @@ try {
                     $tipoNome,
                     $docsEmail,
                     $instrucoes,
-                    $id
+                    $id,
+                    gerarUrlDocumentoFinal($token),
+                    ENTREGA_LINK_VALIDADE_DIAS
                 );
             }
             break;

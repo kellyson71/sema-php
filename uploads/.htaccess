@@ -1,0 +1,21 @@
+# Nenhum arquivo desta pasta é acessível por URL direta.
+#
+# Aqui ficam documentos pessoais dos cidadãos (RG, CPF, contratos, projetos) e os
+# alvarás assinados. Antes disso, bastava descobrir o caminho para baixar qualquer
+# um deles sem autenticação.
+#
+# Todo download passa por /arquivo.php, que exige sessão de admin ou um token de
+# acesso válido. Ver arquivo.php e includes/functions.php (urlArquivo()).
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
+
+Options -Indexes
