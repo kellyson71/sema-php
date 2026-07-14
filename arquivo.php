@@ -28,6 +28,64 @@ function negar(int $status, string $mensagem): void
 $caminhoPedido = (string) ($_GET['path'] ?? '');
 $token         = trim((string) ($_GET['token'] ?? ''));
 
+// ---------- Download do lote inteiro em .zip ----------
+// Autorizado pelo próprio token: entrega exatamente os arquivos daquele lote.
+if (isset($_GET['zip'])) {
+    if ($token === '' || !class_exists('ZipArchive')) {
+        negar(400, 'Download em lote indisponível.');
+    }
+
+    try {
+        $pdo = new PDO(
+            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+            DB_USER,
+            DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+        );
+        $lote = buscarLoteEntregaValido($pdo, $token);
+    } catch (Throwable $e) {
+        error_log('[arquivo] Falha ao montar zip: ' . $e->getMessage());
+        $lote = [];
+    }
+
+    if (empty($lote)) {
+        negar(403, 'Link inválido, revogado ou expirado.');
+    }
+
+    $protocolo = '';
+    try {
+        $stmt = $pdo->prepare('SELECT protocolo FROM requerimentos WHERE id = ? LIMIT 1');
+        $stmt->execute([(int) $lote[0]['requerimento_id']]);
+        $protocolo = (string) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        // nome do zip é cosmético; segue com o padrão
+    }
+
+    $zipTemp = tempnam(sys_get_temp_dir(), 'sema_zip_');
+    $zip = new ZipArchive();
+    if ($zip->open($zipTemp, ZipArchive::OVERWRITE) !== true) {
+        @unlink($zipTemp);
+        negar(500, 'Não foi possível montar o arquivo .zip.');
+    }
+
+    foreach ($lote as $doc) {
+        $fisico = realpath(rtrim(UPLOAD_DIR, '/\\') . '/' . ltrim($doc['caminho_arquivo'], '/'));
+        if ($fisico !== false && is_file($fisico)) {
+            $zip->addFile($fisico, basename($doc['nome_arquivo']));
+        }
+    }
+    $zip->close();
+
+    $nomeZip = 'documentos_' . ($protocolo !== '' ? $protocolo : 'sema') . '.zip';
+    header('Content-Type: application/zip');
+    header('Content-Length: ' . filesize($zipTemp));
+    header('Content-Disposition: attachment; filename="' . $nomeZip . '"');
+    header('X-Content-Type-Options: nosniff');
+    readfile($zipTemp);
+    @unlink($zipTemp);
+    exit;
+}
+
 if ($caminhoPedido === '') {
     negar(400, 'Arquivo não informado.');
 }

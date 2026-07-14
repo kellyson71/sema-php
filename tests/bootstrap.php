@@ -35,3 +35,7 @@ require_once __DIR__ . '/stubs/DatabaseStub.php';
 
 // Inclui as funções puras diretamente (sem os requires de config/database)
 require_once __DIR__ . '/helpers/pure_functions.php';
+
+// Estas vêm do arquivo REAL, não de uma cópia: includes/entrega_helpers.php foi
+// separado de functions.php justamente por não depender de config/database.
+require_once __DIR__ . '/../includes/entrega_helpers.php';

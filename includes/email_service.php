@@ -123,6 +123,9 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         $mail->Subject = '=?UTF-8?B?' . base64_encode($assunto) . '?=';
         $mail->isHTML(true);
         $mail->Body = mb_convert_encoding($mensagem, 'UTF-8', 'UTF-8');
+        // Alternativa em texto puro: sem ela, filtros de spam penalizam a mensagem —
+        // e o e-mail do alvará é justamente o que não pode cair na caixa de spam.
+        $mail->AltBody = textoSimplesDoEmail($mail->Body);
 
         if (!$mail->send()) {
             $erro = $mail->ErrorInfo;
@@ -412,7 +415,10 @@ class EmailService
     public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null, $url_portal = '', $validade_dias = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Seu documento final está disponível";
+            // O tipo vai no assunto: "documento final" é jargão interno, o cidadão
+            // procura pelo nome do que pediu ("Alvará de Construção").
+            $tipoCurto = tituloAmigavel($tipo_alvara);
+            $subject = "[SEMA] {$tipoCurto} pronto — protocolo #{$protocolo}";
             $nome_destinatario = $to_name;
             ob_start();
             include __DIR__ . '/../templates/email_documento_final.php';

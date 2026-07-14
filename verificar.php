@@ -147,6 +147,7 @@ function mascararCpfPublico(?string $cpf): string
 
         .foot { text-align:center; color:#cfe0f5; font-size:.8rem; margin-top:22px; opacity:.9; }
     </style>
+    <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 <body>
     <div class="wrap">

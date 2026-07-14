@@ -24,8 +24,11 @@
                                         Secretaria Municipal de Meio Ambiente
                                     </p>
                                     <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;line-height:1.25;letter-spacing:-0.02em;">
-                                        Documento Final Disponível
+                                        <?php echo htmlspecialchars(tituloAmigavel($tipo_alvara)); ?>
                                     </h1>
+                                    <p style="margin:6px 0 0;color:#ffffff;font-size:14px;font-weight:600;">
+                                        Seu documento está pronto
+                                    </p>
                                     <p style="margin:6px 0 0;color:rgba(255,255,255,0.72);font-size:13px;">
                                         Prefeitura de Pau dos Ferros &mdash; RN
                                     </p>
@@ -49,8 +52,8 @@
                         </p>
 
                         <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.65;">
-                            Seu documento final está disponível para visualização e download.
-                            Utilize o(s) link(s) abaixo para abrir o arquivo diretamente.
+                            A análise do seu processo foi concluída e o documento já pode ser baixado.
+                            Na página de download você também confere quem assinou e a autenticidade do arquivo.
                         </p>
 
                         <!-- ── Info cards ── -->
@@ -88,53 +91,67 @@
                             </tr>
                         </table>
 
-                        <p style="margin:0 0 16px;font-size:14px;color:#334155;line-height:1.6;">
-                            Clique no link abaixo para visualizar e baixar o seu documento:
+                        <!-- ── O que está sendo entregue ── -->
+                        <p style="margin:0 0 10px;font-size:14px;color:#334155;line-height:1.6;">
+                            <?php echo count($documentos) > 1
+                                ? 'Estes são os ' . count($documentos) . ' documentos do seu processo:'
+                                : 'Este é o documento do seu processo:'; ?>
                         </p>
 
-                        <!-- ── Links diretos para os PDFs ── -->
-                        <?php foreach ($documentos as $doc): ?>
-                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;">
+                            <?php foreach ($documentos as $doc): ?>
                             <tr>
-                                <td align="center">
-                                    <a href="<?php echo htmlspecialchars($doc['url']); ?>"
-                                       style="display:inline-block;background:linear-gradient(135deg,#009640,#007a30);color:#ffffff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;letter-spacing:0.01em;box-shadow:0 4px 14px rgba(0,150,64,0.35);width:100%;box-sizing:border-box;text-align:center;">
-                                        📎&nbsp; <?php echo htmlspecialchars($doc['nome']); ?>
-                                    </a>
+                                <td style="padding:11px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fafafa;">
+                                    <p style="margin:0;color:#1e293b;font-size:14px;font-weight:700;line-height:1.35;">
+                                        📄&nbsp; <?php echo htmlspecialchars(!empty($doc['rotulo']) ? $doc['rotulo'] : $doc['nome']); ?>
+                                    </p>
+                                    <?php if (!empty($doc['rotulo'])): ?>
+                                    <p style="margin:2px 0 0 22px;color:#94a3b8;font-size:11px;line-height:1.4;word-break:break-all;">
+                                        <?php echo htmlspecialchars($doc['nome']); ?>
+                                    </p>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
+                            <tr><td style="height:8px;line-height:8px;">&nbsp;</td></tr>
+                            <?php endforeach; ?>
                         </table>
-                        <?php endforeach; ?>
 
                         <?php if (!empty($url_portal)): ?>
-                        <!-- ── Página de acompanhamento (mesmo link seguro) ── -->
-                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:6px;">
+                        <!-- ── Ação única: abrir a página segura de download ──
+                             Um botão por arquivo virava um paredão de botões verdes iguais, e o
+                             download direto pulava a página — então a SEMA nunca registrava a
+                             entrega. Com um CTA só, o acesso fica rastreado (visualizado_em). -->
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:4px;">
                             <tr>
-                                <td align="center" style="padding:6px 0 2px;">
+                                <td align="center">
                                     <a href="<?php echo htmlspecialchars($url_portal); ?>"
-                                       style="color:#007a30;font-size:13px;font-weight:700;text-decoration:underline;">
-                                        Ver todos os documentos deste processo
+                                       style="display:inline-block;background:linear-gradient(135deg,#009640,#007a30);color:#ffffff;padding:15px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(0,150,64,0.35);width:100%;box-sizing:border-box;text-align:center;">
+                                        Abrir e baixar <?php echo count($documentos) > 1 ? 'meus documentos' : 'meu documento'; ?>
                                     </a>
                                 </td>
                             </tr>
                         </table>
+                        <p style="margin:10px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;text-align:center;">
+                            Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+                            <span style="color:#64748b;word-break:break-all;"><?php echo htmlspecialchars($url_portal); ?></span>
+                        </p>
                         <?php endif; ?>
 
                         <?php if (!empty($validade_dias)): ?>
                         <p style="margin:14px 0 0;font-size:12px;color:#64748b;line-height:1.6;text-align:center;">
-                            🔒 Estes links são pessoais e ficam disponíveis por
-                            <strong><?php echo (int) $validade_dias; ?> dias</strong>.
-                            Baixe e guarde os arquivos. Não repasse este e-mail a terceiros.
+                            🔒 Este link é pessoal e dá acesso aos seus documentos — não repasse este e-mail.
+                            Ele fica disponível por <strong><?php echo (int) $validade_dias; ?> dias</strong>;
+                            baixe e guarde os arquivos.
                         </p>
                         <?php endif; ?>
 
                         <?php if (!empty($instrucoes)): ?>
-                        <!-- ── Observações do Secretário ── -->
+                        <!-- ── Observações de quem entregou (Triagem, Fiscalização ou Secretário) ── -->
                         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;margin-bottom:24px;">
                             <tr>
                                 <td style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 10px 10px 0;padding:14px 18px;">
                                     <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
-                                        📋 Observações do Secretário
+                                        📋 Observações da equipe técnica
                                     </p>
                                     <p style="margin:0;color:#78350f;font-size:14px;line-height:1.6;">
                                         <?php echo nl2br(htmlspecialchars($instrucoes)); ?>

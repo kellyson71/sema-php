@@ -200,11 +200,11 @@ try {
                 WHERE requerimento_id = ? AND revogado_em IS NULL
             ")->execute([$id]);
 
-            $stmtDoc = $pdo->prepare("SELECT id, nome_arquivo, caminho_arquivo FROM assinaturas_digitais WHERE id = ? AND requerimento_id = ?");
+            $stmtDoc = $pdo->prepare("SELECT id, documento_id, nome_arquivo, caminho_arquivo FROM assinaturas_digitais WHERE id = ? AND requerimento_id = ?");
             $stmtInsert = $pdo->prepare("
                 INSERT INTO documentos_finais
-                    (requerimento_id, lote_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id, expira_em)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (requerimento_id, lote_id, documento_id, caminho_arquivo, nome_arquivo, instrucoes, token_acesso, admin_envio_id, expira_em)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $docsEmail = [];
@@ -219,14 +219,13 @@ try {
                 }
 
                 $stmtInsert->execute([
-                    $id, $loteId, $docRow['caminho_arquivo'], $docRow['nome_arquivo'],
-                    $instrucoes, $token, $adminId, $expiraEm,
+                    $id, $loteId, $docRow['documento_id'], $docRow['caminho_arquivo'],
+                    $docRow['nome_arquivo'], $instrucoes, $token, $adminId, $expiraEm,
                 ]);
 
                 $docsEmail[] = [
-                    'nome' => $docRow['nome_arquivo'],
-                    // Download autenticado pelo token do lote — nunca a URL crua de uploads/
-                    'url'  => urlArquivo($docRow['caminho_arquivo'], $token, true),
+                    'nome'   => $docRow['nome_arquivo'],
+                    'rotulo' => rotuloDocumento($docRow['nome_arquivo']),
                 ];
             }
 

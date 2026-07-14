@@ -82,34 +82,9 @@ function gerarUrlPagamento(int $requerimentoId, string $protocolo): string
     return $base . '/pagamento.php?token=' . urlencode(gerarTokenPagamento($requerimentoId, $protocolo));
 }
 
-/**
- * Prazo de validade do link de entrega de documentos ao cidadão.
- */
-if (!defined('ENTREGA_LINK_VALIDADE_DIAS')) {
-    define('ENTREGA_LINK_VALIDADE_DIAS', 180);
-}
-
-/**
- * Gera o token de um lote de entrega de documentos ao cidadão.
- *
- * O token é aleatório (não derivado do protocolo): dois envios do mesmo
- * requerimento geram links diferentes, e revogar um não afeta o outro. O ID do
- * requerimento vai no prefixo apenas para a página pública localizar o processo
- * antes de validar o token no banco — ele não autentica nada sozinho.
- */
-function gerarTokenDocumentoFinal(int $requerimentoId): string
-{
-    return $requerimentoId . '.df.' . bin2hex(random_bytes(24));
-}
-
-/**
- * Extrai o ID do requerimento embutido no prefixo do token.
- */
-function requerimentoIdDoToken(string $token): int
-{
-    $partes = explode('.', $token, 3);
-    return isset($partes[0]) ? (int) $partes[0] : 0;
-}
+// Funções puras da entrega (rótulo, texto puro, token, URL) — sem dependência de
+// config/database, para poderem ser testadas isoladamente.
+require_once __DIR__ . '/entrega_helpers.php';
 
 /**
  * Busca o lote de entrega válido para um token: existe, não foi revogado e não
@@ -123,53 +98,26 @@ function buscarLoteEntregaValido(PDO $pdo, string $token): array
         return [];
     }
 
+    // Traz junto quem assinou cada documento: a página de entrega é onde o cidadão
+    // (ou um cartório, um banco) confere a autenticidade do alvará.
     $stmt = $pdo->prepare("
-        SELECT id, requerimento_id, lote_id, caminho_arquivo, nome_arquivo,
-               instrucoes, enviado_em, expira_em, visualizado_em
-        FROM documentos_finais
-        WHERE token_acesso = ?
-          AND revogado_em IS NULL
-          AND (expira_em IS NULL OR expira_em > NOW())
-        ORDER BY id ASC
+        SELECT df.id, df.requerimento_id, df.lote_id, df.documento_id, df.caminho_arquivo,
+               df.nome_arquivo, df.instrucoes, df.enviado_em, df.expira_em, df.visualizado_em,
+               GROUP_CONCAT(DISTINCT ad.assinante_nome ORDER BY ad.timestamp_assinatura SEPARATOR ', ') AS assinantes,
+               MAX(ad.timestamp_assinatura) AS assinado_em
+        FROM documentos_finais df
+        LEFT JOIN assinaturas_digitais ad
+               ON ad.requerimento_id = df.requerimento_id
+              AND ad.documento_id = df.documento_id
+        WHERE df.token_acesso = ?
+          AND df.revogado_em IS NULL
+          AND (df.expira_em IS NULL OR df.expira_em > NOW())
+        GROUP BY df.id
+        ORDER BY df.id ASC
     ");
     $stmt->execute([$token]);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function gerarUrlDocumentoFinal(string $token): string
-{
-    return urlBasePublica() . '/documento_final.php?token=' . urlencode($token);
-}
-
-/**
- * URL absoluta da raiz pública, mesmo quando BASE_URL é relativa.
- */
-function urlBasePublica(): string
-{
-    $base = rtrim(BASE_URL, '/');
-    if (!preg_match('#^https?://#i', $base)) {
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-        $base = rtrim($protocol . '://' . $host . '/' . ltrim($base, '/'), '/');
-    }
-    return $base;
-}
-
-/**
- * URL de download de um arquivo de uploads, servido por arquivo.php.
- *
- * A pasta uploads/ é fechada no .htaccess: nada lá é acessível por URL direta.
- * Sem $token, arquivo.php só entrega o arquivo para admin logado.
- */
-function urlArquivo(string $caminhoRelativo, string $token = '', bool $absoluta = false): string
-{
-    $caminho = ltrim(str_replace('\\', '/', $caminhoRelativo), '/');
-    $url = 'arquivo.php?path=' . rawurlencode($caminho);
-    if ($token !== '') {
-        $url .= '&token=' . urlencode($token);
-    }
-    return $absoluta ? urlBasePublica() . '/' . $url : $url;
 }
 
 /**
