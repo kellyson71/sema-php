@@ -163,87 +163,169 @@ include '../header.php';
             box-shadow: 0 2px 6px rgba(234, 179, 8, 0.4);
         }
 
-        /* Preview renderizada via iframe */
+        /* Preview renderizada via iframe — miniatura centralizada */
         .preview-miniature {
             background: #fff;
-            border-radius: 8px;
-            height: 90px;
+            border-radius: 6px;
+            height: 80px;
             overflow: hidden;
-            margin-top: 12px;
+            margin-top: 10px;
             border: 1px solid #e2e8f0;
             position: relative;
             cursor: pointer;
+            display: flex;
+            justify-content: center;
         }
         .preview-miniature iframe {
             width: 794px;
-            height: 600px;
+            height: 1123px;
             border: none;
-            transform: scale(0.24);
-            transform-origin: top left;
+            transform: scale(0.22);
+            transform-origin: top center;
             pointer-events: none;
+            flex-shrink: 0;
         }
         .preview-miniature::after {
             content: '';
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            height: 28px;
+            height: 30px;
             background: linear-gradient(transparent, #fff);
+            pointer-events: none;
         }
         .preview-miniature .expand-hint {
             position: absolute;
-            bottom: 4px; right: 6px;
-            font-size: 0.6rem;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
             color: #94a3b8;
             z-index: 2;
-            background: rgba(255,255,255,0.85);
-            padding: 1px 5px;
-            border-radius: 4px;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
         }
         .preview-miniature:hover .expand-hint {
+            opacity: 1;
             color: var(--sema-green);
         }
 
-        /* Modal de preview expandida */
+        /* ═══════════════════════════════════════════════
+           MODAL — Preview como folha de papel
+        ═══════════════════════════════════════════════ */
         .preview-modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
+            background: rgba(30,30,40,0.6);
             z-index: 9999;
-            align-items: center;
             justify-content: center;
-            backdrop-filter: blur(3px);
+            align-items: flex-start;
+            padding: 30px 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
         }
         .preview-modal-overlay.active { display: flex; }
+
         .preview-modal-box {
-            background: #fff;
-            border-radius: 16px;
-            width: 90vw;
-            max-width: 850px;
-            height: 85vh;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+            background: #e8e8e8;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 780px;
             display: flex;
             flex-direction: column;
+            animation: fadeInUp 0.35s ease;
             overflow: hidden;
-            animation: fadeInUp 0.3s ease;
         }
+
+        /* Barra de topo do modal */
         .preview-modal-header {
-            padding: 14px 20px;
-            border-bottom: 1px solid #e5e9f2;
+            background: #2d2d2d;
+            padding: 10px 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-shrink: 0;
         }
-        .preview-modal-header h6 { margin: 0; font-weight: 700; }
+        .preview-modal-header h6 {
+            margin: 0;
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        .preview-modal-close {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.75rem;
+        }
+        .preview-modal-close:hover { background: rgba(255,255,255,0.3); }
+
+        /* Área da "folha" de papel */
         .preview-modal-body {
-            flex: 1;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+        .preview-paper {
+            background: #fff;
+            width: 100%;
+            max-width: 700px;
+            min-height: 900px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
+        }
+
+        /* Timbre (header da folha) */
+        .preview-paper-header {
+            padding: 20px 30px 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 2px solid #2d8661;
+        }
+        .preview-paper-header img {
+            height: 50px;
+            width: auto;
+            flex-shrink: 0;
+        }
+        .preview-paper-header .header-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .preview-paper-header .header-text strong {
+            font-size: 0.82rem;
+            color: #1a1a1a;
+            letter-spacing: 0.01em;
+        }
+        .preview-paper-header .header-text small {
+            font-size: 0.7rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* Conteúdo da folha (iframe) */
+        .preview-paper-content {
+            flex: 1;
             padding: 0;
         }
-        .preview-modal-body iframe {
+        .preview-paper-content iframe {
             width: 100%;
-            height: 100%;
+            min-height: 800px;
             border: none;
+            display: block;
         }
 
         /* ═══════════════════════════════════════════════
@@ -390,18 +472,30 @@ include '../header.php';
 
     </div><!-- /tab-content -->
 
-    <!-- Modal de preview expandida -->
+    <!-- Modal de preview expandida — folha de papel -->
     <div class="preview-modal-overlay" id="previewModal" onclick="fecharPreviewModal(event)">
         <div class="preview-modal-box" onclick="event.stopPropagation()">
             <div class="preview-modal-header">
-                <h6 id="previewModalTitle"><i class="fas fa-file-alt me-2" style="color:var(--sema-green)"></i>Preview do Documento</h6>
-                <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center"
-                        style="width:32px;height:32px" onclick="fecharPreviewModal()">
+                <h6 id="previewModalTitle">
+                    <i class="fas fa-file-alt me-2" style="opacity:.6"></i>Preview do Documento
+                </h6>
+                <button class="preview-modal-close" onclick="fecharPreviewModal()" title="Fechar (Esc)">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="preview-modal-body">
-                <iframe id="previewModalIframe" src="about:blank"></iframe>
+                <div class="preview-paper">
+                    <div class="preview-paper-header">
+                        <img src="../../assets/SEMA/PNG/Azul/Logo Prefeitura_SEMA.png" alt="Logo SEMA" onerror="this.style.display='none'">
+                        <div class="header-text">
+                            <strong>PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</strong>
+                            <small>SECRETARIA MUNICIPAL DE MEIO AMBIENTE — SEMA</small>
+                        </div>
+                    </div>
+                    <div class="preview-paper-content">
+                        <iframe id="previewModalIframe" src="about:blank"></iframe>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -754,24 +848,32 @@ include '../header.php';
         });
     }
 
-    /* ─── Preview expandida (modal) ─────────────────────── */
+    /* ─── Preview expandida (modal — folha de papel) ─────── */
     function expandirPreview(nome, label, evt) {
         evt.preventDefault();
         evt.stopPropagation();
-        const modal = document.getElementById('previewModal');
+        const modal  = document.getElementById('previewModal');
         const iframe = document.getElementById('previewModalIframe');
-        const title = document.getElementById('previewModalTitle');
-        title.innerHTML = `<i class="fas fa-file-alt me-2" style="color:var(--sema-green)"></i>${escapeHtml(label)}`;
+        const title  = document.getElementById('previewModalTitle');
+        title.innerHTML = `<i class="fas fa-file-alt me-2" style="opacity:.6"></i>${escapeHtml(label)}`;
         iframe.src = `../templates/${encodeURIComponent(nome)}.html`;
+        // Auto-ajustar altura do iframe ao conteúdo
+        iframe.onload = function() {
+            try {
+                const h = iframe.contentDocument.documentElement.scrollHeight;
+                iframe.style.minHeight = Math.max(h + 40, 600) + 'px';
+            } catch(e) {}
+        };
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
     function fecharPreviewModal(evt) {
         if (evt && evt.target !== evt.currentTarget) return;
-        const modal = document.getElementById('previewModal');
+        const modal  = document.getElementById('previewModal');
         const iframe = document.getElementById('previewModalIframe');
         modal.classList.remove('active');
         iframe.src = 'about:blank';
+        iframe.style.minHeight = '800px';
         document.body.style.overflow = '';
     }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPreviewModal(); });
