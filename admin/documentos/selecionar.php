@@ -133,34 +133,29 @@ include '../header.php';
             box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
         }
 
-        /* Melhor match — borda dourada pulsante */
-        @keyframes goldPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.55), 0 8px 24px rgba(234, 179, 8, 0.18); }
-            50%       { box-shadow: 0 0 0 5px rgba(234, 179, 8, 0),   0 8px 24px rgba(234, 179, 8, 0.18); }
-        }
+        /* Melhor match — destaque discreto */
         .template-card.melhor-match {
-            border: 2px solid #eab308 !important;
-            border-bottom: 3px solid #ca8a04 !important;
-            animation: goldPulse 2.2s ease-in-out infinite;
+            border: 1.5px solid #86efac !important;
+            border-bottom: 3px solid var(--sema-green) !important;
         }
         .template-card.melhor-match:hover {
-            border-color: #ca8a04 !important;
-            box-shadow: 0 14px 32px rgba(234, 179, 8, 0.28) !important;
+            border-color: var(--sema-green) !important;
+            box-shadow: 0 12px 30px rgba(28, 75, 54, 0.15) !important;
         }
         .badge-melhor-match {
             position: absolute;
-            top: -1px; left: 50%; transform: translateX(-50%);
-            background: linear-gradient(90deg, #eab308, #f59e0b);
-            color: #1a1a1a;
-            font-size: 0.6rem;
-            font-weight: 800;
-            letter-spacing: 0.06em;
+            top: 8px; left: 10px;
+            background: #f0fdf4;
+            color: #166534;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
-            padding: 2px 10px;
-            border-radius: 0 0 8px 8px;
+            padding: 2px 7px;
+            border-radius: 4px;
             white-space: nowrap;
             z-index: 3;
-            box-shadow: 0 2px 6px rgba(234, 179, 8, 0.4);
+            border: 1px solid #bbf7d0;
         }
 
         /* Preview renderizada via iframe — miniatura centralizada */
