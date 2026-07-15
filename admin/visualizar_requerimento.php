@@ -2646,7 +2646,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php
     // Temporário: setor 2 continua podendo gerar/tratar documentos normalmente
     // mesmo em processos já Finalizados/Indeferidos vindos do Setor 1.
-    $tratarComoAtivoParaSetor2 = $isFiscalPuro;
+    // Além disso, o role dono do setor onde o processo está (analista no Setor 1,
+    // secretário no Setor 3) continua vendo o painel de ações — assim quem concluiu
+    // o processo diretamente na Triagem ainda consegue enviar o documento final ao
+    // cidadão, botão que só aparece no painel ativo.
+    $tratarComoAtivoParaSetor2 = $isFiscalPuro || ($nivelAtual === $roleDoSetor);
     $mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
     ?>
     <div class="row mt-4">
