@@ -3,174 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Sinaliza aos clientes (Gmail/Apple Mail) que o e-mail lida com tema claro/escuro,
-         evitando que o dark mode inverta cores e derrube o contraste dos cards claros. -->
     <meta name="color-scheme" content="light dark">
     <meta name="supported-color-schemes" content="light dark">
-    <title>Documento Final Disponível</title>
+    <title>Documento disponível — SEMA</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
+<?php
+// Nome do tipo em Title Case ("ALVARÁ DE HABITE-SE" -> "Alvará de Habite-se").
+// O caller passa o nome legível vindo de $tipos_alvara; tituloAmigavel só ajusta
+// a caixa. Se por acaso vier um slug cru, ainda assim fica apresentável.
+$tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
+?>
+<body style="margin:0;padding:0;background-color:#eef1f5;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
 
-<!-- Preheader: texto de pré-visualização mostrado ao lado do assunto na caixa de
-     entrada. Fica oculto no corpo. Os &zwnj;&nbsp; no fim evitam que o cliente
-     "puxe" trechos do HTML seguinte para a prévia. -->
+<!-- Preheader: prévia mostrada ao lado do assunto na caixa de entrada. -->
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;height:0;width:0;">
-    Seu documento do processo #<?php echo htmlspecialchars($protocolo); ?> está pronto para download na SEMA.
+    Comunicado oficial da SEMA — o documento do processo #<?php echo htmlspecialchars($protocolo); ?> já está disponível para download.
     <?php echo str_repeat('&zwnj;&nbsp;', 30); ?>
 </div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f4f8;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef1f5;">
     <tr>
-        <td align="center" style="padding:32px 16px 24px;">
+        <td align="center" style="padding:32px 16px 40px;">
 
-            <!-- Container principal -->
-            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(1,34,84,0.14);">
+            <!-- Container -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e2e6ec;border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 10px 28px rgba(16,24,40,0.06);">
 
-                <!-- ── Header verde ── -->
+                <!-- ── Cabeçalho institucional ── -->
                 <tr>
-                    <td style="background:linear-gradient(135deg,#009640 0%,#007a30 100%);background-color:#009640;padding:26px 32px 22px;">
-                        <!-- Logo institucional (versão branca, legível sobre o verde) -->
+                    <td style="background-color:#0a6b34;padding:24px 36px;">
                         <img src="https://sema.protocolosead.com/assets/img/logo_sema_email.png"
                              alt="SEMA — Secretaria Municipal do Meio Ambiente — Prefeitura de Pau dos Ferros/RN"
-                             width="188" style="display:block;border:0;outline:none;text-decoration:none;width:188px;max-width:60%;height:auto;margin-bottom:16px;">
-                        <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;line-height:1.25;letter-spacing:-0.02em;">
-                            <?php echo htmlspecialchars(tituloAmigavel($tipo_alvara)); ?>
-                        </h1>
-                        <p style="margin:6px 0 0;color:#ffffff;font-size:14px;font-weight:600;">
-                            Seu documento está pronto
-                        </p>
+                             width="176" style="display:block;border:0;outline:none;text-decoration:none;width:176px;max-width:58%;height:auto;">
+                    </td>
+                </tr>
+                <!-- Filete tricolor: eco discreto da marca (amarelo/verde/azul do logo) -->
+                <tr>
+                    <td style="font-size:0;line-height:0;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                            <td width="34%" style="height:4px;background-color:#f2b705;font-size:0;line-height:0;">&nbsp;</td>
+                            <td width="33%" style="height:4px;background-color:#0a6b34;font-size:0;line-height:0;">&nbsp;</td>
+                            <td width="33%" style="height:4px;background-color:#0b4a8f;font-size:0;line-height:0;">&nbsp;</td>
+                        </tr></table>
                     </td>
                 </tr>
 
-                <!-- ── Body branco ── -->
+                <!-- ── Corpo ── -->
                 <tr>
-                    <td style="background:#ffffff;padding:32px 32px 24px;">
+                    <td style="padding:34px 36px 8px;">
 
-                        <p style="margin:0 0 8px;font-size:15px;color:#334155;line-height:1.6;">
-                            Olá, <strong><?php echo htmlspecialchars($nome_destinatario); ?></strong>.
+                        <p style="margin:0 0 4px;color:#8a94a2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">
+                            Comunicado oficial
                         </p>
+                        <h1 style="margin:0 0 22px;color:#101828;font-size:21px;font-weight:700;line-height:1.3;">
+                            <?php echo htmlspecialchars($tipoLegivel); ?> &mdash; documento disponível
+                        </h1>
 
-                        <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.65;">
-                            A análise do seu processo foi concluída e o documento já pode ser baixado.
-                            Na página de download você também confere quem assinou e a autenticidade do arquivo.
+                        <p style="margin:0 0 14px;font-size:15px;color:#3f4a56;line-height:1.65;">
+                            Prezado(a) <strong style="color:#101828;"><?php echo htmlspecialchars($nome_destinatario); ?></strong>,
                         </p>
-
-                        <!-- ── Info cards ── -->
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
-                            <tr>
-                                <td style="padding:0 8px 0 0;width:50%;vertical-align:top;">
-                                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;">
-                                        <p style="margin:0 0 4px;color:#15803d;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Protocolo</p>
-                                        <p style="margin:0;color:#166534;font-size:15px;font-weight:800;">#<?php echo htmlspecialchars($protocolo); ?></p>
-                                    </div>
-                                </td>
-                                <td style="padding:0 0 0 8px;width:50%;vertical-align:top;">
-                                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 16px;">
-                                        <p style="margin:0 0 4px;color:#1d4ed8;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Emitido em</p>
-                                        <p style="margin:0;color:#1e40af;font-size:15px;font-weight:800;line-height:1.3;"><?php echo date('d/m/Y'); ?></p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
-                            <tr>
-                                <td style="padding:0 8px 0 0;width:50%;vertical-align:top;">
-                                    <div style="background:#fafafa;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                                        <p style="margin:0 0 4px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Requerente</p>
-                                        <p style="margin:0;color:#1e293b;font-size:14px;font-weight:700;line-height:1.3;"><?php echo htmlspecialchars($nome_destinatario); ?></p>
-                                    </div>
-                                </td>
-                                <td style="padding:0 0 0 8px;width:50%;vertical-align:top;">
-                                    <div style="background:#fafafa;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                                        <p style="margin:0 0 4px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Tipo de Processo</p>
-                                        <p style="margin:0;color:#1e293b;font-size:13px;font-weight:600;line-height:1.3;"><?php echo htmlspecialchars($tipo_alvara); ?></p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <!-- ── O que está sendo entregue ── -->
-                        <p style="margin:0 0 10px;font-size:14px;color:#334155;line-height:1.6;">
+                        <p style="margin:0 0 26px;font-size:15px;color:#475569;line-height:1.7;">
+                            informamos que a análise do seu processo foi concluída e
                             <?php echo count($documentos) > 1
-                                ? 'Estes são os ' . count($documentos) . ' documentos do seu processo:'
-                                : 'Este é o documento do seu processo:'; ?>
+                                ? 'os documentos correspondentes estão disponíveis'
+                                : 'o documento correspondente está disponível'; ?>
+                            para download. O acesso é feito por meio de página segura, onde também é possível
+                            conferir os signatários e a autenticidade de cada arquivo.
                         </p>
 
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;">
+                        <!-- ── Ficha do processo (tabela de dados, sem balões coloridos) ── -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e9ee;border-radius:8px;border-collapse:separate;overflow:hidden;margin-bottom:28px;">
+                            <tr>
+                                <td width="42%" style="background:#f7f9fb;padding:11px 16px;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #eef1f4;">Protocolo</td>
+                                <td style="padding:11px 16px;font-size:13px;color:#101828;font-weight:700;border-bottom:1px solid #eef1f4;">#<?php echo htmlspecialchars($protocolo); ?></td>
+                            </tr>
+                            <tr>
+                                <td style="background:#f7f9fb;padding:11px 16px;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #eef1f4;">Emitido em</td>
+                                <td style="padding:11px 16px;font-size:13px;color:#1f2933;font-weight:600;border-bottom:1px solid #eef1f4;"><?php echo date('d/m/Y'); ?></td>
+                            </tr>
+                            <tr>
+                                <td style="background:#f7f9fb;padding:11px 16px;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #eef1f4;">Tipo de processo</td>
+                                <td style="padding:11px 16px;font-size:13px;color:#1f2933;font-weight:600;border-bottom:1px solid #eef1f4;"><?php echo htmlspecialchars($tipoLegivel); ?></td>
+                            </tr>
+                            <tr>
+                                <td style="background:#f7f9fb;padding:11px 16px;font-size:12px;color:#64748b;font-weight:600;">Requerente</td>
+                                <td style="padding:11px 16px;font-size:13px;color:#1f2933;font-weight:600;"><?php echo htmlspecialchars($nome_destinatario); ?></td>
+                            </tr>
+                        </table>
+
+                        <!-- ── Documentos ── -->
+                        <p style="margin:0 0 12px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
+                            <?php echo count($documentos) > 1 ? count($documentos) . ' documentos' : 'Documento'; ?>
+                        </p>
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
                             <?php foreach ($documentos as $doc): ?>
                             <tr>
-                                <td style="padding:11px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fafafa;">
-                                    <p style="margin:0;color:#1e293b;font-size:14px;font-weight:700;line-height:1.35;">
-                                        📄&nbsp; <?php echo htmlspecialchars(!empty($doc['rotulo']) ? $doc['rotulo'] : $doc['nome']); ?>
-                                    </p>
-                                    <?php if (!empty($doc['rotulo'])): ?>
-                                    <p style="margin:2px 0 0 22px;color:#94a3b8;font-size:11px;line-height:1.4;word-break:break-all;">
-                                        <?php echo htmlspecialchars($doc['nome']); ?>
-                                    </p>
-                                    <?php endif; ?>
+                                <td style="padding:0 0 8px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e9ee;border-radius:8px;">
+                                        <tr>
+                                            <td width="52" style="padding:13px 0 13px 14px;vertical-align:middle;">
+                                                <span style="display:inline-block;background:#fdecec;color:#c0392b;font-size:10px;font-weight:800;letter-spacing:0.04em;padding:4px 7px;border-radius:4px;">PDF</span>
+                                            </td>
+                                            <td style="padding:11px 14px 11px 6px;vertical-align:middle;">
+                                                <p style="margin:0;color:#1f2933;font-size:14px;font-weight:600;line-height:1.35;">
+                                                    <?php echo htmlspecialchars(!empty($doc['rotulo']) ? $doc['rotulo'] : $doc['nome']); ?>
+                                                </p>
+                                                <?php if (!empty($doc['rotulo'])): ?>
+                                                <p style="margin:1px 0 0;color:#9aa4b0;font-size:11px;line-height:1.4;word-break:break-all;">
+                                                    <?php echo htmlspecialchars($doc['nome']); ?>
+                                                </p>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </td>
                             </tr>
-                            <tr><td style="height:8px;line-height:8px;">&nbsp;</td></tr>
                             <?php endforeach; ?>
                         </table>
 
                         <?php if (!empty($url_portal)): ?>
-                        <!-- ── Ação única: abrir a página segura de download ──
-                             Um botão por arquivo virava um paredão de botões verdes iguais, e o
-                             download direto pulava a página — então a SEMA nunca registrava a
-                             entrega. Com um CTA só, o acesso fica rastreado (visualizado_em).
-                             O bloco VML (<!--[if mso]>) desenha o botão no Outlook desktop, que
-                             ignora padding/border-radius em <a>. -->
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:4px;">
+                        <!-- ── Botão de acesso (VML garante renderização no Outlook) ── -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
                             <tr>
                                 <td align="center">
                                     <!--[if mso]>
-                                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="<?php echo htmlspecialchars($url_portal); ?>" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="23%" fillcolor="#009640" stroke="f">
+                                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="<?php echo htmlspecialchars($url_portal); ?>" style="height:48px;v-text-anchor:middle;width:320px;" arcsize="14%" fillcolor="#0a6b34" stroke="f">
                                     <w:anchorlock/>
-                                    <center style="color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;font-size:16px;font-weight:bold;">
-                                        Abrir e baixar <?php echo count($documentos) > 1 ? 'meus documentos' : 'meu documento'; ?>
+                                    <center style="color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:bold;">
+                                        Acessar e baixar <?php echo count($documentos) > 1 ? 'documentos' : 'documento'; ?>
                                     </center>
                                     </v:roundrect>
                                     <![endif]-->
                                     <!--[if !mso]><!-- -->
                                     <a href="<?php echo htmlspecialchars($url_portal); ?>"
-                                       style="display:inline-block;background:linear-gradient(135deg,#009640,#007a30);background-color:#009640;color:#ffffff;padding:15px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(0,150,64,0.35);width:100%;box-sizing:border-box;text-align:center;">
-                                        Abrir e baixar <?php echo count($documentos) > 1 ? 'meus documentos' : 'meu documento'; ?>
+                                       style="display:inline-block;background-color:#0a6b34;color:#ffffff;padding:14px 34px;border-radius:7px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.01em;box-shadow:0 2px 5px rgba(10,107,52,0.25);">
+                                        Acessar e baixar <?php echo count($documentos) > 1 ? 'documentos' : 'documento'; ?>
                                     </a>
                                     <!--<![endif]-->
                                 </td>
                             </tr>
                         </table>
-                        <p style="margin:10px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;text-align:center;">
-                            Se o botão não funcionar, copie e cole este endereço no navegador:<br>
-                            <span style="color:#64748b;word-break:break-all;"><?php echo htmlspecialchars($url_portal); ?></span>
-                        </p>
-                        <?php endif; ?>
-
-                        <!-- ── Autenticidade ── -->
-                        <p style="margin:16px 0 0;font-size:12px;color:#64748b;line-height:1.6;text-align:center;">
-                            🛡️ Todos os documentos têm <strong>assinatura digital verificável</strong> —
-                            confira a autenticidade na própria página de download.
-                        </p>
-
-                        <?php if (!empty($validade_dias)): ?>
-                        <p style="margin:10px 0 0;font-size:12px;color:#64748b;line-height:1.6;text-align:center;">
-                            🔒 Este link é pessoal e dá acesso aos seus documentos — não repasse este e-mail.
-                            Ele fica disponível por <strong><?php echo (int) $validade_dias; ?> dias</strong>;
-                            baixe e guarde os arquivos.
+                        <p style="margin:0 0 26px;font-size:12px;color:#9aa4b0;line-height:1.6;text-align:center;">
+                            Caso o botão não funcione, copie e cole no navegador:<br>
+                            <span style="color:#6b7580;word-break:break-all;"><?php echo htmlspecialchars($url_portal); ?></span>
                         </p>
                         <?php endif; ?>
 
                         <?php if (!empty($instrucoes)): ?>
-                        <!-- ── Observações de quem entregou (Triagem, Fiscalização ou Secretário) ── -->
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;margin-bottom:24px;">
+                        <!-- ── Observações da equipe técnica ── -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:26px;">
                             <tr>
-                                <td style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 10px 10px 0;padding:14px 18px;">
-                                    <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
-                                        📋 Observações da equipe técnica
+                                <td style="background:#f7f9fb;border:1px solid #e5e9ee;border-left:3px solid #0a6b34;border-radius:6px;padding:14px 18px;">
+                                    <p style="margin:0 0 5px;color:#334155;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
+                                        Observações da equipe técnica
                                     </p>
-                                    <p style="margin:0;color:#78350f;font-size:14px;line-height:1.6;">
+                                    <p style="margin:0;color:#475569;font-size:14px;line-height:1.65;">
                                         <?php echo nl2br(htmlspecialchars($instrucoes)); ?>
                                     </p>
                                 </td>
@@ -178,33 +165,21 @@
                         </table>
                         <?php endif; ?>
 
-                        <!-- ── Contato ── -->
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:<?php echo empty($instrucoes) ? '20px' : '0'; ?>">
+                        <!-- ── Avisos (autenticidade / validade) em nota discreta ── -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:4px;">
                             <tr>
-                                <td style="border-top:1px solid #e2e8f0;padding-top:20px;">
-                                    <p style="margin:0 0 10px;color:#64748b;font-size:13px;">Em caso de dúvidas, fale conosco:</p>
-                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                        <tr>
-                                            <td style="padding:0 16px 0 0;color:#475569;font-size:13px;">
-                                                📱 <strong>(84) 99668-6413</strong>
-                                            </td>
-                                            <td style="color:#475569;font-size:13px;">
-                                                ✉️ fiscalizacaosemapdf@gmail.com
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="2" style="padding-top:4px;color:#94a3b8;font-size:12px;">
-                                                Atendimento: Segunda a Sexta, 7h às 13h
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <!-- ── Assinatura institucional ── -->
-                                    <p style="margin:18px 0 0;color:#334155;font-size:13px;line-height:1.55;">
-                                        Atenciosamente,<br>
-                                        <strong style="color:#007a30;">Secretaria Municipal do Meio Ambiente</strong><br>
-                                        <span style="color:#94a3b8;">Prefeitura de Pau dos Ferros — RN</span>
+                                <td style="border-top:1px solid #eef1f4;padding-top:18px;">
+                                    <p style="margin:0 0 6px;font-size:12px;color:#64748b;line-height:1.65;">
+                                        <strong style="color:#475569;">Autenticidade.</strong>
+                                        Todos os documentos possuem assinatura digital verificável diretamente na página de download.
                                     </p>
+                                    <?php if (!empty($validade_dias)): ?>
+                                    <p style="margin:0;font-size:12px;color:#64748b;line-height:1.65;">
+                                        <strong style="color:#475569;">Acesso.</strong>
+                                        Este link é pessoal — não repasse este e-mail. Permanece disponível por
+                                        <strong><?php echo (int) $validade_dias; ?> dias</strong>; recomendamos baixar e guardar os arquivos.
+                                    </p>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         </table>
@@ -212,12 +187,39 @@
                     </td>
                 </tr>
 
-                <!-- ── Footer ── -->
+                <!-- ── Assinatura / contato ── -->
                 <tr>
-                    <td style="background:#013d86;padding:18px 32px;text-align:center;">
-                        <p style="margin:0;color:rgba(255,255,255,0.55);font-size:12px;line-height:1.6;">
-                            Este é um e-mail automático &mdash; não responda a esta mensagem.<br>
-                            &copy; <?php echo date('Y'); ?> &mdash; Secretaria Municipal de Meio Ambiente &mdash; Prefeitura de Pau dos Ferros/RN
+                    <td style="padding:22px 36px 26px;border-top:1px solid #eef1f4;">
+                        <p style="margin:0 0 3px;color:#1f2933;font-size:14px;font-weight:700;">
+                            Secretaria Municipal do Meio Ambiente
+                        </p>
+                        <p style="margin:0 0 12px;color:#8a94a2;font-size:12px;">
+                            Prefeitura Municipal de Pau dos Ferros — RN
+                        </p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding:0 22px 0 0;color:#475569;font-size:13px;">
+                                    <span style="color:#8a94a2;">Telefone</span>&nbsp; (84) 99668-6413
+                                </td>
+                                <td style="color:#475569;font-size:13px;">
+                                    <span style="color:#8a94a2;">E-mail</span>&nbsp; fiscalizacaosemapdf@gmail.com
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="padding-top:6px;color:#9aa4b0;font-size:12px;">
+                                    Atendimento: segunda a sexta, das 7h às 13h
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- ── Rodapé ── -->
+                <tr>
+                    <td style="background:#0f2740;padding:16px 36px;">
+                        <p style="margin:0;color:rgba(255,255,255,0.55);font-size:11px;line-height:1.7;">
+                            Mensagem automática — não é necessário responder este e-mail.<br>
+                            &copy; <?php echo date('Y'); ?> Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
                         </p>
                     </td>
                 </tr>
