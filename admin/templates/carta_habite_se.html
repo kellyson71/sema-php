@@ -1,140 +1,59 @@
 <style>
     body {
         font-family: "Times New Roman", Times, serif;
-        font-size: 11pt;
+        font-size: 12pt;
         line-height: 1.4;
         color: #000;
     }
-    .titulo-licenca {
-        font-size: 14pt;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 20px;
-        text-transform: uppercase;
-        border-bottom: 2px solid #000;
-        padding-bottom: 10px;
-    }
-    .subtitulo {
-        font-size: 10pt;
-        text-align: center;
-        margin-bottom: 20px;
-        font-style: italic;
-    }
-    .secao-titulo {
-        font-weight: bold;
-        text-transform: uppercase;
-        background-color: #f0f0f0;
-        padding: 5px;
-        margin-top: 15px;
-        margin-bottom: 10px;
-        font-size: 10pt;
-        border: 1px solid #ccc;
-    }
-    .tabela-dados {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-    }
-    .tabela-dados td {
-        padding: 4px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-    }
-    .tabela-dados .label {
-        font-weight: bold;
-        background-color: #f9f9f9;
-        width: 30%;
-    }
-    .especificacao {
-        margin-top: 15px;
-        margin-bottom: 15px;
-        text-align: justify;
-        font-size: 10.5pt;
-        line-height: 1.5;
-    }
-    .data-local {
-        margin-top: 30px;
-        text-align: right;
-        font-size: 11pt;
-    }
-    .linha-assinatura {
-        border-top: 1px solid #000;
-        margin-top: 50px;
-        padding-top: 5px;
-        text-align: center;
-    }
-    .nome-assinante {
-        font-weight: bold;
-        font-size: 10pt;
-    }
-    .cargo-assinante {
-        font-size: 9pt;
-    }
 </style>
 
-<div class="titulo-licenca">
-    CARTA DE HABITE-SE<br>
+<div style="text-align:center; font-weight:bold; font-size:13pt; margin-bottom:4px;">
+    CARTA DE HABITE-SE
+</div>
+<div style="text-align:center; font-weight:bold; font-size:12pt; margin-bottom:2px;">
     N° {{numero_documento_ano}}
 </div>
-
-<div class="subtitulo">
-    Nº PROCESSO: {{protocolo}}
+<div style="text-align:center; font-size:11pt; margin-bottom:18px;">
+    {{protocolo}}
 </div>
 
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">1. IDENTIFICAÇÃO DO PROPRIETÁRIO</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+<table width="100%" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse; border:2px solid #000;">
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Proprietário do Imóvel:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{nome_proprietario}}</td>
+        <td style="border:1px solid #000; padding:8px 10px;">
+            <strong>PROPRIETÁRIO DO IMÓVEL:</strong> {{nome_proprietario}}<br>
+            <strong>CPF/CNPJ:</strong> {{cpf_cnpj_proprietario}}
+        </td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">CPF/CNPJ:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{cpf_cnpj_proprietario}}</td>
-    </tr>
-</table>
-
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">2. DADOS DO IMÓVEL E DA OBRA</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Endereço da Obra:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{endereco_objetivo}}</td>
+        <td style="border:1px solid #000; padding:8px 10px;">
+            <strong>ENDEREÇO DA OBRA:</strong> {{endereco_objetivo}}<br>
+            <strong>CIDADE:</strong> Pau dos Ferros - RN.
+        </td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Área Construída:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{area_construida}} m²</td>
+        <td style="border:1px solid #000; padding:8px 10px;">
+            <strong>RESPONSÁVEL TÉCNICO:</strong> {{responsavel_tecnico_nome}}<br>
+            <strong>REGISTRO:</strong> N° {{responsavel_tecnico_registro}}
+        </td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Cadastro Imobiliário:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{detalhes_imovel}}</td>
+        <td style="border:1px solid #000; padding:8px 10px;">
+            <strong>ALVARÁ:</strong> {{alvara_construcao_numero}}<br>
+            <strong>CADASTRO IMOBILIÁRIO (SEQUENCIAL):</strong> {{cadastro_imobiliario}}<br>
+            <strong>ART:</strong> N° {{responsavel_tecnico_numero}}<br>
+            <strong>PERÍODO DA OBRA:</strong> INÍCIO {{inicio_obra}}, TÉRMINO {{termino_obra}}
+        </td>
     </tr>
     <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Alvará de Construção:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">N° {{numero_documento_ano}}</td>
-    </tr>
-</table>
-
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">3. RESPONSABILIDADE TÉCNICA</div>
-<table class="tabela-dados" width="100%" cellpadding="6" cellspacing="0" style="width:100%; border-collapse:collapse; margin-bottom:10px;">
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Responsável Técnico:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_nome}}</td>
-    </tr>
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">Registro Profissional:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_registro}}</td>
-    </tr>
-    <tr>
-        <td class="label" width="30%" style="font-weight:bold; background-color:#f0f0f0; border:1px solid #aaa; padding:6px 8px; width:30%;">ART/RRT/TRT:</td>
-        <td style="border:1px solid #aaa; padding:6px 8px;">{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}</td>
+        <td style="border:1px solid #000; padding:8px 10px; text-align:justify;">
+            <strong>ESPECIFICAÇÃO / LAUDO DO ENGENHEIRO TÉCNICO E FISCAL DE OBRAS:</strong><br>
+            <strong>PARECER TÉCNICO DADO PELO:</strong> ENG.º CIVIL: {{eng_fiscal_nome}}. CREA: {{eng_fiscal_registro}}.<br><br>
+            <strong><em>CARACTERÍSTICAS:</em></strong><br>
+            <em>{{especificacao}}</em>
+        </td>
     </tr>
 </table>
 
-<div class="secao-titulo" style="font-weight:bold; text-transform:uppercase; background-color:#e8e8e8; padding:5px 6px; margin-top:15px; margin-bottom:4px; font-size:10pt; border:1px solid #aaa;">4. ESPECIFICAÇÃO / LAUDO DO ENGENHEIRO TÉCNICO</div>
-<div class="especificacao">
-    <p>{{especificacao}}</p>
-</div>
-
-<div class="data-local">
+<div style="margin-top:30px; text-align:center;">
     Pau dos Ferros, RN, {{data_atual}}.
 </div>
-

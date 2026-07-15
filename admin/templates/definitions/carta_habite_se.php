@@ -1,4 +1,11 @@
 <?php
+/**
+ * Definição: Carta de Habite-se
+ *
+ * Layout alinhado ao documento original da SEMA: tabela de linha única com
+ * bordas (sem cabeçalhos de seção cinza), campos por célula.
+ */
+
 return [
     'label'     => 'Carta de Habite-se',
     'descricao' => 'Certificado de conclusão e habitabilidade da edificação.',
@@ -13,57 +20,45 @@ return [
         ],
         [
             'tipo'  => 'subtitulo',
-            'texto' => 'Nº PROCESSO: {{protocolo}}',
+            'texto' => '{{protocolo}}',
         ],
 
-        [
-            'tipo'  => 'secao',
-            'texto' => '1. IDENTIFICAÇÃO DO PROPRIETÁRIO',
-        ],
         [
             'tipo'   => 'tabela',
             'linhas' => [
-                ['Proprietário do Imóvel', '{{nome_proprietario}}'],
-                ['CPF/CNPJ',              '{{cpf_cnpj_proprietario}}'],
+                [
+                    'PROPRIETÁRIO DO IMÓVEL:',
+                    '{{nome_proprietario}}<br><strong>CPF/CNPJ:</strong> {{cpf_cnpj_proprietario}}',
+                    ['colspan' => true],
+                ],
+                [
+                    'ENDEREÇO DA OBRA:',
+                    '{{endereco_objetivo}}<br><strong>CIDADE:</strong> Pau dos Ferros - RN.',
+                    ['colspan' => true],
+                ],
+                [
+                    'RESPONSÁVEL TÉCNICO:',
+                    '{{responsavel_tecnico_nome}}<br><strong>REGISTRO:</strong> N° {{responsavel_tecnico_registro}}',
+                    ['colspan' => true],
+                ],
+                [
+                    'ALVARÁ:',
+                    '{{alvara_construcao_numero}}'
+                        . '<br><strong>CADASTRO IMOBILIÁRIO (SEQUENCIAL):</strong> {{cadastro_imobiliario}}'
+                        . '<br><strong>ART:</strong> N° {{responsavel_tecnico_numero}}'
+                        . '<br><strong>PERÍODO DA OBRA:</strong> INÍCIO {{inicio_obra}}, TÉRMINO {{termino_obra}}',
+                    ['colspan' => true],
+                ],
+                [
+                    'ESPECIFICAÇÃO / LAUDO DO ENGENHEIRO TÉCNICO E FISCAL DE OBRAS:',
+                    '<br><strong>PARECER TÉCNICO DADO PELO:</strong> ENG.º CIVIL: {{eng_fiscal_nome}}. CREA: {{eng_fiscal_registro}}.'
+                        . '<br><br><strong><em>CARACTERÍSTICAS:</em></strong>'
+                        . '<br><em>{{especificacao}}</em>',
+                    ['colspan' => true],
+                ],
             ],
         ],
 
-        [
-            'tipo'  => 'secao',
-            'texto' => '2. DADOS DO IMÓVEL E DA OBRA',
-        ],
-        [
-            'tipo'   => 'tabela',
-            'linhas' => [
-                ['Endereço da Obra',       '{{endereco_objetivo}}'],
-                ['Área Construída',        '{{area_construida}} m²'],
-                ['Cadastro Imobiliário',   '{{detalhes_imovel}}'],
-                ['Alvará de Construção',   'N° {{numero_documento_ano}}'],
-            ],
-        ],
-
-        [
-            'tipo'  => 'secao',
-            'texto' => '3. RESPONSABILIDADE TÉCNICA',
-        ],
-        [
-            'tipo'   => 'tabela',
-            'linhas' => [
-                ['Responsável Técnico',    '{{responsavel_tecnico_nome}}'],
-                ['Registro Profissional',  '{{responsavel_tecnico_registro}}'],
-                ['ART/RRT/TRT',            '{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}'],
-            ],
-        ],
-
-        [
-            'tipo'  => 'secao',
-            'texto' => '4. ESPECIFICAÇÃO / LAUDO DO ENGENHEIRO TÉCNICO',
-        ],
-        [
-            'tipo'     => 'texto',
-            'conteudo' => '<p>{{especificacao}}</p>',
-        ],
-
-        ['tipo' => 'data_local', 'data' => '{{data_atual}}'],
+        ['tipo' => 'data_local'],
     ],
 ];

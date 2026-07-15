@@ -117,6 +117,19 @@ class ParecerService
         $especificacao = $requerimento['especificacao'] ?? '';
         $especificacao = trim($especificacao) !== '' ? $especificacao : 'a ser informada';
 
+        // Formata datas (armazenadas como AAAA-MM-DD) para dd/mm/AAAA
+        $fmtData = static function ($valor) {
+            $valor = trim((string) $valor);
+            if ($valor === '' || $valor === '0000-00-00') {
+                return '';
+            }
+            $ts = strtotime($valor);
+            return $ts ? date('d/m/Y', $ts) : $valor;
+        };
+        $inicioObra  = $fmtData($requerimento['inicio_obra'] ?? '');
+        $terminoObra = $fmtData($requerimento['termino_obra'] ?? '');
+        $cadastroImobiliario = trim((string) ($requerimento['cadastro_imobiliario'] ?? ''));
+
         $nomeInteressado = $requerimento['proprietario_nome'] ?? $requerimento['requerente_nome'] ?? '';
         $cpfInteressado = $requerimento['proprietario_cpf_cnpj'] ?? $requerimento['requerente_cpf_cnpj'] ?? '';
         $atividade = $requerimento['atividade'] ?? $especificacao;
@@ -157,6 +170,15 @@ class ParecerService
             'area' => $area !== '' ? $area : 'a ser informada',
             'detalhes_imovel' => $especificacao,
             'area_lote' => $requerimento['area_lote'] ?? '',
+            // Campos dos modelos de construção / habite-se / desmembramento
+            'cadastro_imobiliario' => $cadastroImobiliario,
+            'inicio_obra' => $inicioObra,
+            'termino_obra' => $terminoObra,
+            'area_total_terreno' => $requerimento['area_total_terreno'] ?? '',
+            'area_remanescente' => $requerimento['area_remanescente'] ?? '',
+            'alvara_construcao_numero' => $requerimento['alvara_construcao_numero'] ?? '',
+            'eng_fiscal_nome' => $requerimento['eng_fiscal_nome'] ?? '',
+            'eng_fiscal_registro' => $requerimento['eng_fiscal_registro'] ?? '',
             'nome_interessado' => $nomeInteressado,
             'cpf_interessado' => $cpfInteressado,
             'atividade' => $atividade,

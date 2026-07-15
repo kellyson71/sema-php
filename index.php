@@ -1038,6 +1038,10 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
                             </div>
                             <div class="form-grid-2">
+                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
+                                <div></div>
+                            </div>
+                            <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
                             </div>
@@ -1051,12 +1055,25 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </select>
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
+                            <div class="form-grid-2">
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término / previsão de término
+                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                            </div>
+                            <textarea required name="especificacao" placeholder="Especificação da obra (ex: edificação residencial unifamiliar de pavimento térreo, padrão popular, composição do imóvel...) *" rows="3"></textarea>
                         `;
                     } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
                         campos = `
                             <div class="form-grid-2">
                                 <input required name="area_construida" placeholder="Área Construída (m²) *">
                                 <input required name="numero_pavimentos" placeholder="Número de Pavimentos *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input name="cadastro_imobiliario" placeholder="Cadastro Imobiliário (Sequencial)">
+                                <input name="alvara_construcao_numero" placeholder="Nº do Alvará de Construção (anterior)">
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
@@ -1072,16 +1089,35 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </select>
                                 <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
                             </div>
+                            <div class="form-grid-2">
+                                <input name="eng_fiscal_nome" placeholder="Engenheiro fiscal que emitiu o parecer">
+                                <input name="eng_fiscal_registro" placeholder="CREA do engenheiro fiscal">
+                            </div>
+                            <div class="form-grid-2">
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término da obra
+                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                            </div>
                             <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `
                             <div class="form-grid-2">
-                                <input required name="area_lote" placeholder="Área do Lote (m²) *">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                                <input required name="area_lote" placeholder="Área desmembrada / do lote (m²) *">
+                                <input required name="area_total_terreno" placeholder="Área total do terreno (m²) *">
                             </div>
                             <div class="form-grid-2">
+                                <input required name="area_remanescente" placeholder="Área remanescente (m²) *">
+                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                            </div>
+                            <div class="form-grid-2">
                                 <div style="display: flex; gap: 10px; width: 100%;">
                                     <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
                                         <option value="" hidden>Tipo *</option>
@@ -1092,8 +1128,9 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     </select>
                                     <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
                                 </div>
+                                <div></div>
                             </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
+                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento (perímetro, pontos, coordenadas, confrontantes...) *" rows="4"></textarea>
                         `;
                     } else if (currentRules.ambiental) {
                         campos = `
