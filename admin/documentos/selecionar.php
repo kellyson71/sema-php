@@ -163,27 +163,87 @@ include '../header.php';
             box-shadow: 0 2px 6px rgba(234, 179, 8, 0.4);
         }
 
-        /* Preview de texto do template */
+        /* Preview renderizada via iframe */
         .preview-miniature {
-            font-size: 0.72rem;
-            color: #64748b;
-            text-align: left;
-            background: #f8fafc;
-            padding: 10px 12px;
+            background: #fff;
             border-radius: 8px;
-            height: 68px;
+            height: 90px;
             overflow: hidden;
             margin-top: 12px;
-            border: 1px dashed #cbd5e1;
+            border: 1px solid #e2e8f0;
             position: relative;
-            line-height: 1.5;
+            cursor: pointer;
+        }
+        .preview-miniature iframe {
+            width: 794px;
+            height: 600px;
+            border: none;
+            transform: scale(0.24);
+            transform-origin: top left;
+            pointer-events: none;
         }
         .preview-miniature::after {
             content: '';
             position: absolute;
             bottom: 0; left: 0; right: 0;
             height: 28px;
-            background: linear-gradient(transparent, #f8fafc);
+            background: linear-gradient(transparent, #fff);
+        }
+        .preview-miniature .expand-hint {
+            position: absolute;
+            bottom: 4px; right: 6px;
+            font-size: 0.6rem;
+            color: #94a3b8;
+            z-index: 2;
+            background: rgba(255,255,255,0.85);
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+        .preview-miniature:hover .expand-hint {
+            color: var(--sema-green);
+        }
+
+        /* Modal de preview expandida */
+        .preview-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .preview-modal-overlay.active { display: flex; }
+        .preview-modal-box {
+            background: #fff;
+            border-radius: 16px;
+            width: 90vw;
+            max-width: 850px;
+            height: 85vh;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeInUp 0.3s ease;
+        }
+        .preview-modal-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e5e9f2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .preview-modal-header h6 { margin: 0; font-weight: 700; }
+        .preview-modal-body {
+            flex: 1;
+            overflow: hidden;
+            padding: 0;
+        }
+        .preview-modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
 
         /* ═══════════════════════════════════════════════
@@ -330,6 +390,22 @@ include '../header.php';
 
     </div><!-- /tab-content -->
 
+    <!-- Modal de preview expandida -->
+    <div class="preview-modal-overlay" id="previewModal" onclick="fecharPreviewModal(event)">
+        <div class="preview-modal-box" onclick="event.stopPropagation()">
+            <div class="preview-modal-header">
+                <h6 id="previewModalTitle"><i class="fas fa-file-alt me-2" style="color:var(--sema-green)"></i>Preview do Documento</h6>
+                <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center"
+                        style="width:32px;height:32px" onclick="fecharPreviewModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="preview-modal-body">
+                <iframe id="previewModalIframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
@@ -435,7 +511,10 @@ include '../header.php';
                     </div>
                     <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
                     <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature">${escapeHtml(preview)}</div>
+                    <div class="preview-miniature" onclick="expandirPreview('${escaparAttr(nome)}', '${escaparAttr(label)}', event)">
+                        <iframe src="../templates/${encodeURIComponent(nome)}.html" loading="lazy" sandbox></iframe>
+                        <span class="expand-hint"><i class="fas fa-expand me-1"></i>Expandir</span>
+                    </div>
                     ${fillScore}
                 </a>
             </div>
@@ -674,6 +753,28 @@ include '../header.php';
             </div></div>`;
         });
     }
+
+    /* ─── Preview expandida (modal) ─────────────────────── */
+    function expandirPreview(nome, label, evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        const modal = document.getElementById('previewModal');
+        const iframe = document.getElementById('previewModalIframe');
+        const title = document.getElementById('previewModalTitle');
+        title.innerHTML = `<i class="fas fa-file-alt me-2" style="color:var(--sema-green)"></i>${escapeHtml(label)}`;
+        iframe.src = `../templates/${encodeURIComponent(nome)}.html`;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    function fecharPreviewModal(evt) {
+        if (evt && evt.target !== evt.currentTarget) return;
+        const modal = document.getElementById('previewModal');
+        const iframe = document.getElementById('previewModalIframe');
+        modal.classList.remove('active');
+        iframe.src = 'about:blank';
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPreviewModal(); });
 
     document.addEventListener('DOMContentLoaded', carregarTemplates);
     </script>

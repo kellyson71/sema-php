@@ -54,6 +54,9 @@ try {
             $extrairPreview = function($caminhoHtml) {
                 if (!file_exists($caminhoHtml)) return '';
                 $html = file_get_contents($caminhoHtml);
+                // Remover blocos <style> e <script> ANTES do strip_tags
+                $html = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $html);
+                $html = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $html);
                 // Pegar só o conteúdo da div #conteudo ou do body
                 if (preg_match('/<div[^>]+id=["\']conteudo["\'][^>]*>(.*?)<\/div>/is', $html, $m)) {
                     $txt = strip_tags($m[1]);
