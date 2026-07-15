@@ -695,6 +695,44 @@ foreach ($tipos_alvara as $slug => $tipo) {
         </div>
     </div>
 
+    <!-- Modal de Estudos Ambientais -->
+    <div id="modal-estudos" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto; padding:24px 16px;">
+        <div style="background:#fff; max-width:700px; max-height:min(85vh, 760px); margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
+            <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-magnifying-glass-chart" style="margin-right:10px;"></i>Estudos Ambientais</h2>
+                    <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Diagnósticos e levantamentos técnicos produzidos pela SEMA</p>
+                </div>
+                <button onclick="document.getElementById('modal-estudos').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div style="padding:24px 28px; overflow-y:auto; flex:1 1 auto;">
+                <?php
+                $estudos = [
+                    [
+                        'titulo'    => 'Diagnóstico das APPs Urbanas de Pau dos Ferros — 2026',
+                        'descricao' => 'Mapeamento e diagnóstico ambiental das Áreas de Preservação Permanente na malha urbana do município.',
+                        'icone'     => 'fa-map-location-dot',
+                        'cor'       => '#16a085',
+                        'url'       => './assets/estudos/diagnostico-apps-urbanas-2026.pdf',
+                    ],
+                ];
+                foreach ($estudos as $estudo): ?>
+                <a href="<?= $estudo['url'] ?>" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:16px; padding:14px 16px; margin-bottom:10px; border-radius:8px; border:1px solid #e9ecef; text-decoration:none; color:#333; transition:background .15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
+                    <div style="width:44px; height:44px; border-radius:50%; background:<?= $estudo['cor'] ?>1a; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas <?= $estudo['icone'] ?>" style="color:<?= $estudo['cor'] ?>; font-size:1.1rem;"></i>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <p style="font-weight:600; margin:0; font-size:0.95rem; color:#212529;"><?= $estudo['titulo'] ?></p>
+                        <p style="margin:2px 0 0; font-size:0.82rem; color:#6c757d;"><?= $estudo['descricao'] ?></p>
+                    </div>
+                    <i class="fas fa-file-pdf" style="color:#adb5bd; font-size:0.85rem; flex-shrink:0;"></i>
+                </a>
+                <?php endforeach; ?>
+                <p style="margin:18px 0 0; font-size:0.82rem; color:#94a3b8; text-align:center;">Novos estudos serão adicionados aqui conforme forem produzidos.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Onda de transição para o rodapé -->
     <div style="display:block; width:100%; line-height:0; font-size:0;">
         <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style="display:block; width:100%; height:70px;">
@@ -722,6 +760,11 @@ foreach ($tipos_alvara as $slug => $tipo) {
                         style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
                         onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                     <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+                </button>
+                <button onclick="document.getElementById('modal-estudos').style.display='flex'"
+                        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-magnifying-glass-chart" style="color:#4ade80;"></i> Estudos Ambientais
                 </button>
             </section>
 
