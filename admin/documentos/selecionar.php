@@ -338,6 +338,18 @@ include '../header.php';
     const setorReq = <?= json_encode($setorReq) ?>;
     let favoritosSet = new Set();
 
+    // Mapear nível do usuário logado → setor
+    const nivelParaSetor = {
+        'analista': 'setor1',
+        'fiscal':   'setor2',
+        'admin':    '',
+        'admin_geral': '',
+        'secretario':  '',
+        'operador':    '',
+    };
+    // Usa o setor do USUÁRIO logado (prioridade) ou o setor do requerimento como fallback
+    const setorUsuario = nivelParaSetor[adminNivel] || setorReq;
+
     // Templates recomendados por setor (badges que têm prioridade)
     const recomendadosPorSetor = {
         'setor1': ['Ambiental', 'Parecer', 'Habite-se', 'Licença'],
@@ -618,7 +630,7 @@ include '../header.php';
 
             // ── Todos os Modelos: separar em grupos ──────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
-                const recomendados = recomendadosPorSetor[setorReq] || [];
+                const recomendados = recomendadosPorSetor[setorUsuario] || [];
                 const tplsRec  = ret.templates.filter(t => recomendados.includes(t.badge));
                 const tplsAmb  = ret.templates.filter(t => badgesAmbiental.includes(t.badge) && !recomendados.includes(t.badge));
                 const tplsObr  = ret.templates.filter(t => badgesObras.includes(t.badge) && !recomendados.includes(t.badge));
