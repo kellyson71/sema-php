@@ -78,12 +78,14 @@ $rolePorAcao = [
     'setor3_sem_decisao' => 'secretario',
 ];
 
-// A entrega de documentos ao cidadão não pertence a um setor: quem está com o
-// processo em mãos entrega. O Setor 1 conclui a maioria dos processos sozinho e
-// até aqui só podia mandar um número de protocolo, sem o documento.
-$rolePorSetor = ['setor1' => 'analista', 'setor2' => 'fiscal', 'setor3' => 'secretario'];
-if ($acao === 'doc_final_envio') {
-    $rolePorAcao['doc_final_envio'] = $rolePorSetor[$req['setor_atual']] ?? 'fiscal';
+// A entrega de documentos ao cidadão não pertence a um setor: Triagem e
+// Fiscalização entregam, independente de onde o processo esteja parado. O Setor 1
+// conclui a maioria dos processos sozinho e até aqui só podia mandar um número de
+// protocolo, sem o documento. Diferente das demais ações, aceita mais de um role.
+$rolesEntregaDocFinal = ['analista', 'fiscal'];
+if ($acao === 'doc_final_envio' && !$isSuper && !in_array($nivelAtual, $rolesEntregaDocFinal, true)) {
+    header("Location: visualizar_requerimento.php?id=$id&error=sem_permissao");
+    exit;
 }
 
 if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$acao]) {

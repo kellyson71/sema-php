@@ -1598,6 +1598,10 @@ $isSecretarioPuro = ($nivelAtual === 'secretario');
 $rolePorSetor    = ['setor1' => 'analista', 'setor2' => 'fiscal', 'setor3' => 'secretario'];
 $roleDoSetor     = $rolePorSetor[$setorAtual] ?? 'analista';
 $podeAgirNoSetor = $isAdmin || ($nivelAtual === $roleDoSetor);
+// A entrega ao cidadão é a exceção: Triagem (Setor 1) e Fiscalização (Setor 2)
+// entregam documento independente de onde o processo esteja parado. Movimentar o
+// fluxo continua restrito ao setor dono. O handler repete essa regra.
+$podeEntregarDocFinal = $isAdmin || in_array($nivelAtual, ['analista', 'fiscal'], true);
 $labelSetorAtual = [
     'setor1' => 'Triagem Ambiental',
     'setor2' => 'Fiscalização de Obras',
@@ -2650,7 +2654,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // secretário no Setor 3) continua vendo o painel de ações — assim quem concluiu
     // o processo diretamente na Triagem ainda consegue enviar o documento final ao
     // cidadão, botão que só aparece no painel ativo.
-    $tratarComoAtivoParaSetor2 = $isFiscalPuro || ($nivelAtual === $roleDoSetor);
+    $tratarComoAtivoParaSetor2 = $podeEntregarDocFinal || ($nivelAtual === $roleDoSetor);
     $mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
     ?>
     <div class="row mt-4">
@@ -2895,8 +2899,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                       Este processo está em <strong><?= htmlspecialchars($labelSetorAtual) ?></strong>.
                                       Só a equipe daquele setor pode movimentá-lo.
                                   </div>
-                                  <?php else: ?>
-                                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                  <?php endif; ?>
+                                  <div style="display:flex;flex-wrap:wrap;gap:8px;<?= $podeAgirNoSetor ? '' : 'margin-top:8px;' ?>">
+                                      <?php if ($podeAgirNoSetor): ?>
                                       <?php if ($setorAtual === 'setor1'): ?>
                                           <button type="button" class="act-btn act-go tt"
                                               onclick="abrirFM('fm-setor2')"
@@ -2943,18 +2948,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                               <i class="fas fa-arrow-left"></i>Devolver à Fiscalização
                                           </button>
                                       <?php endif; ?>
+                                      <?php endif; // $podeAgirNoSetor ?>
 
-                                      <?php // Entregar documento ao cidadão: disponível em qualquer setor, para quem
-                                            // está com o processo. Antes era exclusivo do Setor 2, e a Triagem — que
-                                            // conclui a maioria dos processos — só podia mandar o número do protocolo. ?>
+                                      <?php // Entregar documento ao cidadão: Triagem e Fiscalização entregam
+                                            // independente do setor onde o processo parou. Antes era exclusivo do
+                                            // Setor 2, e a Triagem — que conclui a maioria dos processos — só podia
+                                            // mandar o número do protocolo. ?>
+                                      <?php if ($podeEntregarDocFinal): ?>
                                       <button type="button" class="act-btn act-go2 tt"
                                           data-bs-toggle="modal" data-bs-target="#docFinalModal"
                                           data-bs-placement="top"
                                           data-bs-title="Envia os documentos assinados ao requerente por link seguro e finaliza o processo.">
                                           <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
                                       </button>
+                                      <?php endif; ?>
                                   </div>
-                                  <?php endif; ?>
                               </div>
 
                               <!-- Outras ações — exibição condicional por setor -->
@@ -3287,6 +3295,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 
                 <div class="modal-footer border-0 px-4 pb-4 pt-2" style="gap:8px;">
                     <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-info px-3 d-flex align-items-center gap-2" onclick="previewEmailDocFinal()">
+                        <i class="fas fa-eye"></i>Pré-visualizar e-mail
+                    </button>
                     <button type="submit" class="btn btn-success px-4 d-flex align-items-center gap-2" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
                         <i class="fas fa-paper-plane"></i>
                         <span id="btnEnviarDocFinalLabel"><?= $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão' ?></span>
@@ -4488,6 +4499,37 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
+// Prévia do e-mail de entrega: repassa a seleção atual do modal para uma página
+// que renderiza o template real numa nova aba. Não envia nem grava nada.
+function previewEmailDocFinal() {
+    var form = document.getElementById('formDocFinal');
+    if (!form) return;
+
+    var previa = document.createElement('form');
+    previa.method = 'post';
+    previa.action = 'preview_email_doc_final.php';
+    previa.target = '_blank';
+
+    function campo(nome, valor) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = nome;
+        input.value = valor;
+        previa.appendChild(input);
+    }
+
+    campo('requerimento_id', <?= (int) $id ?>);
+    form.querySelectorAll('.doc-final-cb:checked').forEach(function(cb) {
+        campo('documento_ids[]', cb.value);
+    });
+    var obs = document.getElementById('instrucoes_doc_final');
+    campo('instrucoes_doc_final', obs ? obs.value : '');
+
+    document.body.appendChild(previa);
+    previa.submit();
+    previa.remove();
+}
+
 // ── Modal de envio de documentos ao cidadão ──────────────────────────────────
 (function() {
     var form = document.getElementById('formDocFinal');
