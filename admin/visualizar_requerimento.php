@@ -3158,120 +3158,171 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 ?>
 
 <!-- Modal: Enviar Documento Final ao Cidadão -->
+<style>
+/* Escopo fechado no modal de entrega: fora dele nada muda. */
+#docFinalModal .modal-content { border:0; border-radius:14px; overflow:hidden; }
+
+#docFinalModal .dfm-head { background:#0a6b34; color:#fff; padding:18px 24px 16px; }
+#docFinalModal .dfm-eyebrow {
+    font-size:.68rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+    color:rgba(255,255,255,.72); margin-bottom:3px;
+}
+#docFinalModal .dfm-title { font-size:1.02rem; font-weight:700; margin:0; color:#fff; }
+#docFinalModal .dfm-sub { font-size:.76rem; color:rgba(255,255,255,.75); margin:2px 0 0; }
+
+#docFinalModal .dfm-body { padding:20px 24px 8px; }
+#docFinalModal .dfm-linha {
+    font-size:.84rem; color:#334155; padding-bottom:14px;
+    border-bottom:1px solid #eef1f5; margin-bottom:16px;
+}
+#docFinalModal .dfm-rotulo { color:#8a94a3; }
+#docFinalModal .dfm-alerta-inline { color:#b42318; font-weight:600; }
+
+/* Reenvio: informação de contexto, não alarme — barra lateral em vez de caixa. */
+#docFinalModal .dfm-reenvio {
+    border-left:3px solid #d99b16; padding:2px 0 2px 12px; margin-bottom:16px;
+    font-size:.79rem; color:#6b5320; line-height:1.5;
+}
+#docFinalModal .dfm-reenvio strong { color:#4d3c14; }
+
+#docFinalModal .dfm-secao {
+    font-size:.73rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:#6b7280; margin:0;
+}
+#docFinalModal .dfm-todos { font-size:.76rem; color:#64748b; cursor:pointer; }
+
+/* Lista de seleção: divisórias, sem cartões empilhados. */
+#docFinalModal .dfm-lista { border-top:1px solid #eef1f5; max-height:264px; overflow-y:auto; }
+#docFinalModal .doc-final-check-item {
+    display:flex; align-items:flex-start; gap:12px; cursor:pointer; margin:0;
+    padding:11px 6px; border-bottom:1px solid #eef1f5; transition:background .12s;
+}
+#docFinalModal .doc-final-check-item:hover { background:#f8fafc; }
+#docFinalModal .doc-final-check-item.is-sel { background:#f4faf6; }
+#docFinalModal .dfm-doc-nome { font-size:.86rem; font-weight:600; color:#1e293b; }
+#docFinalModal .dfm-doc-meta { font-size:.75rem; color:#7c8697; margin-top:2px; }
+/* Só a exceção ganha destaque: o caso correto não precisa de selo. */
+#docFinalModal .dfm-flag {
+    display:inline-block; margin-top:5px; font-size:.7rem; font-weight:600;
+    color:#8a5a06; background:#fdf5e6; border:1px solid #f0d9a8;
+    border-radius:5px; padding:1px 7px;
+}
+#docFinalModal .doc-final-cb { width:17px; height:17px; margin-top:2px; flex-shrink:0; }
+#docFinalModal .doc-final-cb:checked { background-color:#0a6b34; border-color:#0a6b34; }
+
+#docFinalModal .dfm-label {
+    font-size:.73rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:#6b7280; margin-bottom:6px; display:block;
+}
+#docFinalModal .dfm-label span { text-transform:none; letter-spacing:0; font-weight:400; color:#98a1af; }
+#docFinalModal textarea.form-control { font-size:.85rem; resize:none; border-radius:8px; border-color:#dfe3e9; }
+#docFinalModal textarea.form-control:focus { border-color:#0a6b34; box-shadow:0 0 0 3px rgba(10,107,52,.1); }
+
+#docFinalModal .dfm-foot {
+    padding:14px 24px 18px; display:flex; align-items:center;
+    justify-content:space-between; gap:10px; border-top:1px solid #eef1f5;
+}
+#docFinalModal .dfm-btn {
+    font-size:.85rem; font-weight:600; border-radius:8px; padding:9px 16px;
+    border:1px solid transparent; transition:background .12s,border-color .12s;
+}
+#docFinalModal .dfm-btn-link { background:none; border:0; color:#7c8697; font-weight:500; padding:9px 4px; }
+#docFinalModal .dfm-btn-link:hover { color:#475569; text-decoration:underline; }
+#docFinalModal .dfm-btn-sec { background:#fff; border-color:#d5dae2; color:#3f4a5a; }
+#docFinalModal .dfm-btn-sec:hover { background:#f6f8fa; border-color:#b9c1cc; }
+#docFinalModal .dfm-btn-pri { background:#0a6b34; color:#fff; }
+#docFinalModal .dfm-btn-pri:hover { background:#08582b; color:#fff; }
+#docFinalModal .dfm-btn-pri:disabled { background:#c3ccd6; color:#fff; cursor:not-allowed; }
+</style>
+
 <div class="modal fade" id="docFinalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+        <div class="modal-content shadow-lg">
 
-            <!-- Header -->
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;display:inline-flex;align-items:center;justify-content:center;color:#16a34a;font-size:1.1rem;">
-                        <i class="fas fa-paper-plane"></i>
-                    </span>
-                    <div>
-                        <h5 class="modal-title fw-bold mb-0" style="color:var(--teal-text);font-size:1.05rem;">Entregar documentos ao cidadão</h5>
-                        <p class="mb-0 text-muted" style="font-size:.75rem;margin-top:1px;">O processo será finalizado após o envio</p>
+            <!-- Cabeçalho: identifica o processo, não só a ação -->
+            <div class="dfm-head d-flex align-items-start justify-content-between gap-3">
+                <div style="min-width:0;">
+                    <div class="dfm-eyebrow">
+                        Protocolo #<?= htmlspecialchars($requerimento['protocolo']) ?>
+                        <?php if ($tipoAlvaraNome !== ''): ?>
+                            &nbsp;·&nbsp; <?= htmlspecialchars(tituloAmigavel($tipoAlvaraNome)) ?>
+                        <?php endif; ?>
                     </div>
+                    <h5 class="dfm-title">Entregar documentos ao cidadão</h5>
+                    <p class="dfm-sub">O processo será finalizado após o envio</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="opacity:.7;"></button>
             </div>
-
             <form method="post" action="fluxo_setor_handler.php" id="formDocFinal">
                 <input type="hidden" name="requerimento_id" value="<?= $id ?>">
                 <input type="hidden" name="fluxo_acao" value="doc_final_envio">
-                <div class="modal-body px-4 pt-3 pb-2">
+                <div class="dfm-body">
 
-                    <!-- Destinatário -->
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
-                        <div style="width:36px;height:36px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;color:#0369a1;flex-shrink:0;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div style="min-width:0;">
-                            <div class="fw-semibold text-truncate" style="font-size:.875rem;color:#1e293b;"><?= htmlspecialchars($nomeDestinatario) ?></div>
-                            <?php if (!empty($emailDestinatario)): ?>
-                                <div class="text-muted text-truncate" style="font-size:.77rem;">
-                                    <i class="fas fa-envelope me-1" style="font-size:.65rem;"></i><?= htmlspecialchars($emailDestinatario) ?>
-                                </div>
-                            <?php else: ?>
-                                <div style="font-size:.77rem;color:#dc2626;">
-                                    <i class="fas fa-exclamation-triangle me-1" style="font-size:.65rem;"></i>Sem e-mail cadastrado — o cidadão não receberá notificação
-                                </div>
-                            <?php endif; ?>
-                        </div>
+                    <!-- Destinatário: uma linha basta -->
+                    <div class="dfm-linha">
+                        <span class="dfm-rotulo">Para</span>
+                        <strong><?= htmlspecialchars($nomeDestinatario) ?></strong>
+                        <?php if (!empty($emailDestinatario)): ?>
+                            <span class="dfm-rotulo">&nbsp;·&nbsp;</span><?= htmlspecialchars($emailDestinatario) ?>
+                        <?php else: ?>
+                            <span class="dfm-rotulo">&nbsp;·&nbsp;</span>
+                            <span class="dfm-alerta-inline">sem e-mail cadastrado — o cidadão não será notificado</span>
+                        <?php endif; ?>
                     </div>
 
                     <?php if ($jaFoiEntregue): ?>
-                        <!-- Aviso de reenvio -->
-                        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#92400e;display:flex;align-items:flex-start;gap:10px;">
-                            <i class="fas fa-rotate me-1" style="margin-top:2px;"></i>
-                            <div>
-                                <strong>Reenvio.</strong> Este processo já recebeu uma entrega
-                                em <?= date('d/m/Y \à\s H:i', strtotime($entregaAnterior['enviado_em'])) ?>
-                                <?php if (!empty($entregaAnterior['enviado_por'])): ?>
-                                    por <?= htmlspecialchars($entregaAnterior['enviado_por']) ?>
-                                <?php endif; ?>.
-                                <?php if (empty($entregaAnterior['revogado_em'])): ?>
-                                    O link anterior ainda está ativo e será <strong>revogado</strong> após este envio.
-                                <?php else: ?>
-                                    O link anterior já foi revogado.
-                                <?php endif; ?>
-                            </div>
+                        <div class="dfm-reenvio">
+                            <strong>Reenvio.</strong> Entrega anterior em
+                            <?= date('d/m/Y \à\s H:i', strtotime($entregaAnterior['enviado_em'])) ?><?php
+                            if (!empty($entregaAnterior['enviado_por'])):
+                                ?> por <?= htmlspecialchars($entregaAnterior['enviado_por']) ?><?php
+                            endif; ?>.
+                            <?php if (empty($entregaAnterior['revogado_em'])): ?>
+                                O link anterior será revogado após este envio.
+                            <?php else: ?>
+                                O link anterior já foi revogado.
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
 
                     <?php if (empty($docsGrouped)): ?>
-                        <div class="alert alert-warning py-3 px-3" style="font-size:.85rem;border-radius:10px;">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Nenhum documento assinado encontrado neste processo.<br>
-                            <span class="text-muted" style="font-size:.78rem;">Gere e assine um documento antes de enviar ao cidadão.</span>
+                        <div class="dfm-reenvio" style="border-left-color:#b42318;color:#7a3b34;">
+                            <strong>Nenhum documento assinado neste processo.</strong>
+                            Gere e assine um documento antes de enviar ao cidadão.
                         </div>
                     <?php else: ?>
                         <div class="mb-3">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <label class="form-label fw-semibold mb-0" style="font-size:.875rem;">
-                                    Documentos a enviar <span class="text-danger">*</span>
-                                </label>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <p class="dfm-secao">Documentos a enviar</p>
                                 <?php if (count($docsGrouped) > 1): ?>
-                                    <label class="form-check-label d-flex align-items-center gap-1" style="font-size:.77rem;color:#64748b;cursor:pointer;">
-                                        <input type="checkbox" class="form-check-input" id="docFinalSelectAll" style="width:14px;height:14px;">
+                                    <label class="dfm-todos d-flex align-items-center gap-2 mb-0">
+                                        <input type="checkbox" class="form-check-input mt-0" id="docFinalSelectAll" style="width:14px;height:14px;">
                                         Selecionar todos
                                     </label>
                                 <?php endif; ?>
                             </div>
-                            <div id="docFinalCheckList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;padding-right:4px;">
+                            <div id="docFinalCheckList" class="dfm-lista">
                                 <?php foreach ($docsGrouped as $grupo => $doc):
                                     $rotulo = rotuloDocumento($doc['nome_arquivo']);
                                 ?>
-                                    <label class="doc-final-check-item d-flex align-items-start gap-3 rounded-3 border"
-                                           style="background:#f8fafc;cursor:pointer;padding:12px 14px;transition:background .15s,border-color .15s;"
-                                           data-tem-sec="<?= $doc['tem_assinatura_secretario'] ? '1' : '0' ?>">
+                                    <label class="doc-final-check-item" data-tem-sec="<?= $doc['tem_assinatura_secretario'] ? '1' : '0' ?>">
                                         <input type="checkbox" name="documento_ids[]" value="<?= (int)$doc['id'] ?>"
-                                               class="form-check-input mt-1 flex-shrink-0 doc-final-cb" style="width:18px;height:18px;">
-                                        <div class="flex-grow-1 min-w-0">
-                                            <div class="fw-semibold" style="font-size:.875rem;color:#1e293b;">
+                                               class="form-check-input doc-final-cb">
+                                        <span class="flex-grow-1" style="min-width:0;">
+                                            <span class="dfm-doc-nome d-block text-truncate">
                                                 <?= htmlspecialchars($rotulo !== '' ? $rotulo : $doc['nome_arquivo']) ?>
-                                            </div>
-                                            <?php if ($rotulo !== ''): ?>
-                                                <div class="text-muted text-truncate" style="font-size:.7rem;margin-top:1px;color:#94a3b8 !important;">
-                                                    <?= htmlspecialchars($doc['nome_arquivo']) ?>
-                                                </div>
+                                            </span>
+                                            <span class="dfm-doc-meta d-block">
+                                                Assinado por <?= htmlspecialchars($doc['assinante_nome']) ?>
+                                                <?php if (!empty($doc['assinante_cargo'])): ?>
+                                                    · <?= htmlspecialchars($doc['assinante_cargo']) ?>
+                                                <?php endif; ?>
+                                                · <?= date('d/m/Y', strtotime($doc['timestamp_assinatura'])) ?>
+                                            </span>
+                                            <?php if (!$doc['tem_assinatura_secretario']): ?>
+                                                <span class="dfm-flag">Sem assinatura do Secretário</span>
                                             <?php endif; ?>
-                                            <div class="text-muted" style="font-size:.77rem;margin-top:3px;">
-                                                <i class="fas fa-file-signature me-1" style="font-size:.65rem;"></i>
-                                                Assinado por <strong><?= htmlspecialchars($doc['assinante_nome']) ?></strong>
-                                                (<?= htmlspecialchars($doc['assinante_cargo'] ?? 'sem cargo') ?>)
-                                                — <?= date('d/m/Y', strtotime($doc['timestamp_assinatura'])) ?>
-                                            </div>
-                                            <?php if ($doc['tem_assinatura_secretario']): ?>
-                                                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac;font-size:.67rem;margin-top:4px;font-weight:600;">
-                                                    <i class="fas fa-stamp me-1"></i>Secretário
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fcd34d;font-size:.67rem;margin-top:4px;font-weight:600;">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>Sem assinatura do Secretário
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
+                                        </span>
                                     </label>
                                 <?php endforeach; ?>
                             </div>
@@ -3279,29 +3330,27 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <?php endif; ?>
 
                     <div class="mb-2">
-                        <label for="instrucoes_doc_final" class="form-label fw-semibold" style="font-size:.875rem;">
-                            Observações ao cidadão <span class="text-muted fw-normal">(opcional)</span>
+                        <label for="instrucoes_doc_final" class="dfm-label">
+                            Observações ao cidadão <span>(opcional)</span>
                         </label>
                         <textarea class="form-control" id="instrucoes_doc_final" name="instrucoes_doc_final" rows="2"
-                                  style="font-size:.85rem;resize:none;border-radius:8px;"
                                   placeholder="Prazo de validade, condicionantes, orientações ao requerente..."></textarea>
                     </div>
 
                     <!-- Resumo da seleção (atualizado por JS) -->
-                    <div id="docFinalResumo" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#166534;margin-top:8px;">
+                    <div id="docFinalResumo" style="display:none;border-left:3px solid #0a6b34;padding:2px 0 2px 12px;font-size:.79rem;color:#245c3a;line-height:1.5;margin-top:12px;">
                     </div>
 
                 </div>
 
-                <div class="modal-footer border-0 px-4 pb-4 pt-2" style="gap:8px;">
-                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-outline-info px-3 d-flex align-items-center gap-2" onclick="previewEmailDocFinal()">
-                        <i class="fas fa-eye"></i>Pré-visualizar e-mail
-                    </button>
-                    <button type="submit" class="btn btn-success px-4 d-flex align-items-center gap-2" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
-                        <i class="fas fa-paper-plane"></i>
-                        <span id="btnEnviarDocFinalLabel"><?= $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão' ?></span>
-                    </button>
+                <div class="dfm-foot">
+                    <button type="button" class="dfm-btn dfm-btn-link" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="dfm-btn dfm-btn-sec" onclick="previewEmailDocFinal()">Ver prévia do e-mail</button>
+                        <button type="submit" class="dfm-btn dfm-btn-pri" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
+                            <span id="btnEnviarDocFinalLabel"><?= $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão' ?></span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -4546,14 +4595,10 @@ function previewEmailDocFinal() {
         var selecionados = 0, semSec = 0;
         checkboxes.forEach(function(cb) {
             var item = cb.closest('.doc-final-check-item');
+            item.classList.toggle('is-sel', cb.checked);
             if (cb.checked) {
                 selecionados++;
-                item.style.background = '#f0fdf4';
-                item.style.borderColor = '#86efac';
                 if (item.dataset.temSec === '0') semSec++;
-            } else {
-                item.style.background = '#f8fafc';
-                item.style.borderColor = '';
             }
         });
 
@@ -4562,28 +4607,26 @@ function previewEmailDocFinal() {
             resumoBox.style.display = 'none';
             btnEnviar.disabled = true;
         } else {
-            var html = '<i class="fas fa-check-circle me-1"></i> ';
-            html += '<strong>' + selecionados + '</strong> documento' + (selecionados > 1 ? 's' : '') + ' selecionado' + (selecionados > 1 ? 's' : '');
+            var html = '<strong>' + selecionados + '</strong> documento' + (selecionados > 1 ? 's' : '') + ' selecionado' + (selecionados > 1 ? 's' : '');
 
             if (emailDest) {
                 html += ' — será enviado para <strong>' + escapeHtml(emailDest) + '</strong>';
             } else {
-                html += ' <span style="color:#dc2626;font-weight:600;">— sem e-mail cadastrado</span>';
+                html += ' <span style="color:#b42318;font-weight:600;">— sem e-mail cadastrado</span>';
             }
 
             if (semSec > 0) {
-                html += '<br><span style="color:#92400e;"><i class="fas fa-exclamation-circle me-1"></i>';
+                html += '<br>';
                 html += semSec === selecionados
                     ? 'Nenhum dos documentos foi assinado pelo Secretário'
                     : semSec + ' documento' + (semSec > 1 ? 's' : '') + ' sem assinatura do Secretário';
-                html += '</span>';
             }
 
             resumoBox.innerHTML = html;
             resumoBox.style.display = 'block';
-            resumoBox.style.background = semSec > 0 ? '#fffbeb' : '#f0fdf4';
-            resumoBox.style.borderColor = semSec > 0 ? '#fde68a' : '#bbf7d0';
-            resumoBox.style.color = semSec > 0 ? '#78350f' : '#166534';
+            // Mesma barra lateral do aviso de reenvio; só a cor muda com o estado.
+            resumoBox.style.borderLeftColor = semSec > 0 ? '#d99b16' : '#0a6b34';
+            resumoBox.style.color = semSec > 0 ? '#6b5320' : '#245c3a';
             btnEnviar.disabled = false;
         }
 
