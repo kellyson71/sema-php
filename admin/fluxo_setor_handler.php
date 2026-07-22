@@ -238,7 +238,6 @@ try {
             // O processo é concluído no setor em que está, não sempre no Setor 2.
             atualizaSetor($pdo, $id, $req['setor_atual'], 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, 'Finalizou o processo enviando ' . count($docsEmail) . ' documento(s) final(is) ao requerente');
 
             $stmtReq = $pdo->prepare("
                 SELECT r.tipo_alvara, re.nome AS requerente_nome, re.email AS requerente_email
@@ -249,12 +248,25 @@ try {
             $stmtReq->execute([$id]);
             $reqData = $stmtReq->fetch();
 
-            if ($reqData && !empty($reqData['requerente_email'])) {
+            $emailCidadao = trim($reqData['requerente_email'] ?? '');
+            $totalDocs    = count($docsEmail);
+
+            // Envia a notificação e registra o resultado no histórico: o "por quem" já vem
+            // do admin_id da ação; aqui acrescentamos para qual e-mail, quantos documentos
+            // e se o e-mail chegou a sair. O documento continua acessível pelo link mesmo
+            // quando o e-mail falha, então a distinção importa para o suporte e para decidir
+            // se é preciso reenviar. Mantém a palavra "Finaliz" no texto porque o painel de
+            // processo encerrado detecta a finalização por ela.
+            if ($emailCidadao === '') {
+                registraHistorico($pdo, $adminId, $id,
+                    "Finalizou o processo e disponibilizou {$totalDocs} documento(s) final(is), "
+                    . "mas o cidadão não tem e-mail cadastrado — acesso somente pelo link seguro.");
+            } else {
                 $tipoNome = $tipos_alvara[$reqData['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $reqData['tipo_alvara']));
 
                 $emailService = new EmailService();
-                $emailService->enviarEmailDocumentoFinal(
-                    $reqData['requerente_email'],
+                $emailEnviado = $emailService->enviarEmailDocumentoFinal(
+                    $emailCidadao,
                     $reqData['requerente_nome'],
                     $req['protocolo'],
                     $tipoNome,
@@ -264,6 +276,16 @@ try {
                     gerarUrlDocumentoFinal($token),
                     ENTREGA_LINK_VALIDADE_DIAS
                 );
+
+                if ($emailEnviado) {
+                    registraHistorico($pdo, $adminId, $id,
+                        "Finalizou o processo e enviou {$totalDocs} documento(s) final(is) ao cidadão, "
+                        . "notificando por e-mail: {$emailCidadao}.");
+                } else {
+                    registraHistorico($pdo, $adminId, $id,
+                        "Finalizou o processo com {$totalDocs} documento(s) final(is), mas FALHOU o envio do "
+                        . "e-mail para {$emailCidadao} — documento disponível pelo link; reenvie para notificar o cidadão.");
+                }
             }
             break;
 
