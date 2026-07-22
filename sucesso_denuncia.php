@@ -166,16 +166,16 @@ unset($_SESSION['denuncia_protocolo'], $_SESSION['denuncia_anonimo']);
                     </li>
                     <li>
                         <span class="num">3</span>
-                        <span>Dúvidas? Entre em contato pelo WhatsApp <strong>(84) 99668-6413</strong>.</span>
+                        <span>Acompanhe o andamento a qualquer momento com este protocolo, no botão abaixo.</span>
                     </li>
                 </ul>
 
                 <div class="botoes">
+                    <a href="consultar_denuncia.php?protocolo=<?= urlencode($protocolo) ?>" class="botao botao-primario">
+                        <i class="fas fa-magnifying-glass-location"></i> Acompanhar Denúncia
+                    </a>
                     <a href="index.php" class="botao botao-secundario">
                         <i class="fas fa-arrow-left"></i> Voltar ao Início
-                    </a>
-                    <a href="https://wa.me/5584996686413" target="_blank" rel="noopener" class="botao botao-primario">
-                        <i class="fab fa-whatsapp"></i> Falar com a SEMA
                     </a>
                 </div>
             </div>
