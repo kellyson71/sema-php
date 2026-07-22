@@ -107,20 +107,83 @@ if ($acao === 'cadastrar') {
 } elseif ($acao === 'alterar_status') {
     $denunciaId = (int)$_POST['id'];
     $novoStatus = $_POST['status'];
-    
+    $medidas    = trim($_POST['detalhes'] ?? '');
+    // Padrão: a medida escrita pelo fiscal é visível ao denunciante (é o objetivo).
+    // A caixa vem marcada; desmarcar deixa o registro só interno.
+    $visivel    = isset($_POST['visivel_denunciante']) ? 1 : 0;
+
     $statusValidos = ['Pendente', 'Em Análise', 'Concluída'];
-    
+
     if (in_array($novoStatus, $statusValidos)) {
         $stmt = $pdo->prepare("UPDATE denuncias SET status = ? WHERE id = ?");
         $stmt->execute([$novoStatus, $denunciaId]);
-        
-        // Registrar Histórico
-        registrarHistoricoDenuncia($pdo, $denunciaId, 'Alteração de Status', "Status alterado para: $novoStatus");
+
+        // O texto das medidas vai no histórico; visivel_denunciante decide se aparece
+        // no acompanhamento público. Sem texto, registra apenas a troca de status.
+        $detalhes = $medidas !== '' ? $medidas : "Status alterado para: $novoStatus";
+        $stmt = $pdo->prepare("INSERT INTO denuncia_historico (denuncia_id, admin_id, acao, detalhes, visivel_denunciante) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$denunciaId, $_SESSION['admin_id'] ?? null, 'Alteração de Status', $detalhes, $visivel]);
 
         header("Location: visualizar_denuncia.php?id=$denunciaId&success=atualizada");
     } else {
         header("Location: visualizar_denuncia.php?id=$denunciaId&error=invalido");
     }
+    exit;
+} elseif ($acao === 'adicionar_anexo') {
+    // Upload de arquivos pela fiscalização (fotos da vistoria, documentos).
+    // Cada envio carrega uma marcação de visibilidade ao denunciante.
+    $denunciaId = (int)$_POST['id'];
+    $visivel    = isset($_POST['visivel_denunciante']) ? 1 : 0;
+    $descricao  = trim($_POST['descricao'] ?? '') ?: null;
+    $adminId    = $_SESSION['admin_id'] ?? null;
+
+    $tiposPermitidos = ['jpg', 'jpeg', 'png', 'pdf', 'mp4', 'mov'];
+    $maxBytes        = 10 * 1024 * 1024;
+    $enviados        = 0;
+
+    if (!empty($_FILES['anexos']['name'][0])) {
+        $uploadDirRel = 'uploads/denuncias/fiscal/' . $denunciaId . '/';
+        $uploadDir    = '../' . $uploadDirRel;
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $arquivos = $_FILES['anexos'];
+        for ($i = 0; $i < count($arquivos['name']); $i++) {
+            if ($arquivos['error'][$i] !== UPLOAD_ERR_OK) continue;
+            $nomeOriginal = basename($arquivos['name'][$i]);
+            $ext = strtolower(pathinfo($nomeOriginal, PATHINFO_EXTENSION));
+            if (!in_array($ext, $tiposPermitidos)) continue;
+            if ($arquivos['size'][$i] > $maxBytes) continue;
+
+            $nomeSeguro    = md5(uniqid((string)$i, true)) . '.' . $ext;
+            $caminhoFisico = $uploadDir . $nomeSeguro;
+            $caminhoDB     = $uploadDirRel . $nomeSeguro;
+
+            if (move_uploaded_file($arquivos['tmp_name'][$i], $caminhoFisico)) {
+                $pdo->prepare("
+                    INSERT INTO denuncia_anexos
+                        (denuncia_id, origem, admin_id, nome_arquivo, caminho_arquivo, tipo_arquivo, visivel_denunciante, descricao)
+                    VALUES (?, 'fiscal', ?, ?, ?, ?, ?, ?)
+                ")->execute([$denunciaId, $adminId, $nomeOriginal, $caminhoDB, $ext, $visivel, $descricao]);
+                $enviados++;
+            }
+        }
+    }
+
+    if ($enviados > 0) {
+        registrarHistoricoDenuncia($pdo, $denunciaId, 'Anexo adicionado',
+            $enviados . ' arquivo(s) anexado(s) pela fiscalização' . ($visivel ? ' — visível ao denunciante' : ' — interno'));
+    }
+    header("Location: visualizar_denuncia.php?id=$denunciaId&success=anexo#anexos");
+    exit;
+} elseif ($acao === 'toggle_anexo_visivel') {
+    // Alterna a visibilidade de um anexo ao denunciante.
+    $denunciaId = (int)$_POST['id'];
+    $anexoId    = (int)$_POST['anexo_id'];
+    $pdo->prepare("UPDATE denuncia_anexos SET visivel_denunciante = 1 - visivel_denunciante WHERE id = ? AND denuncia_id = ?")
+        ->execute([$anexoId, $denunciaId]);
+    header("Location: visualizar_denuncia.php?id=$denunciaId&success=anexo#anexos");
     exit;
 } elseif ($acao === 'excluir') {
     $denunciaId = (int)($_POST['id'] ?? $_GET['id'] ?? 0);

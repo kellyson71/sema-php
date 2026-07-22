@@ -30,8 +30,9 @@ $anexos = $stmtAnexos->fetchAll();
 // Mensagens
 $mensagem = '';
 if (isset($_GET['success'])) {
-    if ($_GET['success'] == 'atualizada') $mensagem = "✅ Status atualizado com sucesso!";
+    if ($_GET['success'] == 'atualizada') $mensagem = "✅ Andamento registrado com sucesso!";
     if ($_GET['success'] == 'editada')    $mensagem = "✅ Denúncia atualizada com sucesso!";
+    if ($_GET['success'] == 'anexo')      $mensagem = "✅ Anexos atualizados com sucesso!";
 }
 $erroEdicao = '';
 if (isset($_GET['error']) && $_GET['error'] == 'vazio') $erroEdicao = "⚠️ Nome e relato são obrigatórios.";
@@ -95,18 +96,10 @@ include 'header.php';
                         <i class="fas fa-trash-alt mr-2"></i> Excluir
                     </button>
                 </form>
-                <form action="processar_denuncia.php" method="POST" class="flex gap-2">
-                    <input type="hidden" name="acao" value="alterar_status">
-                    <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
-                    <select name="status" class="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
-                        <option value="Pendente" <?php echo $denuncia['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                        <option value="Em Análise" <?php echo $denuncia['status'] == 'Em Análise' ? 'selected' : ''; ?>>Em Análise</option>
-                        <option value="Concluída" <?php echo $denuncia['status'] == 'Concluída' ? 'selected' : ''; ?>>Concluída</option>
-                    </select>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-                        Atualizar Status
-                    </button>
-                </form>
+                <a href="#andamento"
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                    <i class="fas fa-clipboard-check mr-2"></i> Registrar andamento
+                </a>
             </div>
         </div>
 
@@ -124,7 +117,51 @@ include 'header.php';
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Coluna Principal (Dados) -->
             <div class="lg:col-span-2 space-y-6">
-                
+
+                <!-- Andamento e medidas: muda o status e registra o que foi feito -->
+                <div id="andamento" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
+                        <i class="fas fa-clipboard-check text-blue-500 mr-2"></i> Registrar andamento
+                    </h3>
+                    <form action="processar_denuncia.php" method="POST" class="space-y-4">
+                        <input type="hidden" name="acao" value="alterar_status">
+                        <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select name="status" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="Pendente" <?php echo $denuncia['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
+                                <option value="Em Análise" <?php echo $denuncia['status'] == 'Em Análise' ? 'selected' : ''; ?>>Em Análise</option>
+                                <option value="Concluída" <?php echo $denuncia['status'] == 'Concluída' ? 'selected' : ''; ?>>Concluída</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Medidas tomadas <span class="font-normal text-gray-400">(o que foi feito nesta etapa)</span>
+                            </label>
+                            <textarea name="detalhes" rows="4"
+                                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Ex.: Vistoria realizada no local em 20/07. Constatada obra sem licença. Notificação emitida ao responsável, prazo de 15 dias."></textarea>
+                        </div>
+
+                        <label class="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" name="visivel_denunciante" value="1" checked
+                                   class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span>
+                                <span class="font-medium">Mostrar ao denunciante</span>
+                                <span class="block text-xs text-gray-500">Quando marcado, este andamento aparece para quem consultar o protocolo. Desmarque para deixar só interno.</span>
+                            </span>
+                        </label>
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                                <i class="fas fa-save mr-2"></i> Salvar andamento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
                 <!-- Formulário de edição (agrupa os dois cards editáveis) -->
                 <form id="formEdicao" action="processar_denuncia.php" method="POST">
                     <input type="hidden" name="acao" value="editar">
@@ -232,8 +269,15 @@ include 'header.php';
                                         <span class="text-sm font-bold text-gray-900"><?php echo htmlspecialchars($item['acao']); ?></span>
                                         <span class="text-xs text-gray-500"><?php echo date('d/m/Y H:i', strtotime($item['data_registro'])); ?></span>
                                     </div>
-                                    <div class="text-sm text-gray-600"><?php echo htmlspecialchars($item['detalhes'] ?: 'Nenhum detalhe adicional.'); ?></div>
-                                    <div class="text-xs text-blue-600 font-medium mt-1">Por: <?php echo htmlspecialchars($item['admin_nome'] ?: 'Sistema'); ?></div>
+                                    <div class="text-sm text-gray-600 whitespace-pre-wrap"><?php echo htmlspecialchars($item['detalhes'] ?: 'Nenhum detalhe adicional.'); ?></div>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs text-blue-600 font-medium">Por: <?php echo htmlspecialchars($item['admin_nome'] ?: 'Sistema'); ?></span>
+                                        <?php if (!empty($item['visivel_denunciante'])): ?>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700"><i class="fas fa-eye mr-1"></i>Visível ao denunciante</span>
+                                        <?php else: ?>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"><i class="fas fa-eye-slash mr-1"></i>Interno</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             <?php 
                                     endforeach;
@@ -276,16 +320,16 @@ include 'header.php';
                     </ul>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div id="anexos" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
                         <span><i class="fas fa-paperclip text-gray-400 mr-2"></i> Anexos</span>
                         <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full font-bold"><?php echo count($anexos); ?></span>
                     </h3>
-                    
+
                     <?php if (count($anexos) > 0): ?>
                         <div class="space-y-3">
                             <?php foreach ($anexos as $anexo): ?>
-                                <?php 
+                                <?php
                                     $icone = 'fa-file';
                                     $cor = 'text-gray-500';
                                     $bg = 'bg-gray-50';
@@ -296,22 +340,37 @@ include 'header.php';
                                     } elseif (in_array($anexo['tipo_arquivo'], ['mp4', 'mov'])) {
                                         $icone = 'fa-file-video'; $cor = 'text-purple-500'; $bg = 'bg-purple-50';
                                     }
-                                    
-                                    // Determinar o URL completo
                                     $urlDownload = '../' . $anexo['caminho_arquivo'];
+                                    $doFiscal    = ($anexo['origem'] ?? 'denunciante') === 'fiscal';
+                                    $visivel     = !empty($anexo['visivel_denunciante']);
                                 ?>
-                                <a href="<?php echo htmlspecialchars($urlDownload); ?>" target="_blank" class="flex items-center p-3 <?php echo $bg; ?> rounded-lg border border-transparent hover:border-gray-200 transition-colors group">
-                                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm mr-3 flex-shrink-0">
-                                        <i class="fas <?php echo $icone; ?> <?php echo $cor; ?> text-lg"></i>
+                                <div class="p-3 <?php echo $bg; ?> rounded-lg border border-transparent hover:border-gray-200 transition-colors">
+                                    <div class="flex items-center">
+                                        <a href="<?php echo htmlspecialchars($urlDownload); ?>" target="_blank" class="flex items-center flex-1 min-w-0 group">
+                                            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm mr-3 flex-shrink-0">
+                                                <i class="fas <?php echo $icone; ?> <?php echo $cor; ?> text-lg"></i>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate"><?php echo htmlspecialchars($anexo['nome_arquivo']); ?></p>
+                                                <p class="text-xs text-gray-500 truncate">
+                                                    <?php echo date('d/m/y H:i', strtotime($anexo['data_upload'])); ?>
+                                                    · <?php echo $doFiscal ? 'Fiscalização' : 'Denunciante'; ?>
+                                                </p>
+                                            </div>
+                                        </a>
+                                        <span class="ml-2 flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-full <?php echo $visivel ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'; ?>">
+                                            <i class="fas <?php echo $visivel ? 'fa-eye' : 'fa-eye-slash'; ?> mr-1"></i><?php echo $visivel ? 'Visível' : 'Interno'; ?>
+                                        </span>
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-900 truncate"><?php echo htmlspecialchars($anexo['nome_arquivo']); ?></p>
-                                        <p class="text-xs text-gray-500 truncate"><?php echo date('d/m/y H:i', strtotime($anexo['data_upload'])); ?></p>
-                                    </div>
-                                    <div class="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <i class="fas fa-external-link-alt text-sm"></i>
-                                    </div>
-                                </a>
+                                    <form action="processar_denuncia.php" method="POST" class="mt-2 text-right">
+                                        <input type="hidden" name="acao" value="toggle_anexo_visivel">
+                                        <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
+                                        <input type="hidden" name="anexo_id" value="<?php echo $anexo['id']; ?>">
+                                        <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                            <?php echo $visivel ? 'Tornar interno' : 'Mostrar ao denunciante'; ?>
+                                        </button>
+                                    </form>
+                                </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
@@ -320,6 +379,27 @@ include 'header.php';
                             <p class="text-sm text-gray-500">Nenhum anexo enviado.</p>
                         </div>
                     <?php endif; ?>
+
+                    <!-- Upload pela fiscalização -->
+                    <form action="processar_denuncia.php" method="POST" enctype="multipart/form-data" class="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                        <input type="hidden" name="acao" value="adicionar_anexo">
+                        <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
+                        <label class="block text-sm font-medium text-gray-700">Adicionar arquivos (fotos, documentos)</label>
+                        <input type="file" name="anexos[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov"
+                               class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <p class="text-xs text-gray-400">JPG, PNG, PDF, MP4 ou MOV — até 10MB cada.</p>
+                        <label class="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" name="visivel_denunciante" value="1"
+                                   class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span>
+                                <span class="font-medium">Mostrar ao denunciante</span>
+                                <span class="block text-xs text-gray-500">Marque para fotos que o denunciante pode ver. Deixe desmarcado para documentos internos (ex.: notificação com dados do infrator).</span>
+                            </span>
+                        </label>
+                        <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                            <i class="fas fa-upload mr-2"></i> Enviar anexos
+                        </button>
+                    </form>
                 </div>
 
                 <?php
