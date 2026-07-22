@@ -128,39 +128,43 @@ if ($view === 'download'):
     .omnibox i { color:#12894b; font-size:.72rem; }
     .omnibox span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* Reprodução da página pública documento_final.php */
-    .site { background:#013d86 url('../assets/img/background.jpg') center/cover; padding-bottom:40px; }
-    .site-header { background:#009640; height:46px; padding:0 22px; display:flex; align-items:center; }
-    .site-header span { color:#fff; font-weight:700; font-size:13.5px; letter-spacing:.4px; }
-    .site-header i { color:#fff; margin-right:9px; }
-    .page-wrapper { display:flex; justify-content:center; padding:40px 16px 10px; }
+    /* Reprodução FIEL da página pública documento_final.php (mesmos estilos) */
+    .site { background-color:#013d86; background-image:url('../assets/img/background.jpg');
+            background-size:contain; color:#1e293b; min-height:520px; padding-bottom:8px; }
+    .site-header { background:#009640; height:48px; width:100%; padding:0 24px;
+            display:flex; align-items:center; justify-content:space-between; }
+    .site-header .brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .site-header .brand img { height:32px; }
+    .site-header .brand span { color:#fff; font-weight:700; font-size:14px; letter-spacing:.5px; }
+    .page-wrapper { display:flex; justify-content:center; align-items:flex-start; padding:48px 16px 64px; }
     .card { background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.18);
-            width:100%; max-width:540px; overflow:hidden; }
-    .card-header { background:linear-gradient(135deg,#065f46,#059669); padding:22px 26px 18px; color:#fff; }
-    .card-header .icon-wrap { width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.2);
-            display:flex; align-items:center; justify-content:center; margin-bottom:11px; font-size:1.15rem; }
-    .card-header h1 { font-size:1.28rem; font-weight:700; margin-bottom:3px; }
-    .card-header p { font-size:.86rem; opacity:.85; }
-    .card-body { padding:22px 26px; }
-    .info-row { display:flex; flex-direction:column; gap:2px; margin-bottom:15px; }
-    .info-row label { font-size:.7rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; }
+            width:100%; max-width:560px; overflow:hidden; }
+    .card-header { background:linear-gradient(135deg,#065f46,#059669); padding:24px 28px 20px; color:#fff; }
+    .card-header .icon-wrap { width:48px; height:48px; border-radius:12px; background:rgba(255,255,255,.2);
+            display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+    .card-header h1 { font-size:1.3rem; font-weight:700; margin-bottom:4px; }
+    .card-header p { font-size:.875rem; opacity:.85; }
+    .card-body { padding:24px 28px; }
+    .info-row { display:flex; flex-direction:column; gap:2px; margin-bottom:16px; }
+    .info-row label { font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; }
     .info-row span { font-size:.9rem; color:#1e293b; font-weight:500; }
-    .divider { border:none; border-top:1px solid #eef0f2; margin:18px 0; }
-    .instrucoes-box { background:#f8fafc; border:1px solid #e6eaf0; border-left:3px solid #059669;
-            border-radius:8px; padding:12px 14px; font-size:.85rem; color:#334155; margin-bottom:18px; }
-    .doc-item { border:1px solid #eef0f2; border-radius:10px; padding:14px 16px; margin-bottom:12px; }
-    .btn-download { display:flex; align-items:center; gap:10px; width:100%; border:0; cursor:pointer;
-            background:#059669; color:#fff; font-weight:700; font-size:.92rem; border-radius:8px;
-            padding:12px 16px; text-align:left; font-family:inherit; }
+    .divider { border:none; border-top:1px solid #f0f0f0; margin:20px 0; }
+    .instrucoes-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;
+            padding:14px 16px; font-size:.875rem; color:#166534; margin-bottom:20px; white-space:pre-wrap; }
+    .doc-item { margin-bottom:14px; }
+    .btn-download { display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+            padding:14px; background:#059669; color:#fff; border:none; border-radius:8px;
+            font-size:1rem; font-weight:700; cursor:pointer; font-family:inherit; }
     .btn-download:hover { background:#047857; }
-    .doc-meta { font-size:.76rem; color:#64748b; margin-top:9px; display:flex; flex-direction:column; gap:4px; }
-    .doc-meta strong { color:#334155; }
-    .link-verificar { color:#0b5cad; text-decoration:none; }
-    .footer-mini { text-align:center; font-size:.75rem; color:#8a95a4; margin-top:6px; }
+    .doc-meta { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+            gap:6px 14px; padding:7px 4px 0; font-size:.75rem; color:#6b7280; }
+    .doc-meta i { margin-right:4px; }
+    .doc-meta strong { color:#374151; font-weight:600; }
+    .link-verificar { color:#059669; font-weight:700; text-decoration:none; white-space:nowrap; }
     .sim-toast { display:none; background:#0b3b8c; color:#fff; border-radius:8px; padding:10px 14px;
             font-size:.82rem; margin-top:14px; align-items:center; gap:9px; }
     .sim-toast.show { display:flex; }
-    .footer-note { text-align:center; font-size:.75rem; color:rgba(255,255,255,.75); margin-top:18px; }
+    .footer-note { text-align:center; font-size:.75rem; color:rgba(255,255,255,.6); margin-top:20px; }
 </style>
 </head>
 <body>
@@ -177,11 +181,17 @@ if ($view === 'download'):
         </div>
 
         <div class="site">
-            <div class="site-header"><i class="fas fa-leaf"></i><span>SEMA — Secretaria de Meio Ambiente</span></div>
+            <header class="site-header">
+                <a href="#" class="brand" onclick="return false;">
+                    <img src="../assets/img/logo_sema_branca.png" alt="SEMA" onerror="this.style.display='none'">
+                    <span>SEMA — Secretaria de Meio Ambiente</span>
+                </a>
+            </header>
             <div class="page-wrapper">
+                <div>
                 <div class="card">
                     <div class="card-header">
-                        <div class="icon-wrap"><i class="fas fa-file-circle-check"></i></div>
+                        <div class="icon-wrap"><i class="fas fa-file-circle-check fa-lg"></i></div>
                         <h1>Documento Final</h1>
                         <p><?= count($documentos) > 1 ? count($documentos) . ' documentos prontos para download' : 'Seu documento está pronto para download' ?></p>
                     </div>
@@ -196,7 +206,7 @@ if ($view === 'download'):
                         <hr class="divider">
 
                         <?php if ($instrucoes !== ''): ?>
-                            <div class="instrucoes-box"><strong>Observações da equipe técnica:</strong><br><?= nl2br(htmlspecialchars($instrucoes)) ?></div>
+                            <div class="instrucoes-box"><strong>Observações da equipe técnica:</strong><br><?= htmlspecialchars($instrucoes) ?></div>
                         <?php endif; ?>
 
                         <?php foreach ($documentos as $doc): ?>
@@ -207,10 +217,13 @@ if ($view === 'download'):
                                 </button>
                                 <div class="doc-meta">
                                     <?php if (!empty($doc['assinantes'])): ?>
-                                        <span><i class="fas fa-file-signature"></i> Assinado por <strong><?= htmlspecialchars($doc['assinantes']) ?></strong>
-                                        <?php if (!empty($doc['assinado_em'])): ?> em <?= date('d/m/Y', strtotime($doc['assinado_em'])) ?><?php endif; ?></span>
+                                        <span>
+                                            <i class="fas fa-file-signature"></i>
+                                            Assinado por <strong><?= htmlspecialchars($doc['assinantes']) ?></strong>
+                                            <?php if (!empty($doc['assinado_em'])): ?> em <?= date('d/m/Y', strtotime($doc['assinado_em'])) ?><?php endif; ?>
+                                        </span>
                                     <?php endif; ?>
-                                    <span class="link-verificar"><i class="fas fa-shield-halved"></i> Verificar autenticidade</span>
+                                    <a href="#" onclick="return false;" class="link-verificar"><i class="fas fa-shield-halved"></i> Verificar autenticidade</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -220,14 +233,16 @@ if ($view === 'download'):
                             <span>No e-mail real, este botão baixa o PDF assinado. Aqui é só demonstração.</span>
                         </div>
 
-                        <p class="footer-mini" style="margin-top:14px;">
+                        <p style="text-align:center;font-size:.75rem;color:#9ca3af;margin-top:12px;">
                             <i class="fas fa-lock"></i>
-                            Link disponível por <?= (int) $validade_dias ?> dias — o cidadão baixa e guarda os arquivos.
+                            Enviado em <?= date('d/m/Y \à\s H:i') ?> &nbsp;·&nbsp; <?= count($documentos) ?> documento(s)
+                            <br>Este link fica disponível até <?= date('d/m/Y', strtotime('+' . (int) $validade_dias . ' days')) ?> — baixe e guarde os arquivos.
                         </p>
                     </div>
                 </div>
+                <p class="footer-note">Secretaria Municipal de Meio Ambiente — Prefeitura de Pau dos Ferros/RN</p>
+                </div>
             </div>
-            <p class="footer-note">Simulação — Secretaria Municipal de Meio Ambiente · Pau dos Ferros/RN</p>
         </div>
     </div>
 
