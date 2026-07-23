@@ -1124,6 +1124,15 @@ include 'header.php';
         cursor: pointer;
     }
 
+    /* Realce ao passar o mouse nos blocos de documento clicáveis */
+    .doc-row-clickable:hover {
+        background-color: #f8fafc;
+    }
+    .doc-card-clickable[data-viewer-url]:not([data-viewer-url=""]):hover {
+        border-color: #1c4b36 !important;
+        box-shadow: 0 3px 10px rgba(28,75,54,.12) !important;
+    }
+
     /* CSS para assinatura */
     .signature-pad-container {
         display: flex;
@@ -4049,8 +4058,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
      function renderCoStatus(p) {
          if (!p.co_total_esperado || p.co_total_esperado <= 1) return '';
 
-         const total    = p.co_total_esperado;
-         const assinado = p.co_total_assinado;
+         const total     = p.co_total_esperado;
+         const assinado  = p.co_total_assinado;
+         const assinantes = p.co_assinantes || [];
          const pendentes = p.co_pendentes || [];
          const recusados = p.co_recusados || [];
          const euPendente = p.co_eu_pendente;
@@ -4058,37 +4068,42 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 
          let html = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0;">`;
 
-         // Barra de progresso com contador
-         const pct = total > 0 ? Math.round((assinado / total) * 100) : 0;
-         const corBarra = p.co_completo ? '#15803d' : (recusados.length ? '#b91c1c' : '#b45309');
-         html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-             <div style="flex:1;height:4px;background:#e5e7eb;border-radius:99px;overflow:hidden;">
-                 <div style="width:${pct}%;height:100%;background:${corBarra};border-radius:99px;transition:width .4s;"></div>
-             </div>
-             <span style="font-size:.7rem;font-weight:700;color:${corBarra};white-space:nowrap;">${assinado}/${total} assinaram</span>
+         // Cabeçalho discreto: apenas a contagem de assinaturas esperadas
+         const corContador = p.co_completo ? '#16a34a' : (recusados.length ? '#b91c1c' : '#9ca3af');
+         html += `<div style="display:flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700;color:${corContador};text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">
+             <i class="fas fa-users" style="font-size:.62rem;"></i>
+             <span>${assinado} de ${total} assinaturas</span>
          </div>`;
 
-         // Pendentes
+         // Quem já assinou — nome em destaque
+         assinantes.forEach(a => {
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#374151;margin-bottom:3px;">
+                 <i class="fas fa-check-circle" style="font-size:.68rem;color:#16a34a;"></i>
+                 <span>${escHtml(a.nome)}${a.cargo ? ` <span style="color:#9ca3af;">· ${escHtml(a.cargo)}</span>` : ''}</span>
+             </div>`;
+         });
+
+         // Quem falta assinar — em cinza (discreto)
          pendentes.forEach(pend => {
              const euSou = pend.destinatario_id === _adminIdLogado;
-             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#92400e;margin-bottom:3px;">
-                 <i class="fas fa-hourglass-half" style="font-size:.65rem;color:#b45309;"></i>
-                 <span>${escHtml(pend.nome)}${euSou ? ' <strong>(você)</strong>' : ''} — aguardando</span>
-                 ${(solicitanteId === _adminIdLogado) ? `<button onclick="cancelarCoSolic('${p.documento_id}',${pend.destinatario_id})" title="Cancelar pedido" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.7rem;padding:0;"><i class="fas fa-xmark"></i></button>` : ''}
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#9ca3af;margin-bottom:3px;">
+                 <i class="far fa-circle" style="font-size:.68rem;color:#cbd5e1;"></i>
+                 <span>${escHtml(pend.nome)}${euSou ? ' <strong>(você)</strong>' : ''} <span style="font-style:italic;">— aguardando</span></span>
+                 ${(solicitanteId === _adminIdLogado) ? `<button onclick="event.stopPropagation();cancelarCoSolic('${p.documento_id}',${pend.destinatario_id})" title="Cancelar pedido" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:.7rem;padding:0;"><i class="fas fa-xmark"></i></button>` : ''}
              </div>`;
          });
 
          // Recusados
          recusados.forEach(rec => {
-             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#b91c1c;margin-bottom:3px;">
-                 <i class="fas fa-xmark" style="font-size:.65rem;"></i>
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#b91c1c;margin-bottom:3px;">
+                 <i class="fas fa-xmark" style="font-size:.68rem;"></i>
                  <span>${escHtml(rec.nome)} recusou${rec.motivo ? ' — ' + escHtml(rec.motivo) : ''}</span>
              </div>`;
          });
 
          // Botão assinar para este admin
          if (euPendente) {
-             html += `<a href="coassinar_documento.php?documento_id=${encodeURIComponent(p.documento_id)}"
+             html += `<a href="coassinar_documento.php?documento_id=${encodeURIComponent(p.documento_id)}" onclick="event.stopPropagation();"
                  style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:5px 11px;border-radius:8px;background:#b45309;color:#fff;font-size:.76rem;font-weight:700;text-decoration:none;">
                  <i class="fas fa-pen-nib"></i> Assinar agora
              </a>`;
@@ -4143,8 +4158,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                  const seloTipo  = gerarSeloTipoParecer(p.tipo);
                  const coHtml    = renderCoStatus(p);
 
+                 const rowViewerUrl = !p.apagado ? (downloadUrl ? downloadUrl + '&inline=1' : viewerUrl) : '';
                  lista.innerHTML += `
-                    <div class="data-row" style="flex-wrap:wrap;">
+                    <div class="data-row doc-row-clickable" style="flex-wrap:wrap;${rowViewerUrl ? 'cursor:pointer;' : ''}" data-viewer-url="${escHtml(rowViewerUrl || '')}" title="${rowViewerUrl ? 'Abrir documento' : ''}">
                         <div class="data-label" style="min-width:40px">
                             <i class="fas ${iconClass}" style="color:${iconColor};font-size:20px"></i>
                         </div>
@@ -4221,6 +4237,15 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
          })
          .catch(error => console.error('Erro ao carregar pareceres:', error));
      }
+
+     // Delegação de click nas linhas da mini-lista de documentos (abre o documento)
+     document.getElementById('pareceres-existentes-list').addEventListener('click', function(e) {
+         if (e.target.closest('a, button')) return; // deixa botões/links agirem
+         const row = e.target.closest('.doc-row-clickable');
+         if (row && row.dataset.viewerUrl) {
+             window.open(row.dataset.viewerUrl, '_blank');
+         }
+     });
 
      // Delegação de click nos cards de documento assinado
      document.getElementById('docs-assinados-grid').addEventListener('click', function(e) {
