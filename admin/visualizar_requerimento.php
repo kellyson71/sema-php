@@ -493,6 +493,19 @@ $stmt = $pdo->prepare("
 $stmt->execute([$id]);
 $historico = $stmt->fetchAll();
 
+// Emails de "documento final ao cidadão" enviados neste processo. O assunto
+// gravado por enviarEmailDocumentoFinal() é o único que contém esse trecho
+// (includes/email_service.php:422) — é o jeito confiável de isolar essa
+// categoria dentro de email_logs, que mistura todos os tipos de notificação.
+$stmtEmailsDocFinal = $pdo->prepare("
+    SELECT id, email_destino, assunto, status, erro, data_envio, usuario_envio
+    FROM email_logs
+    WHERE requerimento_id = ? AND assunto LIKE '%pronto — protocolo #%'
+    ORDER BY data_envio DESC
+");
+$stmtEmailsDocFinal->execute([$id]);
+$emailsDocFinal = $stmtEmailsDocFinal->fetchAll();
+
 // Calcular tempo por etapa usando o histórico já buscado
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
 $tEnvio        = $etapas['tEnvio'];
@@ -2607,14 +2620,21 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="modern-card mb-3">
-                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                <div class="modern-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-history icon"></i>
                         <h6 class="mb-0">Histórico de Ações</h6>
                     </div>
-                    <?php if (count($historico) > 0): ?>
-                    <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
-                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-2">
+                        <?php if (count($historico) > 0): ?>
+                        <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
+                        <?php endif; ?>
+                        <a href="logs_email.php<?= !empty($requerimento['requerente_email']) ? '?email=' . urlencode($requerimento['requerente_email']) : '' ?>"
+                           target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;"
+                           title="Abrir histórico completo de emails do sistema">
+                            <i class="fas fa-arrow-up-right-from-square me-1"></i>Ver todos os emails
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <?php if (count($historico) > 0): ?>
@@ -2663,6 +2683,59 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="text-center text-muted py-3">
                                 <i class="fas fa-info-circle me-2"></i>
                                 Nenhuma ação registrada.
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Emails de entrega do documento final ao cidadão -->
+            <div class="modern-card mb-3">
+                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-paper-plane icon"></i>
+                        <h6 class="mb-0">Envio do Documento Final por Email</h6>
+                    </div>
+                    <?php if (count($emailsDocFinal) > 0): ?>
+                    <span class="badge bg-secondary"><?= count($emailsDocFinal) ?> envio(s)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="card-body p-0">
+                    <?php if (count($emailsDocFinal) > 0): ?>
+                        <?php foreach ($emailsDocFinal as $em):
+                            $emSucesso = $em['status'] === 'SUCESSO';
+                        ?>
+                            <div class="data-row" style="flex-wrap:wrap;">
+                                <div class="data-label" style="min-width:130px;">
+                                    <span class="badge <?= $emSucesso ? 'bg-success' : 'bg-danger' ?>">
+                                        <i class="fas <?= $emSucesso ? 'fa-check-circle' : 'fa-times-circle' ?> me-1"></i>
+                                        <?= $emSucesso ? 'Enviado' : 'Falhou' ?>
+                                    </span>
+                                    <div class="text-muted small mt-1"><?= formataData($em['data_envio']) ?></div>
+                                </div>
+                                <div class="data-value" style="flex:1;min-width:0;">
+                                    <div class="fw-semibold">Para <?= htmlspecialchars($em['email_destino']) ?></div>
+                                    <div class="text-muted small text-truncate" title="<?= htmlspecialchars($em['assunto']) ?>"><?= htmlspecialchars($em['assunto']) ?></div>
+                                    <div class="text-muted small">Disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
+                                    <?php if (!$emSucesso && !empty($em['erro'])): ?>
+                                        <div class="small text-danger mt-1">
+                                            <i class="fas fa-triangle-exclamation me-1"></i><?= htmlspecialchars($em['erro']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="data-actions">
+                                    <button type="button" class="copy-btn" title="Ver prévia do email"
+                                        onclick="verPreviaEmailEnviado(<?= (int) $em['id'] ?>, '<?= addslashes(htmlspecialchars($em['email_destino'])) ?>', '<?= addslashes(htmlspecialchars($requerimento['requerente_nome'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($em['assunto'])) ?>')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="card-body">
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-inbox me-2"></i>
+                                Nenhum envio de documento final registrado ainda.
                             </div>
                         </div>
                     <?php endif; ?>
@@ -4026,9 +4099,35 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         previewModal.show();
     }
 
+    // Prévia de um email já enviado (log real), reaproveitando o mesmo modal
+    // usado para pré-visualizar rascunhos ainda não enviados. A mensagem
+    // gravada em email_logs é um documento HTML completo (<html><body>...),
+    // então em vez de innerHTML isolamos num iframe — igual ao que
+    // ajax_log_details.php já faz na tela de Histórico de Emails — para o
+    // CSS do email não vazar para o painel admin.
+    function verPreviaEmailEnviado(logId, email, nome, assunto) {
+        document.getElementById('preview-destinatario').textContent = nome || '—';
+        document.getElementById('preview-email').textContent = email;
+        document.getElementById('preview-assunto').textContent = assunto;
+        document.getElementById('email-preview-content').innerHTML =
+            '<iframe src="view_email_body.php?id=' + encodeURIComponent(logId) + '" ' +
+            'style="width:100%;height:500px;border:1px solid #eee;border-radius:6px;" ' +
+            'sandbox="allow-same-origin" title="Conteúdo do email enviado"></iframe>';
+
+        const previewModal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+        previewModal.show();
+    }
+
     // Função para copiar conteúdo do email
     function copyEmailContent() {
-        const content = document.getElementById('email-preview-content').innerText;
+        // Prévia de email já enviado usa um iframe (ver verPreviaEmailEnviado);
+        // innerText do container não atravessa o iframe, então lemos o
+        // documento interno quando ele existir.
+        const container = document.getElementById('email-preview-content');
+        const iframeEl = container.querySelector('iframe');
+        const content = (iframeEl && iframeEl.contentDocument && iframeEl.contentDocument.body)
+            ? iframeEl.contentDocument.body.innerText
+            : container.innerText;
         navigator.clipboard.writeText(content).then(function() {
             // Feedback visual
             const button = event.target.closest('button');
