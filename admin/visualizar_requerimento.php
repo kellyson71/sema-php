@@ -506,6 +506,32 @@ $stmtEmailsDocFinal = $pdo->prepare("
 $stmtEmailsDocFinal->execute([$id]);
 $emailsDocFinal = $stmtEmailsDocFinal->fetchAll();
 
+// Lotes de entrega (documentos_finais) deste processo, para reconstruir a
+// prévia fiel do que foi enviado — mesma página/estilo Gmail que
+// preview_email_doc_final.php usa antes do envio. Não existe FK entre
+// email_logs e documentos_finais, mas o handler cria os dois juntos na
+// mesma requisição (um lote + um email por envio), então pareamos pela
+// ordem cronológica: o Nº email corresponde ao Nº lote de cada processo.
+$stmtLotesDocFinal = $pdo->prepare("
+    SELECT df.lote_id, MIN(df.enviado_em) AS enviado_em, MAX(df.instrucoes) AS instrucoes,
+           GROUP_CONCAT(DISTINCT ad.id) AS assinatura_ids
+    FROM documentos_finais df
+    LEFT JOIN assinaturas_digitais ad
+        ON ad.requerimento_id = df.requerimento_id AND ad.documento_id = df.documento_id
+    WHERE df.requerimento_id = ?
+    GROUP BY df.lote_id
+    ORDER BY enviado_em ASC
+");
+$stmtLotesDocFinal->execute([$id]);
+$lotesDocFinal = $stmtLotesDocFinal->fetchAll();
+
+$loteParaEmail = [];
+foreach (array_reverse($emailsDocFinal) as $i => $em) { // $emailsDocFinal veio DESC; percorre em ordem ASC
+    if (isset($lotesDocFinal[$i])) {
+        $loteParaEmail[$em['id']] = $lotesDocFinal[$i];
+    }
+}
+
 // Calcular tempo por etapa usando o histórico já buscado
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
 $tEnvio        = $etapas['tEnvio'];
@@ -2704,6 +2730,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php if (count($emailsDocFinal) > 0): ?>
                         <?php foreach ($emailsDocFinal as $em):
                             $emSucesso = $em['status'] === 'SUCESSO';
+                            $lote = $loteParaEmail[$em['id']] ?? null;
                         ?>
                             <div class="data-row" style="flex-wrap:wrap;">
                                 <div class="data-label" style="min-width:130px;">
@@ -2714,9 +2741,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="text-muted small mt-1"><?= formataData($em['data_envio']) ?></div>
                                 </div>
                                 <div class="data-value" style="flex:1;min-width:0;">
-                                    <div class="fw-semibold">Para <?= htmlspecialchars($em['email_destino']) ?></div>
-                                    <div class="text-muted small text-truncate" title="<?= htmlspecialchars($em['assunto']) ?>"><?= htmlspecialchars($em['assunto']) ?></div>
-                                    <div class="text-muted small">Disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
+                                    <div class="fw-semibold" style="color:<?= $emSucesso ? '#15803d' : '#b91c1c' ?>;">
+                                        <?= $emSucesso ? 'Email enviado com sucesso' : 'Falha ao enviar o email' ?>
+                                    </div>
+                                    <div class="text-muted small">Para <?= htmlspecialchars($em['email_destino']) ?> · disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
                                     <?php if (!$emSucesso && !empty($em['erro'])): ?>
                                         <div class="small text-danger mt-1">
                                             <i class="fas fa-triangle-exclamation me-1"></i><?= htmlspecialchars($em['erro']) ?>
@@ -2724,9 +2752,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <?php endif; ?>
                                 </div>
                                 <div class="data-actions">
-                                    <button type="button" class="copy-btn" title="Ver prévia do email"
-                                        onclick="verPreviaEmailEnviado(<?= (int) $em['id'] ?>, '<?= addslashes(htmlspecialchars($em['email_destino'])) ?>', '<?= addslashes(htmlspecialchars($requerimento['requerente_nome'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($em['assunto'])) ?>')">
-                                        <i class="fas fa-eye"></i>
+                                    <button type="button" class="copy-btn" title="Ver o email como o cidadão recebeu"
+                                        onclick="abrirPreviaEmailReal(<?= (int) $id ?>, '<?= addslashes(htmlspecialchars($lote['instrucoes'] ?? '')) ?>', '<?= addslashes($lote['assinatura_ids'] ?? '') ?>')">
+                                        <i class="fas fa-envelope-open-text"></i>
                                     </button>
                                 </div>
                             </div>
@@ -4099,35 +4127,39 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         previewModal.show();
     }
 
-    // Prévia de um email já enviado (log real), reaproveitando o mesmo modal
-    // usado para pré-visualizar rascunhos ainda não enviados. A mensagem
-    // gravada em email_logs é um documento HTML completo (<html><body>...),
-    // então em vez de innerHTML isolamos num iframe — igual ao que
-    // ajax_log_details.php já faz na tela de Histórico de Emails — para o
-    // CSS do email não vazar para o painel admin.
-    function verPreviaEmailEnviado(logId, email, nome, assunto) {
-        document.getElementById('preview-destinatario').textContent = nome || '—';
-        document.getElementById('preview-email').textContent = email;
-        document.getElementById('preview-assunto').textContent = assunto;
-        document.getElementById('email-preview-content').innerHTML =
-            '<iframe src="view_email_body.php?id=' + encodeURIComponent(logId) + '" ' +
-            'style="width:100%;height:500px;border:1px solid #eee;border-radius:6px;" ' +
-            'sandbox="allow-same-origin" title="Conteúdo do email enviado"></iframe>';
+    // Prévia fiel de um envio real do documento final: abre preview_email_doc_final.php
+    // numa aba nova — a mesma tela (caixa do Gmail simulada) que o botão "Ver prévia
+    // do e-mail" do modal de envio usa antes de enviar. instrucoes e assinaturaIds
+    // (csv de ids de assinaturas_digitais) vêm do lote de documentos_finais daquele
+    // envio específico, para reconstruir exatamente o que o cidadão recebeu.
+    function abrirPreviaEmailReal(requerimentoId, instrucoes, assinaturaIds) {
+        const previa = document.createElement('form');
+        previa.method = 'post';
+        previa.action = 'preview_email_doc_final.php';
+        previa.target = '_blank';
 
-        const previewModal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
-        previewModal.show();
+        function campo(nome, valor) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = nome;
+            input.value = valor;
+            previa.appendChild(input);
+        }
+
+        campo('requerimento_id', requerimentoId);
+        campo('instrucoes_doc_final', instrucoes || '');
+        (assinaturaIds ? assinaturaIds.split(',') : []).forEach(function(v) {
+            if (v) campo('documento_ids[]', v);
+        });
+
+        document.body.appendChild(previa);
+        previa.submit();
+        previa.remove();
     }
 
     // Função para copiar conteúdo do email
     function copyEmailContent() {
-        // Prévia de email já enviado usa um iframe (ver verPreviaEmailEnviado);
-        // innerText do container não atravessa o iframe, então lemos o
-        // documento interno quando ele existir.
-        const container = document.getElementById('email-preview-content');
-        const iframeEl = container.querySelector('iframe');
-        const content = (iframeEl && iframeEl.contentDocument && iframeEl.contentDocument.body)
-            ? iframeEl.contentDocument.body.innerText
-            : container.innerText;
+        const content = document.getElementById('email-preview-content').innerText;
         navigator.clipboard.writeText(content).then(function() {
             // Feedback visual
             const button = event.target.closest('button');
