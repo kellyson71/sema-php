@@ -1624,6 +1624,22 @@ if (isset($_GET['error']) && $_GET['error'] === 'sem_permissao') {
     $mensagem = 'Você não tem permissão para executar essa ação neste setor.';
     $mensagemTipo = 'danger';
 }
+if (isset($_GET['error']) && $_GET['error'] === 'erro_fluxo') {
+    // Mostra a causa real gravada pelo handler; sem isso a ação falhava sem
+    // nenhum aviso na tela e o operador repetia o envio indefinidamente.
+    $detalhe = trim((string) ($_SESSION['fluxo_erro_msg'] ?? ''));
+    unset($_SESSION['fluxo_erro_msg']);
+    $mensagem = '❌ A ação não foi concluída' . ($detalhe !== '' ? ': ' . $detalhe : '. Tente novamente ou contate o suporte.');
+    $mensagemTipo = 'danger';
+}
+if (isset($_GET['error']) && $_GET['error'] === 'dados_invalidos') {
+    $mensagem = 'Dados inválidos na requisição. A ação não foi executada.';
+    $mensagemTipo = 'danger';
+}
+if (isset($_GET['error']) && $_GET['error'] === 'acao_invalida') {
+    $mensagem = 'Ação desconhecida. Nada foi alterado no processo.';
+    $mensagemTipo = 'danger';
+}
 if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
     $mensagem = '✅ Fluxo atualizado com sucesso.';
     $mensagemTipo = 'success';

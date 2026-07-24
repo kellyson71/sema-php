@@ -166,3 +166,44 @@ function urlArquivo(string $caminhoRelativo, string $token = '', bool $absoluta 
     }
     return $absoluta ? urlBasePublica() . '/' . $url : $url;
 }
+
+/**
+ * Resolve o caminho físico de um documento a partir do `caminho_arquivo`
+ * gravado em `assinaturas_digitais`.
+ *
+ * O valor gravado não é uniforme: há registros absolutos
+ * (/home/u49.../pareceres/...), relativos à raiz do projeto e relativos à pasta
+ * admin/ (ex: 'pareceres/905/arquivo.pdf') — este último é o formato que o
+ * fluxo de assinatura grava, porque salva o PDF em admin/pareceres/. Assumir um
+ * único prefixo faz o arquivo "sumir" mesmo existindo em disco, que é o que
+ * impedia a entrega de qualquer documento ao cidadão.
+ *
+ * @return string|null Caminho físico existente, ou null se não encontrar.
+ */
+function resolverCaminhoDocumento(?string $caminhoArquivo): ?string
+{
+    $caminho = trim((string) $caminhoArquivo);
+    if ($caminho === '') {
+        return null;
+    }
+
+    $raiz     = dirname(__DIR__);
+    $relativo = ltrim(str_replace('\\', '/', $caminho), '/');
+
+    $candidatos = [
+        $caminho,                          // absoluto
+        $raiz . '/admin/' . $relativo,     // relativo a admin/ (fluxo de assinatura)
+        $raiz . '/' . $relativo,           // relativo à raiz do projeto
+    ];
+    if (defined('UPLOAD_DIR')) {
+        $candidatos[] = rtrim(UPLOAD_DIR, '/\\') . '/' . $relativo; // dentro de uploads/
+    }
+
+    foreach ($candidatos as $candidato) {
+        if ($candidato !== '' && is_file($candidato)) {
+            return $candidato;
+        }
+    }
+
+    return null;
+}

@@ -138,4 +138,51 @@ class EntregaDocumentosTest extends TestCase
             'preposição no início maiúscula' => ['DE CABEÇA', 'De Cabeça'],
         ];
     }
+
+    // ─── resolverCaminhoDocumento ─────────────────────────────────────────────
+    // O envio de documentos ao cidadão nunca funcionou em produção porque o
+    // caminho era resolvido só contra uploads/, enquanto o fluxo de assinatura
+    // grava o PDF em admin/pareceres/. Estes testes travam as três variantes.
+
+    #[Test]
+    public function resolverCaminhoAceitaCaminhoRelativoAAdmin(): void
+    {
+        $rel = 'pareceres/9999/teste_resolver.pdf';
+        $abs = dirname(__DIR__, 2) . '/admin/' . $rel;
+        @mkdir(dirname($abs), 0777, true);
+        file_put_contents($abs, '%PDF-1.4');
+
+        try {
+            $this->assertSame($abs, resolverCaminhoDocumento($rel));
+        } finally {
+            @unlink($abs);
+            @rmdir(dirname($abs));
+        }
+    }
+
+    #[Test]
+    public function resolverCaminhoAceitaCaminhoAbsoluto(): void
+    {
+        $abs = sys_get_temp_dir() . '/sema_resolver_abs.pdf';
+        file_put_contents($abs, '%PDF-1.4');
+
+        try {
+            $this->assertSame($abs, resolverCaminhoDocumento($abs));
+        } finally {
+            @unlink($abs);
+        }
+    }
+
+    #[Test]
+    public function resolverCaminhoRetornaNullQuandoArquivoNaoExiste(): void
+    {
+        $this->assertNull(resolverCaminhoDocumento('pareceres/0/inexistente.pdf'));
+    }
+
+    #[Test]
+    public function resolverCaminhoRetornaNullParaEntradaVazia(): void
+    {
+        $this->assertNull(resolverCaminhoDocumento(''));
+        $this->assertNull(resolverCaminhoDocumento(null));
+    }
 }

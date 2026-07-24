@@ -215,13 +215,32 @@ try {
                 $docRow = $stmtDoc->fetch();
                 if (!$docRow) continue;
 
-                $caminhoFisico = UPLOAD_DIR . ltrim($docRow['caminho_arquivo'], '/');
-                if (!file_exists($caminhoFisico)) {
+                // O caminho gravado varia de formato conforme o fluxo que gerou o
+                // documento; resolverCaminhoDocumento() cobre todas as variantes.
+                $origem = resolverCaminhoDocumento($docRow['caminho_arquivo']);
+                if ($origem === null) {
                     throw new RuntimeException('O arquivo "' . $docRow['nome_arquivo'] . '" não foi encontrado no servidor. O documento pode ter sido removido. Gere um novo documento antes de enviar.');
                 }
 
+                // O PDF assinado vive em admin/pareceres/, fora de uploads/. O
+                // arquivo.php — única rota que entrega arquivo ao cidadão — só serve
+                // de dentro de uploads/, então a entrega precisa de uma cópia lá.
+                // Copiar (em vez de mover ou apontar para fora) também congela o que
+                // foi entregue: reassinar o documento depois não altera o que o
+                // cidadão recebeu, o que é o comportamento correto para auditoria.
+                $destinoRelativo = 'pareceres/' . $id . '/' . basename($docRow['nome_arquivo']);
+                $destinoFisico   = UPLOAD_DIR . $destinoRelativo;
+                $destinoDir      = dirname($destinoFisico);
+
+                if (!is_dir($destinoDir) && !@mkdir($destinoDir, 0755, true) && !is_dir($destinoDir)) {
+                    throw new RuntimeException('Não foi possível preparar a pasta de entrega do documento "' . $docRow['nome_arquivo'] . '".');
+                }
+                if (realpath($origem) !== realpath($destinoFisico) && !@copy($origem, $destinoFisico)) {
+                    throw new RuntimeException('Falha ao preparar o arquivo "' . $docRow['nome_arquivo'] . '" para entrega ao cidadão.');
+                }
+
                 $stmtInsert->execute([
-                    $id, $loteId, $docRow['documento_id'], $docRow['caminho_arquivo'],
+                    $id, $loteId, $docRow['documento_id'], $destinoRelativo,
                     $docRow['nome_arquivo'], $instrucoes, $token, $adminId, $expiraEm,
                 ]);
 
@@ -317,6 +336,9 @@ try {
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('[fluxo_setor] Erro requerimento #' . ($id ?? '?') . ': ' . $e->getMessage());
+    // A causa precisa chegar à tela: antes o redirect levava só "error=erro_fluxo",
+    // que a página sequer exibia — a ação falhava em silêncio total.
+    $_SESSION['fluxo_erro_msg'] = $e->getMessage();
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     if ($fromDocViewer) {
         header("Location: visualizar_documento.php?requerimento_id=$id&error=erro_fluxo");
