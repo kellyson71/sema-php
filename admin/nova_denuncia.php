@@ -36,9 +36,30 @@ include 'header.php';
                 <input type="hidden" name="acao" value="cadastrar">
                 
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">
+                    <i class="fas fa-people-arrows text-gray-400 mr-2"></i> Equipe Responsável
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <label class="flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 transition-colors">
+                        <input type="radio" name="setor" value="meio_ambiente" required checked class="mt-1 text-green-600 focus:ring-green-500">
+                        <span>
+                            <span class="flex items-center gap-2 font-semibold text-gray-800"><i class="fas fa-leaf text-green-600"></i> Meio Ambiente (SEMA)</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">Desmatamento, poluição, queimada, fauna, área de preservação...</span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-amber-50 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 transition-colors">
+                        <input type="radio" name="setor" value="obras_urbanismo" required class="mt-1 text-amber-600 focus:ring-amber-500">
+                        <span>
+                            <span class="flex items-center gap-2 font-semibold text-gray-800"><i class="fas fa-hard-hat text-amber-600"></i> Obras e Serviços Urbanos</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">Construção irregular, entulho, obstrução de via, terreno sujo...</span>
+                        </span>
+                    </label>
+                </div>
+
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">
                     <i class="fas fa-user-tag text-gray-400 mr-2"></i> Dados do Infrator
                 </h3>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-2">

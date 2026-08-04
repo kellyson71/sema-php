@@ -71,8 +71,17 @@ include 'header.php';
                 <a href="denuncias.php" class="text-blue-600 hover:text-blue-800 flex items-center mb-2 transition-colors w-max">
                     <i class="fas fa-arrow-left mr-2"></i> Voltar à Lista
                 </a>
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3 flex-wrap">
                     Detalhes da Denúncia #<?php echo str_pad($denuncia['id'], 6, '0', STR_PAD_LEFT); ?>
+                    <?php if (($denuncia['setor'] ?? 'meio_ambiente') === 'obras_urbanismo'): ?>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                            <i class="fas fa-hard-hat"></i> Obras e Serviços Urbanos
+                        </span>
+                    <?php else: ?>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                            <i class="fas fa-leaf"></i> Meio Ambiente
+                        </span>
+                    <?php endif; ?>
                 </h1>
             </div>
             
@@ -190,6 +199,23 @@ include 'header.php';
                     </div>
                     <!-- Modo edição -->
                     <div id="editInfos" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Equipe Responsável <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 transition-colors">
+                                    <input type="radio" name="setor" value="meio_ambiente" required
+                                           <?php echo ($denuncia['setor'] ?? 'meio_ambiente') === 'meio_ambiente' ? 'checked' : ''; ?>
+                                           class="mt-1 text-green-600 focus:ring-green-500">
+                                    <span class="flex items-center gap-2 text-sm font-medium text-gray-800"><i class="fas fa-leaf text-green-600"></i> Meio Ambiente</span>
+                                </label>
+                                <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-amber-50 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 transition-colors">
+                                    <input type="radio" name="setor" value="obras_urbanismo" required
+                                           <?php echo ($denuncia['setor'] ?? '') === 'obras_urbanismo' ? 'checked' : ''; ?>
+                                           class="mt-1 text-amber-600 focus:ring-amber-500">
+                                    <span class="flex items-center gap-2 text-sm font-medium text-gray-800"><i class="fas fa-hard-hat text-amber-600"></i> Obras e Serviços Urbanos</span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Nome/Razão Social <span class="text-red-500">*</span></label>

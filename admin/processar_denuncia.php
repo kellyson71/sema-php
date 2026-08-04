@@ -22,6 +22,7 @@ if ($acao === 'cadastrar') {
     $infrator_cpf_cnpj = trim($_POST['infrator_cpf_cnpj'] ?? '');
     $infrator_endereco = trim($_POST['infrator_endereco'] ?? '');
     $observacoes = trim($_POST['observacoes'] ?? '');
+    $setor = in_array($_POST['setor'] ?? '', ['meio_ambiente', 'obras_urbanismo'], true) ? $_POST['setor'] : 'meio_ambiente';
     $admin_id = $_SESSION['admin_id'];
 
     if (empty($infrator_nome) || empty($observacoes)) {
@@ -32,10 +33,10 @@ if ($acao === 'cadastrar') {
     try {
         $pdo->beginTransaction();
 
-        $sql = "INSERT INTO denuncias (infrator_nome, infrator_cpf_cnpj, infrator_endereco, observacoes, admin_id, origem)
-                VALUES (?, ?, ?, ?, ?, 'admin')";
+        $sql = "INSERT INTO denuncias (infrator_nome, infrator_cpf_cnpj, infrator_endereco, observacoes, admin_id, origem, setor)
+                VALUES (?, ?, ?, ?, ?, 'admin', ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $admin_id]);
+        $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $admin_id, $setor]);
         
         $denunciaId = $pdo->lastInsertId();
 
@@ -91,14 +92,15 @@ if ($acao === 'cadastrar') {
     $infrator_cpf_cnpj = trim($_POST['infrator_cpf_cnpj'] ?? '');
     $infrator_endereco = trim($_POST['infrator_endereco'] ?? '');
     $observacoes      = trim($_POST['observacoes'] ?? '');
+    $setor            = in_array($_POST['setor'] ?? '', ['meio_ambiente', 'obras_urbanismo'], true) ? $_POST['setor'] : 'meio_ambiente';
 
     if (empty($infrator_nome) || empty($observacoes)) {
         header("Location: visualizar_denuncia.php?id=$denunciaId&error=vazio");
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE denuncias SET infrator_nome=?, infrator_cpf_cnpj=?, infrator_endereco=?, observacoes=? WHERE id=?");
-    $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $denunciaId]);
+    $stmt = $pdo->prepare("UPDATE denuncias SET infrator_nome=?, infrator_cpf_cnpj=?, infrator_endereco=?, observacoes=?, setor=? WHERE id=?");
+    $stmt->execute([$infrator_nome, $infrator_cpf_cnpj, $infrator_endereco, $observacoes, $setor, $denunciaId]);
 
     registrarHistoricoDenuncia($pdo, $denunciaId, 'Edição', 'Dados da denúncia atualizados.');
 

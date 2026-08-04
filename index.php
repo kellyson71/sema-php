@@ -439,6 +439,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     if (!anonimo) {
                         requireValue('input[name="denunciante_nome"]', 'Informe seu nome ou marque denúncia anônima.');
                     }
+                    requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
                     requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
                     if (document.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
                         requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
@@ -756,6 +757,11 @@ foreach ($tipos_alvara as $slug => $tipo) {
                    onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                     <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
                 </a>
+                <a href="./consultar_denuncia.php"
+                   style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                   onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-magnifying-glass-location" style="color:#fcd34d;"></i> Acompanhe sua Denúncia
+                </a>
                 <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
                         style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
                         onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
@@ -928,6 +934,24 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     // ── Campos específicos da denúncia pública ────────────────
                     if (tipo === 'denuncia') {
                         campos = `
+                        <div class="form-section-label" style="margin-top:0;">Qual equipe deve analisar esta denúncia? <span style="color:#f87171">*</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;margin-bottom:18px;">
+                            ${[
+                                ['meio_ambiente',    'fa-leaf',      '#22c55e', 'Meio Ambiente (SEMA)', 'Desmatamento, poluição, queimada, maus-tratos a animais, área de preservação...'],
+                                ['obras_urbanismo',  'fa-hard-hat',  '#f59e0b', 'Obras e Serviços Urbanos', 'Construção irregular, entulho, obstrução de via, terreno sujo...'],
+                            ].map(([val, icone, cor, titulo, desc]) => `
+                                <label style="flex:1;min-width:220px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);">
+                                    <input type="radio" name="setor" value="${val}" required
+                                        style="width:16px;height:16px;margin-top:2px;accent-color:${cor};cursor:pointer;">
+                                    <span>
+                                        <span style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem;">
+                                            <i class="fas ${icone}" style="color:${cor};"></i> ${titulo}
+                                        </span>
+                                        <span style="display:block;font-size:.78rem;color:rgba(255,255,255,0.55);margin-top:2px;">${desc}</span>
+                                    </span>
+                                </label>
+                            `).join('')}
+                        </div>
                         <div style="margin-bottom:10px;">
                             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.9rem;">
                                 <input type="checkbox" name="anonimo" id="chk_anonimo" value="1"
