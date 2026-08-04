@@ -16,13 +16,27 @@ function registrarHistoricoDenuncia($pdo, $denunciaId, $acao, $detalhes = null) 
     $stmt->execute([$denunciaId, $adminId, $acao, $detalhes]);
 }
 
+// Detecta a equipe pelo perfil de quem está logado. Quem atende as duas
+// equipes ('ambos') escolhe manualmente — nesse caso confia no que foi enviado.
+function detectarSetorDenuncia($pdo, $setorPostado) {
+    $stmt = $pdo->prepare("SELECT setor FROM administradores WHERE id = ?");
+    $stmt->execute([$_SESSION['admin_id']]);
+    $setorAdmin = $stmt->fetchColumn() ?: 'meio_ambiente';
+
+    if ($setorAdmin !== 'ambos') {
+        return $setorAdmin;
+    }
+
+    return in_array($setorPostado, ['meio_ambiente', 'obras_urbanismo'], true) ? $setorPostado : 'meio_ambiente';
+}
+
 
 if ($acao === 'cadastrar') {
     $infrator_nome = trim($_POST['infrator_nome'] ?? '');
     $infrator_cpf_cnpj = trim($_POST['infrator_cpf_cnpj'] ?? '');
     $infrator_endereco = trim($_POST['infrator_endereco'] ?? '');
     $observacoes = trim($_POST['observacoes'] ?? '');
-    $setor = in_array($_POST['setor'] ?? '', ['meio_ambiente', 'obras_urbanismo'], true) ? $_POST['setor'] : 'meio_ambiente';
+    $setor = detectarSetorDenuncia($pdo, $_POST['setor'] ?? '');
     $admin_id = $_SESSION['admin_id'];
 
     if (empty($infrator_nome) || empty($observacoes)) {

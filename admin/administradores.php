@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $senha = trim($_POST['senha'] ?? '');
     $nivel = $_POST['nivel'] ?? 'operador';
+    $setor = in_array($_POST['setor'] ?? '', ['meio_ambiente', 'obras_urbanismo', 'ambos'], true) ? $_POST['setor'] : 'meio_ambiente';
     $ativo = isset($_POST['ativo']) && $_POST['ativo'] == 1 ? 1 : 0;
     $idEditar = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
@@ -112,12 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!empty($senha)) {
                         // Se forneceu senha, atualiza senha também
                         $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ?, senha = ?, nivel = ?, ativo = ? WHERE id = ?");
-                        $stmt->execute([$nome, $email, $senhaHash, $nivel, $ativo, $idEditar]);
+                        $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ?, senha = ?, nivel = ?, setor = ?, ativo = ? WHERE id = ?");
+                        $stmt->execute([$nome, $email, $senhaHash, $nivel, $setor, $ativo, $idEditar]);
                     } else {
                         // Sem senha, não atualiza este campo
-                        $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ?, nivel = ?, ativo = ? WHERE id = ?");
-                        $stmt->execute([$nome, $email, $nivel, $ativo, $idEditar]);
+                        $stmt = $pdo->prepare("UPDATE administradores SET nome = ?, email = ?, nivel = ?, setor = ?, ativo = ? WHERE id = ?");
+                        $stmt->execute([$nome, $email, $nivel, $setor, $ativo, $idEditar]);
                     }
 
                     $mensagem = "Administrador atualizado com sucesso.";
@@ -128,8 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $mensagemTipo = "danger";
                     } else {
                         $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO administradores (nome, email, senha, nivel, ativo, primeiro_acesso) VALUES (?, ?, ?, ?, ?, 1)");
-                        $stmt->execute([$nome, $email, $senhaHash, $nivel, $ativo]);
+                        $stmt = $pdo->prepare("INSERT INTO administradores (nome, email, senha, nivel, setor, ativo, primeiro_acesso) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                        $stmt->execute([$nome, $email, $senhaHash, $nivel, $setor, $ativo]);
 
                         $mensagem = "Administrador adicionado com sucesso.";
                     }
@@ -180,6 +181,7 @@ include 'header.php';
                         <th>Nome</th>
                         <th>E-mail</th>
                         <th>Nível</th>
+                        <th>Equipe</th>
                         <th>Status</th>
                         <th>Último Acesso</th>
                         <th>Ações</th>
@@ -213,6 +215,17 @@ include 'header.php';
                                 <span class="badge <?php echo $cfg[1]; ?>" style="<?php echo $extraStyle; ?>"><?php echo $cfg[0]; ?></span>
                             </td>
                             <td>
+                                <?php
+                                $setorConfig = [
+                                    'meio_ambiente'    => ['Meio Ambiente', 'fa-leaf', 'background:#16a34a;'],
+                                    'obras_urbanismo'  => ['Obras/Urbanismo', 'fa-hard-hat', 'background:#d97706;'],
+                                    'ambos'            => ['Ambas', 'fa-people-arrows', 'background:#475569;'],
+                                ];
+                                $cfgSetor = $setorConfig[$admin['setor'] ?? 'meio_ambiente'] ?? $setorConfig['meio_ambiente'];
+                                ?>
+                                <span class="badge" style="<?php echo $cfgSetor[2]; ?>"><i class="fas <?php echo $cfgSetor[1]; ?> me-1"></i><?php echo $cfgSetor[0]; ?></span>
+                            </td>
+                            <td>
                                 <span class="badge <?php echo $admin['ativo'] ? 'bg-success' : 'bg-secondary'; ?>">
                                     <?php echo $admin['ativo'] ? 'Ativo' : 'Inativo'; ?>
                                 </span>
@@ -228,6 +241,7 @@ include 'header.php';
                                         data-nome="<?php echo htmlspecialchars($admin['nome']); ?>"
                                         data-email="<?php echo htmlspecialchars($admin['email']); ?>"
                                         data-nivel="<?php echo $admin['nivel']; ?>"
+                                        data-setor="<?php echo $admin['setor'] ?? 'meio_ambiente'; ?>"
                                         data-ativo="<?php echo $admin['ativo']; ?>">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -301,6 +315,16 @@ include 'header.php';
                         </select>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="setor" class="form-label">Equipe</label>
+                        <select class="form-select" id="admin_setor" name="setor">
+                            <option value="meio_ambiente">Meio Ambiente (SEMA)</option>
+                            <option value="obras_urbanismo">Obras e Serviços Urbanos</option>
+                            <option value="ambos">Ambas (escolhe manualmente ao registrar)</option>
+                        </select>
+                        <small class="form-text text-muted">Ao registrar uma denúncia internamente, a equipe é detectada automaticamente por aqui.</small>
+                    </div>
+
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="admin_ativo" name="ativo" value="1" checked>
                         <label class="form-check-label" for="ativo">Ativo</label>
@@ -329,6 +353,7 @@ include 'header.php';
                 const adminEmailInput = document.getElementById('admin_email');
                 const adminSenhaInput = document.getElementById('admin_senha');
                 const adminNivelSelect = document.getElementById('admin_nivel');
+                const adminSetorSelect = document.getElementById('admin_setor');
                 const adminAtivoCheck = document.getElementById('admin_ativo');
                 const senhaHelp = document.getElementById('senha_help');
 
@@ -340,6 +365,7 @@ include 'header.php';
                     adminEmailInput.value = button.getAttribute('data-email');
                     adminSenhaInput.value = '';
                     adminNivelSelect.value = button.getAttribute('data-nivel');
+                    adminSetorSelect.value = button.getAttribute('data-setor');
                     adminAtivoCheck.checked = button.getAttribute('data-ativo') === '1';
                     senhaHelp.style.display = 'block';
                 } else {
@@ -350,6 +376,7 @@ include 'header.php';
                     adminEmailInput.value = '';
                     adminSenhaInput.value = '';
                     adminNivelSelect.value = 'operador';
+                    adminSetorSelect.value = 'meio_ambiente';
                     adminAtivoCheck.checked = true;
                     senhaHelp.style.display = 'none';
                 }

@@ -2,6 +2,13 @@
 require_once 'conexao.php';
 verificaLogin();
 
+// Detecta a equipe automaticamente pelo perfil de quem está logado.
+// Quem atende às duas equipes ('ambos') escolhe manualmente.
+$stmtSetor = $pdo->prepare("SELECT setor FROM administradores WHERE id = ?");
+$stmtSetor->execute([$_SESSION['admin_id']]);
+$setorAdmin = $stmtSetor->fetchColumn() ?: 'meio_ambiente';
+$setorEscolhaManual = $setorAdmin === 'ambos';
+
 include 'header.php';
 ?>
 
@@ -39,6 +46,7 @@ include 'header.php';
                     <i class="fas fa-people-arrows text-gray-400 mr-2"></i> Equipe Responsável
                 </h3>
 
+                <?php if ($setorEscolhaManual): ?>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     <label class="flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 transition-colors">
                         <input type="radio" name="setor" value="meio_ambiente" required checked class="mt-1 text-green-600 focus:ring-green-500">
@@ -55,6 +63,17 @@ include 'header.php';
                         </span>
                     </label>
                 </div>
+                <?php else: ?>
+                <div class="mb-8 flex items-center gap-3 p-4 rounded-lg border <?php echo $setorAdmin === 'obras_urbanismo' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'; ?>">
+                    <i class="fas <?php echo $setorAdmin === 'obras_urbanismo' ? 'fa-hard-hat text-amber-600' : 'fa-leaf text-green-600'; ?> text-xl"></i>
+                    <div>
+                        <span class="block font-semibold text-gray-800">
+                            <?php echo $setorAdmin === 'obras_urbanismo' ? 'Obras e Serviços Urbanos' : 'Meio Ambiente (SEMA)'; ?>
+                        </span>
+                        <span class="block text-xs text-gray-500">Detectado automaticamente pelo seu perfil de usuário.</span>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">
                     <i class="fas fa-user-tag text-gray-400 mr-2"></i> Dados do Infrator
