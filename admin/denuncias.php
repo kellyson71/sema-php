@@ -138,13 +138,22 @@ include 'header.php';
                         <input type="text" name="busca" value="<?php echo htmlspecialchars($filtroBusca); ?>" placeholder="Nome do infrator ou CPF/CNPJ..." class="pl-10 w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
                     </div>
                 </div>
-                <div class="w-full md:w-64">
+                <div class="w-full md:w-auto">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Equipe</label>
-                    <select name="setor" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
-                        <option value="">Todas as equipes</option>
-                        <option value="meio_ambiente" <?php echo $filtroSetor == 'meio_ambiente' ? 'selected' : ''; ?>>🌿 Meio Ambiente</option>
-                        <option value="obras_urbanismo" <?php echo $filtroSetor == 'obras_urbanismo' ? 'selected' : ''; ?>>🏗️ Obras e Serviços Urbanos</option>
-                    </select>
+                    <div class="flex gap-2">
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-gray-800 has-[:checked]:border-gray-800 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="" class="hidden" <?php echo $filtroSetor == '' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-list"></i> Todas
+                        </label>
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-green-600 has-[:checked]:border-green-600 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="meio_ambiente" class="hidden" <?php echo $filtroSetor == 'meio_ambiente' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-leaf"></i> Meio Ambiente
+                        </label>
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-amber-500 has-[:checked]:border-amber-500 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="obras_urbanismo" class="hidden" <?php echo $filtroSetor == 'obras_urbanismo' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-hard-hat"></i> Obras
+                        </label>
+                    </div>
                 </div>
                 <div class="w-full md:w-64">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
