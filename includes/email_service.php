@@ -99,59 +99,68 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         return false;
     }
 
-    try {
-        error_log("Iniciando envio de email para: " . $email);
+    // O SMTP da Hostinger rejeita esporadicamente com "data not accepted" mesmo com
+    // credenciais e mensagem válidas — retentativas curtas resolvem na maioria dos casos.
+    $maxTentativas = 3;
+    $erro = null;
 
-        $mail = new PHPMailer(true);
+    for ($tentativa = 1; $tentativa <= $maxTentativas; $tentativa++) {
+        try {
+            error_log("Iniciando envio de email para: " . $email . ($tentativa > 1 ? " (tentativa {$tentativa}/{$maxTentativas})" : ""));
 
-        // Configurações do servidor SMTP
-        $mail->isSMTP();
-        $mail->Host = SMTP_HOST;
-        $mail->SMTPAuth = true;
-        $mail->SMTPSecure = SMTP_SECURE;
-        $mail->CharSet = 'UTF-8';
-        $mail->Encoding = 'base64';
+            $mail = new PHPMailer(true);
 
-        $mail->Username = SMTP_USERNAME;
-        $mail->Password = SMTP_PASSWORD;
-        $mail->Port = SMTP_PORT;
+            // Configurações do servidor SMTP
+            $mail->isSMTP();
+            $mail->Host = SMTP_HOST;
+            $mail->SMTPAuth = true;
+            $mail->SMTPSecure = SMTP_SECURE;
+            $mail->CharSet = 'UTF-8';
+            $mail->Encoding = 'base64';
 
-        // Configurações do remetente e destinatário
-        $mail->setFrom(EMAIL_FROM, EMAIL_FROM_NAME);
-        $mail->addAddress($email, $nome);
+            $mail->Username = SMTP_USERNAME;
+            $mail->Password = SMTP_PASSWORD;
+            $mail->Port = SMTP_PORT;
 
-        // Configurações da mensagem
-        $mail->Subject = '=?UTF-8?B?' . base64_encode($assunto) . '?=';
-        $mail->isHTML(true);
-        $mail->Body = mb_convert_encoding($mensagem, 'UTF-8', 'UTF-8');
-        // Alternativa em texto puro: sem ela, filtros de spam penalizam a mensagem —
-        // e o e-mail do alvará é justamente o que não pode cair na caixa de spam.
-        $mail->AltBody = textoSimplesDoEmail($mail->Body);
+            // Configurações do remetente e destinatário
+            $mail->setFrom(EMAIL_FROM, EMAIL_FROM_NAME);
+            $mail->addAddress($email, $nome);
 
-        if (!$mail->send()) {
+            // Configurações da mensagem
+            $mail->Subject = '=?UTF-8?B?' . base64_encode($assunto) . '?=';
+            $mail->isHTML(true);
+            $mail->Body = mb_convert_encoding($mensagem, 'UTF-8', 'UTF-8');
+            // Alternativa em texto puro: sem ela, filtros de spam penalizam a mensagem —
+            // e o e-mail do alvará é justamente o que não pode cair na caixa de spam.
+            $mail->AltBody = textoSimplesDoEmail($mail->Body);
+
+            if ($mail->send()) {
+                error_log("Email enviado com sucesso para: " . $email);
+                if ($requerimento_id) {
+                    // Registrar sucesso com informações adicionais
+                    $detalhes_sucesso = "Email enviado via SMTP: " . SMTP_HOST;
+                    logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO', $detalhes_sucesso, false);
+                }
+                return true;
+            }
+
             $erro = $mail->ErrorInfo;
-            error_log("Erro ao enviar email: " . $erro);
-            if ($requerimento_id) {
-                logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
-            }
-            return false;
-        } else {
-            error_log("Email enviado com sucesso para: " . $email);
-            if ($requerimento_id) {
-                // Registrar sucesso com informações adicionais
-                $detalhes_sucesso = "Email enviado via SMTP: " . SMTP_HOST;
-                logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO', $detalhes_sucesso, false);
-            }
-            return true;
+        } catch (Throwable $e) {
+            $erro = $e->getMessage();
         }
-    } catch (Throwable $e) {
-        $erro = $e->getMessage();
-        error_log("Exceção ao enviar email: " . $erro);
-        if ($requerimento_id) {
-            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
+
+        error_log("Falha ao enviar email para {$email} (tentativa {$tentativa}/{$maxTentativas}): " . $erro);
+
+        if ($tentativa < $maxTentativas) {
+            sleep(2);
         }
-        return false;
     }
+
+    error_log("Erro ao enviar email após {$maxTentativas} tentativas: " . $erro);
+    if ($requerimento_id) {
+        logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
+    }
+    return false;
 }
 
 /**
