@@ -1,16 +1,6 @@
 <?php
 require_once 'includes/config.php';
 
-// Redireciona apenas o ambiente principal; homologação deve permanecer local.
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
-
 session_start();
 
 if (!isset($_SESSION['protocolo'])) {
@@ -300,6 +290,12 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 <a href="./consultar/index.php" class="consulta-btn">
                     <i class="fas fa-search"></i>
                     <span>Consulte seu Alvará</span>
+                </a>
+            </div>
+            <div>
+                <a href="./consultar_denuncia.php" class="consulta-btn" style="background:#f59e0b; color:#fff;">
+                    <i class="fas fa-magnifying-glass-location"></i>
+                    <span>Acompanhe sua Denúncia</span>
                 </a>
             </div>
             <div>

@@ -2,16 +2,6 @@
 // Inclui configurações antes de qualquer redirecionamento
 include_once 'includes/config.php';
 
-// Redireciona apenas o ambiente principal; homologação deve permanecer local.
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
-
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 // Inclui tabela de enquadramento CONEMA para licenciamento ambiental
@@ -78,18 +68,28 @@ foreach ($tipos_alvara as $slug => $tipo) {
         gtag('config', 'G-W3WFKPD3BN');
     </script>
 
+    <?php $assetVersao = filemtime(__DIR__ . '/css/index.css'); ?>
     <!-- CSS -->
-    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/index.css?v=<?= $assetVersao ?>">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <script src="./js/index.js" defer></script>
+    <!-- DSGov — Padrão Digital de Governo (vendorizado em assets/govbr-ds) -->
+    <link rel="stylesheet" href="./assets/govbr-ds/fonts/rawline/css/rawline.css">
+    <link rel="stylesheet" href="./assets/govbr-ds/css/core.min.css">
+    <link rel="stylesheet" href="./css/govbr-theme.css?v=<?= filemtime(__DIR__ . '/css/govbr-theme.css') ?>">
+
+    <!-- Design system próprio da SEMA — paleta e componentes de marca extraídos dos assets oficiais -->
+    <link rel="stylesheet" href="./css/sema-design-system.css?v=<?= filemtime(__DIR__ . '/css/sema-design-system.css') ?>">
+    <script src="./assets/govbr-ds/js/core.min.js" defer></script>
+
+    <script src="./js/index.js?v=<?= filemtime(__DIR__ . '/js/index.js') ?>" defer></script>
     <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 
 <body>
-    <div class="feedback" id="feedback"></div>
+    <a class="pular" href="#conteudo">Ir para o conteúdo principal</a>
 
     <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
     <!-- Banner de Homologação -->
@@ -114,40 +114,73 @@ foreach ($tipos_alvara as $slug => $tipo) {
     <div style="height: 22px;"></div> <!-- Espaçador para o banner fixo -->
     <?php endif; ?>
     <header>
-        <nav>
-            <ul>
-                <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
-                        <img src="./assets/img/instagram.png" alt="Instagram">
-                    </a>
-                </li>
-                <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
-                        <img src="./assets/img/facebook.png" alt="Facebook">
-                    </a>
-                </li>
-                <li><a href="https://twitter.com/paudosferros">
-                        <img src="./assets/img/twitter.png" alt="Twitter">
-                    </a>
-                </li>
-                <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
-                        <img src="./assets/img/youtube.png" alt="YouTube">
-                    </a>
-                </li>
-                <li><a href="https://instagram.com">
-                        <img src="./assets/img/copy-url.png" alt="URL">
-                    </a>
-                </li>
-            </ul>
-        </nav>
+        <div class="header-identidade">
+            <img class="header-logo" src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png" alt="SEMA, Secretaria Municipal de Meio Ambiente">
+        </div>
 
-        <div class="user-options">
-            <p id="alter-font">Tamanho da fonte</p>
-            <button onclick="increaseFont()">A+</button>
-            <p>|</p>
-            <button onclick="decreaseFont()">A-</button>
+        <button type="button" class="header-menu-toggle" id="header-menu-toggle"
+            aria-expanded="false" aria-controls="header-extras" title="Redes sociais e acessibilidade">
+            <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
+            <span class="oculto-visual">Redes sociais e acessibilidade</span>
+        </button>
+
+        <div class="header-extras" id="header-extras">
+            <nav>
+                <ul>
+                    <li><a href="https://www.instagram.com/prefeituradepaudosferros/" aria-label="Instagram">
+                            <i class="fab fa-instagram" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li><a href="https://www.facebook.com/prefeituradepaudosferros/" aria-label="Facebook">
+                            <i class="fab fa-facebook-f" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li><a href="https://twitter.com/paudosferros" aria-label="Twitter">
+                            <i class="fab fa-twitter" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros" aria-label="YouTube">
+                            <i class="fab fa-youtube" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="barra-acess" role="group" aria-label="Opções de acessibilidade">
+                <span class="rotulo-acess" aria-hidden="true">Acessibilidade</span>
+                <div class="grupo">
+                    <button type="button" data-acao="diminuir" title="Diminuir o tamanho do texto">
+                        <i class="fas fa-minus" aria-hidden="true"></i>
+                        <span class="oculto-visual">Diminuir o tamanho do texto</span>
+                        <span aria-hidden="true">A</span>
+                    </button>
+                    <button type="button" data-acao="fonte-padrao" title="Voltar ao tamanho padrão do texto">
+                        <span class="oculto-visual">Voltar ao tamanho padrão do texto</span>
+                        <span aria-hidden="true">A</span>
+                    </button>
+                    <button type="button" data-acao="aumentar" title="Aumentar o tamanho do texto">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        <span class="oculto-visual">Aumentar o tamanho do texto</span>
+                        <span aria-hidden="true">A</span>
+                    </button>
+                </div>
+                <div class="grupo">
+                    <button type="button" data-acao="contraste" aria-pressed="false" title="Ativar alto contraste">
+                        <i class="fas fa-circle-half-stroke" aria-hidden="true"></i>
+                        <span class="oculto-visual">Alto contraste</span>
+                    </button>
+                </div>
+                <div class="grupo">
+                    <button type="button" data-acao="libras" title="Tradutor de Libras (VLibras)">
+                        <i class="fas fa-hands" aria-hidden="true"></i>
+                        <span class="oculto-visual">Tradutor de Libras</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main>
+    <main id="conteudo">
         <section>
             <form id="form" enctype="multipart/form-data" method="post" action="processar_formulario.php">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
@@ -157,14 +190,32 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     <input type="text" id="site_empresa" name="site_empresa" tabindex="-1" autocomplete="off">
                 </div>
                 <div class="form-header">
-                    <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
-                    <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
-                    <p>PROTOCOLO ELETRÔNICO — ALVARÁS, DENÚNCIAS E AUTORIZAÇÕES</p>
+                    <img src="./assets/SEMA/PNG/Azul/Logo Prefeitura_SEMA.png" alt="Prefeitura de Pau dos Ferros, Secretaria Municipal de Meio Ambiente">
+                    <h1>Protocolo Eletrônico</h1>
+                    <p>ALVARÁS, DENÚNCIAS E AUTORIZAÇÕES DA SECRETARIA MUNICIPAL DE MEIO AMBIENTE</p>
+                </div>
+                <div class="sema-faixa" aria-hidden="true">
+                    <span></span><span></span><span></span>
                 </div>
 
-                <div style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
-                    <i class="fas fa-info-circle" style="font-size:0.78rem;flex-shrink:0;"></i>
-                    <span>O boleto será enviado por email após a análise inicial. Pagamento e comprovante são enviados depois por link seguro da equipe.</span>
+                <?php if (!empty($_SESSION['admin_id'])): ?>
+                <div class="admin-sessao-tag">
+                    <span class="admin-sessao-selo"><i class="fas fa-circle-check" aria-hidden="true"></i> Logado como <strong><?= htmlspecialchars($_SESSION['admin_nome'] ?? '') ?></strong></span>
+                    <a href="admin/index.php" title="Ir para o painel administrativo">
+                        Painel administrativo <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+                <?php endif; ?>
+
+                <div style="background:#f8f9fa;padding:16px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+                    <p style="max-width:620px;margin:0;text-align:center;color:#8a94a6;font-size:0.76rem;line-height:1.5;">
+                        <i class="fas fa-info-circle" style="margin-right:3px;"></i>
+                        O boleto será enviado por email após a análise inicial. Pagamento e comprovante são enviados depois por link seguro da equipe.
+                    </p>
+                    <p style="max-width:620px;margin:0;text-align:center;color:#8a94a6;font-size:0.76rem;line-height:1.5;">
+                        Procurando consultar um alvará, denúncia, a legislação municipal ou os estudos ambientais?
+                        <a href="#outros-servicos" style="color:#009640;">Esses serviços estão no final da página</a>.
+                    </p>
                 </div>
 
                 <?php
@@ -269,11 +320,17 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     <div class="form-section-label">Dados do Proprietário do Imóvel</div>
                     <input type="hidden" name="mesmo_requerente" value="false">
                     <div class="form-part-2" id="proprietario-fields">
-                        <input id="proprietario_nome" name="proprietario[nome]"
-                            placeholder="Nome Completo do Proprietário *" autocomplete="name">
-                        <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
-                            id="proprietario_cpf_cnpj"
-                            placeholder="CPF ou CNPJ do Proprietário" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        <div class="campo">
+                            <label for="proprietario_nome">Nome completo do proprietário</label>
+                            <input id="proprietario_nome" name="proprietario[nome]"
+                                placeholder="Ex.: Maria da Silva Souza" autocomplete="name">
+                        </div>
+                        <div class="campo">
+                            <label for="proprietario_cpf_cnpj">CPF ou CNPJ do proprietário</label>
+                            <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
+                                id="proprietario_cpf_cnpj"
+                                placeholder="000.000.000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        </div>
                     </div>
                 </div>
 
@@ -281,28 +338,44 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <div class="form-section secao-alvara">
                     <div class="form-section-label">Dados do Requerente</div>
                     <div class="form-part-2">
-                        <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
-                        <input data-required="true" type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
-                        <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF ou CNPJ do Requerente" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
-                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
-                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
+                        <div class="campo">
+                            <label for="name">Nome completo do requerente <span class="campo-obrig">*</span></label>
+                            <input data-required="true" id="name" name="requerente[nome]" placeholder="Ex.: João Pereira Lima" autocomplete="name">
+                        </div>
+                        <div class="campo">
+                            <label for="requerente_email">E-mail <span class="campo-obrig">*</span></label>
+                            <input data-required="true" type="email" id="requerente_email" name="requerente[email]" placeholder="nome@email.com" autocomplete="email">
+                        </div>
+                        <div class="campo">
+                            <label for="cpf">CPF ou CNPJ do requerente</label>
+                            <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
+                                placeholder="000.000.000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        </div>
+                        <div class="campo">
+                            <label for="phone">Telefone / WhatsApp <span class="campo-obrig">*</span></label>
+                            <input type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
+                                name="requerente[telefone]" id="phone" placeholder="(84) 90000-0000" autocomplete="tel">
+                        </div>
                     </div>
                 </div>
 
                 <!-- Seção 3: Endereço do Objetivo (oculta em modo denúncia) -->
                 <div class="form-section secao-alvara">
+                    <div class="form-section-label">Localização da obra ou objetivo</div>
                     <div class="form-part-2">
-                        <input data-required="true" name="endereco_objetivo"
-                            placeholder="Localização de Obras (Rua, número, bairro, CEP) *" autocomplete="street-address">
+                        <div class="campo campo-full">
+                            <label for="endereco_objetivo">Endereço completo <span class="campo-obrig">*</span></label>
+                            <input data-required="true" id="endereco_objetivo" name="endereco_objetivo"
+                                placeholder="Rua, número, bairro, CEP" autocomplete="street-address">
+                        </div>
                     </div>
                     <div style="margin-top: 24px;">
                         <div class="form-section-label">Notificado pelo Fiscal de Obras? *</div>
                         <div style="display: flex; gap: 16px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #333; font-size: 0.95rem;">
                                 <input type="radio" name="notificado_fiscal_obras" value="1" data-required="true" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Sim
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #333; font-size: 0.95rem;">
                                 <input type="radio" name="notificado_fiscal_obras" value="0" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Não
                             </label>
                         </div>
@@ -312,36 +385,69 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <!-- Seção 4: Tipo de Solicitação -->
                 <div class="form-section form-section-alvara">
                     <div class="tipo-alvara-container">
-                        <div class="tipo-alvara-titulo">
-                            <i class="fas fa-clipboard-list"></i>
-                            SELECIONE O TIPO DE SOLICITAÇÃO
-                        </div>
+                        <div class="tipo-alvara-titulo-simples">Selecione o tipo de solicitação</div>
+                        <p class="tipo-alvara-subtitulo">Escolha entre licenças ambientais, obras e construção, denúncias/autorizações ou outros serviços da SEMA.</p>
+
+                        <?php
+                        $categorias = [
+                            'obras'              => ['nome' => 'Obras e Construção',        'icone' => 'fa-hard-hat'],
+                            'ambiental'          => ['nome' => 'Licenças Ambientais',        'icone' => 'fa-leaf'],
+                            'denuncia_autoriza'  => ['nome' => 'Denúncias e Autorizações',   'icone' => 'fa-bullhorn'],
+                            'outro'              => ['nome' => 'Outros Serviços',            'icone' => 'fa-folder-open'],
+                        ];
+                        $comboboxDados = [];
+                        foreach ($categorias as $catSlug => $cat) {
+                            $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
+                            if (empty($tiposDaCategoria)) continue;
+                            $comboboxDados[] = [
+                                'slug' => $catSlug,
+                                'nome' => $cat['nome'],
+                                'tipos' => array_map(fn($slug, $t) => [
+                                    'slug' => $slug,
+                                    'nome' => $t['nome'],
+                                    'desabilitado' => !empty($t['desabilitado']),
+                                ], array_keys($tiposDaCategoria), $tiposDaCategoria),
+                            ];
+                        }
+                        ?>
+
                         <div class="tipo-alvara-content">
                             <div class="tipo-alvara-left">
-                                <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Solicitação">
-                                    <option value="" hidden>Selecione o tipo de solicitação...</option>
-                                    <?php
-                                    $categorias = [
-                                        'obras'              => 'Obras e Construção',
-                                        'ambiental'          => 'Licenças Ambientais',
-                                        'outro'              => 'Outros Serviços',
-                                        'denuncia_autoriza'  => 'Denúncias e Autorizações',
-                                    ];
-                                    foreach ($categorias as $catSlug => $catNome):
-                                        $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
-                                        if (empty($tiposDaCategoria)) continue;
+                                <div class="combobox-tipo" id="combobox-tipo">
+                                    <input type="text" id="tipo_alvara_busca" class="combobox-input"
+                                        role="combobox" aria-expanded="false" aria-controls="tipo_alvara_lista" aria-autocomplete="list"
+                                        autocomplete="off" placeholder="Selecione ou digite pra buscar...">
+                                    <i class="fas fa-chevron-down combobox-icone" aria-hidden="true"></i>
+                                    <ul class="combobox-lista" id="tipo_alvara_lista" role="listbox" hidden></ul>
+                                </div>
+
+                                <div class="categoria-atalhos" id="categoria-atalhos">
+                                    <span class="categoria-atalhos-rotulo">Atalho por categoria:</span>
+                                    <?php foreach ($categorias as $catSlug => $cat):
+                                        if (!array_filter($comboboxDados, fn($c) => $c['slug'] === $catSlug)) continue;
                                     ?>
-                                    <optgroup label="<?= htmlspecialchars($catNome) ?>">
-                                        <?php foreach ($tiposDaCategoria as $slug => $tipo): ?>
-                                        <?php if (!empty($tipo['desabilitado'])): ?>
-                                        <option value="<?= $slug ?>" disabled style="color:#aaa;"><?= htmlspecialchars($tipo['nome']) ?></option>
-                                        <?php else: ?>
-                                        <option value="<?= $slug ?>"><?= htmlspecialchars($tipo['nome']) ?></option>
-                                        <?php endif; ?>
+                                    <button type="button" class="categoria-btn" data-categoria="<?= $catSlug ?>"><?= htmlspecialchars($cat['nome']) ?></button>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Solicitação" style="display:none;" aria-hidden="true" tabindex="-1">
+                                    <option value="" hidden>Selecione o tipo de solicitação...</option>
+                                    <?php foreach ($comboboxDados as $cat): ?>
+                                    <optgroup label="<?= htmlspecialchars($cat['nome']) ?>">
+                                        <?php foreach ($cat['tipos'] as $t): ?>
+                                        <option value="<?= $t['slug'] ?>" <?= $t['desabilitado'] ? 'disabled' : '' ?>><?= htmlspecialchars($t['nome']) ?></option>
                                         <?php endforeach; ?>
                                     </optgroup>
                                     <?php endforeach; ?>
                                 </select>
+
+                                <p class="mudar-tipo-link" id="mudar-tipo-link" style="display:none;">
+                                    <a href="#" id="btn-mudar-tipo"><i class="fas fa-rotate-left"></i> Não é isso, mudar tipo de solicitação</a>
+                                </p>
+
+                                <script>
+                                    window.SEMA_TIPOS_ALVARA = <?= json_encode($comboboxDados, JSON_UNESCAPED_UNICODE) ?>;
+                                </script>
 
                                 <div id="campos_dinamicos">
                                     <!-- Os campos específicos serão carregados aqui -->
@@ -367,14 +473,14 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                style="color:#009640; font-weight:600; text-decoration:underline;">
                                 Termo de Ciência e Responsabilidade
                             </a>
-                            — declaro que todas as informações e documentos são verdadeiros, estando ciente das sanções previstas na legislação.
+                            , declaro que todas as informações e documentos são verdadeiros, estando ciente das sanções previstas na legislação.
                         </label>
                     </div>
                 </div>
 
                 <div class="captcha"></div>
 
-                <button type="submit" id="botao">
+                <button type="submit" id="botao" class="br-button primary large">
                     <i class="fas fa-paper-plane"></i> Enviar Requerimento
                 </button>
             </form>
@@ -519,7 +625,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                         Termo de Ciência e Responsabilidade
                     </h2>
                     <p style="color:rgba(255,255,255,0.75); margin:4px 0 0; font-size:0.82rem;">
-                        Licenciamento Ambiental — Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN
+                        Licenciamento Ambiental da Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN
                     </p>
                 </div>
                 <button onclick="document.getElementById('modal-termo').style.display='none'"
@@ -547,7 +653,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     <div style="flex-shrink:0; width:28px; height:28px; background:#c0392b; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">II</div>
                     <div>
                         <strong>Penalidades por Falsidade ou Omissão</strong><br>
-                        Está ciente de que a falsidade ou omissão de informações configura <strong>crime de falsidade ideológica (art. 299 do Código Penal Brasileiro)</strong> e <strong>infração ambiental (Lei Federal nº 9.605/1998 — Lei de Crimes Ambientais)</strong>, sujeitando-se às sanções administrativas, civis e penais cabíveis, inclusive cassação da licença, multa e responsabilização por eventuais danos ao meio ambiente.
+                        Está ciente de que a falsidade ou omissão de informações configura <strong>crime de falsidade ideológica (art. 299 do Código Penal Brasileiro)</strong> e <strong>infração ambiental (Lei Federal nº 9.605/1998, Lei de Crimes Ambientais)</strong>, sujeitando-se às sanções administrativas, civis e penais cabíveis, inclusive cassação da licença, multa e responsabilização por eventuais danos ao meio ambiente.
                     </div>
                 </div>
 
@@ -574,7 +680,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     <div style="flex-shrink:0; width:28px; height:28px; background:#009640; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.8rem;">V</div>
                     <div>
                         <strong>Responsabilidade por Danos Ambientais</strong><br>
-                        Assume a responsabilidade objetiva — independentemente de culpa — por eventuais danos ambientais decorrentes da atividade, obrigando-se a adotar todas as medidas de prevenção, mitigação e reparação necessárias, nos termos da legislação ambiental vigente.
+                        Assume a responsabilidade objetiva, independentemente de culpa, por eventuais danos ambientais decorrentes da atividade, obrigando-se a adotar todas as medidas de prevenção, mitigação e reparação necessárias, nos termos da legislação ambiental vigente.
                     </div>
                 </div>
 
@@ -620,7 +726,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
             <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
                 <div>
                     <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-book-open" style="margin-right:10px;"></i>Legislação Municipal</h2>
-                    <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Pau dos Ferros / RN — leis vigentes relacionadas ao licenciamento ambiental</p>
+                    <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Pau dos Ferros / RN: leis vigentes relacionadas ao licenciamento ambiental</p>
                 </div>
                 <button onclick="document.getElementById('modal-legislacao').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
             </div>
@@ -628,49 +734,49 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <?php
                 $leis = [
                     [
-                        'titulo'    => 'Código de Obras — Lei nº 2.117/2025',
+                        'titulo'    => 'Código de Obras (Lei nº 2.117/2025)',
                         'descricao' => 'Regula as obras e edificações no município, incluindo licenças de construção e habite-se.',
                         'icone'     => 'fa-hard-hat',
                         'cor'       => '#e67e22',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/4632/LEIS_2117_2025_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Código de Meio Ambiente — Lei nº 2.116/2025',
+                        'titulo'    => 'Código de Meio Ambiente (Lei nº 2.116/2025)',
                         'descricao' => 'Estabelece normas de proteção ambiental e regula o licenciamento ambiental municipal.',
                         'icone'     => 'fa-leaf',
                         'cor'       => '#27ae60',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/4631/LEIS_2116_2025_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Código de Posturas — Lei nº 2.118/2025',
+                        'titulo'    => 'Código de Posturas (Lei nº 2.118/2025)',
                         'descricao' => 'Define as normas de postura municipal sobre uso do solo, higiene e funcionamento de atividades.',
                         'icone'     => 'fa-city',
                         'cor'       => '#2980b9',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/4633/LEIS_2118_2025_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Emenda ao Código de Posturas — Lei nº 2.120/2025',
+                        'titulo'    => 'Emenda ao Código de Posturas (Lei nº 2.120/2025)',
                         'descricao' => 'Altera e complementa disposições do Código de Posturas Municipal.',
                         'icone'     => 'fa-file-contract',
                         'cor'       => '#8e44ad',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/4635/LEIS_2120_2025_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Emenda ao Código de Meio Ambiente — Lei nº 2.119/2025',
+                        'titulo'    => 'Emenda ao Código de Meio Ambiente (Lei nº 2.119/2025)',
                         'descricao' => 'Altera e complementa disposições do Código de Meio Ambiente Municipal.',
                         'icone'     => 'fa-seedling',
                         'cor'       => '#16a085',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/4634/LEIS_2119_2025_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Política Municipal de Resíduos Sólidos — LC nº 020/2023',
+                        'titulo'    => 'Política Municipal de Resíduos Sólidos (LC nº 020/2023)',
                         'descricao' => 'Institui a política de gestão de resíduos sólidos no município de Pau dos Ferros.',
                         'icone'     => 'fa-recycle',
                         'cor'       => '#d35400',
                         'url'       => 'https://paudosferros.rn.gov.br/arquivos/3414/LC%20%20LEI%20COMPLEMENTAR_020_2023_0000001.pdf',
                     ],
                     [
-                        'titulo'    => 'Plano Diretor — LC nº 017/2022',
+                        'titulo'    => 'Plano Diretor (LC nº 017/2022)',
                         'descricao' => 'Define o planejamento urbano e ambiental do município, incluindo zoneamento e uso do solo.',
                         'icone'     => 'fa-map',
                         'cor'       => '#c0392b',
@@ -701,7 +807,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         <div style="background:#fff; max-width:700px; max-height:min(85vh, 760px); margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
             <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
                 <div>
-                    <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-magnifying-glass-chart" style="margin-right:10px;"></i>Estudos Ambientais</h2>
+                    <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-flask" style="margin-right:10px;"></i>Estudos Ambientais</h2>
                     <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Diagnósticos e levantamentos técnicos produzidos pela SEMA</p>
                 </div>
                 <button onclick="document.getElementById('modal-estudos').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
@@ -710,7 +816,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <?php
                 $estudos = [
                     [
-                        'titulo'    => 'Diagnóstico das APPs Urbanas de Pau dos Ferros — 2026',
+                        'titulo'    => 'Diagnóstico das APPs Urbanas de Pau dos Ferros (2026)',
                         'descricao' => 'Mapeamento e diagnóstico ambiental das Áreas de Preservação Permanente na malha urbana do município.',
                         'icone'     => 'fa-map-location-dot',
                         'cor'       => '#16a085',
@@ -747,11 +853,11 @@ foreach ($tipos_alvara as $slug => $tipo) {
 
             <!-- Logo SEMA branca -->
             <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
-                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
+                 alt="SEMA, Secretaria Municipal de Meio Ambiente"
                  style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
 
             <!-- Botões de ação -->
-            <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
+            <section id="outros-servicos" style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
                 <a href="./consultar/index.php"
                    style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
                    onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
@@ -770,7 +876,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <button onclick="document.getElementById('modal-estudos').style.display='flex'"
                         style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
                         onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                    <i class="fas fa-magnifying-glass-chart" style="color:#4ade80;"></i> Estudos Ambientais
+                    <i class="fas fa-flask" style="color:#4ade80;"></i> Estudos Ambientais
                 </button>
             </section>
 
@@ -805,7 +911,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
 
             <!-- Copyright -->
             <p style="font-size:0.95rem; color:rgba(255,255,255,0.85); margin:0; line-height:1.6; letter-spacing:0.3px;">
-                &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
+                &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong>. Todos os direitos reservados.
                 <span style="font-size:0.8rem; color:rgba(255,255,255,0.5); display:block; margin-top:8px;">Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.65); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.4);">Kellyson Raphael</a></span>
             </p>
 
@@ -940,20 +1046,20 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 ['meio_ambiente',    'fa-leaf',      '#22c55e', 'Meio Ambiente (SEMA)', 'Desmatamento, poluição, queimada, maus-tratos a animais, área de preservação...'],
                                 ['obras_urbanismo',  'fa-hard-hat',  '#f59e0b', 'Obras e Serviços Urbanos', 'Construção irregular, entulho, obstrução de via, terreno sujo...'],
                             ].map(([val, icone, cor, titulo, desc]) => `
-                                <label style="flex:1;min-width:220px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);">
+                                <label style="flex:1;min-width:220px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;color:#333;">
                                     <input type="radio" name="setor" value="${val}" required
                                         style="width:16px;height:16px;margin-top:2px;accent-color:${cor};cursor:pointer;">
                                     <span>
                                         <span style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem;">
                                             <i class="fas ${icone}" style="color:${cor};"></i> ${titulo}
                                         </span>
-                                        <span style="display:block;font-size:.78rem;color:rgba(255,255,255,0.55);margin-top:2px;">${desc}</span>
+                                        <span style="display:block;font-size:.78rem;color:#6b7280;margin-top:2px;">${desc}</span>
                                     </span>
                                 </label>
                             `).join('')}
                         </div>
                         <div style="margin-bottom:10px;">
-                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.9rem;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:#333;font-size:.9rem;">
                                 <input type="checkbox" name="anonimo" id="chk_anonimo" value="1"
                                     style="width:16px;height:16px;accent-color:#ef4444;cursor:pointer;">
                                 Realizar denúncia anônima (sua identidade não será registrada)
@@ -987,7 +1093,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 ['entulho_via',         'Entulho em via pública'],
                                 ['outros',              'Outros'],
                             ].map(([val, label]) => `
-                                <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.85rem;min-width:170px;">
+                                <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;color:#333;font-size:.85rem;min-width:170px;">
                                     <input type="checkbox" name="tipos_denuncia[]" value="${val}"
                                         style="width:15px;height:15px;accent-color:#ef4444;cursor:pointer;"
                                         onchange="toggleOutros(this)">
@@ -1000,7 +1106,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                         </div>
                         <div class="form-section-label" style="margin-top:18px;">Detalhes adicionais</div>
                         <textarea name="observacoes" rows="4"
-                            style="width:100%;margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);font-size:.9rem;resize:vertical;"
+                            style="width:100%;margin-top:8px;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:#f8f9fa;color:#222;font-size:.9rem;resize:vertical;"
                             placeholder="Descreva os fatos com o máximo de detalhes possível..."></textarea>
                         `;
                         camposDinamicos.innerHTML = campos;
@@ -1030,11 +1136,12 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     style="width:100%">
                             </div>
                             <div style="margin-top:8px;">
+                                <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Detalhamento da solicitação</label>
                                 <textarea name="detalhamento" rows="3"
                                     style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
-                                    placeholder="Detalhamento da solicitação..."></textarea>
+                                    placeholder="Descreva os detalhes da solicitação..."></textarea>
                             </div>
-                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
+                            <div style="margin-top:8px;padding:12px;background:#f8f9fa;border-radius:8px;color:#6b7280;font-size:.82rem;">
                                 <i class="fas fa-info-circle" style="margin-right:6px;"></i>
                                 Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
                             </div>
@@ -1046,11 +1153,12 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input name="numero_cadastro" placeholder="Nº do cadastro imobiliário (se souber)">
                             </div>
                             <div style="margin-top:8px;">
+                                <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Observações sobre o uso pretendido</label>
                                 <textarea name="observacoes_solo" rows="3"
                                     style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
-                                    placeholder="Observações sobre o uso pretendido..."></textarea>
+                                    placeholder="Descreva o uso pretendido para o solo..."></textarea>
                             </div>
-                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
+                            <div style="margin-top:8px;padding:12px;background:#f8f9fa;border-radius:8px;color:#6b7280;font-size:.82rem;">
                                 <i class="fas fa-info-circle" style="margin-right:6px;"></i>
                                 Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
                             </div>
@@ -1067,27 +1175,40 @@ foreach ($tipos_alvara as $slug => $tipo) {
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <div class="campo-com-dica">
+                                    <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                    <button type="button" class="dica-btn" aria-label="O que é CREA/CAU?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">CREA (Conselho Regional de Engenharia e Agronomia) para engenheiros, ou CAU (Conselho de Arquitetura e Urbanismo) para arquitetos: o número do registro profissional do responsável técnico.</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-grid-2">
-                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
-                                    <option value="" hidden>Tipo de Documento *</option>
-                                    <option value="ART">ART</option>
-                                    <option value="RRT">RRT</option>
-                                    <option value="TRT">TRT</option>
-                                    <option value="ART/RRT">ART/RRT</option>
-                                </select>
+                                <div class="campo-com-dica">
+                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                                        <option value="" hidden>Tipo de Documento *</option>
+                                        <option value="ART">ART</option>
+                                        <option value="RRT">RRT</option>
+                                        <option value="TRT">TRT</option>
+                                        <option value="ART/RRT">ART/RRT</option>
+                                    </select>
+                                    <button type="button" class="dica-btn" aria-label="O que são ART, RRT e TRT?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">ART (Anotação de Responsabilidade Técnica) é do CREA, RRT (Registro de Responsabilidade Técnica) é do CAU. TRT é usada em alguns estados como equivalente. Emitida pelo próprio responsável técnico no site do conselho.</span>
+                                    </button>
+                                </div>
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
                             <div class="form-grid-2">
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                <label style="color:#4b5563; font-size:0.82rem;">Início da obra
                                     <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
                                 </label>
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término / previsão de término
+                                <label style="color:#4b5563; font-size:0.82rem;">Término / previsão de término
                                     <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
                                 </label>
                             </div>
-                            <textarea required name="especificacao" placeholder="Especificação da obra (ex: edificação residencial unifamiliar de pavimento térreo, padrão popular, composição do imóvel...) *" rows="3"></textarea>
+                            <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Especificação da obra <span style="color:#dc2626;">*</span></label>
+                            <textarea required name="especificacao" placeholder="Ex.: edificação residencial unifamiliar de pavimento térreo, padrão popular, composição do imóvel..." rows="3"></textarea>
                         `;
                     } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
                         campos = `
@@ -1101,16 +1222,28 @@ foreach ($tipos_alvara as $slug => $tipo) {
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <div class="campo-com-dica">
+                                    <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                    <button type="button" class="dica-btn" aria-label="O que é CREA/CAU?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">CREA (Conselho Regional de Engenharia e Agronomia) para engenheiros, ou CAU (Conselho de Arquitetura e Urbanismo) para arquitetos: o número do registro profissional do responsável técnico.</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-grid-2">
-                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
-                                    <option value="" hidden>Tipo de Documento *</option>
-                                    <option value="ART">ART</option>
-                                    <option value="RRT">RRT</option>
-                                    <option value="TRT">TRT</option>
-                                    <option value="ART/RRT">ART/RRT</option>
-                                </select>
+                                <div class="campo-com-dica">
+                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                                        <option value="" hidden>Tipo de Documento *</option>
+                                        <option value="ART">ART</option>
+                                        <option value="RRT">RRT</option>
+                                        <option value="TRT">TRT</option>
+                                        <option value="ART/RRT">ART/RRT</option>
+                                    </select>
+                                    <button type="button" class="dica-btn" aria-label="O que são ART, RRT e TRT?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">ART (Anotação de Responsabilidade Técnica) é do CREA, RRT (Registro de Responsabilidade Técnica) é do CAU. TRT é usada em alguns estados como equivalente. Emitida pelo próprio responsável técnico no site do conselho.</span>
+                                    </button>
+                                </div>
                                 <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
                             </div>
                             <div class="form-grid-2">
@@ -1118,14 +1251,15 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input name="eng_fiscal_registro" placeholder="CREA do engenheiro fiscal">
                             </div>
                             <div class="form-grid-2">
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                <label style="color:#4b5563; font-size:0.82rem;">Início da obra
                                     <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
                                 </label>
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término da obra
+                                <label style="color:#4b5563; font-size:0.82rem;">Término da obra
                                     <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
                                 </label>
                             </div>
-                            <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
+                            <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Composição do imóvel <span style="color:#dc2626;">*</span></label>
+                            <textarea required name="especificacao" placeholder="Ex.: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda..." rows="3"></textarea>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `
@@ -1139,7 +1273,13 @@ foreach ($tipos_alvara as $slug => $tipo) {
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <div class="campo-com-dica">
+                                    <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                    <button type="button" class="dica-btn" aria-label="O que é CREA/CAU?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">CREA (Conselho Regional de Engenharia e Agronomia) para engenheiros, ou CAU (Conselho de Arquitetura e Urbanismo) para arquitetos: o número do registro profissional do responsável técnico.</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-grid-2">
                                 <div style="display: flex; gap: 10px; width: 100%;">
@@ -1154,12 +1294,13 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </div>
                                 <div></div>
                             </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento (perímetro, pontos, coordenadas, confrontantes...) *" rows="4"></textarea>
+                            <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Descrição detalhada do desmembramento <span style="color:#dc2626;">*</span></label>
+                            <textarea required name="descricao_atividade" placeholder="Perímetro, pontos, coordenadas, confrontantes..." rows="4"></textarea>
                         `;
                     } else if (currentRules.ambiental) {
                         campos = `
-                            <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
-                                <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">
+                            <div style="background:#f0fdf4; border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
+                                <div style="font-weight:600; color:#1a1a1a; margin-bottom:8px; font-size:0.95rem;">
                                     <i class="fas fa-clipboard-check" style="margin-right:6px;"></i>Enquadramento Ambiental (Resolução CONEMA 04/2009)
                                 </div>
                                 <select required name="enquadramento_atividade" style="padding:10px; border:1px solid #ddd; border-radius:4px; width:100%; margin-bottom:8px;">
@@ -1172,26 +1313,32 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     </optgroup>
                                     <?php endforeach; ?>
                                 </select>
-                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem;">Potencial poluidor: P = Pequeno, M = Médio, G = Grande</small>
+                                <small style="color:#6b7280; font-size:0.78rem;">Potencial poluidor: P = Pequeno, M = Médio, G = Grande</small>
                             </div>
                             <div style="margin-bottom:12px;">
                                 <input name="localizacao_google_maps" placeholder="Link do Google Maps do empreendimento (opcional)" style="width:100%;">
-                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem; display:block; margin-top:4px;">
+                                <small style="color:#6b7280; font-size:0.78rem; display:block; margin-top:4px;">
                                     Abra o Google Maps, busque o local, clique em "Compartilhar" → "Copiar link" e cole aqui.
                                 </small>
                             </div>
                             <div class="form-grid-2">
-                                <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${currentRules.exige_ctf ? '*' : '(se houver)'}">
+                                <div class="campo-com-dica">
+                                    <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${currentRules.exige_ctf ? '*' : '(se houver)'}">
+                                    <button type="button" class="dica-btn" aria-label="O que é o CTF?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">Cadastro Técnico Federal de Atividades Poluidoras: registro no IBAMA obrigatório para quem exerce atividades que usam recursos ambientais. Consulte em servicos.ibama.gov.br.</span>
+                                    </button>
+                                </div>
                                 <input ${currentRules.exige_licenca_anterior ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${currentRules.exige_licenca_anterior ? '*' : '(se aplicável)'}">
                             </div>
                             <div class="form-grid-2">
                                 <div>
                                     <input ${currentRules.exige_diario_oficial ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${currentRules.exige_diario_oficial ? ' *' : ''}" style="width:100%;">
-                                    ${!currentRules.exige_diario_oficial ? '<small style="display:block;margin-top:5px;color:rgba(255,255,255,0.45);font-size:0.75rem;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Campo opcional para este tipo de licença</small>' : ''}
+                                    ${!currentRules.exige_diario_oficial ? '<small style="display:block;margin-top:5px;color:#94a3b8;font-size:0.75rem;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Campo opcional para este tipo de licença</small>' : ''}
                                 </div>
                                 <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
                             </div>
-                            <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
+                            <div style="margin:-2px 0 12px; color:#4b5563; font-size:0.8rem;">
                                 O boleto será enviado posteriormente para o email informado. Não é necessário anexar comprovante nesta etapa.
                             </div>
                             <div class="form-grid-2">
@@ -1218,7 +1365,13 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                             </div>
                             <div class="form-grid-2">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                <div class="campo-com-dica">
+                                    <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                                    <button type="button" class="dica-btn" aria-label="O que é CREA/CAU?">
+                                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                                        <span class="dica-texto">CREA (Conselho Regional de Engenharia e Agronomia) para engenheiros, ou CAU (Conselho de Arquitetura e Urbanismo) para arquitetos: o número do registro profissional do responsável técnico.</span>
+                                    </button>
+                                </div>
                                 <div style="display: flex; gap: 10px; width: 100%;">
                                     <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
                                         <option value="" hidden>Tipo *</option>
@@ -1230,11 +1383,13 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
                                 </div>
                             </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
+                            <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Descrição detalhada da obra <span style="color:#dc2626;">*</span></label>
+                            <textarea required name="descricao_atividade" placeholder="Descreva a obra com o máximo de detalhes..." rows="4"></textarea>
                         `;
                     } else {
                         campos = `
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
+                            <label style="display:block;color:#4b5563;font-size:0.82rem;margin-bottom:4px;">Descrição detalhada da atividade <span style="color:#dc2626;">*</span></label>
+                            <textarea required name="descricao_atividade" placeholder="Descreva a atividade com o máximo de detalhes..." rows="4"></textarea>
                         `;
                     }
 
@@ -1374,28 +1529,85 @@ foreach ($tipos_alvara as $slug => $tipo) {
         .file-input-container label {
             display: block;
             margin-bottom: 8px;
-            color: #024287;
+            color: #1f2937;
             font-weight: 500;
+        }
+
+        /* Zona de upload — o <input type=file> nativo continua ali (só fica
+           transparente por cima), a gente só redesenha a moldura e o botão
+           via ::file-selector-button. O nome do arquivo escolhido some no
+           texto nativo do navegador (não dá pra estilizar), por isso o JS
+           injeta um .file-input-status por baixo com o nome de verdade. */
+        .file-input-container .file-input-zona {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 2px dashed #9ca3af;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            transition: border-color .15s, background-color .15s;
+        }
+
+        .file-input-container .file-input-zona:hover,
+        .file-input-container .file-input-zona:focus-within {
+            border-color: #009640;
+            background-color: #f0fdf4;
+        }
+
+        .file-input-container.tem-arquivo .file-input-zona {
+            border-style: solid;
+            border-color: #009640;
+            background-color: #f0fdf4;
         }
 
         .file-input-container input[type="file"] {
             display: block;
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            background-color: #fff;
-            font-size: 14px;
+            font-size: 13px;
+            color: #6b7280;
+            cursor: pointer;
         }
 
-        .file-input-container input[type="file"]:hover {
-            border-color: #009640;
+        .file-input-container input[type="file"]::file-selector-button {
+            padding: 7px 14px;
+            margin-right: 12px;
+            border: none;
+            border-radius: 100px;
+            background: #009640;
+            color: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color .15s;
         }
 
-        .file-input-container input[type="file"]:focus {
-            border-color: #009640;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
+        .file-input-container input[type="file"]:hover::file-selector-button {
+            background: #007a33;
+        }
+
+        .file-input-container .file-input-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .file-input-container.tem-arquivo .file-input-status {
+            color: #009640;
+            font-weight: 600;
+        }
+
+        .file-input-container .file-input-status i {
+            display: none;
+        }
+
+        .file-input-container.tem-arquivo .file-input-status i {
+            display: inline;
         }
 
         .form-grid-2 {
@@ -1406,9 +1618,9 @@ foreach ($tipos_alvara as $slug => $tipo) {
             margin-bottom: 10px;
         }
 
-        /* Estilo para labels dos campos dinâmicos - BRANCO */
+        /* Estilo para labels dos campos dinâmicos */
         .form-grid-2 > label {
-            color: white !important;
+            color: #333 !important;
             font-weight: 500;
             font-size: 14px;
             display: flex;
@@ -1421,12 +1633,12 @@ foreach ($tipos_alvara as $slug => $tipo) {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            color: white !important;
+            color: #333 !important;
             font-weight: 500;
         }
 
         .form-toggle > span {
-            color: white !important;
+            color: #333 !important;
             font-size: 14px;
             margin-bottom: 4px;
         }
@@ -1442,19 +1654,19 @@ foreach ($tipos_alvara as $slug => $tipo) {
             display: flex;
             align-items: center;
             gap: 8px;
-            color: white !important;
+            color: #333 !important;
             font-size: 14px;
             cursor: pointer;
             padding: 8px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid #d1d5db;
             border-radius: 8px;
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: #f8f9fa;
             transition: all 0.3s ease;
         }
 
         .form-toggle .toggle-options label:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background-color: #f0fdf4;
+            border-color: #009640;
         }
 
         .form-toggle .toggle-options input[type="radio"] {
@@ -1467,7 +1679,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         }
 
         .form-toggle .toggle-options label:has(input:checked) {
-            background-color: rgba(0, 150, 64, 0.3);
+            background-color: #e6f7ec;
             border-color: #009640;
         }
 
@@ -1475,17 +1687,17 @@ foreach ($tipos_alvara as $slug => $tipo) {
         .form-grid-2 input[type="date"] {
             padding: 12px;
             border-radius: 8px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid #d1d5db;
             background-color: white;
-            color: #024287;
+            color: #009640;
             font-size: 14px;
             cursor: pointer;
         }
 
         .form-grid-2 input[type="date"]:focus {
-            border-color: #0dcaf0;
+            border-color: #009640;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.25);
+            box-shadow: 0 0 0 3px rgba(0, 150, 64, 0.2);
         }
 
         /* Estilo para a lista de documentos */
@@ -1497,7 +1709,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         }
 
         .documentos-lista h3 {
-            color: #024287;
+            color: #1f2937;
             font-size: 18px;
             margin-bottom: 20px;
             padding-bottom: 10px;
@@ -1509,7 +1721,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         }
 
         .documentos-section h4 {
-            color: #009640;
+            color: #1f2937;
             font-size: 16px;
             margin-bottom: 15px;
         }
@@ -1598,6 +1810,22 @@ foreach ($tipos_alvara as $slug => $tipo) {
         }
         #sg-tab:hover { background: #163d2b; padding-right: 18px; }
         #sg-tab i { font-size: .8rem; opacity: .85; }
+
+        /* No celular a aba full-size atrapalha o polegar e cobre conteúdo —
+           fica só o ícone, menor e mais discreto, some o texto. */
+        @media (max-width: 640px) {
+            #sg-tab {
+                bottom: 16px;
+                right: 12px;
+                width: 42px;
+                height: 42px;
+                padding: 0;
+                border-radius: 50%;
+                box-shadow: 0 2px 10px rgba(0,0,0,.28);
+            }
+            #sg-tab i { font-size: 1rem; opacity: 1; }
+            #sg-tab span.sg-tab-texto { display: none; }
+        }
 
         /* Painel */
         #sg-panel {
@@ -1757,7 +1985,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
     <!-- Tab lateral -->
     <button id="sg-tab" onclick="sgToggle()" aria-label="Enviar feedback" aria-controls="sg-panel" aria-expanded="false">
         <i class="fas fa-comment-dots"></i>
-        Feedback
+        <span class="sg-tab-texto">Feedback</span>
     </button>
 
     <!-- Painel deslizante -->
@@ -1899,6 +2127,20 @@ foreach ($tipos_alvara as $slug => $tipo) {
             btn.textContent = 'Enviar';
         };
     })();
+    </script>
+
+    <!-- VLibras — tradutor de Libras do Governo Federal. O botão flutuante
+         padrão fica escondido (a gente já tem um botão próprio na barra de
+         acessibilidade, no topo, que aciona o mesmo widget por trás). -->
+    <div vw class="enabled">
+        <div vw-access-button class="active" style="opacity:0; pointer-events:none; position:fixed; left:-9999px;"></div>
+        <div vw-plugin-wrapper>
+            <div class="vw-plugin-top-wrapper"></div>
+        </div>
+    </div>
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <script>
+        new window.VLibras.Widget('https://vlibras.gov.br/app');
     </script>
 </body>
 

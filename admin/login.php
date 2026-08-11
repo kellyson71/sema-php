@@ -2,17 +2,6 @@
         require_once 'conexao.php';
         require_once '../includes/email_service.php';
 
-        // Redireciona apenas o ambiente principal. A homologação vive em /homologacao/.
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-        $isHomologRequest = defined('MODO_HOMOLOG') && MODO_HOMOLOG;
-        if (!$isHomologRequest && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-            $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-            header("HTTP/1.1 301 Moved Permanently");
-            header("Location: $redirect_url");
-            exit();
-        }
-
 // Garante que a tabela de dispositivos confiáveis exista
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS dispositivos_confiados (
