@@ -75,15 +75,6 @@ foreach ($tipos_alvara as $slug => $tipo) {
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- DSGov — Padrão Digital de Governo (vendorizado em assets/govbr-ds) -->
-    <link rel="stylesheet" href="./assets/govbr-ds/fonts/rawline/css/rawline.css">
-    <link rel="stylesheet" href="./assets/govbr-ds/css/core.min.css">
-    <link rel="stylesheet" href="./css/govbr-theme.css?v=<?= filemtime(__DIR__ . '/css/govbr-theme.css') ?>">
-
-    <!-- Design system próprio da SEMA — paleta e componentes de marca extraídos dos assets oficiais -->
-    <link rel="stylesheet" href="./css/sema-design-system.css?v=<?= filemtime(__DIR__ . '/css/sema-design-system.css') ?>">
-    <script src="./assets/govbr-ds/js/core.min.js" defer></script>
-
     <script src="./js/index.js?v=<?= filemtime(__DIR__ . '/js/index.js') ?>" defer></script>
     <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
