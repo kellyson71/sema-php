@@ -58,6 +58,10 @@ if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
 }
 $filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
+$filtroEmail = $_GET['email_enviado'] ?? '';
+if (!in_array($filtroEmail, ['1', '0'], true)) {
+    $filtroEmail = '';
+}
 
 // Status encerrados: ocultos por padrão, visíveis apenas se filtro explícito ou toggle ativo
 $statusEncerrados = ['Finalizado', 'Indeferido', 'Aprovado', 'Cancelado'];
@@ -159,6 +163,13 @@ if ($filtroAcao !== '') {
 if ($filtroNaoVisualizados) {
     $sql .= " AND r.visualizado = 0";
     $sqlCount .= " AND r.visualizado = 0";
+}
+
+if ($filtroEmail !== '') {
+    $existeEmail = "EXISTS (SELECT 1 FROM email_logs el WHERE el.requerimento_id = r.id AND el.status = 'SUCESSO' AND el.eh_teste = 0)";
+    $condicaoEmail = $filtroEmail === '1' ? "AND $existeEmail" : "AND NOT $existeEmail";
+    $sql .= " $condicaoEmail";
+    $sqlCount .= " $condicaoEmail";
 }
 
 // Para fiscal/secretário (visão travada num setor), "encerrado" não se aplica:
@@ -487,8 +498,14 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     <?php endforeach; ?>
                 <?php endif; ?>
             </select>
+            <label class="req-filter-label" for="emailFiltro">Email:</label>
+            <select id="emailFiltro" name="email_enviado" class="req-filter-select">
+                <option value="">Todos</option>
+                <option value="1" <?= $filtroEmail === '1' ? 'selected' : '' ?>>Já enviado</option>
+                <option value="0" <?= $filtroEmail === '0' ? 'selected' : '' ?>>Não enviado</option>
+            </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
-            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'email_enviado' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
                     <i class="fas fa-eye"></i> Ver todos
