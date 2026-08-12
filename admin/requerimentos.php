@@ -166,7 +166,10 @@ if ($filtroNaoVisualizados) {
 }
 
 if ($filtroEmail !== '') {
-    $existeEmail = "EXISTS (SELECT 1 FROM email_logs el WHERE el.requerimento_id = r.id AND el.status = 'SUCESSO' AND el.eh_teste = 0)";
+    // Só conta email enviado manualmente por um admin (usuario_envio != 'Sistema') — a
+    // confirmação automática do requerimento sai pra todo mundo, então incluí-la aqui
+    // tornaria o filtro inútil (praticamente tudo teria "já enviado").
+    $existeEmail = "EXISTS (SELECT 1 FROM email_logs el WHERE el.requerimento_id = r.id AND el.status = 'SUCESSO' AND el.eh_teste = 0 AND el.usuario_envio <> 'Sistema')";
     $condicaoEmail = $filtroEmail === '1' ? "AND $existeEmail" : "AND NOT $existeEmail";
     $sql .= " $condicaoEmail";
     $sqlCount .= " $condicaoEmail";
