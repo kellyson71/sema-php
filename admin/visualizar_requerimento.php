@@ -493,55 +493,18 @@ $stmt = $pdo->prepare("
 $stmt->execute([$id]);
 $historico = $stmt->fetchAll();
 
-// Emails de "documento final ao cidadão" enviados neste processo. O assunto
-// gravado por enviarEmailDocumentoFinal() é o único que contém esse trecho
-// (includes/email_service.php:422) — é o jeito confiável de isolar essa
-// categoria dentro de email_logs, que mistura todos os tipos de notificação.
-$stmtEmailsDocFinal = $pdo->prepare("
+// Todos os e-mails já enviados (ou tentados) neste processo, de qualquer tipo —
+// confirmação, aprovação, indeferimento, boleto, protocolo oficial, documento
+// final etc. O preview usa o HTML já salvo em email_logs.mensagem, então não
+// precisamos reconstruir nada por tipo (ver admin/preview_email.php).
+$stmtEmailsProcesso = $pdo->prepare("
     SELECT id, email_destino, assunto, status, erro, data_envio, usuario_envio
     FROM email_logs
-    WHERE requerimento_id = ? AND assunto LIKE '%pronto — protocolo #%'
+    WHERE requerimento_id = ?
     ORDER BY data_envio DESC
 ");
-$stmtEmailsDocFinal->execute([$id]);
-$emailsDocFinal = $stmtEmailsDocFinal->fetchAll();
-
-// Todos os outros e-mails do processo (aprovação, indeferimento, boleto, protocolo
-// oficial, etc.) — o documento final já tem seu próprio card mais completo acima.
-$stmtOutrosEmails = $pdo->prepare("
-    SELECT id, email_destino, assunto, status, erro, data_envio, usuario_envio
-    FROM email_logs
-    WHERE requerimento_id = ? AND assunto NOT LIKE '%pronto — protocolo #%'
-    ORDER BY data_envio DESC
-");
-$stmtOutrosEmails->execute([$id]);
-$outrosEmails = $stmtOutrosEmails->fetchAll();
-
-// Lotes de entrega (documentos_finais) deste processo, para reconstruir a
-// prévia fiel do que foi enviado — mesma página/estilo Gmail que
-// preview_email_doc_final.php usa antes do envio. Não existe FK entre
-// email_logs e documentos_finais, mas o handler cria os dois juntos na
-// mesma requisição (um lote + um email por envio), então pareamos pela
-// ordem cronológica: o Nº email corresponde ao Nº lote de cada processo.
-$stmtLotesDocFinal = $pdo->prepare("
-    SELECT df.lote_id, MIN(df.enviado_em) AS enviado_em, MAX(df.instrucoes) AS instrucoes,
-           GROUP_CONCAT(DISTINCT ad.id) AS assinatura_ids
-    FROM documentos_finais df
-    LEFT JOIN assinaturas_digitais ad
-        ON ad.requerimento_id = df.requerimento_id AND ad.documento_id = df.documento_id
-    WHERE df.requerimento_id = ?
-    GROUP BY df.lote_id
-    ORDER BY enviado_em ASC
-");
-$stmtLotesDocFinal->execute([$id]);
-$lotesDocFinal = $stmtLotesDocFinal->fetchAll();
-
-$loteParaEmail = [];
-foreach (array_reverse($emailsDocFinal) as $i => $em) { // $emailsDocFinal veio DESC; percorre em ordem ASC
-    if (isset($lotesDocFinal[$i])) {
-        $loteParaEmail[$em['id']] = $lotesDocFinal[$i];
-    }
-}
+$stmtEmailsProcesso->execute([$id]);
+$emailsProcesso = $stmtEmailsProcesso->fetchAll();
 
 // Calcular tempo por etapa usando o histórico já buscado
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
@@ -2473,113 +2436,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 <?php endif; ?>
             </div>
 
-            <!-- Emails de entrega do documento final ao cidadão -->
-            <div class="modern-card mb-3">
-                <div class="modern-card-header d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-paper-plane icon"></i>
-                        <h6 class="mb-0">Envio do Documento Final por Email</h6>
+            <!-- Emails do processo: lista única e compacta, todos os tipos e status -->
+            <?php if (count($emailsProcesso) > 0): ?>
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-envelope"></i><span>Emails do Processo</span>
                     </div>
-                    <?php if (count($emailsDocFinal) > 0): ?>
-                    <span class="badge bg-secondary"><?= count($emailsDocFinal) ?> envio(s)</span>
-                    <?php endif; ?>
+                    <span class="text-muted" style="font-size:.7rem;font-weight:600;"><?= count($emailsProcesso) ?> envio(s)</span>
                 </div>
-                <div class="card-body p-0">
-                    <?php if (count($emailsDocFinal) > 0): ?>
-                        <?php foreach ($emailsDocFinal as $em):
-                            $emSucesso = $em['status'] === 'SUCESSO';
-                            $lote = $loteParaEmail[$em['id']] ?? null;
-                        ?>
-                            <div class="data-row" style="flex-wrap:wrap;">
-                                <div class="data-label" style="min-width:130px;">
-                                    <span class="badge <?= $emSucesso ? 'bg-success' : 'bg-danger' ?>">
-                                        <i class="fas <?= $emSucesso ? 'fa-check-circle' : 'fa-times-circle' ?> me-1"></i>
-                                        <?= $emSucesso ? 'Enviado' : 'Falhou' ?>
-                                    </span>
-                                    <div class="text-muted small mt-1"><?= formataData($em['data_envio']) ?></div>
-                                </div>
-                                <div class="data-value" style="flex:1;min-width:0;">
-                                    <div class="fw-semibold" style="color:<?= $emSucesso ? '#15803d' : '#b91c1c' ?>;">
-                                        <?= $emSucesso ? 'Email enviado com sucesso' : 'Falha ao enviar o email' ?>
-                                    </div>
-                                    <div class="text-muted small">Para <?= htmlspecialchars($em['email_destino']) ?> · disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
-                                    <?php if (!$emSucesso && !empty($em['erro'])): ?>
-                                        <div class="small text-danger mt-1">
-                                            <i class="fas fa-triangle-exclamation me-1"></i><?= htmlspecialchars($em['erro']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="data-actions">
-                                    <button type="button" class="copy-btn" title="Ver o email como o cidadão recebeu"
-                                        onclick="abrirPreviaEmailReal(<?= (int) $id ?>, '<?= addslashes(htmlspecialchars($lote['instrucoes'] ?? '')) ?>', '<?= addslashes($lote['assinatura_ids'] ?? '') ?>')">
-                                        <i class="fas fa-envelope-open-text"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-inbox me-2"></i>
-                                Nenhum envio de documento final registrado ainda.
-                            </div>
+                <div>
+                    <?php foreach ($emailsProcesso as $em): $emSucesso = $em['status'] === 'SUCESSO'; ?>
+                        <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid #f2f6f4;font-size:.8rem;">
+                            <span class="rounded-circle" style="flex:none;width:8px;height:8px;background:<?= $emSucesso ? '#22c55e' : '#dc2626' ?>;" title="<?= $emSucesso ? 'Enviado' : 'Falhou' ?>"></span>
+                            <span class="text-muted" style="flex:none;white-space:nowrap;"><?= formataData($em['data_envio']) ?></span>
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;<?= $emSucesso ? '' : 'color:#b91c1c;' ?>"
+                                  title="<?= htmlspecialchars($em['assunto']) ?> — para <?= htmlspecialchars($em['email_destino']) ?><?= !$emSucesso && !empty($em['erro']) ? ' — ' . htmlspecialchars($em['erro']) : '' ?>">
+                                <?= htmlspecialchars($em['assunto']) ?>
+                                <span class="text-muted">· <?= htmlspecialchars($em['email_destino']) ?></span>
+                            </span>
+                            <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" style="flex:none;" title="Ver o email">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </a>
                         </div>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
-
-            <!-- Demais emails do processo (aprovação, indeferimento, boleto, protocolo oficial...) -->
-            <div class="modern-card mb-3">
-                <div class="modern-card-header d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-envelope icon"></i>
-                        <h6 class="mb-0">Outros Emails do Processo</h6>
-                    </div>
-                    <?php if (count($outrosEmails) > 0): ?>
-                    <span class="badge bg-secondary"><?= count($outrosEmails) ?> envio(s)</span>
-                    <?php endif; ?>
-                </div>
-                <div class="card-body p-0">
-                    <?php if (count($outrosEmails) > 0): ?>
-                        <?php foreach ($outrosEmails as $em):
-                            $emSucesso = $em['status'] === 'SUCESSO';
-                        ?>
-                            <div class="data-row" style="flex-wrap:wrap;">
-                                <div class="data-label" style="min-width:130px;">
-                                    <span class="badge <?= $emSucesso ? 'bg-success' : 'bg-danger' ?>">
-                                        <i class="fas <?= $emSucesso ? 'fa-check-circle' : 'fa-times-circle' ?> me-1"></i>
-                                        <?= $emSucesso ? 'Enviado' : 'Falhou' ?>
-                                    </span>
-                                    <div class="text-muted small mt-1"><?= formataData($em['data_envio']) ?></div>
-                                </div>
-                                <div class="data-value" style="flex:1;min-width:0;">
-                                    <div class="fw-semibold" style="color:<?= $emSucesso ? '#15803d' : '#b91c1c' ?>;">
-                                        <?= htmlspecialchars($em['assunto']) ?>
-                                    </div>
-                                    <div class="text-muted small">Para <?= htmlspecialchars($em['email_destino']) ?> · disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
-                                    <?php if (!$emSucesso && !empty($em['erro'])): ?>
-                                        <div class="small text-danger mt-1">
-                                            <i class="fas fa-triangle-exclamation me-1"></i><?= htmlspecialchars($em['erro']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="data-actions">
-                                    <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" title="Ver o email como o cidadão recebeu">
-                                        <i class="fas fa-envelope-open-text"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-inbox me-2"></i>
-                                Nenhum outro e-mail registrado ainda.
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <?php endif; ?>
 
         </div>
 
@@ -4199,36 +4082,6 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         // Mostrar modal
         const previewModal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
         previewModal.show();
-    }
-
-    // Prévia fiel de um envio real do documento final: abre preview_email_doc_final.php
-    // numa aba nova — a mesma tela (caixa do Gmail simulada) que o botão "Ver prévia
-    // do e-mail" do modal de envio usa antes de enviar. instrucoes e assinaturaIds
-    // (csv de ids de assinaturas_digitais) vêm do lote de documentos_finais daquele
-    // envio específico, para reconstruir exatamente o que o cidadão recebeu.
-    function abrirPreviaEmailReal(requerimentoId, instrucoes, assinaturaIds) {
-        const previa = document.createElement('form');
-        previa.method = 'post';
-        previa.action = 'preview_email_doc_final.php';
-        previa.target = '_blank';
-
-        function campo(nome, valor) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = nome;
-            input.value = valor;
-            previa.appendChild(input);
-        }
-
-        campo('requerimento_id', requerimentoId);
-        campo('instrucoes_doc_final', instrucoes || '');
-        (assinaturaIds ? assinaturaIds.split(',') : []).forEach(function(v) {
-            if (v) campo('documento_ids[]', v);
-        });
-
-        document.body.appendChild(previa);
-        previa.submit();
-        previa.remove();
     }
 
     // Função para copiar conteúdo do email
