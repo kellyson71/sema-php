@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
         $recaptcha_token = $_POST['recaptcha_token'] ?? '';
 
         $recaptcha_data = (object) ['success' => true, 'score' => 1.0];
-        if (!MODO_HOMOLOG) {
+        if (!MODO_HOMOLOG && !DOCKER_ENV) {
             $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
             $recaptcha_response = @file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
             $recaptcha_data = json_decode($recaptcha_response ?: '{}');
@@ -361,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <?php if (!MODO_HOMOLOG): ?>
+    <?php if (!MODO_HOMOLOG && !DOCKER_ENV): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <?php endif; ?>
     <style>
@@ -1029,7 +1029,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     setLoading(btn, true, 'Verificando…');
     clearAlert('login-err');
 
-    <?php if (MODO_HOMOLOG): ?>
+    <?php if (MODO_HOMOLOG || DOCKER_ENV): ?>
     fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
     .then(r => r.json())
     .then(data => {
