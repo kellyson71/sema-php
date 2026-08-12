@@ -363,7 +363,7 @@ $corpoEmail = preg_replace('/<head(\s[^>]*)?>/i', '$0' . $injecao, $corpoEmail, 
             <div class="gm-from">
                 <div class="gm-from-av">P</div>
                 <div class="gm-from-info">
-                    <div class="l1"><b>Prefeitura de Pau dos Ferros</b> <span class="addr">&lt;naoresponder@protocolosead.com&gt;</span></div>
+                    <div class="l1"><b>Prefeitura de Pau dos Ferros</b> <span class="addr">&lt;<?= htmlspecialchars(EMAIL_FROM) ?>&gt;</span></div>
                     <div class="l2">para <?= htmlspecialchars($email_destino) ?></div>
                 </div>
                 <div class="gm-from-meta">

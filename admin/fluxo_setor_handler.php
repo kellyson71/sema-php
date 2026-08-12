@@ -98,6 +98,7 @@ if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$aca
 }
 
 $notificarConclusao = ($_POST['notificar_cidadao'] ?? '') === '1';
+$avisoEmailFalhou   = false;
 
 try {
     $pdo->beginTransaction();
@@ -304,6 +305,7 @@ try {
                     registraHistorico($pdo, $adminId, $id,
                         "Finalizou o processo com {$totalDocs} documento(s) final(is), mas FALHOU o envio do "
                         . "e-mail para {$emailCidadao} — documento disponível pelo link; reenvie para notificar o cidadão.");
+                    $avisoEmailFalhou = true;
                 }
             }
             break;
@@ -325,11 +327,12 @@ try {
         }
     }
 
+    $sufixoAviso = $avisoEmailFalhou ? '&aviso=email_falhou' : '';
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     if ($fromDocViewer) {
-        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado");
+        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado$sufixoAviso");
     } else {
-        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
+        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado$sufixoAviso");
     }
     exit;
 

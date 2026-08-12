@@ -11,8 +11,9 @@ if (!isset($_SESSION['protocolo'])) {
 $protocolo       = $_SESSION['protocolo'];
 $sucesso         = $_SESSION['sucesso'] ?? 'Requerimento enviado com sucesso!';
 $proprietario    = $_SESSION['proprietario_nome'] ?? '';
+$emailFalhou     = !empty($_SESSION['email_confirmacao_falhou']);
 
-unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome']);
+unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -242,6 +243,13 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                     <div class="proprietario"><i class="fas fa-user" style="margin-right:5px;"></i><?php echo htmlspecialchars($proprietario); ?></div>
                     <?php endif; ?>
                 </div>
+
+                <?php if ($emailFalhou): ?>
+                <div class="aviso" style="background:#fef2f2;border-left-color:#b91c1c;color:#7f1d1d;padding:16px 18px;">
+                    <i class="fas fa-triangle-exclamation" style="color:#b91c1c;font-size:1.1rem;"></i>
+                    <span>Não conseguimos enviar a confirmação por e-mail agora. <strong>Anote o número do protocolo acima</strong> — você pode consultar o andamento a qualquer momento pelo protocolo, mesmo sem o e-mail.</span>
+                </div>
+                <?php endif; ?>
 
                 <div class="aviso">
                     <i class="fas fa-exclamation-triangle"></i>

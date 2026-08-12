@@ -506,6 +506,17 @@ $stmtEmailsDocFinal = $pdo->prepare("
 $stmtEmailsDocFinal->execute([$id]);
 $emailsDocFinal = $stmtEmailsDocFinal->fetchAll();
 
+// Todos os outros e-mails do processo (aprovação, indeferimento, boleto, protocolo
+// oficial, etc.) — o documento final já tem seu próprio card mais completo acima.
+$stmtOutrosEmails = $pdo->prepare("
+    SELECT id, email_destino, assunto, status, erro, data_envio, usuario_envio
+    FROM email_logs
+    WHERE requerimento_id = ? AND assunto NOT LIKE '%pronto — protocolo #%'
+    ORDER BY data_envio DESC
+");
+$stmtOutrosEmails->execute([$id]);
+$outrosEmails = $stmtOutrosEmails->fetchAll();
+
 // Lotes de entrega (documentos_finais) deste processo, para reconstruir a
 // prévia fiel do que foi enviado — mesma página/estilo Gmail que
 // preview_email_doc_final.php usa antes do envio. Não existe FK entre
@@ -1680,8 +1691,17 @@ if (isset($_GET['error']) && $_GET['error'] === 'acao_invalida') {
     $mensagemTipo = 'danger';
 }
 if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
-    $mensagem = '✅ Fluxo atualizado com sucesso.';
-    $mensagemTipo = 'success';
+    if (($_GET['aviso'] ?? '') === 'email_falhou') {
+        // O fluxo em si foi concluído — só o e-mail ao cidadão falhou. Sem este aviso,
+        // a tela mostrava "sucesso" genérico e o operador não tinha como saber que o
+        // cidadão não recebeu a notificação.
+        $mensagem = '⚠️ Fluxo atualizado, mas o e-mail com o documento não pôde ser enviado ao cidadão. '
+            . 'O documento continua acessível pelo link seguro; você pode reenviar pelo histórico de e-mails abaixo.';
+        $mensagemTipo = 'warning';
+    } else {
+        $mensagem = '✅ Fluxo atualizado com sucesso.';
+        $mensagemTipo = 'success';
+    }
 }
 
 // Co-assinaturas pendentes para o admin logado neste requerimento
@@ -2764,6 +2784,59 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="text-center text-muted py-3">
                                 <i class="fas fa-inbox me-2"></i>
                                 Nenhum envio de documento final registrado ainda.
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Demais emails do processo (aprovação, indeferimento, boleto, protocolo oficial...) -->
+            <div class="modern-card mb-3">
+                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-envelope icon"></i>
+                        <h6 class="mb-0">Outros Emails do Processo</h6>
+                    </div>
+                    <?php if (count($outrosEmails) > 0): ?>
+                    <span class="badge bg-secondary"><?= count($outrosEmails) ?> envio(s)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="card-body p-0">
+                    <?php if (count($outrosEmails) > 0): ?>
+                        <?php foreach ($outrosEmails as $em):
+                            $emSucesso = $em['status'] === 'SUCESSO';
+                        ?>
+                            <div class="data-row" style="flex-wrap:wrap;">
+                                <div class="data-label" style="min-width:130px;">
+                                    <span class="badge <?= $emSucesso ? 'bg-success' : 'bg-danger' ?>">
+                                        <i class="fas <?= $emSucesso ? 'fa-check-circle' : 'fa-times-circle' ?> me-1"></i>
+                                        <?= $emSucesso ? 'Enviado' : 'Falhou' ?>
+                                    </span>
+                                    <div class="text-muted small mt-1"><?= formataData($em['data_envio']) ?></div>
+                                </div>
+                                <div class="data-value" style="flex:1;min-width:0;">
+                                    <div class="fw-semibold" style="color:<?= $emSucesso ? '#15803d' : '#b91c1c' ?>;">
+                                        <?= htmlspecialchars($em['assunto']) ?>
+                                    </div>
+                                    <div class="text-muted small">Para <?= htmlspecialchars($em['email_destino']) ?> · disparado por <?= htmlspecialchars($em['usuario_envio'] ?: 'Sistema') ?></div>
+                                    <?php if (!$emSucesso && !empty($em['erro'])): ?>
+                                        <div class="small text-danger mt-1">
+                                            <i class="fas fa-triangle-exclamation me-1"></i><?= htmlspecialchars($em['erro']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="data-actions">
+                                    <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" title="Ver o email como o cidadão recebeu">
+                                        <i class="fas fa-envelope-open-text"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="card-body">
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-inbox me-2"></i>
+                                Nenhum outro e-mail registrado ainda.
                             </div>
                         </div>
                     <?php endif; ?>

@@ -370,6 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Email de confirmação enviado com sucesso para: " . $requerente['email']);
         } else {
             error_log("Falha ao enviar email de confirmação para: " . $requerente['email']);
+            $_SESSION['email_confirmacao_falhou'] = true;
         }
     } catch (Exception $e) {
         error_log("Erro ao enviar email de confirmação: " . $e->getMessage());
