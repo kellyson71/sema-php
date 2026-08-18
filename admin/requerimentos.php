@@ -117,7 +117,9 @@ $sqlCount = "SELECT COUNT(*) AS total
              WHERE 1=1";
 $params = [];
 
-if ($setorFiltro) {
+// Com busca ativa (protocolo/nome/CPF), ignora a trava de setor: o usuário precisa
+// localizar o processo mesmo que ele ainda não tenha chegado ao seu setor.
+if ($setorFiltro && $filtroBusca === '') {
     $sql      .= " AND r.setor_atual = ?";
     $sqlCount .= " AND r.setor_atual = ?";
     $params[]  = $setorFiltro;
@@ -367,6 +369,14 @@ $filaLabels = [
     'setor3' => ['titulo' => 'Fila de Revisão do Secretário',  'icon' => 'fa-shield-halved',  'cor' => '#7e22ce', 'bg' => '#faf5ff'],
 ];
 $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
+
+// Rótulos curtos por setor, usados no selo de "processo de outro setor" nos resultados de busca
+$setorLabelsCurto = [
+    'setor1' => 'Setor 1 — Triagem',
+    'setor2' => 'Setor 2 — Fiscalização',
+    'setor3' => 'Setor 3 — Secretário',
+];
+$buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
 ?>
 <div class="admin-page-shell requerimentos-page">
     <section class="page-hero page-hero-compact">
@@ -614,6 +624,13 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     <button type="button" class="req-list-main" onclick="abrirRequerimento(<?= (int) $req['id'] ?>)">
                         <div class="req-list-top">
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
+                            <?php if ($buscaCruzaSetor && $req['setor_atual'] !== $setorFiltro): ?>
+                                <span class="badge" style="background:#eef1fd;color:#3b4b9e;border:1px solid #c9d0f2;font-size:.68rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;"
+                                      title="Este processo ainda não está na sua fila — encontrado pela busca">
+                                    <i class="fas fa-arrows-turn-to-dots" style="font-size:.6rem;opacity:.7;"></i>
+                                    <?= htmlspecialchars($setorLabelsCurto[$req['setor_atual']] ?? $req['setor_atual']) ?>
+                                </span>
+                            <?php endif; ?>
                             <?php if ($acaoAtual === 'retorno_aprovado'): ?>
                                 <span class="badge badge-retorno-aprovado">
                                     <i class="fas fa-circle-check" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário aprovou

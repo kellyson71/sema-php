@@ -50,12 +50,22 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 
 $filtroBusca = trim($_GET['busca'] ?? '');
 
+// Com busca ativa, ignora a trava de setor e o filtro de "concluído": o usuário
+// precisa conseguir localizar o processo em qualquer etapa, mesmo antes dele
+// chegar à fila dele.
+$buscaCruzaSetor = $filtroBusca !== '';
+
 $sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.setor_atual, r.aguardando_acao, r.data_envio, r.data_atualizacao, req.nome AS requerente
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
-        WHERE r.setor_atual = ? AND r.aguardando_acao != 'concluido'";
+        WHERE 1=1";
 
-$params = [$setorParam];
+$params = [];
+
+if (!$buscaCruzaSetor) {
+    $sql .= " AND r.setor_atual = ? AND r.aguardando_acao != 'concluido'";
+    $params[] = $setorParam;
+}
 
 if ($filtroBusca !== '') {
     $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ?)";
@@ -179,7 +189,15 @@ function tempoEmFila(string $dataEnvio): string
                 ?>
                 <div class="fila-item <?= $destaque ? 'destaque' : '' ?>">
                     <div>
-                        <div class="fila-protocol">#<?= htmlspecialchars($p['protocolo']) ?></div>
+                        <div class="fila-protocol">
+                            #<?= htmlspecialchars($p['protocolo']) ?>
+                            <?php if ($buscaCruzaSetor && $p['setor_atual'] !== $setorParam): ?>
+                                <span class="tipo-badge" style="background:#eef1fd;color:#3b4b9e;"
+                                      title="Este processo ainda não está na sua fila — encontrado pela busca">
+                                    <?= htmlspecialchars($setorMeta[$p['setor_atual']]['sublabel'] ?? $p['setor_atual']) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
                         <div class="fila-nome"><?= htmlspecialchars($p['requerente']) ?></div>
                         <div class="fila-meta">
                             <span class="tipo-badge"><?= $short ?></span>
