@@ -1,0 +1,101 @@
+/*
+ * sema-design-system.css
+ * Design system PRÓPRIO da SEMA/Prefeitura de Pau dos Ferros — paleta e
+ * componentes extraídos dos assets oficiais (assets/SEMA/PNG/Azul/*.png),
+ * não do DSGov. O DSGov (assets/govbr-ds/) continua dando a base de
+ * componentes/tipografia; este arquivo é a fonte da verdade de COR e dos
+ * elementos de marca próprios (a faixa, o azul institucional).
+ *
+ * Cores extraídas por pixel direto da logo oficial em
+ * "Logo SEMA Vertical.png" — não são aproximação:
+ *   - Azul institucional: rgb(0, 99, 182)   — mesmo azul usado no Secom
+ *   - Faixa, 3 tons, da esquerda pra direita:
+ *       amarelo rgb(248, 228, 0), verde-limão rgb(202, 254, 43), ciano rgb(18, 210, 213)
+ */
+
+:root {
+  --sema-azul: #0063b6;
+  --sema-azul-escuro: #004a87;
+  --sema-verde: #009640;
+  --sema-faixa-amarelo: #f8e400;
+  --sema-faixa-lima: #cafe2b;
+  --sema-faixa-ciano: #12d2d5;
+}
+
+/* ---------- Componente: Faixa (marca registrada visual da Prefeitura) ---------- */
+/* Usar como acento — nunca como fundo de área de texto, os tons são claros
+   demais pra contraste de leitura. Substitui a linha verde sólida que
+   ficava embaixo do cartão do hero (.form-header). Barrinhas retas, só
+   com um pouquinho de arredondamento na ponta — nada de chanfro/triângulo. */
+
+.sema-faixa {
+  display: flex;
+  height: 5px;
+  width: 100%;
+  gap: 4px;
+}
+
+.sema-faixa span {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 2px;
+}
+
+.sema-faixa span:nth-child(1) { background: var(--sema-faixa-amarelo); }
+.sema-faixa span:nth-child(2) { background: var(--sema-faixa-lima); }
+.sema-faixa span:nth-child(3) { background: var(--sema-faixa-ciano); }
+
+/* ============================================================
+ * ÍNDICE DE COMPONENTES — o que já existe, pra não reinventar
+ * ============================================================
+ * A implementação de cada componente abaixo mora em css/govbr-theme.css
+ * (por enquanto — esse arquivo é só a fonte de cor/marca). Isso aqui é o
+ * catálogo, pra saber o que já existe antes de criar de novo.
+ *
+ * IDENTIDADE
+ *  --sema-azul / --sema-verde / --sema-faixa-*  → tokens de cor acima
+ *  .sema-faixa                                  → acento de marca (3 barras)
+ *  .header-logo / .header-identidade            → logo no cabeçalho
+ *
+ * NAVEGAÇÃO / CABEÇALHO
+ *  .barra-acess           → fonte (5 passos) + alto contraste + Libras
+ *  .header-menu-toggle    → botão "⋮" que só aparece ≤560px
+ *  .header-extras         → painel (redes sociais + acessibilidade);
+ *                            inline no desktop, dropdown suspenso no mobile
+ *  [data-contraste="alto"]→ modo alto contraste, aplicado no <html>
+ *
+ * FORMULÁRIO
+ *  .campo / .campo-obrig / .campo-full     → rótulo fixo acima do input
+ *                                             (não só placeholder)
+ *  .combobox-tipo / .combobox-input /
+ *  .combobox-lista / .combobox-opcao       → select com busca (JS:
+ *                                             bloco "Combobox de tipo de
+ *                                             solicitação" em js/index.js)
+ *  .categoria-atalhos / .categoria-btn     → atalhos discretos por
+ *                                             categoria, abaixo do combobox
+ *  .mudar-tipo-link                        → link-pílula pra resetar a
+ *                                             escolha de tipo
+ *  .campo-com-dica / .dica-btn / .dica-texto → tooltip de sigla técnica
+ *                                             (CTF, ART/RRT/TRT, CREA/CAU)
+ *  .file-input-container / .file-input-zona /
+ *  .file-input-status                      → upload com nome do arquivo
+ *                                             visível (JS: listener
+ *                                             delegado em js/index.js)
+ *
+ * ESTADOS DE CONTEÚDO
+ *  .mensagem-inicial / .mensagem-erro /
+ *  .mensagem-carregando                    → placeholder sem cartão duplo
+ *  .documentos-container                   → só ganha borda separadora
+ *                                             quando :has(conteúdo real)
+ *
+ * REGRAS DE OURO (aprendidas na marra nesta sessão)
+ *  1. Nunca duplicar <style> pra conteúdo que chega via AJAX — já causou
+ *     bug de cor divergente (ver scripts/obter_documentos.php, que teve
+ *     seu próprio <style> removido por isso). Toda cor mora aqui ou em
+ *     govbr-theme.css, uma vez só.
+ *  2. Cuidado com nomes de classe/variável genéricos (--gray-2, .feedback)
+ *     — o DSGov (assets/govbr-ds/) já usa vários nomes comuns; confira
+ *     colisão antes de criar uma classe nova de uso amplo.
+ *  3. Regra por ID sempre ganha de regra por classe, não importa a ordem
+ *     no arquivo — #campos_dinamicos input já causou isso mais de uma vez.
+ */

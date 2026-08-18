@@ -2,6 +2,28 @@
 require_once '../tipos_alvara.php';
 require_once '../includes/config.php';
 
+// Marcação padrão de cada campo de arquivo — zona arrastável + status
+// preenchido via JS (index.js) quando o usuário escolhe um arquivo.
+function campoArquivo(string $id, string $label, string $name, string $limiteLabel, bool $obrigatorio = true, ?array $downloadLink = null): string
+{
+    $req = $obrigatorio ? ' required' : '';
+    $html = '<div class="file-input-container">';
+    $html .= '<label for="' . $id . '">' . $label . '</label>';
+    if ($downloadLink) {
+        $url = rtrim(BASE_URL, '/') . '/' . $downloadLink['arquivo'];
+        $html .= '<a href="' . htmlspecialchars($url) . '" target="_blank" download class="doc-download-link">'
+            . '<i class="fas fa-file-pdf"></i> ' . htmlspecialchars($downloadLink['label'])
+            . '</a>';
+    }
+    $html .= '<div class="file-input-zona">';
+    $html .= '<input type="file" id="' . $id . '" name="' . $name . '" accept=".pdf"' . $req . '>';
+    $html .= '</div>';
+    $html .= '<span class="file-input-status"><i class="fas fa-check-circle"></i><span class="nome"></span></span>';
+    $html .= '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
+    $html .= '</div>';
+    return $html;
+}
+
 if (!isset($_POST['tipo']) || !isset($tipos_alvara[$_POST['tipo']])) {
     echo '<div class="mensagem-erro">
             <i class="fas fa-exclamation-triangle"></i>
@@ -21,9 +43,11 @@ if ($tipo === 'denuncia') {
             <h4 style="color:#b91c1c;">Evidências (opcional)</h4>
             <div class="file-input-container">
                 <label>Fotos, vídeos ou documentos da ocorrência</label>
-                <input type="file" name="evidencias[]" multiple
-                    accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime"
-                    style="border-color:#e5e7eb;">
+                <div class="file-input-zona">
+                    <input type="file" name="evidencias[]" multiple
+                        accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime">
+                </div>
+                <span class="file-input-status"><i class="fas fa-check-circle"></i><span class="nome"></span></span>
                 <small class="formato-arquivo">Formatos aceitos: JPG, PNG, PDF, MP4 (Máx. 20MB por arquivo)</small>
             </div>
         </div>
@@ -51,11 +75,7 @@ if ($tipo === 'funcionamento') {
         echo '<h4>Documentos para Pessoa Física</h4>';
         foreach ($alvara['pessoa_fisica'] as $index => $documento) {
             $id = 'doc_pf_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
-            echo '</div>';
+            echo campoArquivo($id, $documento, $id, $limiteLabel);
         }
         echo '</div>';
     }
@@ -66,11 +86,7 @@ if ($tipo === 'funcionamento') {
         echo '<h4>Documentos para Pessoa Jurídica</h4>';
         foreach ($alvara['pessoa_juridica'] as $index => $documento) {
             $id = 'doc_pj_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
-            echo '</div>';
+            echo campoArquivo($id, $documento, $id, $limiteLabel);
         }
         echo '</div>';
     }
@@ -81,18 +97,8 @@ if ($tipo === 'funcionamento') {
         echo '<h4>Documentos Obrigatórios</h4>';
         foreach ($alvara['documentos'] as $index => $documento) {
             $id = 'doc_' . $tipo . '_' . $index;
-            echo '<div class="file-input-container">';
-            echo '<label for="' . $id . '">' . $documento . '</label>';
-            if (isset($alvara['download_links'][$index])) {
-                $dl = $alvara['download_links'][$index];
-                $url = rtrim(BASE_URL, '/') . '/' . $dl['arquivo'];
-                echo '<a href="' . htmlspecialchars($url) . '" target="_blank" download class="doc-download-link">'
-                    . '<i class="fas fa-file-pdf"></i> ' . htmlspecialchars($dl['label'])
-                    . '</a>';
-            }
-            echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf" required>';
-            echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
-            echo '</div>';
+            $dl = $alvara['download_links'][$index] ?? null;
+            echo campoArquivo($id, $documento, $id, $limiteLabel, true, $dl);
         }
         echo '</div>';
     }
@@ -104,11 +110,7 @@ if (isset($alvara['documentos_opcionais'])) {
     echo '<h4>Documentos Opcionais</h4>';
     foreach ($alvara['documentos_opcionais'] as $index => $documento) {
         $id = 'doc_opcional_' . $tipo . '_' . $index;
-        echo '<div class="file-input-container">';
-        echo '<label for="' . $id . '">' . $documento . '</label>';
-        echo '<input type="file" id="' . $id . '" name="' . $id . '" accept=".pdf">';
-        echo '<small class="formato-arquivo">Formato aceito: PDF (Máx. ' . $limiteLabel . ')</small>';
-        echo '</div>';
+        echo campoArquivo($id, $documento, $id, $limiteLabel, false);
     }
     echo '</div>';
 }
@@ -139,137 +141,7 @@ if (isset($alvara['contato'])) {
 
 echo '</div>';
 
-// Estilos específicos para a lista de documentos
-?>
-<style>
-.documentos-lista {
-    padding: 20px;
-}
-
-.documentos-lista h3 {
-    color: #024287;
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.documentos-section {
-    margin-bottom: 30px;
-}
-
-.documentos-section h4 {
-    color: #009640;
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #e9ecef;
-    padding-bottom: 8px;
-}
-
-.file-input-container {
-    margin-bottom: 15px;
-}
-
-.file-input-container label {
-    display: block;
-    margin-bottom: 8px;
-    color: #495057;
-    font-weight: 500;
-}
-
-.doc-download-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    padding: 5px 12px;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 6px;
-    color: #856404;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-}
-.doc-download-link:hover {
-    background: #ffd970;
-    color: #533f03;
-}
-
-.file-input-container input[type="file"] {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 5px;
-    background: #f8f9fa;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.file-input-container input[type="file"]:hover {
-    border-color: #009640;
-}
-
-.file-input-container input[type="file"]:focus {
-    outline: none;
-    border-color: #009640;
-    box-shadow: 0 0 0 2px rgba(0, 150, 64, 0.1);
-}
-
-.observacoes-section,
-.contato-section {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 20px;
-}
-
-.observacoes-section h4,
-.contato-section h4 {
-    color: #495057;
-    font-size: 1.1rem;
-    margin-bottom: 10px;
-}
-
-.observacoes-section ul,
-.contato-section ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.observacoes-section li,
-.contato-section li {
-    margin-bottom: 8px;
-    color: #6c757d;
-    font-size: 14px;
-    padding-left: 20px;
-    position: relative;
-}
-
-.observacoes-section li:before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    color: #009640;
-}
-
-.contato-section li:before {
-    content: "📞";
-    position: absolute;
-    left: 0;
-}
-
-@media (max-width: 768px) {
-    .documentos-lista {
-        padding: 15px;
-    }
-
-    .documentos-lista h3 {
-        font-size: 1.3rem;
-    }
-
-    .documentos-section h4 {
-        font-size: 1.1rem;
-    }
-}
-</style>
+// A estilização de .documentos-lista, .file-input-container etc. vive só em
+// index.php (css/govbr-theme.css) — não duplica aqui. Um <style> próprio
+// nesse fragmento injetado via AJAX já causou bug de cor divergente antes
+// (ver css/govbr-theme.css, comentário "Raiz de vários resquícios").
