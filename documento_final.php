@@ -10,8 +10,6 @@ $docFinal = null;
 $docsFinal = [];
 
 $token = trim($_GET['token'] ?? '');
-$partesToken = explode('.', $token, 3);
-$requerimentoId = isset($partesToken[0]) ? (int) $partesToken[0] : 0;
 
 try {
     $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS, [
@@ -20,37 +18,33 @@ try {
     ]);
     $pdo->exec("SET time_zone = '" . date('P') . "'");
 
-    if ($requerimentoId > 0) {
-        $stmt = $pdo->prepare("
-            SELECT r.id, r.protocolo, r.status, r.tipo_alvara, r.endereco_objetivo,
-                   req.nome AS requerente_nome, req.email AS requerente_email
-            FROM requerimentos r
-            JOIN requerentes req ON req.id = r.requerente_id
-            WHERE r.id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$requerimentoId]);
-        $requerimento = $stmt->fetch();
-    }
-
-    if (!$requerimento || !validarTokenDocumentoFinal($token, (int) $requerimento['id'], $requerimento['protocolo'])) {
-        throw new RuntimeException('Link de documento inválido ou expirado.');
-    }
-
-    // Buscar apenas documentos finais associados diretamente a este token
-    $stmt = $pdo->prepare("
-        SELECT df.id, df.caminho_arquivo, df.nome_arquivo, df.instrucoes, df.enviado_em, df.visualizado_em
-        FROM documentos_finais df
-        WHERE df.requerimento_id = ? AND df.token_acesso = ?
-        ORDER BY df.id ASC
-    ");
-    $stmt->execute([$requerimentoId, $token]);
-    $docsFinal = $stmt->fetchAll();
-    $docFinal = !empty($docsFinal) ? $docsFinal[0] : null;
+    // O token é aleatório e vive no banco: quem autentica o acesso é a própria
+    // existência de um lote válido (não revogado, não expirado) com este token.
+    // Todos os documentos do lote vêm juntos — antes só o primeiro aparecia.
+    $docsFinal = buscarLoteEntregaValido($pdo, $token);
 
     if (empty($docsFinal)) {
-        throw new RuntimeException('Documento não encontrado. Verifique se o link está correto.');
+        throw new RuntimeException('Link de documento inválido, revogado ou expirado. Se você recebeu um e-mail mais recente da SEMA, use o link dele.');
     }
+
+    $requerimentoId = (int) $docsFinal[0]['requerimento_id'];
+
+    $stmt = $pdo->prepare("
+        SELECT r.id, r.protocolo, r.status, r.tipo_alvara, r.endereco_objetivo,
+               req.nome AS requerente_nome, req.email AS requerente_email
+        FROM requerimentos r
+        JOIN requerentes req ON req.id = r.requerente_id
+        WHERE r.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$requerimentoId]);
+    $requerimento = $stmt->fetch();
+
+    if (!$requerimento) {
+        throw new RuntimeException('Processo não encontrado.');
+    }
+
+    $docFinal = $docsFinal[0];
 
     // Registrar primeiro acesso nos documentos ainda não visualizados
     foreach ($docsFinal as $df) {
@@ -72,6 +66,10 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- O token de acesso viaja na URL: esta página nunca deve ser indexada, nem
+         vazar o endereço completo no Referer ao sair para um site externo. -->
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="referrer" content="no-referrer">
     <title>Documento Final - SEMA</title>
     <link rel="icon" href="./assets/img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -201,6 +199,49 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
         }
         .btn-download:hover { background: #047857; color: #fff; }
 
+        .doc-item { margin-bottom: 14px; }
+
+        .doc-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px 14px;
+            padding: 7px 4px 0;
+            font-size: .75rem;
+            color: #6b7280;
+        }
+
+        .doc-meta i { margin-right: 4px; }
+        .doc-meta strong { color: #374151; font-weight: 600; }
+
+        .link-verificar {
+            color: #059669;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .link-verificar:hover { text-decoration: underline; }
+
+        .btn-zip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            margin-top: 4px;
+            background: #fff;
+            color: #047857;
+            border: 1.5px solid #a7f3d0;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background .2s;
+        }
+        .btn-zip:hover { background: #f0fdf4; color: #047857; }
+
         .instrucoes-box {
             background: #f0fdf4;
             border: 1px solid #bbf7d0;
@@ -283,21 +324,48 @@ $tipoNome = $requerimento ? ($tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <?php endif; ?>
 
                     <?php foreach ($docsFinal as $df): ?>
-                        <?php $caminhoDownload = BASE_URL . 'uploads/' . ltrim($df['caminho_arquivo'], '/'); ?>
-                        <a href="<?= htmlspecialchars($caminhoDownload) ?>"
-                           class="btn-download"
-                           style="margin-bottom:10px;"
-                           download="<?= htmlspecialchars($df['nome_arquivo']) ?>">
-                            <i class="fas fa-download"></i>
-                            <?= htmlspecialchars($df['nome_arquivo']) ?>
-                        </a>
+                        <?php $rotulo = rotuloDocumento($df['nome_arquivo']); ?>
+                        <div class="doc-item">
+                            <a href="<?= htmlspecialchars(urlArquivo($df['caminho_arquivo'], $token) . '&download=1') ?>"
+                               class="btn-download">
+                                <i class="fas fa-download"></i>
+                                <?= htmlspecialchars($rotulo !== '' ? $rotulo : $df['nome_arquivo']) ?>
+                            </a>
+                            <div class="doc-meta">
+                                <?php if (!empty($df['assinantes'])): ?>
+                                    <span>
+                                        <i class="fas fa-file-signature"></i>
+                                        Assinado por <strong><?= htmlspecialchars($df['assinantes']) ?></strong>
+                                        <?php if (!empty($df['assinado_em'])): ?>
+                                            em <?= date('d/m/Y', strtotime($df['assinado_em'])) ?>
+                                        <?php endif; ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($df['documento_id'])): ?>
+                                    <a href="<?= rtrim(BASE_URL, '/') ?>/verificar.php?id=<?= urlencode($df['documento_id']) ?>"
+                                       target="_blank" rel="noopener" class="link-verificar">
+                                        <i class="fas fa-shield-halved"></i> Verificar autenticidade
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
+
+                    <?php if (count($docsFinal) > 1): ?>
+                        <a href="<?= htmlspecialchars(urlArquivo('', $token) . '&zip=1') ?>" class="btn-zip">
+                            <i class="fas fa-file-zipper"></i>
+                            Baixar todos os <?= count($docsFinal) ?> documentos (.zip)
+                        </a>
+                    <?php endif; ?>
 
                     <p style="text-align:center;font-size:.75rem;color:#9ca3af;margin-top:12px;">
                         <i class="fas fa-lock me-1"></i>
                         Enviado em <?= date('d/m/Y \à\s H:i', strtotime($docsFinal[0]['enviado_em'])) ?>
                         &nbsp;·&nbsp;
                         <?= count($docsFinal) ?> documento(s)
+                        <?php if (!empty($docsFinal[0]['expira_em'])): ?>
+                        <br>Este link fica disponível até <?= date('d/m/Y', strtotime($docsFinal[0]['expira_em'])) ?> — baixe e guarde os arquivos.
+                        <?php endif; ?>
                     </p>
 
                 <?php elseif (!$mensagem): ?>

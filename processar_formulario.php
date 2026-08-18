@@ -1,16 +1,6 @@
 <?php
 require_once 'includes/config.php';
 
-// Redireciona apenas o ambiente principal; homologação deve permanecer local.
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
-
 // Incluir arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 
@@ -154,9 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
     $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? $_POST['responsavel_tecnico_numero'] ?? '');
     $descricao_atividade = trim($_POST['especificacao'] ?? $_POST['descricao_atividade'] ?? '');
-    $padrao_popular = trim($_POST['padrao_popular'] ?? '');
-    $data_inicio_obra = $_POST['data_inicio_obra'] ?? '';
-    $data_termino_obra = $_POST['data_termino_obra'] ?? '';
+
+    // Campos adicionais dos modelos (construção / habite-se / desmembramento)
+    $cadastro_imobiliario     = trim($_POST['cadastro_imobiliario'] ?? '');
+    $inicio_obra              = trim($_POST['inicio_obra'] ?? '');
+    $termino_obra             = trim($_POST['termino_obra'] ?? '');
+    $area_total_terreno       = trim($_POST['area_total_terreno'] ?? '');
+    $area_remanescente        = trim($_POST['area_remanescente'] ?? '');
+    $alvara_construcao_numero = trim($_POST['alvara_construcao_numero'] ?? '');
+    $eng_fiscal_nome          = trim($_POST['eng_fiscal_nome'] ?? '');
+    $eng_fiscal_registro      = trim($_POST['eng_fiscal_registro'] ?? '');
 
     $observacoes = '';
 
@@ -182,12 +179,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'responsavel_tecnico_tipo_documento' => $responsavel_tecnico_tipo_documento ?: null,
         'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
         'especificacao' => $descricao_atividade ?: null,
+        'cadastro_imobiliario' => $cadastro_imobiliario ?: null,
+        'inicio_obra' => $inicio_obra ?: null,
+        'termino_obra' => $termino_obra ?: null,
+        'area_total_terreno' => $area_total_terreno ?: null,
+        'area_remanescente' => $area_remanescente ?: null,
+        'alvara_construcao_numero' => $alvara_construcao_numero ?: null,
+        'eng_fiscal_nome' => $eng_fiscal_nome ?: null,
+        'eng_fiscal_registro' => $eng_fiscal_registro ?: null,
         'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
         'enquadramento_atividade' => $enquadramento_atividade ?: null,
         'localizacao_google_maps' => $localizacao_google_maps ?: null,
-        'padrao_popular' => $padrao_popular ?: null,
-        'data_inicio_obra' => $data_inicio_obra ?: null,
-        'data_termino_obra' => $data_termino_obra ?: null,
         'status' => 'Em análise'
     ];
 
@@ -368,6 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Email de confirmação enviado com sucesso para: " . $requerente['email']);
         } else {
             error_log("Falha ao enviar email de confirmação para: " . $requerente['email']);
+            $_SESSION['email_confirmacao_falhou'] = true;
         }
     } catch (Exception $e) {
         error_log("Erro ao enviar email de confirmação: " . $e->getMessage());

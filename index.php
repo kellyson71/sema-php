@@ -2,16 +2,6 @@
 // Inclui configurações antes de qualquer redirecionamento
 include_once 'includes/config.php';
 
-// Redireciona apenas o ambiente principal; homologação deve permanecer local.
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
-
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 // Inclui tabela de enquadramento CONEMA para licenciamento ambiental
@@ -439,6 +429,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     if (!anonimo) {
                         requireValue('input[name="denunciante_nome"]', 'Informe seu nome ou marque denúncia anônima.');
                     }
+                    requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
                     requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
                     if (document.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
                         requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
@@ -695,6 +686,44 @@ foreach ($tipos_alvara as $slug => $tipo) {
         </div>
     </div>
 
+    <!-- Modal de Estudos Ambientais -->
+    <div id="modal-estudos" onclick="if(event.target===this)this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.6); overflow-y:auto; padding:24px 16px;">
+        <div style="background:#fff; max-width:700px; max-height:min(85vh, 760px); margin:0 auto; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
+            <div style="background:#009640; padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <h2 style="color:#fff; margin:0; font-size:1.3rem;"><i class="fas fa-magnifying-glass-chart" style="margin-right:10px;"></i>Estudos Ambientais</h2>
+                    <p style="color:rgba(255,255,255,0.85); margin:4px 0 0; font-size:0.9rem;">Diagnósticos e levantamentos técnicos produzidos pela SEMA</p>
+                </div>
+                <button onclick="document.getElementById('modal-estudos').style.display='none'" style="background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div style="padding:24px 28px; overflow-y:auto; flex:1 1 auto;">
+                <?php
+                $estudos = [
+                    [
+                        'titulo'    => 'Diagnóstico das APPs Urbanas de Pau dos Ferros — 2026',
+                        'descricao' => 'Mapeamento e diagnóstico ambiental das Áreas de Preservação Permanente na malha urbana do município.',
+                        'icone'     => 'fa-map-location-dot',
+                        'cor'       => '#16a085',
+                        'url'       => './assets/estudos/diagnostico-apps-urbanas-2026.pdf',
+                    ],
+                ];
+                foreach ($estudos as $estudo): ?>
+                <a href="<?= $estudo['url'] ?>" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:16px; padding:14px 16px; margin-bottom:10px; border-radius:8px; border:1px solid #e9ecef; text-decoration:none; color:#333; transition:background .15s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
+                    <div style="width:44px; height:44px; border-radius:50%; background:<?= $estudo['cor'] ?>1a; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas <?= $estudo['icone'] ?>" style="color:<?= $estudo['cor'] ?>; font-size:1.1rem;"></i>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <p style="font-weight:600; margin:0; font-size:0.95rem; color:#212529;"><?= $estudo['titulo'] ?></p>
+                        <p style="margin:2px 0 0; font-size:0.82rem; color:#6c757d;"><?= $estudo['descricao'] ?></p>
+                    </div>
+                    <i class="fas fa-file-pdf" style="color:#adb5bd; font-size:0.85rem; flex-shrink:0;"></i>
+                </a>
+                <?php endforeach; ?>
+                <p style="margin:18px 0 0; font-size:0.82rem; color:#94a3b8; text-align:center;">Novos estudos serão adicionados aqui conforme forem produzidos.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Onda de transição para o rodapé -->
     <div style="display:block; width:100%; line-height:0; font-size:0;">
         <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style="display:block; width:100%; height:70px;">
@@ -718,10 +747,20 @@ foreach ($tipos_alvara as $slug => $tipo) {
                    onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                     <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
                 </a>
+                <a href="./consultar_denuncia.php"
+                   style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                   onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-magnifying-glass-location" style="color:#fcd34d;"></i> Acompanhe sua Denúncia
+                </a>
                 <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
                         style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
                         onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                     <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+                </button>
+                <button onclick="document.getElementById('modal-estudos').style.display='flex'"
+                        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
+                    <i class="fas fa-magnifying-glass-chart" style="color:#4ade80;"></i> Estudos Ambientais
                 </button>
             </section>
 
@@ -885,6 +924,24 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     // ── Campos específicos da denúncia pública ────────────────
                     if (tipo === 'denuncia') {
                         campos = `
+                        <div class="form-section-label" style="margin-top:0;">Qual equipe deve analisar esta denúncia? <span style="color:#f87171">*</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;margin-bottom:18px;">
+                            ${[
+                                ['meio_ambiente',    'fa-leaf',      '#22c55e', 'Meio Ambiente (SEMA)', 'Desmatamento, poluição, queimada, maus-tratos a animais, área de preservação...'],
+                                ['obras_urbanismo',  'fa-hard-hat',  '#f59e0b', 'Obras e Serviços Urbanos', 'Construção irregular, entulho, obstrução de via, terreno sujo...'],
+                            ].map(([val, icone, cor, titulo, desc]) => `
+                                <label style="flex:1;min-width:220px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);">
+                                    <input type="radio" name="setor" value="${val}" required
+                                        style="width:16px;height:16px;margin-top:2px;accent-color:${cor};cursor:pointer;">
+                                    <span>
+                                        <span style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem;">
+                                            <i class="fas ${icone}" style="color:${cor};"></i> ${titulo}
+                                        </span>
+                                        <span style="display:block;font-size:.78rem;color:rgba(255,255,255,0.55);margin-top:2px;">${desc}</span>
+                                    </span>
+                                </label>
+                            `).join('')}
+                        </div>
                         <div style="margin-bottom:10px;">
                             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.9rem;">
                                 <input type="checkbox" name="anonimo" id="chk_anonimo" value="1"
@@ -995,6 +1052,10 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
                             </div>
                             <div class="form-grid-2">
+                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
+                                <div></div>
+                            </div>
+                            <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
                             </div>
@@ -1009,30 +1070,24 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
                             </div>
                             <div class="form-grid-2">
-                                <label class="form-toggle">
-                                    <span>Obra padrão popular (menor que 70m²)? *</span>
-                                    <div class="toggle-options">
-                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
-                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
-                                    </div>
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término / previsão de término
+                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
                                 </label>
                             </div>
-                            <div class="form-grid-2">
-                                <label>
-                                    Previsão de início da obra *
-                                    <input required type="date" name="data_inicio_obra">
-                                </label>
-                                <label>
-                                    Previsão de término da obra *
-                                    <input required type="date" name="data_termino_obra">
-                                </label>
-                            </div>
+                            <textarea required name="especificacao" placeholder="Especificação da obra (ex: edificação residencial unifamiliar de pavimento térreo, padrão popular, composição do imóvel...) *" rows="3"></textarea>
                         `;
                     } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
                         campos = `
                             <div class="form-grid-2">
                                 <input required name="area_construida" placeholder="Área Construída (m²) *">
                                 <input required name="numero_pavimentos" placeholder="Número de Pavimentos *">
+                            </div>
+                            <div class="form-grid-2">
+                                <input name="cadastro_imobiliario" placeholder="Cadastro Imobiliário (Sequencial)">
+                                <input name="alvara_construcao_numero" placeholder="Nº do Alvará de Construção (anterior)">
                             </div>
                             <div class="form-grid-2">
                                 <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
@@ -1048,25 +1103,35 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </select>
                                 <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
                             </div>
-                            <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
                             <div class="form-grid-2">
-                                <label class="form-toggle">
-                                    <span>Obra padrão popular (menor que 70m²)? *</span>
-                                    <div class="toggle-options">
-                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
-                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
-                                    </div>
+                                <input name="eng_fiscal_nome" placeholder="Engenheiro fiscal que emitiu o parecer">
+                                <input name="eng_fiscal_registro" placeholder="CREA do engenheiro fiscal">
+                            </div>
+                            <div class="form-grid-2">
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
+                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
+                                </label>
+                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término da obra
+                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
                                 </label>
                             </div>
+                            <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
                         `;
                     } else if (tipo === 'desmembramento') {
                         campos = `
                             <div class="form-grid-2">
-                                <input required name="area_lote" placeholder="Área do Lote (m²) *">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
+                                <input required name="area_lote" placeholder="Área desmembrada / do lote (m²) *">
+                                <input required name="area_total_terreno" placeholder="Área total do terreno (m²) *">
                             </div>
                             <div class="form-grid-2">
+                                <input required name="area_remanescente" placeholder="Área remanescente (m²) *">
+                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
+                            </div>
+                            <div class="form-grid-2">
+                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
                                 <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
+                            </div>
+                            <div class="form-grid-2">
                                 <div style="display: flex; gap: 10px; width: 100%;">
                                     <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
                                         <option value="" hidden>Tipo *</option>
@@ -1077,17 +1142,9 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     </select>
                                     <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
                                 </div>
+                                <div></div>
                             </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento *" rows="4"></textarea>
-                            <div class="form-grid-2">
-                                <label class="form-toggle">
-                                    <span>Obra padrão popular (menor que 70m²)? *</span>
-                                    <div class="toggle-options">
-                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
-                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
-                                    </div>
-                                </label>
-                            </div>
+                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento (perímetro, pontos, coordenadas, confrontantes...) *" rows="4"></textarea>
                         `;
                     } else if (currentRules.ambiental) {
                         campos = `
@@ -1164,25 +1221,6 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                 </div>
                             </div>
                             <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
-                            <div class="form-grid-2">
-                                <label class="form-toggle">
-                                    <span>Obra padrão popular (menor que 70m²)? *</span>
-                                    <div class="toggle-options">
-                                        <label><input type="radio" name="padrao_popular" value="sim" required> Sim</label>
-                                        <label><input type="radio" name="padrao_popular" value="nao" required> Não</label>
-                                    </div>
-                                </label>
-                            </div>
-                            <div class="form-grid-2">
-                                <label>
-                                    Previsão de início da obra *
-                                    <input required type="date" name="data_inicio_obra">
-                                </label>
-                                <label>
-                                    Previsão de término da obra *
-                                    <input required type="date" name="data_termino_obra">
-                                </label>
-                            </div>
                         `;
                     } else {
                         campos = `

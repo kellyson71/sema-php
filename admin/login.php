@@ -2,17 +2,6 @@
         require_once 'conexao.php';
         require_once '../includes/email_service.php';
 
-        // Redireciona apenas o ambiente principal. A homologação vive em /homologacao/.
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-        $isHomologRequest = defined('MODO_HOMOLOG') && MODO_HOMOLOG;
-        if (!$isHomologRequest && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-            $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-            header("HTTP/1.1 301 Moved Permanently");
-            header("Location: $redirect_url");
-            exit();
-        }
-
 // Garante que a tabela de dispositivos confiáveis exista
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS dispositivos_confiados (
@@ -103,6 +92,49 @@ function criarSessaoAdmin($pdo, $admin) {
 
     $stmt = $pdo->prepare("UPDATE administradores SET ultimo_acesso = NOW() WHERE id = ?");
     $stmt->execute([$admin['id']]);
+
+    registrarLoginPostHog($admin);
+}
+
+/**
+ * Trilha de acesso da equipe no PostHog: quem entrou, de onde e com qual dispositivo.
+ *
+ * Vai pelo servidor de propósito — evento de segurança não pode depender de JS, que
+ * bloqueador de anúncio derruba. O PostHog deriva navegador, SO e tipo de dispositivo
+ * a partir do $raw_user_agent, e cidade/país a partir do $ip.
+ *
+ * Nunca derruba o login: sem SDK ou sem chave, é no-op; qualquer falha é engolida.
+ */
+function registrarLoginPostHog(array $admin): void
+{
+    if (!class_exists('\PostHog\PostHog')) {
+        return; // sem SDK/chave: error_tracking.php não inicializou
+    }
+
+    try {
+        \PostHog\PostHog::capture([
+            'distinctId' => 'admin_' . $admin['id'],
+            'event'      => 'admin_login',
+            'properties' => [
+                '$ip'              => $_SERVER['REMOTE_ADDR'] ?? null,
+                '$raw_user_agent'  => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                // O painel já tem controle de dispositivo confiável (sema_device_token).
+                // Um login de dispositivo NÃO confiável é o sinal que interessa vigiar.
+                'dispositivo_confiavel' => isset($_COOKIE['sema_device_token']),
+                'nivel'            => $admin['nivel'] ?? null,
+                // Propriedades da pessoa. Sem CPF: ele está na sessão, mas não vai para cá.
+                // 'name' é a chave que o PostHog usa para exibir a pessoa (em vez do admin_<id>).
+                '$set'             => [
+                    'name'  => $admin['nome'] ?? null,
+                    'nome'  => $admin['nome'] ?? null,
+                    'nivel' => $admin['nivel'] ?? null,
+                    'cargo' => $admin['cargo'] ?? 'Administrador',
+                ],
+            ],
+        ]);
+    } catch (\Throwable $e) {
+        // Silêncio proposital: telemetria não pode impedir alguém de logar.
+    }
 }
 
 function mascararEmail($email) {
@@ -138,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
         $recaptcha_token = $_POST['recaptcha_token'] ?? '';
 
         $recaptcha_data = (object) ['success' => true, 'score' => 1.0];
-        if (!MODO_HOMOLOG) {
+        if (!MODO_HOMOLOG && !DOCKER_ENV) {
             $recaptcha_url = 'https://www.google.com/recaptcha/api/siteverify';
             $recaptcha_response = @file_get_contents($recaptcha_url . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptcha_token);
             $recaptcha_data = json_decode($recaptcha_response ?: '{}');
@@ -329,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <?php if (!MODO_HOMOLOG): ?>
+    <?php if (!MODO_HOMOLOG && !DOCKER_ENV): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <?php endif; ?>
     <style>
@@ -997,7 +1029,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     setLoading(btn, true, 'Verificando…');
     clearAlert('login-err');
 
-    <?php if (MODO_HOMOLOG): ?>
+    <?php if (MODO_HOMOLOG || DOCKER_ENV): ?>
     fetch('login.php', { method: 'POST', body: new FormData(document.getElementById('login-form')) })
     .then(r => r.json())
     .then(data => {

@@ -133,57 +133,194 @@ include '../header.php';
             box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
         }
 
-        /* Melhor match — borda dourada pulsante */
-        @keyframes goldPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.55), 0 8px 24px rgba(234, 179, 8, 0.18); }
-            50%       { box-shadow: 0 0 0 5px rgba(234, 179, 8, 0),   0 8px 24px rgba(234, 179, 8, 0.18); }
-        }
+        /* Melhor match — destaque discreto */
         .template-card.melhor-match {
-            border: 2px solid #eab308 !important;
-            border-bottom: 3px solid #ca8a04 !important;
-            animation: goldPulse 2.2s ease-in-out infinite;
+            border: 1.5px solid #86efac !important;
+            border-bottom: 3px solid var(--sema-green) !important;
         }
         .template-card.melhor-match:hover {
-            border-color: #ca8a04 !important;
-            box-shadow: 0 14px 32px rgba(234, 179, 8, 0.28) !important;
+            border-color: var(--sema-green) !important;
+            box-shadow: 0 12px 30px rgba(28, 75, 54, 0.15) !important;
         }
         .badge-melhor-match {
             position: absolute;
-            top: -1px; left: 50%; transform: translateX(-50%);
-            background: linear-gradient(90deg, #eab308, #f59e0b);
-            color: #1a1a1a;
-            font-size: 0.6rem;
-            font-weight: 800;
-            letter-spacing: 0.06em;
+            top: 8px; left: 10px;
+            background: #f0fdf4;
+            color: #166534;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
-            padding: 2px 10px;
-            border-radius: 0 0 8px 8px;
+            padding: 2px 7px;
+            border-radius: 4px;
             white-space: nowrap;
             z-index: 3;
-            box-shadow: 0 2px 6px rgba(234, 179, 8, 0.4);
+            border: 1px solid #bbf7d0;
         }
 
-        /* Preview de texto do template */
+        /* Preview renderizada via iframe — miniatura centralizada */
         .preview-miniature {
-            font-size: 0.72rem;
-            color: #64748b;
-            text-align: left;
-            background: #f8fafc;
-            padding: 10px 12px;
-            border-radius: 8px;
-            height: 68px;
+            background: #fff;
+            border-radius: 6px;
+            height: 80px;
             overflow: hidden;
-            margin-top: 12px;
-            border: 1px dashed #cbd5e1;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
             position: relative;
-            line-height: 1.5;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+        }
+        .preview-miniature iframe {
+            width: 794px;
+            height: 1123px;
+            border: none;
+            transform: scale(0.22);
+            transform-origin: top center;
+            pointer-events: none;
+            flex-shrink: 0;
         }
         .preview-miniature::after {
             content: '';
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            height: 28px;
-            background: linear-gradient(transparent, #f8fafc);
+            height: 30px;
+            background: linear-gradient(transparent, #fff);
+            pointer-events: none;
+        }
+        .preview-miniature .expand-hint {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
+            color: #94a3b8;
+            z-index: 2;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .preview-miniature:hover .expand-hint {
+            opacity: 1;
+            color: var(--sema-green);
+        }
+
+        /* ═══════════════════════════════════════════════
+           MODAL — Preview como folha de papel
+        ═══════════════════════════════════════════════ */
+        .preview-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(30,30,40,0.6);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 30px 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+        }
+        .preview-modal-overlay.active { display: flex; }
+
+        .preview-modal-box {
+            background: #e8e8e8;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeInUp 0.35s ease;
+            overflow: hidden;
+        }
+
+        /* Barra de topo do modal */
+        .preview-modal-header {
+            background: #2d2d2d;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .preview-modal-header h6 {
+            margin: 0;
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        .preview-modal-close {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.75rem;
+        }
+        .preview-modal-close:hover { background: rgba(255,255,255,0.3); }
+
+        /* Área da "folha" de papel */
+        .preview-modal-body {
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+        .preview-paper {
+            background: #fff;
+            width: 100%;
+            max-width: 700px;
+            min-height: 900px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Timbre (header da folha) */
+        .preview-paper-header {
+            padding: 20px 30px 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 2px solid #2d8661;
+        }
+        .preview-paper-header img {
+            height: 50px;
+            width: auto;
+            flex-shrink: 0;
+        }
+        .preview-paper-header .header-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .preview-paper-header .header-text strong {
+            font-size: 0.82rem;
+            color: #1a1a1a;
+            letter-spacing: 0.01em;
+        }
+        .preview-paper-header .header-text small {
+            font-size: 0.7rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* Conteúdo da folha (iframe) */
+        .preview-paper-content {
+            flex: 1;
+            padding: 0;
+        }
+        .preview-paper-content iframe {
+            width: 100%;
+            min-height: 800px;
+            border: none;
+            display: block;
         }
 
         /* ═══════════════════════════════════════════════
@@ -330,6 +467,34 @@ include '../header.php';
 
     </div><!-- /tab-content -->
 
+    <!-- Modal de preview expandida — folha de papel -->
+    <div class="preview-modal-overlay" id="previewModal" onclick="fecharPreviewModal(event)">
+        <div class="preview-modal-box" onclick="event.stopPropagation()">
+            <div class="preview-modal-header">
+                <h6 id="previewModalTitle">
+                    <i class="fas fa-file-alt me-2" style="opacity:.6"></i>Preview do Documento
+                </h6>
+                <button class="preview-modal-close" onclick="fecharPreviewModal()" title="Fechar (Esc)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="preview-modal-body">
+                <div class="preview-paper">
+                    <div class="preview-paper-header">
+                        <img src="../../assets/SEMA/PNG/Azul/Logo Prefeitura_SEMA.png" alt="Logo SEMA" onerror="this.style.display='none'">
+                        <div class="header-text">
+                            <strong>PREFEITURA MUNICIPAL DE PAU DOS FERROS/RN</strong>
+                            <small>SECRETARIA MUNICIPAL DE MEIO AMBIENTE — SEMA</small>
+                        </div>
+                    </div>
+                    <div class="preview-paper-content">
+                        <iframe id="previewModalIframe" src="about:blank"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
@@ -337,6 +502,18 @@ include '../header.php';
     const adminNivel = <?= json_encode($_SESSION['admin_nivel'] ?? '') ?>;
     const setorReq = <?= json_encode($setorReq) ?>;
     let favoritosSet = new Set();
+
+    // Mapear nível do usuário logado → setor
+    const nivelParaSetor = {
+        'analista': 'setor1',
+        'fiscal':   'setor2',
+        'admin':    '',
+        'admin_geral': '',
+        'secretario':  '',
+        'operador':    '',
+    };
+    // Usa o setor do USUÁRIO logado (prioridade) ou o setor do requerimento como fallback
+    const setorUsuario = nivelParaSetor[adminNivel] || setorReq;
 
     // Templates recomendados por setor (badges que têm prioridade)
     const recomendadosPorSetor = {
@@ -423,7 +600,10 @@ include '../header.php';
                     </div>
                     <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
                     <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature">${escapeHtml(preview)}</div>
+                    <div class="preview-miniature" onclick="expandirPreview('${escaparAttr(nome)}', '${escaparAttr(label)}', event)">
+                        <iframe src="../templates/${encodeURIComponent(nome)}.html" loading="lazy" sandbox></iframe>
+                        <span class="expand-hint"><i class="fas fa-expand me-1"></i>Expandir</span>
+                    </div>
                     ${fillScore}
                 </a>
             </div>
@@ -618,7 +798,7 @@ include '../header.php';
 
             // ── Todos os Modelos: separar em grupos ──────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
-                const recomendados = recomendadosPorSetor[setorReq] || [];
+                const recomendados = recomendadosPorSetor[setorUsuario] || [];
                 const tplsRec  = ret.templates.filter(t => recomendados.includes(t.badge));
                 const tplsAmb  = ret.templates.filter(t => badgesAmbiental.includes(t.badge) && !recomendados.includes(t.badge));
                 const tplsObr  = ret.templates.filter(t => badgesObras.includes(t.badge) && !recomendados.includes(t.badge));
@@ -662,6 +842,36 @@ include '../header.php';
             </div></div>`;
         });
     }
+
+    /* ─── Preview expandida (modal — folha de papel) ─────── */
+    function expandirPreview(nome, label, evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        const modal  = document.getElementById('previewModal');
+        const iframe = document.getElementById('previewModalIframe');
+        const title  = document.getElementById('previewModalTitle');
+        title.innerHTML = `<i class="fas fa-file-alt me-2" style="opacity:.6"></i>${escapeHtml(label)}`;
+        iframe.src = `../templates/${encodeURIComponent(nome)}.html`;
+        // Auto-ajustar altura do iframe ao conteúdo
+        iframe.onload = function() {
+            try {
+                const h = iframe.contentDocument.documentElement.scrollHeight;
+                iframe.style.minHeight = Math.max(h + 40, 600) + 'px';
+            } catch(e) {}
+        };
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    function fecharPreviewModal(evt) {
+        if (evt && evt.target !== evt.currentTarget) return;
+        const modal  = document.getElementById('previewModal');
+        const iframe = document.getElementById('previewModalIframe');
+        modal.classList.remove('active');
+        iframe.src = 'about:blank';
+        iframe.style.minHeight = '800px';
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPreviewModal(); });
 
     document.addEventListener('DOMContentLoaded', carregarTemplates);
     </script>

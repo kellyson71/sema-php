@@ -2,14 +2,6 @@
 require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
 verificaLogin();
 
 // Restrição de setor para fiscal (setor2) e secretario (setor3)

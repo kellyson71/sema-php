@@ -1,16 +1,6 @@
 <?php
 require_once 'includes/config.php';
 
-// Redireciona apenas o ambiente principal; homologação deve permanecer local.
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $redirect_url = 'http://sema.paudosferros.rn.gov.br' . $requestUri;
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: $redirect_url");
-    exit();
-}
-
 session_start();
 
 if (!isset($_SESSION['protocolo'])) {
@@ -21,8 +11,9 @@ if (!isset($_SESSION['protocolo'])) {
 $protocolo       = $_SESSION['protocolo'];
 $sucesso         = $_SESSION['sucesso'] ?? 'Requerimento enviado com sucesso!';
 $proprietario    = $_SESSION['proprietario_nome'] ?? '';
+$emailFalhou     = !empty($_SESSION['email_confirmacao_falhou']);
 
-unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome']);
+unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -253,6 +244,13 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                     <?php endif; ?>
                 </div>
 
+                <?php if ($emailFalhou): ?>
+                <div class="aviso" style="background:#fef2f2;border-left-color:#b91c1c;color:#7f1d1d;padding:16px 18px;">
+                    <i class="fas fa-triangle-exclamation" style="color:#b91c1c;font-size:1.1rem;"></i>
+                    <span>Não conseguimos enviar a confirmação por e-mail agora. <strong>Anote o número do protocolo acima</strong> — você pode consultar o andamento a qualquer momento pelo protocolo, mesmo sem o e-mail.</span>
+                </div>
+                <?php endif; ?>
+
                 <div class="aviso">
                     <i class="fas fa-exclamation-triangle"></i>
                     <span>Este é um <strong>registro de entrada interno</strong>. O protocolo oficial para acompanhamento no portal da prefeitura será enviado ao seu e-mail em até <strong>7 dias úteis</strong>.</span>
@@ -300,6 +298,12 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 <a href="./consultar/index.php" class="consulta-btn">
                     <i class="fas fa-search"></i>
                     <span>Consulte seu Alvará</span>
+                </a>
+            </div>
+            <div>
+                <a href="./consultar_denuncia.php" class="consulta-btn" style="background:#f59e0b; color:#fff;">
+                    <i class="fas fa-magnifying-glass-location"></i>
+                    <span>Acompanhe sua Denúncia</span>
                 </a>
             </div>
             <div>

@@ -108,9 +108,16 @@ if (isset($_GET['error'])) {
         'motivo_obrigatorio'    => 'O motivo é obrigatório para recusar.',
         'solicitacao_duplicada' => 'Já existe uma solicitação pendente para este documento e destinatário.',
         'erro_solicitacao'      => 'Erro ao processar solicitação' . (isset($_GET['details']) ? ': ' . htmlspecialchars(urldecode($_GET['details'])) : '.'),
-        'erro_fluxo'            => 'Erro no fluxo' . (isset($_GET['details']) ? ': ' . htmlspecialchars(urldecode($_GET['details'])) : '.'),
+        // O handler grava a causa real na sessão; sem ela a mensagem seria só
+        // "Erro no fluxo", sem indicar o que impediu a ação.
+        'erro_fluxo'            => 'A ação não foi concluída' . (
+            trim((string) ($_SESSION['fluxo_erro_msg'] ?? '')) !== ''
+                ? ': ' . htmlspecialchars(trim((string) $_SESSION['fluxo_erro_msg']))
+                : (isset($_GET['details']) ? ': ' . htmlspecialchars(urldecode($_GET['details'])) : '.')
+        ),
     ];
     $pageError = $errorMsgs[$_GET['error']] ?? 'Ocorreu um erro inesperado.';
+    unset($_SESSION['fluxo_erro_msg']);
 }
 if (isset($_GET['success'])) {
     $successMsgs = [

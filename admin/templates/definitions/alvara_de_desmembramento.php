@@ -1,4 +1,11 @@
 <?php
+/**
+ * Definição: Alvará de Desmembramento
+ *
+ * Layout alinhado ao documento original da SEMA: texto 100% corrido (sem tabela
+ * de dados), com área desmembrada, área total, área remanescente e cadastro.
+ */
+
 return [
     'label'     => 'Alvará de Desmembramento',
     'descricao' => 'Autorização para desmembramento de lote urbano.',
@@ -8,42 +15,26 @@ return [
     'blocos' => [
         [
             'tipo'     => 'titulo',
-            'texto'    => 'ÁLVARÁ DE DESMEMBRAMENTO',
+            'texto'    => 'ALVARÁ DE DESMEMBRAMENTO',
             'subtexto' => 'N° {{numero_documento_ano}}',
         ],
         [
             'tipo'  => 'subtitulo',
-            'texto' => 'PROTOCOLO: {{protocolo}}',
-        ],
-        [
-            'tipo'     => 'texto',
-            'conteudo' => '<p>Fica autorizado o DESMEMBRAMENTO conforme descrito abaixo, localizado em {{endereco_objetivo}}, pertencente a <strong>{{nome_proprietario}}</strong>, CPF: {{cpf_cnpj_proprietario}}.</p>',
+            'texto' => 'PROCESSO: {{protocolo}}',
         ],
 
         [
-            'tipo'  => 'secao',
-            'texto' => '1. DADOS DO IMÓVEL',
-        ],
-        [
-            'tipo'   => 'tabela',
-            'linhas' => [
-                ['Proprietário',            '{{nome_proprietario}}'],
-                ['CPF/CNPJ',                '{{cpf_cnpj_proprietario}}'],
-                ['Endereço / Localização',   '{{endereco_objetivo}}'],
-                ['Protocolo Oficial',        '{{protocolo_oficial}}'],
-                ['Padrão Popular (<70m²)',   '{{padrao_popular}}'],
-                ['Descrição do Lote',        '{{detalhes_imovel}}'],
-                ['ART de Desmembramento',    '{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}'],
-            ],
-        ],
-
-        [
-            'tipo'  => 'secao',
-            'texto' => '2. FUNDAMENTAÇÃO LEGAL E CONDIÇÕES',
-        ],
-        [
             'tipo'     => 'texto',
-            'conteudo' => '<p>O desmembramento é autorizado em conformidade com a Lei N° 6.766 de 19 de dezembro de 1979 e parecer técnico da Secretaria de Meio Ambiente deste município.</p><p>{{especificacao}}</p>',
+            'conteudo' => '<p style="text-align:justify;">'
+                . 'Fica autorizado o desmembramento de um lote de {{area_lote}} m² de um total de '
+                . '{{area_total_terreno}} m², ficando de área remanescente o total de {{area_remanescente}} m². '
+                . 'Localizado em {{endereco_objetivo}}, pertencente a <strong>{{nome_proprietario}}</strong>, '
+                . 'CPF: {{cpf_cnpj_proprietario}}. '
+                . 'Descrição do lote com cadastro {{cadastro_imobiliario}}: {{especificacao}} '
+                . 'Este desmembramento é autorizado em conformidade com a Lei N° 6.766 de 19 de dezembro de 1979, '
+                . 'parecer técnico da Secretaria Municipal de Meio Ambiente – SEMA e conforme a ART de desmembramento '
+                . 'ART {{responsavel_tecnico_numero}}.'
+                . '</p>',
         ],
 
         ['tipo' => 'data_local'],

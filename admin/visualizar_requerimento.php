@@ -288,7 +288,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     }
 
                     // Atualizar status para "Indeferido" automaticamente
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', aguardando_acao = 'concluido', observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
+                    // Se o indeferimento aconteceu no Setor 1, o processo passa a ficar visível para o Setor 2
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Indeferido', aguardando_acao = 'concluido', setor_atual = IF(setor_atual = 'setor1', 'setor2', setor_atual), observacoes = ?, data_atualizacao = NOW() WHERE id = ?");
                     $stmt->execute([$observacoesCombinadas, $id]);
 
                     // Registrar no histórico de ações
@@ -585,6 +586,19 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$id]);
 $historico = $stmt->fetchAll();
+
+// Todos os e-mails já enviados (ou tentados) neste processo, de qualquer tipo —
+// confirmação, aprovação, indeferimento, boleto, protocolo oficial, documento
+// final etc. O preview usa o HTML já salvo em email_logs.mensagem, então não
+// precisamos reconstruir nada por tipo (ver admin/preview_email.php).
+$stmtEmailsProcesso = $pdo->prepare("
+    SELECT id, email_destino, assunto, status, erro, data_envio, usuario_envio
+    FROM email_logs
+    WHERE requerimento_id = ?
+    ORDER BY data_envio DESC
+");
+$stmtEmailsProcesso->execute([$id]);
+$emailsProcesso = $stmtEmailsProcesso->fetchAll();
 
 // Calcular tempo por etapa usando o histórico já buscado
 $etapas        = calcularTemposEtapas($historico, $requerimento['data_envio']);
@@ -1217,6 +1231,15 @@ include 'header.php';
         cursor: pointer;
     }
 
+    /* Realce ao passar o mouse nos blocos de documento clicáveis */
+    .doc-row-clickable:hover {
+        background-color: #f8fafc;
+    }
+    .doc-card-clickable[data-viewer-url]:not([data-viewer-url=""]):hover {
+        border-color: #1c4b36 !important;
+        box-shadow: 0 3px 10px rgba(28,75,54,.12) !important;
+    }
+
     /* CSS para assinatura */
     .signature-pad-container {
         display: flex;
@@ -1685,6 +1708,22 @@ $isSetor1  = ($nivelAtual === 'analista'  || $isAdmin);
 // Fiscal puro e secretário puro (sem privilégio admin_geral)
 $isFiscalPuro     = ($nivelAtual === 'fiscal');
 $isSecretarioPuro = ($nivelAtual === 'secretario');
+
+// Quem pode movimentar o processo: o role dono do setor onde ele está (ou admin).
+// Os botões eram renderizados só por $setorAtual, então um fiscal abrindo um
+// processo da Triagem via botões que o handler recusava com "sem permissão".
+$rolePorSetor    = ['setor1' => 'analista', 'setor2' => 'fiscal', 'setor3' => 'secretario'];
+$roleDoSetor     = $rolePorSetor[$setorAtual] ?? 'analista';
+$podeAgirNoSetor = $isAdmin || ($nivelAtual === $roleDoSetor);
+// A entrega ao cidadão é a exceção: Triagem (Setor 1) e Fiscalização (Setor 2)
+// entregam documento independente de onde o processo esteja parado. Movimentar o
+// fluxo continua restrito ao setor dono. O handler repete essa regra.
+$podeEntregarDocFinal = $isAdmin || in_array($nivelAtual, ['analista', 'fiscal'], true);
+$labelSetorAtual = [
+    'setor1' => 'Triagem Ambiental',
+    'setor2' => 'Fiscalização de Obras',
+    'setor3' => 'Revisão do Secretário',
+][$setorAtual] ?? $setorAtual;
 if (isset($_GET['error']) && $_GET['error'] === 'motivo_obrigatorio') {
     $mensagem = 'O motivo da devolução é obrigatório.';
     $mensagemTipo = 'danger';
@@ -1693,9 +1732,34 @@ if (isset($_GET['error']) && $_GET['error'] === 'sem_permissao') {
     $mensagem = 'Você não tem permissão para executar essa ação neste setor.';
     $mensagemTipo = 'danger';
 }
+if (isset($_GET['error']) && $_GET['error'] === 'erro_fluxo') {
+    // Mostra a causa real gravada pelo handler; sem isso a ação falhava sem
+    // nenhum aviso na tela e o operador repetia o envio indefinidamente.
+    $detalhe = trim((string) ($_SESSION['fluxo_erro_msg'] ?? ''));
+    unset($_SESSION['fluxo_erro_msg']);
+    $mensagem = '❌ A ação não foi concluída' . ($detalhe !== '' ? ': ' . $detalhe : '. Tente novamente ou contate o suporte.');
+    $mensagemTipo = 'danger';
+}
+if (isset($_GET['error']) && $_GET['error'] === 'dados_invalidos') {
+    $mensagem = 'Dados inválidos na requisição. A ação não foi executada.';
+    $mensagemTipo = 'danger';
+}
+if (isset($_GET['error']) && $_GET['error'] === 'acao_invalida') {
+    $mensagem = 'Ação desconhecida. Nada foi alterado no processo.';
+    $mensagemTipo = 'danger';
+}
 if (isset($_GET['success']) && $_GET['success'] === 'fluxo_atualizado') {
-    $mensagem = 'Fluxo atualizado com sucesso.';
-    $mensagemTipo = 'success';
+    if (($_GET['aviso'] ?? '') === 'email_falhou') {
+        // O fluxo em si foi concluído — só o e-mail ao cidadão falhou. Sem este aviso,
+        // a tela mostrava "sucesso" genérico e o operador não tinha como saber que o
+        // cidadão não recebeu a notificação.
+        $mensagem = '⚠️ Fluxo atualizado, mas o e-mail com o documento não pôde ser enviado ao cidadão. '
+            . 'O documento continua acessível pelo link seguro; você pode reenviar pelo histórico de e-mails abaixo.';
+        $mensagemTipo = 'warning';
+    } else {
+        $mensagem = '✅ Fluxo atualizado com sucesso.';
+        $mensagemTipo = 'success';
+    }
 }
 
 // Co-assinaturas pendentes para o admin logado neste requerimento
@@ -2514,11 +2578,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="info-v"><?= !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : $ni ?></span>
                             <?php if ($documentoBoleto): ?>
                             <span class="info-k">Boleto (PDF)</span>
-                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
+                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])) ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
                             <?php endif; ?>
                             <?php if ($documentoComprovanteBoleto): ?>
                             <span class="info-k">Comprovante</span>
-                            <span class="info-v"><a href="../uploads/<?= ltrim($documentoComprovanteBoleto['caminho'],'/\\') ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
+                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoComprovanteBoleto['caminho'])) ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
                             <?php endif; ?>
                             <?php if (!empty($pagamento['instrucoes'])): ?>
                             <span class="info-k">Obs.</span>
@@ -2546,6 +2610,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Emails do processo: lista única e compacta, todos os tipos e status -->
+            <?php if (count($emailsProcesso) > 0): ?>
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-envelope"></i><span>Emails do Processo</span>
+                    </div>
+                    <span class="text-muted" style="font-size:.7rem;font-weight:600;"><?= count($emailsProcesso) ?> envio(s)</span>
+                </div>
+                <div>
+                    <?php foreach ($emailsProcesso as $em): $emSucesso = $em['status'] === 'SUCESSO'; ?>
+                        <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid #f2f6f4;font-size:.8rem;">
+                            <span class="rounded-circle" style="flex:none;width:8px;height:8px;background:<?= $emSucesso ? '#22c55e' : '#dc2626' ?>;" title="<?= $emSucesso ? 'Enviado' : 'Falhou' ?>"></span>
+                            <span class="text-muted" style="flex:none;white-space:nowrap;"><?= formataData($em['data_envio']) ?></span>
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;<?= $emSucesso ? '' : 'color:#b91c1c;' ?>"
+                                  title="<?= htmlspecialchars($em['assunto']) ?> — para <?= htmlspecialchars($em['email_destino']) ?><?= !$emSucesso && !empty($em['erro']) ? ' — ' . htmlspecialchars($em['erro']) : '' ?>">
+                                <?= htmlspecialchars($em['assunto']) ?>
+                                <span class="text-muted">· <?= htmlspecialchars($em['email_destino']) ?></span>
+                            </span>
+                            <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" style="flex:none;" title="Ver o email">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
 
         </div>
 
@@ -2612,13 +2704,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="text-muted small"><?php echo number_format($doc['tamanho'] / 1024, 2) . ' KB'; ?></div>
                                 </div>
                                 <div class="data-actions">
-                                    <a href="<?php echo '../uploads/' . ltrim($doc['caminho'], '/\\'); ?>"
+                                    <a href="<?php echo htmlspecialchars('../' . urlArquivo($doc['caminho'])); ?>"
                                         class="copy-btn me-1"
                                         target="_blank"
                                         title="Visualizar arquivo">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="<?php echo '../uploads/' . ltrim($doc['caminho'], '/\\'); ?>"
+                                    <a href="<?php echo htmlspecialchars('../' . urlArquivo($doc['caminho']) . '&download=1'); ?>"
                                         class="copy-btn"
                                         download
                                         title="Baixar arquivo">
@@ -2740,14 +2832,21 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="modern-card mb-3">
-                <div class="modern-card-header d-flex align-items-center justify-content-between">
+                <div class="modern-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-history icon"></i>
                         <h6 class="mb-0">Histórico de Ações</h6>
                     </div>
-                    <?php if (count($historico) > 0): ?>
-                    <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
-                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-2">
+                        <?php if (count($historico) > 0): ?>
+                        <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
+                        <?php endif; ?>
+                        <a href="logs_email.php<?= !empty($requerimento['requerente_email']) ? '?email=' . urlencode($requerimento['requerente_email']) : '' ?>"
+                           target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;"
+                           title="Abrir histórico completo de emails do sistema">
+                            <i class="fas fa-arrow-up-right-from-square me-1"></i>Ver todos os emails
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <?php if (count($historico) > 0): ?>
@@ -2801,16 +2900,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php endif; ?>
                 </div>
             </div>
+
         </div>
     </div>
 
     <!-- Seção de Ações Administrativas -->
+    <?php
+    // Temporário: setor 2 continua podendo gerar/tratar documentos normalmente
+    // mesmo em processos já Finalizados/Indeferidos vindos do Setor 1.
+    // Além disso, o role dono do setor onde o processo está (analista no Setor 1,
+    // secretário no Setor 3) continua vendo o painel de ações — assim quem concluiu
+    // o processo diretamente na Triagem ainda consegue enviar o documento final ao
+    // cidadão, botão que só aparece no painel ativo.
+    $tratarComoAtivoParaSetor2 = $podeEntregarDocFinal || ($nivelAtual === $roleDoSetor);
+    $mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
+    ?>
     <div class="row mt-4">
         <div class="col-12">
-            <div class="modern-card <?php echo $isFinalized ? 'finalized-card' : ($isIndeferido ? 'indeferido-card' : ''); ?>">
-                <div class="modern-card-header <?php echo $isFinalized ? 'finalized-header' : ($isIndeferido ? 'indeferido-header' : ''); ?>">
-                    <i class="fas fa-cog icon <?php echo $isBlocked ? 'text-muted' : ''; ?>"></i>
-                    <h6 class="<?php echo $isBlocked ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
+            <div class="modern-card <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-card' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-card' : ''); ?>">
+                <div class="modern-card-header <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-header' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-header' : ''); ?>">
+                    <i class="fas fa-cog icon <?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>"></i>
+                    <h6 class="<?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
                     <?php if ($isFinalized): ?>
                         <div class="ms-auto">
                             <span class="badge bg-secondary">
@@ -2825,8 +2935,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body <?php echo $isFinalized ? 'finalized-body' : ($isIndeferido ? 'indeferido-body' : ''); ?>">
-                    <?php if ($isFinalized): ?>
+                <div class="card-body <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-body' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-body' : ''); ?>">
+                    <?php if ($isFinalized && $mostrarPainelEncerrado): ?>
                         <!-- Processo Finalizado — painel informativo -->
                         <?php
                         // Quem finalizou e quando
@@ -2841,13 +2951,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!$hFinalizacao && !empty($historico)) $hFinalizacao = $historico[0];
 
                         // Documentos assinados gerados para este processo
+                        // Assinaturas de teste da conta Kellyson (e variações) ficam ocultas
+                        // para os demais usuários — precaução até a limpeza definitiva desses dados.
+                        $souContaKellyson = stripos($_SESSION['admin_email'] ?? '', 'kellyson') !== false;
+                        $filtroKellyson = $souContaKellyson ? "" : "AND assinante_nome NOT LIKE '%kellyson%'";
                         $stmtDocsF = $pdo->prepare("
                             SELECT MIN(timestamp_assinatura) AS primeira_assinatura,
                                    tipo_documento, documento_id,
                                    GROUP_CONCAT(DISTINCT assinante_nome ORDER BY timestamp_assinatura ASC SEPARATOR ', ') AS assinantes,
                                    nivel_assinatura
                             FROM assinaturas_digitais
-                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura'
+                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura' $filtroKellyson
                             GROUP BY documento_id
                             ORDER BY primeira_assinatura ASC
                         ");
@@ -2927,17 +3041,37 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Docs enviados pelo cidadão -->
                             <?php if (!empty($documentos)): ?>
                                 <div style="margin-bottom:16px;">
-                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:6px;">
+                                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px;">
                                         <i class="fas fa-folder-open me-1"></i>Documentação do requerente (<?= count($documentos) ?> arquivo<?= count($documentos)>1?'s':'' ?>)
                                     </div>
-                                    <div style="font-size:.78rem;color:#475569;padding:6px 10px;background:#f8fafc;border-radius:7px;border:1px solid #e8edf2;">
-                                        <?php $nomes = array_map(fn($d)=>htmlspecialchars(basename($d['arquivo']??$d['nome_arquivo']??'')), $documentos);
-                                              echo implode(' · ', array_filter($nomes)); ?>
+                                    <div style="display:flex;flex-direction:column;gap:6px;">
+                                        <?php foreach ($documentos as $docReq):
+                                            $tituloDocReq = $docReq['nome_original'];
+                                            if ($docReq['campo_formulario'] === 'boleto_pagamento_admin') {
+                                                $tituloDocReq = 'Boleto enviado pela equipe';
+                                            } elseif ($docReq['campo_formulario'] === 'comprovante_pagamento_boleto') {
+                                                $tituloDocReq = 'Comprovante de pagamento do requerente';
+                                            }
+                                            $urlDocReq = '../' . urlArquivo($docReq['caminho']);
+                                        ?>
+                                            <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;">
+                                                <i class="fas fa-file-pdf" style="color:#dc2626;font-size:.85rem;flex-shrink:0;"></i>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:.8rem;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($tituloDocReq) ?></div>
+                                                    <div style="font-size:.7rem;color:#94a3b8;"><?= number_format($docReq['tamanho'] / 1024, 2) ?> KB</div>
+                                                </div>
+                                                <a href="<?= htmlspecialchars($urlDocReq) ?>" target="_blank"
+                                                   title="Visualizar" style="color:#2563eb;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-eye"></i></a>
+                                                <a href="<?= htmlspecialchars($urlDocReq) ?>" download
+                                                   title="Baixar" style="color:#64748b;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-download"></i></a>
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
                             <?php endif; ?>
 
                             <!-- Ações -->
+                            <?php if (!$isFiscalPuro): ?>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
                                 <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
                                     <i class="fas fa-unlock me-1"></i>Reabrir
@@ -2946,8 +3080,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <i class="fas fa-archive me-1"></i>Arquivar
                                 </button>
                             </div>
+                            <?php endif; ?>
                         </div>
-                    <?php elseif ($isIndeferido): ?>
+                    <?php elseif ($isIndeferido && $mostrarPainelEncerrado): ?>
                         <!-- Processo Indeferido — painel compacto -->
                         <?php
                         $ultimaAcaoEnc = '';
@@ -2963,6 +3098,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div style="flex:1;min-width:0;">
                                 <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo indeferido</p>
                                 <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">O requerente foi notificado por e-mail<?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
+                                <?php if (!$isFiscalPuro): ?>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                     <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
                                         <i class="fas fa-unlock me-1"></i>Reabrir
@@ -2971,6 +3107,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <i class="fas fa-archive me-1"></i>Arquivar
                                     </button>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                                          <?php else: ?>
@@ -3014,7 +3151,15 @@ document.addEventListener('DOMContentLoaded', function() {
                               <!-- Encaminhamento de fluxo -->
                               <div style="margin-bottom:20px;">
                                   <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Encaminhamento</p>
-                                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                  <?php if (!$podeAgirNoSetor): ?>
+                                  <div class="aviso-inline" style="width:100%;">
+                                      <i class="fas fa-lock"></i>
+                                      Este processo está em <strong><?= htmlspecialchars($labelSetorAtual) ?></strong>.
+                                      Só a equipe daquele setor pode movimentá-lo.
+                                  </div>
+                                  <?php endif; ?>
+                                  <div style="display:flex;flex-wrap:wrap;gap:8px;<?= $podeAgirNoSetor ? '' : 'margin-top:8px;' ?>">
+                                      <?php if ($podeAgirNoSetor): ?>
                                       <?php if ($setorAtual === 'setor1'): ?>
                                           <button type="button" class="act-btn act-go tt"
                                               onclick="abrirFM('fm-setor2')"
@@ -3034,12 +3179,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                               data-bs-toggle="tooltip" data-bs-placement="top"
                                               data-bs-title="Encaminha o processo para o Setor 3 — Revisão do Secretário para aprovação e assinatura final.">
                                               <i class="fas fa-arrow-right"></i>Enviar ao Secretário
-                                          </button>
-                                          <button type="button" class="act-btn act-go2 tt"
-                                              data-bs-toggle="modal" data-bs-target="#docFinalModal"
-                                              data-bs-placement="top"
-                                              data-bs-title="Envia o documento final ao requerente por link seguro e finaliza o processo.">
-                                              <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
                                           </button>
                                           <button type="button" class="act-btn act-neutral tt"
                                               onclick="abrirFM('fm-finalizar-s2')"
@@ -3066,6 +3205,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                               data-bs-title="Devolve o processo ao Setor 2 — Fiscalização com uma justificativa obrigatória para revisão ou ajuste.">
                                               <i class="fas fa-arrow-left"></i>Devolver à Fiscalização
                                           </button>
+                                      <?php endif; ?>
+                                      <?php endif; // $podeAgirNoSetor ?>
+
+                                      <?php // Entregar documento ao cidadão: Triagem e Fiscalização entregam
+                                            // independente do setor onde o processo parou. Antes era exclusivo do
+                                            // Setor 2, e a Triagem — que conclui a maioria dos processos — só podia
+                                            // mandar o número do protocolo. ?>
+                                      <?php if ($podeEntregarDocFinal): ?>
+                                      <button type="button" class="act-btn act-go2 tt"
+                                          data-bs-toggle="modal" data-bs-target="#docFinalModal"
+                                          data-bs-placement="top"
+                                          data-bs-title="Envia os documentos assinados ao requerente por link seguro e finaliza o processo.">
+                                          <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
+                                      </button>
                                       <?php endif; ?>
                                   </div>
                               </div>
@@ -3239,7 +3392,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php if ($documentoBoleto): ?>
                             <div class="mt-2 d-flex align-items-center gap-2 small" style="color:var(--teal-text);">
                                 <i class="fas fa-file-pdf"></i>
-                                Atual: <a href="<?php echo '../uploads/' . ltrim($documentoBoleto['caminho'], '/\\'); ?>"
+                                Atual: <a href="<?php echo htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])); ?>"
                                           target="_blank" rel="noopener" style="color:inherit;">
                                     <?php echo htmlspecialchars($documentoBoleto['nome_original']); ?>
                                 </a>
@@ -3271,7 +3424,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php
 // Documentos disponíveis para envio final (usados no docFinalModal)
 $stmtDocsFinais = $pdo->prepare("
-    SELECT ad.id, ad.nome_arquivo, ad.assinante_nome, ad.assinante_cargo, ad.timestamp_assinatura,
+    SELECT ad.id, ad.nome_arquivo, ad.documento_id, ad.assinante_nome, ad.assinante_cargo, ad.timestamp_assinatura,
            COALESCE(ad.group_id, ad.documento_id) as grupo,
            EXISTS(
                SELECT 1 FROM assinaturas_digitais ad2
@@ -3293,83 +3446,220 @@ foreach ($docsDisponiveis as $docRow) {
         $docsGrouped[$g] = $docRow;
     }
 }
+
+// Verificar se já houve entrega anterior (para mostrar aviso de reenvio)
+$stmtEntregaAnterior = $pdo->prepare("
+    SELECT enviado_em, revogado_em,
+           (SELECT nome FROM administradores WHERE id = df.admin_envio_id LIMIT 1) as enviado_por
+    FROM documentos_finais df
+    WHERE df.requerimento_id = ?
+    ORDER BY df.enviado_em DESC
+    LIMIT 1
+");
+$stmtEntregaAnterior->execute([$id]);
+$entregaAnterior = $stmtEntregaAnterior->fetch();
+$jaFoiEntregue = !empty($entregaAnterior);
+
+$emailDestinatario = $requerimento['requerente_email'] ?? '';
+$nomeDestinatario  = $requerimento['requerente_nome'] ?? '';
+$tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
+                        ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']));
 ?>
 
 <!-- Modal: Enviar Documento Final ao Cidadão -->
+<style>
+/* Escopo fechado no modal de entrega: fora dele nada muda. */
+#docFinalModal .modal-content { border:0; border-radius:14px; overflow:hidden; }
+
+#docFinalModal .dfm-head { background:#0a6b34; color:#fff; padding:18px 24px 16px; }
+#docFinalModal .dfm-eyebrow {
+    font-size:.68rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+    color:rgba(255,255,255,.72); margin-bottom:3px;
+}
+#docFinalModal .dfm-title { font-size:1.02rem; font-weight:700; margin:0; color:#fff; }
+#docFinalModal .dfm-sub { font-size:.76rem; color:rgba(255,255,255,.75); margin:2px 0 0; }
+
+#docFinalModal .dfm-body { padding:20px 24px 8px; }
+#docFinalModal .dfm-linha {
+    font-size:.84rem; color:#334155; padding-bottom:14px;
+    border-bottom:1px solid #eef1f5; margin-bottom:16px;
+}
+#docFinalModal .dfm-rotulo { color:#8a94a3; }
+#docFinalModal .dfm-alerta-inline { color:#b42318; font-weight:600; }
+
+/* Reenvio: informação de contexto, não alarme — barra lateral em vez de caixa. */
+#docFinalModal .dfm-reenvio {
+    border-left:3px solid #d99b16; padding:2px 0 2px 12px; margin-bottom:16px;
+    font-size:.79rem; color:#6b5320; line-height:1.5;
+}
+#docFinalModal .dfm-reenvio strong { color:#4d3c14; }
+
+#docFinalModal .dfm-secao {
+    font-size:.73rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:#6b7280; margin:0;
+}
+#docFinalModal .dfm-todos { font-size:.76rem; color:#64748b; cursor:pointer; }
+
+/* Lista de seleção: divisórias, sem cartões empilhados. */
+#docFinalModal .dfm-lista { border-top:1px solid #eef1f5; max-height:264px; overflow-y:auto; }
+#docFinalModal .doc-final-check-item {
+    display:flex; align-items:flex-start; gap:12px; cursor:pointer; margin:0;
+    padding:11px 6px; border-bottom:1px solid #eef1f5; transition:background .12s;
+}
+#docFinalModal .doc-final-check-item:hover { background:#f8fafc; }
+#docFinalModal .doc-final-check-item.is-sel { background:#f4faf6; }
+#docFinalModal .dfm-doc-nome { font-size:.86rem; font-weight:600; color:#1e293b; }
+#docFinalModal .dfm-doc-meta { font-size:.75rem; color:#7c8697; margin-top:2px; }
+/* Só a exceção ganha destaque: o caso correto não precisa de selo. */
+#docFinalModal .dfm-flag {
+    display:inline-block; margin-top:5px; font-size:.7rem; font-weight:600;
+    color:#8a5a06; background:#fdf5e6; border:1px solid #f0d9a8;
+    border-radius:5px; padding:1px 7px;
+}
+#docFinalModal .doc-final-cb { width:17px; height:17px; margin-top:2px; flex-shrink:0; }
+#docFinalModal .doc-final-cb:checked { background-color:#0a6b34; border-color:#0a6b34; }
+
+#docFinalModal .dfm-label {
+    font-size:.73rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:#6b7280; margin-bottom:6px; display:block;
+}
+#docFinalModal .dfm-label span { text-transform:none; letter-spacing:0; font-weight:400; color:#98a1af; }
+#docFinalModal textarea.form-control { font-size:.85rem; resize:none; border-radius:8px; border-color:#dfe3e9; }
+#docFinalModal textarea.form-control:focus { border-color:#0a6b34; box-shadow:0 0 0 3px rgba(10,107,52,.1); }
+
+#docFinalModal .dfm-foot {
+    padding:14px 24px 18px; display:flex; align-items:center;
+    justify-content:space-between; gap:10px; border-top:1px solid #eef1f5;
+}
+#docFinalModal .dfm-btn {
+    font-size:.85rem; font-weight:600; border-radius:8px; padding:9px 16px;
+    border:1px solid transparent; transition:background .12s,border-color .12s;
+}
+#docFinalModal .dfm-btn-link { background:none; border:0; color:#7c8697; font-weight:500; padding:9px 4px; }
+#docFinalModal .dfm-btn-link:hover { color:#475569; text-decoration:underline; }
+#docFinalModal .dfm-btn-sec { background:#fff; border-color:#d5dae2; color:#3f4a5a; }
+#docFinalModal .dfm-btn-sec:hover { background:#f6f8fa; border-color:#b9c1cc; }
+#docFinalModal .dfm-btn-pri { background:#0a6b34; color:#fff; }
+#docFinalModal .dfm-btn-pri:hover { background:#08582b; color:#fff; }
+#docFinalModal .dfm-btn-pri:disabled { background:#c3ccd6; color:#fff; cursor:not-allowed; }
+</style>
+
 <div class="modal fade" id="docFinalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:inline-flex;align-items:center;justify-content:center;color:var(--teal-text);">
-                        <i class="fas fa-file-circle-check"></i>
-                    </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:var(--teal-text);">Enviar Documento Final ao Cidadão</h5>
+        <div class="modal-content shadow-lg">
+
+            <!-- Cabeçalho: identifica o processo, não só a ação -->
+            <div class="dfm-head d-flex align-items-start justify-content-between gap-3">
+                <div style="min-width:0;">
+                    <div class="dfm-eyebrow">
+                        Protocolo #<?= htmlspecialchars($requerimento['protocolo']) ?>
+                        <?php if ($tipoAlvaraNome !== ''): ?>
+                            &nbsp;·&nbsp; <?= htmlspecialchars(tituloAmigavel($tipoAlvaraNome)) ?>
+                        <?php endif; ?>
+                    </div>
+                    <h5 class="dfm-title">Entregar documentos ao cidadão</h5>
+                    <p class="dfm-sub">O processo será finalizado após o envio</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="opacity:.7;"></button>
             </div>
             <form method="post" action="fluxo_setor_handler.php" id="formDocFinal">
                 <input type="hidden" name="requerimento_id" value="<?= $id ?>">
                 <input type="hidden" name="fluxo_acao" value="doc_final_envio">
-                <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-3" style="line-height:1.55;">
-                        Selecione os documentos assinados que serão enviados ao requerente por link seguro. Após o envio, o processo será marcado como <strong>Finalizado</strong>.
-                    </p>
+                <div class="dfm-body">
+
+                    <!-- Destinatário: uma linha basta -->
+                    <div class="dfm-linha">
+                        <span class="dfm-rotulo">Para</span>
+                        <strong><?= htmlspecialchars($nomeDestinatario) ?></strong>
+                        <?php if (!empty($emailDestinatario)): ?>
+                            <span class="dfm-rotulo">&nbsp;·&nbsp;</span><?= htmlspecialchars($emailDestinatario) ?>
+                        <?php else: ?>
+                            <span class="dfm-rotulo">&nbsp;·&nbsp;</span>
+                            <span class="dfm-alerta-inline">sem e-mail cadastrado — o cidadão não será notificado</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($jaFoiEntregue): ?>
+                        <div class="dfm-reenvio">
+                            <strong>Reenvio.</strong> Entrega anterior em
+                            <?= date('d/m/Y \à\s H:i', strtotime($entregaAnterior['enviado_em'])) ?><?php
+                            if (!empty($entregaAnterior['enviado_por'])):
+                                ?> por <?= htmlspecialchars($entregaAnterior['enviado_por']) ?><?php
+                            endif; ?>.
+                            <?php if (empty($entregaAnterior['revogado_em'])): ?>
+                                O link anterior será revogado após este envio.
+                            <?php else: ?>
+                                O link anterior já foi revogado.
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (empty($docsGrouped)): ?>
-                        <div class="alert alert-warning py-2 px-3" style="font-size:.85rem;">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Nenhum documento assinado encontrado neste processo. Gere e assine um documento antes de enviar ao cidadão.
+                        <div class="dfm-reenvio" style="border-left-color:#b42318;color:#7a3b34;">
+                            <strong>Nenhum documento assinado neste processo.</strong>
+                            Gere e assine um documento antes de enviar ao cidadão.
                         </div>
                     <?php else: ?>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold" style="font-size:.875rem;">
-                                Documentos disponíveis <span class="text-danger">*</span>
-                            </label>
-                            <div id="docFinalCheckList" style="display:flex;flex-direction:column;gap:8px;">
-                                <?php foreach ($docsGrouped as $grupo => $doc): ?>
-                                    <label class="doc-final-check-item d-flex align-items-start gap-3 p-3 rounded-3 border cursor-pointer"
-                                           style="background:#f8fafc;cursor:pointer;"
-                                           data-tem-sec="<?= $doc['tem_assinatura_secretario'] ? '1' : '0' ?>">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <p class="dfm-secao">Documentos a enviar</p>
+                                <?php if (count($docsGrouped) > 1): ?>
+                                    <label class="dfm-todos d-flex align-items-center gap-2 mb-0">
+                                        <input type="checkbox" class="form-check-input mt-0" id="docFinalSelectAll" style="width:14px;height:14px;">
+                                        Selecionar todos
+                                    </label>
+                                <?php endif; ?>
+                            </div>
+                            <div id="docFinalCheckList" class="dfm-lista">
+                                <?php foreach ($docsGrouped as $grupo => $doc):
+                                    $rotulo = rotuloDocumento($doc['nome_arquivo']);
+                                ?>
+                                    <label class="doc-final-check-item" data-tem-sec="<?= $doc['tem_assinatura_secretario'] ? '1' : '0' ?>">
                                         <input type="checkbox" name="documento_ids[]" value="<?= (int)$doc['id'] ?>"
-                                               class="form-check-input mt-1 flex-shrink-0" style="width:18px;height:18px;">
-                                        <div class="flex-grow-1 min-w-0">
-                                            <div class="fw-semibold text-truncate" style="font-size:.875rem;">
-                                                <?= htmlspecialchars($doc['nome_arquivo']) ?>
-                                            </div>
-                                            <div class="text-muted" style="font-size:.77rem;margin-top:2px;">
-                                                Assinado por <strong><?= htmlspecialchars($doc['assinante_nome']) ?></strong>
-                                                (<?= htmlspecialchars($doc['assinante_cargo'] ?? 'sem cargo') ?>)
-                                                em <?= date('d/m/Y H:i', strtotime($doc['timestamp_assinatura'])) ?>
-                                            </div>
-                                            <?php if ($doc['tem_assinatura_secretario']): ?>
-                                                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac;font-size:.7rem;margin-top:4px;">
-                                                    <i class="fas fa-stamp me-1"></i>Assinado pelo Secretário
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fcd34d;font-size:.7rem;margin-top:4px;">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>Sem assinatura do Secretário
-                                                </span>
+                                               class="form-check-input doc-final-cb">
+                                        <span class="flex-grow-1" style="min-width:0;">
+                                            <span class="dfm-doc-nome d-block text-truncate">
+                                                <?= htmlspecialchars($rotulo !== '' ? $rotulo : $doc['nome_arquivo']) ?>
+                                            </span>
+                                            <span class="dfm-doc-meta d-block">
+                                                Assinado por <?= htmlspecialchars($doc['assinante_nome']) ?>
+                                                <?php if (!empty($doc['assinante_cargo'])): ?>
+                                                    · <?= htmlspecialchars($doc['assinante_cargo']) ?>
+                                                <?php endif; ?>
+                                                · <?= date('d/m/Y', strtotime($doc['timestamp_assinatura'])) ?>
+                                            </span>
+                                            <?php if (!$doc['tem_assinatura_secretario']): ?>
+                                                <span class="dfm-flag">Sem assinatura do Secretário</span>
                                             <?php endif; ?>
-                                        </div>
+                                        </span>
                                     </label>
                                 <?php endforeach; ?>
                             </div>
                         </div>
                     <?php endif; ?>
+
                     <div class="mb-2">
-                        <label for="instrucoes_doc_final" class="form-label fw-semibold" style="font-size:.875rem;">
-                            Observações <span class="text-muted fw-normal">(opcional)</span>
+                        <label for="instrucoes_doc_final" class="dfm-label">
+                            Observações ao cidadão <span>(opcional)</span>
                         </label>
-                        <textarea class="form-control" id="instrucoes_doc_final" name="instrucoes_doc_final" rows="3"
-                                  style="font-size:.875rem;resize:none;"
-                                  placeholder="Prazo de validade, orientações complementares ao requerente..."></textarea>
+                        <textarea class="form-control" id="instrucoes_doc_final" name="instrucoes_doc_final" rows="2"
+                                  placeholder="Prazo de validade, condicionantes, orientações ao requerente..."></textarea>
                     </div>
+
+                    <!-- Resumo da seleção (atualizado por JS) -->
+                    <div id="docFinalResumo" style="display:none;border-left:3px solid #0a6b34;padding:2px 0 2px 12px;font-size:.79rem;color:#245c3a;line-height:1.5;margin-top:12px;">
+                    </div>
+
                 </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success px-4" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
-                        <i class="fas fa-paper-plane me-2"></i>Enviar documento final
-                    </button>
+
+                <div class="dfm-foot">
+                    <button type="button" class="dfm-btn dfm-btn-link" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="dfm-btn dfm-btn-sec" onclick="previewEmailDocFinal()">Ver prévia do e-mail</button>
+                        <button type="submit" class="dfm-btn dfm-btn-pri" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
+                            <span id="btnEnviarDocFinalLabel"><?= $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão' ?></span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -4069,8 +4359,9 @@ foreach ($docsDisponiveis as $docRow) {
      function renderCoStatus(p) {
          if (!p.co_total_esperado || p.co_total_esperado <= 1) return '';
 
-         const total    = p.co_total_esperado;
-         const assinado = p.co_total_assinado;
+         const total     = p.co_total_esperado;
+         const assinado  = p.co_total_assinado;
+         const assinantes = p.co_assinantes || [];
          const pendentes = p.co_pendentes || [];
          const recusados = p.co_recusados || [];
          const euPendente = p.co_eu_pendente;
@@ -4078,37 +4369,42 @@ foreach ($docsDisponiveis as $docRow) {
 
          let html = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0;">`;
 
-         // Barra de progresso com contador
-         const pct = total > 0 ? Math.round((assinado / total) * 100) : 0;
-         const corBarra = p.co_completo ? '#15803d' : (recusados.length ? '#b91c1c' : '#b45309');
-         html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-             <div style="flex:1;height:4px;background:#e5e7eb;border-radius:99px;overflow:hidden;">
-                 <div style="width:${pct}%;height:100%;background:${corBarra};border-radius:99px;transition:width .4s;"></div>
-             </div>
-             <span style="font-size:.7rem;font-weight:700;color:${corBarra};white-space:nowrap;">${assinado}/${total} assinaram</span>
+         // Cabeçalho discreto: apenas a contagem de assinaturas esperadas
+         const corContador = p.co_completo ? '#16a34a' : (recusados.length ? '#b91c1c' : '#9ca3af');
+         html += `<div style="display:flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700;color:${corContador};text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">
+             <i class="fas fa-users" style="font-size:.62rem;"></i>
+             <span>${assinado} de ${total} assinaturas</span>
          </div>`;
 
-         // Pendentes
+         // Quem já assinou — nome em destaque
+         assinantes.forEach(a => {
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#374151;margin-bottom:3px;">
+                 <i class="fas fa-check-circle" style="font-size:.68rem;color:#16a34a;"></i>
+                 <span>${escHtml(a.nome)}${a.cargo ? ` <span style="color:#9ca3af;">· ${escHtml(a.cargo)}</span>` : ''}</span>
+             </div>`;
+         });
+
+         // Quem falta assinar — em cinza (discreto)
          pendentes.forEach(pend => {
              const euSou = pend.destinatario_id === _adminIdLogado;
-             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#92400e;margin-bottom:3px;">
-                 <i class="fas fa-hourglass-half" style="font-size:.65rem;color:#b45309;"></i>
-                 <span>${escHtml(pend.nome)}${euSou ? ' <strong>(você)</strong>' : ''} — aguardando</span>
-                 ${(solicitanteId === _adminIdLogado) ? `<button onclick="cancelarCoSolic('${p.documento_id}',${pend.destinatario_id})" title="Cancelar pedido" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.7rem;padding:0;"><i class="fas fa-xmark"></i></button>` : ''}
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#9ca3af;margin-bottom:3px;">
+                 <i class="far fa-circle" style="font-size:.68rem;color:#cbd5e1;"></i>
+                 <span>${escHtml(pend.nome)}${euSou ? ' <strong>(você)</strong>' : ''} <span style="font-style:italic;">— aguardando</span></span>
+                 ${(solicitanteId === _adminIdLogado) ? `<button onclick="event.stopPropagation();cancelarCoSolic('${p.documento_id}',${pend.destinatario_id})" title="Cancelar pedido" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:.7rem;padding:0;"><i class="fas fa-xmark"></i></button>` : ''}
              </div>`;
          });
 
          // Recusados
          recusados.forEach(rec => {
-             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:#b91c1c;margin-bottom:3px;">
-                 <i class="fas fa-xmark" style="font-size:.65rem;"></i>
+             html += `<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;color:#b91c1c;margin-bottom:3px;">
+                 <i class="fas fa-xmark" style="font-size:.68rem;"></i>
                  <span>${escHtml(rec.nome)} recusou${rec.motivo ? ' — ' + escHtml(rec.motivo) : ''}</span>
              </div>`;
          });
 
          // Botão assinar para este admin
          if (euPendente) {
-             html += `<a href="coassinar_documento.php?documento_id=${encodeURIComponent(p.documento_id)}"
+             html += `<a href="coassinar_documento.php?documento_id=${encodeURIComponent(p.documento_id)}" onclick="event.stopPropagation();"
                  style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:5px 11px;border-radius:8px;background:#b45309;color:#fff;font-size:.76rem;font-weight:700;text-decoration:none;">
                  <i class="fas fa-pen-nib"></i> Assinar agora
              </a>`;
@@ -4156,15 +4452,16 @@ foreach ($docsDisponiveis as $docRow) {
              // ── Mini-lista na seção de ações (compacta) ──────────
              lista.innerHTML = '';
              data.pareceres.forEach(p => {
-                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
-                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const viewerUrl   = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
+                 const downloadUrl = p.documento_id ? `assinatura/redownload_pdf.php?id=${encodeURIComponent(p.documento_id)}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
                  const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                  const nomeLimpo = formatarNomeParecer(p.nome);
                  const seloTipo  = gerarSeloTipoParecer(p.tipo);
                  const coHtml    = renderCoStatus(p);
 
+                 const rowViewerUrl = !p.apagado ? (downloadUrl ? downloadUrl + '&inline=1' : viewerUrl) : '';
                  lista.innerHTML += `
-                    <div class="data-row" style="flex-wrap:wrap;">
+                    <div class="data-row doc-row-clickable" style="flex-wrap:wrap;${rowViewerUrl ? 'cursor:pointer;' : ''}" data-viewer-url="${escHtml(rowViewerUrl || '')}" title="${rowViewerUrl ? 'Abrir documento' : ''}">
                         <div class="data-label" style="min-width:40px">
                             <i class="fas ${iconClass}" style="color:${iconColor};font-size:20px"></i>
                         </div>
@@ -4242,6 +4539,15 @@ foreach ($docsDisponiveis as $docRow) {
          .catch(error => console.error('Erro ao carregar pareceres:', error));
      }
 
+     // Delegação de click nas linhas da mini-lista de documentos (abre o documento)
+     document.getElementById('pareceres-existentes-list').addEventListener('click', function(e) {
+         if (e.target.closest('a, button')) return; // deixa botões/links agirem
+         const row = e.target.closest('.doc-row-clickable');
+         if (row && row.dataset.viewerUrl) {
+             window.open(row.dataset.viewerUrl, '_blank');
+         }
+     });
+
      // Delegação de click nos cards de documento assinado
      document.getElementById('docs-assinados-grid').addEventListener('click', function(e) {
          const btn = e.target.closest('[data-excluir-doc]');
@@ -4277,7 +4583,7 @@ foreach ($docsDisponiveis as $docRow) {
              pareceresSection.style.display = 'block';
              let html = '';
              pareceres.forEach(p => {
-                 const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../uploads/pareceres/<?php echo $id; ?>/${p.arquivo}`;
+                 const viewerUrl = p.documento_id ? `parecer_viewer.php?id=${p.documento_id}` : `../arquivo.php?path=${encodeURIComponent('pareceres/<?php echo $id; ?>/' + p.arquivo)}`;
                 const { iconClass, iconColor } = obterIconeParecer(p.tipo);
                 const nomeLimpo = formatarNomeParecer(p.nome);
                 const seloTipo = gerarSeloTipoParecer(p.tipo);
@@ -4576,26 +4882,149 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-// Validação do formulário de envio de documento final
+// Prévia do e-mail de entrega: repassa a seleção atual do modal para uma página
+// que renderiza o template real numa nova aba. Não envia nem grava nada.
+function previewEmailDocFinal() {
+    var form = document.getElementById('formDocFinal');
+    if (!form) return;
+
+    var previa = document.createElement('form');
+    previa.method = 'post';
+    previa.action = 'preview_email_doc_final.php';
+    previa.target = '_blank';
+
+    function campo(nome, valor) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = nome;
+        input.value = valor;
+        previa.appendChild(input);
+    }
+
+    campo('requerimento_id', <?= (int) $id ?>);
+    form.querySelectorAll('.doc-final-cb:checked').forEach(function(cb) {
+        campo('documento_ids[]', cb.value);
+    });
+    var obs = document.getElementById('instrucoes_doc_final');
+    campo('instrucoes_doc_final', obs ? obs.value : '');
+
+    document.body.appendChild(previa);
+    previa.submit();
+    previa.remove();
+}
+
+// ── Modal de envio de documentos ao cidadão ──────────────────────────────────
 (function() {
     var form = document.getElementById('formDocFinal');
     if (!form) return;
+
+    var checkboxes    = form.querySelectorAll('.doc-final-cb');
+    var selectAll     = document.getElementById('docFinalSelectAll');
+    var resumoBox     = document.getElementById('docFinalResumo');
+    var btnEnviar     = document.getElementById('btnEnviarDocFinal');
+    var emailDest     = <?= json_encode($emailDestinatario ?: null, JSON_HEX_TAG) ?>;
+
+    // Highlight visual nos itens selecionados
+    function atualizarResumo() {
+        var selecionados = 0, semSec = 0;
+        checkboxes.forEach(function(cb) {
+            var item = cb.closest('.doc-final-check-item');
+            item.classList.toggle('is-sel', cb.checked);
+            if (cb.checked) {
+                selecionados++;
+                if (item.dataset.temSec === '0') semSec++;
+            }
+        });
+
+        // Resumo
+        if (selecionados === 0) {
+            resumoBox.style.display = 'none';
+            btnEnviar.disabled = true;
+        } else {
+            var html = '<strong>' + selecionados + '</strong> documento' + (selecionados > 1 ? 's' : '') + ' selecionado' + (selecionados > 1 ? 's' : '');
+
+            if (emailDest) {
+                html += ' — será enviado para <strong>' + escapeHtml(emailDest) + '</strong>';
+            } else {
+                html += ' <span style="color:#b42318;font-weight:600;">— sem e-mail cadastrado</span>';
+            }
+
+            if (semSec > 0) {
+                html += '<br>';
+                html += semSec === selecionados
+                    ? 'Nenhum dos documentos foi assinado pelo Secretário'
+                    : semSec + ' documento' + (semSec > 1 ? 's' : '') + ' sem assinatura do Secretário';
+            }
+
+            resumoBox.innerHTML = html;
+            resumoBox.style.display = 'block';
+            // Mesma barra lateral do aviso de reenvio; só a cor muda com o estado.
+            resumoBox.style.borderLeftColor = semSec > 0 ? '#d99b16' : '#0a6b34';
+            resumoBox.style.color = semSec > 0 ? '#6b5320' : '#245c3a';
+            btnEnviar.disabled = false;
+        }
+
+        // Sincronizar "selecionar todos"
+        if (selectAll) {
+            selectAll.checked = selecionados === checkboxes.length && selecionados > 0;
+            selectAll.indeterminate = selecionados > 0 && selecionados < checkboxes.length;
+        }
+    }
+
+    // Eventos nos checkboxes individuais
+    checkboxes.forEach(function(cb) {
+        cb.addEventListener('change', atualizarResumo);
+    });
+
+    // "Selecionar todos"
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+            atualizarResumo();
+        });
+    }
+
+    // Estado inicial
+    atualizarResumo();
+
+    // Validação + confirmação antes de enviar
     form.addEventListener('submit', function(e) {
-        var checked = this.querySelectorAll('input[name="documento_ids[]"]:checked');
+        var checked = form.querySelectorAll('.doc-final-cb:checked');
         if (checked.length === 0) {
             e.preventDefault();
             alert('Selecione pelo menos um documento para enviar.');
             return;
         }
+
         var algumComSec = Array.from(checked).some(function(cb) {
-            return cb.closest('.doc-final-check-item') && cb.closest('.doc-final-check-item').dataset.temSec === '1';
+            var item = cb.closest('.doc-final-check-item');
+            return item && item.dataset.temSec === '1';
         });
+
         if (!algumComSec) {
             if (!confirm('Nenhum dos documentos selecionados foi assinado pelo Secretário.\n\nDeseja enviar mesmo assim?')) {
                 e.preventDefault();
+                return;
             }
         }
+
+        // Confirmação final
+        var msg = 'Confirma o envio de ' + checked.length + ' documento' + (checked.length > 1 ? 's' : '') + ' ao cidadão?';
+        msg += '\n\nApós o envio, o processo será marcado como Finalizado.';
+        if (!emailDest) {
+            msg += '\n\n⚠ O requerente NÃO tem e-mail cadastrado — ele não receberá notificação.';
+        }
+
+        if (!confirm(msg)) {
+            e.preventDefault();
+        }
     });
+
+    function escapeHtml(text) {
+        var d = document.createElement('span');
+        d.textContent = text;
+        return d.innerHTML;
+    }
 })();
 </script>
 <?php include 'footer.php'; ?>

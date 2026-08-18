@@ -322,7 +322,8 @@
 }
 
 .req-filter-select {
-  min-width: 210px;
+  width: 210px;
+  max-width: 100%;
   min-height: 42px;
   padding: 0 14px;
   border: 1px solid var(--req-line);

@@ -58,6 +58,10 @@ if ($filtroCategoria !== '' && !isset($tiposPorCategoria[$filtroCategoria])) {
 }
 $filtroBusca = $_GET['busca'] ?? '';
 $filtroNaoVisualizados = isset($_GET['nao_visualizados']) && $_GET['nao_visualizados'] === '1';
+$filtroEmail = $_GET['email_enviado'] ?? '';
+if (!in_array($filtroEmail, ['1', '0'], true)) {
+    $filtroEmail = '';
+}
 
 // Status encerrados: ocultos por padrão, visíveis apenas se filtro explícito ou toggle ativo
 $statusEncerrados = ['Finalizado', 'Indeferido', 'Aprovado', 'Cancelado'];
@@ -161,15 +165,27 @@ if ($filtroNaoVisualizados) {
     $sqlCount .= " AND r.visualizado = 0";
 }
 
-if (!$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
+if ($filtroEmail !== '') {
+    // Só conta email enviado manualmente por um admin (usuario_envio != 'Sistema') — a
+    // confirmação automática do requerimento sai pra todo mundo, então incluí-la aqui
+    // tornaria o filtro inútil (praticamente tudo teria "já enviado").
+    $existeEmail = "EXISTS (SELECT 1 FROM email_logs el WHERE el.requerimento_id = r.id AND el.status = 'SUCESSO' AND el.eh_teste = 0 AND el.usuario_envio <> 'Sistema')";
+    $condicaoEmail = $filtroEmail === '1' ? "AND $existeEmail" : "AND NOT $existeEmail";
+    $sql .= " $condicaoEmail";
+    $sqlCount .= " $condicaoEmail";
+}
+
+// Para fiscal/secretário (visão travada num setor), "encerrado" não se aplica:
+// o processo acabou de chegar ao setor deles, não é um processo arquivado.
+if (!$setorFiltro && !$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
     $placeholdersEnc = implode(',', array_fill(0, count($statusEncerrados), '?'));
     $sql .= " AND r.status NOT IN ($placeholdersEnc)";
     $sqlCount .= " AND r.status NOT IN ($placeholdersEnc)";
     foreach ($statusEncerrados as $se) { $params[] = $se; }
 }
 
-// Fiscal e secretário veem a fila em ordem FIFO (mais antigo primeiro)
-$ordenacao = $setorFiltro ? "r.data_envio ASC" : "r.visualizado ASC, r.data_envio DESC";
+// Fiscal e secretário veem a fila do mais recente pro mais antigo
+$ordenacao = $setorFiltro ? "r.data_envio DESC" : "r.visualizado ASC, r.data_envio DESC";
 $sql .= " ORDER BY {$ordenacao} LIMIT {$itensPorPagina} OFFSET {$offset}";
 
 $stmt = $pdo->prepare($sql);
@@ -485,15 +501,22 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                     <?php endforeach; ?>
                 <?php endif; ?>
             </select>
+            <label class="req-filter-label" for="emailFiltro">Email:</label>
+            <select id="emailFiltro" name="email_enviado" class="req-filter-select">
+                <option value="">Todos</option>
+                <option value="1" <?= $filtroEmail === '1' ? 'selected' : '' ?>>Já enviado</option>
+                <option value="0" <?= $filtroEmail === '0' ? 'selected' : '' ?>>Não enviado</option>
+            </select>
             <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar</button>
-            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
+            <a href="<?= htmlspecialchars(buildReqUrl(['status' => $filtroStatus, 'tipo' => '', 'busca' => '', 'email_enviado' => '', 'pagina' => 1])) ?>" class="toolbar-button">Limpar</a>
             <?php if ($filtroNaoVisualizados): ?>
                 <a href="<?= htmlspecialchars(buildReqUrl(['nao_visualizados' => '', 'pagina' => 1])) ?>" class="toolbar-button">
                     <i class="fas fa-eye"></i> Ver todos
                 </a>
             <?php endif; ?>
         </form>
-        <!-- Toggle encerrados -->
+        <!-- Toggle encerrados: não se aplica à visão travada por setor (fiscal/secretário já veem tudo do próprio setor) -->
+        <?php if (!$setorFiltro): ?>
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--req-line,#e5e8e6);">
         <?php if (!$mostrarEncerrados): ?>
             <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
@@ -508,6 +531,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
             </a>
         <?php endif; ?>
         </div>
+        <?php endif; ?>
         <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
                 <span class="active-filter-chip">
@@ -598,7 +622,7 @@ $filaInfo = $setorFiltro ? ($filaLabels[$setorFiltro] ?? null) : null;
                                 <span class="badge badge-retorno-recusado" title="<?= htmlspecialchars($req['motivo_devolucao'] ?? '') ?>">
                                     <i class="fas fa-circle-xmark" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário não aprovou
                                 </span>
-                            <?php elseif ($setorFiltro && !empty($acaoAtual)): ?>
+                            <?php elseif ($setorFiltro && !empty($acaoAtual) && $acaoAtual !== 'concluido'): ?>
                                 <span class="badge <?= htmlspecialchars(acaoClass($acaoAtual)) ?>" style="font-size:.7rem;">
                                     <?= htmlspecialchars(acaoLabel($acaoAtual)) ?>
                                 </span>

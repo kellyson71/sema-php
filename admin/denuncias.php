@@ -10,6 +10,7 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 // Preparar filtros (Busca por nome infrator)
 $filtroBusca = isset($_GET['busca']) ? $_GET['busca'] : '';
 $filtroStatus = isset($_GET['status']) ? $_GET['status'] : '';
+$filtroSetor = isset($_GET['setor']) ? $_GET['setor'] : '';
 
 // Mensagens
 $mensagem = '';
@@ -26,7 +27,7 @@ if (isset($_GET['error'])) {
 }
 
 // Query de Denúncias
-$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.status, d.origem, d.protocolo_publico, a.nome as responsavel
+$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.status, d.origem, d.setor, d.protocolo_publico, a.nome as responsavel
         FROM denuncias d
         LEFT JOIN administradores a ON d.admin_id = a.id
         WHERE 1=1";
@@ -47,6 +48,12 @@ if (!empty($filtroStatus)) {
     $sql .= " AND d.status = ?";
     $sqlCount .= " AND d.status = ?";
     $params[] = $filtroStatus;
+}
+
+if (!empty($filtroSetor)) {
+    $sql .= " AND d.setor = ?";
+    $sqlCount .= " AND d.setor = ?";
+    $params[] = $filtroSetor;
 }
 
 $sql .= " ORDER BY d.data_registro DESC LIMIT $offset, $itensPorPagina";
@@ -131,6 +138,23 @@ include 'header.php';
                         <input type="text" name="busca" value="<?php echo htmlspecialchars($filtroBusca); ?>" placeholder="Nome do infrator ou CPF/CNPJ..." class="pl-10 w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
                     </div>
                 </div>
+                <div class="w-full md:w-auto">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Equipe</label>
+                    <div class="flex gap-2">
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-gray-800 has-[:checked]:border-gray-800 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="" class="hidden" <?php echo $filtroSetor == '' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-list"></i> Todas
+                        </label>
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-green-600 has-[:checked]:border-green-600 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="meio_ambiente" class="hidden" <?php echo $filtroSetor == 'meio_ambiente' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-leaf"></i> Meio Ambiente
+                        </label>
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-amber-500 has-[:checked]:border-amber-500 has-[:checked]:text-white transition-colors">
+                            <input type="radio" name="setor" value="obras_urbanismo" class="hidden" <?php echo $filtroSetor == 'obras_urbanismo' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                            <i class="fas fa-hard-hat"></i> Obras
+                        </label>
+                    </div>
+                </div>
                 <div class="w-full md:w-64">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select name="status" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
@@ -144,7 +168,7 @@ include 'header.php';
                     <button type="submit" class="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition-colors">
                         Filtrar
                     </button>
-                    <?php if (!empty($filtroBusca) || !empty($filtroStatus)): ?>
+                    <?php if (!empty($filtroBusca) || !empty($filtroStatus) || !empty($filtroSetor)): ?>
                         <a href="denuncias.php" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
                             Limpar
                         </a>
@@ -161,6 +185,7 @@ include 'header.php';
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Infrator / Ocorrência</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipe</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
@@ -169,7 +194,8 @@ include 'header.php';
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php if (count($denuncias) > 0): ?>
                             <?php foreach ($denuncias as $denuncia): ?>
-                                <tr class="hover:bg-blue-50 transition-colors cursor-pointer"
+                                <?php $ehObras = ($denuncia['setor'] ?? 'meio_ambiente') === 'obras_urbanismo'; ?>
+                                <tr class="hover:bg-blue-50 transition-colors cursor-pointer border-l-4 <?php echo $ehObras ? 'border-l-amber-400' : 'border-l-green-400'; ?>"
                                     onclick="window.location='visualizar_denuncia.php?id=<?php echo $denuncia['id']; ?>'">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <?php echo date('d/m/Y H:i', strtotime($denuncia['data_registro'])); ?>
@@ -178,6 +204,17 @@ include 'header.php';
                                         <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($denuncia['infrator_nome']); ?></div>
                                         <?php if (!empty($denuncia['protocolo_publico'])): ?>
                                         <div class="text-xs text-gray-400 mt-0.5 font-mono"><?php echo htmlspecialchars($denuncia['protocolo_publico']); ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <?php if ($ehObras): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                <i class="fas fa-hard-hat mr-1"></i> Obras
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="fas fa-leaf mr-1"></i> Meio Ambiente
+                                            </span>
                                         <?php endif; ?>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -210,7 +247,7 @@ include 'header.php';
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
                                     <i class="fas fa-info-circle text-4xl text-gray-300 mb-3 block"></i>
                                     <p class="text-lg">Nenhuma denúncia encontrada.</p>
                                     <p class="text-sm">Clique em "Registrar Denúncia" para adicionar o primeiro caso interno.</p>

@@ -1,14 +1,6 @@
 <?php
 require_once 'includes/config.php';
 
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    header('HTTP/1.1 301 Moved Permanently');
-    header('Location: http://sema.paudosferros.rn.gov.br' . $requestUri);
-    exit;
-}
-
 session_start();
 
 if (empty($_SESSION['denuncia_protocolo'])) {
@@ -166,16 +158,16 @@ unset($_SESSION['denuncia_protocolo'], $_SESSION['denuncia_anonimo']);
                     </li>
                     <li>
                         <span class="num">3</span>
-                        <span>Dúvidas? Entre em contato pelo WhatsApp <strong>(84) 99668-6413</strong>.</span>
+                        <span>Acompanhe o andamento a qualquer momento com este protocolo, no botão abaixo.</span>
                     </li>
                 </ul>
 
                 <div class="botoes">
+                    <a href="consultar_denuncia.php?protocolo=<?= urlencode($protocolo) ?>" class="botao botao-primario">
+                        <i class="fas fa-magnifying-glass-location"></i> Acompanhar Denúncia
+                    </a>
                     <a href="index.php" class="botao botao-secundario">
                         <i class="fas fa-arrow-left"></i> Voltar ao Início
-                    </a>
-                    <a href="https://wa.me/5584996686413" target="_blank" rel="noopener" class="botao botao-primario">
-                        <i class="fab fa-whatsapp"></i> Falar com a SEMA
                     </a>
                 </div>
             </div>
@@ -188,6 +180,12 @@ unset($_SESSION['denuncia_protocolo'], $_SESSION['denuncia_anonimo']);
                 <a href="./consultar/index.php" class="consulta-btn">
                     <i class="fas fa-search"></i>
                     <span>Consulte seu Alvará</span>
+                </a>
+            </div>
+            <div>
+                <a href="./consultar_denuncia.php" class="consulta-btn" style="background:#f59e0b; color:#fff;">
+                    <i class="fas fa-magnifying-glass-location"></i>
+                    <span>Acompanhe sua Denúncia</span>
                 </a>
             </div>
             <div>

@@ -3,15 +3,6 @@ require_once 'includes/config.php';
 require_once 'includes/database.php';
 require_once 'includes/functions.php';
 
-// Redireciona se acesso direto fora do ambiente correto
-$host = $_SERVER['HTTP_HOST'] ?? '';
-if (!MODO_HOMOLOG && preg_match('/^(www\.)?sema\.protocolosead\.com$/i', $host)) {
-    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-    header('HTTP/1.1 301 Moved Permanently');
-    header('Location: http://sema.paudosferros.rn.gov.br' . $requestUri);
-    exit;
-}
-
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -50,11 +41,15 @@ $propContato       = trim($_POST['proprietario_contato'] ?? '');
 $observacoes       = trim($_POST['observacoes'] ?? '');
 $tiposSelecionados = $_POST['tipos_denuncia'] ?? [];
 $outrosDescricao   = trim($_POST['outros_descricao'] ?? '');
+$setor             = $_POST['setor'] ?? '';
 
 $erros = [];
 
 if (!$anonimo && empty($denuncianteNome)) {
     $erros[] = 'Informe seu nome ou marque a opção de denúncia anônima.';
+}
+if (!in_array($setor, ['meio_ambiente', 'obras_urbanismo'], true)) {
+    $erros[] = 'Selecione qual equipe deve analisar a denúncia.';
 }
 if (empty($tiposSelecionados)) {
     $erros[] = 'Selecione pelo menos um tipo de ocorrência.';
@@ -152,8 +147,8 @@ try {
              admin_id, origem,
              denunciante_nome, denunciante_endereco, anonimo,
              proprietario_nome, proprietario_endereco, proprietario_contato,
-             tipo_denuncia, protocolo_publico)
-        VALUES (?, ?, ?, NULL, 'publico', ?, ?, ?, ?, ?, ?, ?, ?)
+             tipo_denuncia, setor, protocolo_publico)
+        VALUES (?, ?, ?, NULL, 'publico', ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $propNome ?: 'Não informado',
@@ -166,6 +161,7 @@ try {
         $propEndereco ?: null,
         $propContato ?: null,
         $tipoDenunciaJson,
+        $setor,
         $protocolo,
     ]);
 

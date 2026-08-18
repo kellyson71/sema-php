@@ -67,7 +67,7 @@ return [
             'tipo'   => 'condicionantes',
             'titulo' => 'CONDICIONANTES E RESTRIÇÕES:',
             'itens'  => [
-                'Esta licença tem validade de <strong>90 (noventa) dias</strong>.',
+                'Esta licença tem validade de <strong>180 (cento e oitenta) dias</strong>.',
                 'Os resíduos da construção civil devem ter destinação final ambientalmente adequada.',
                 'Esta licença não substitui a necessidade de alvará de construção.',
             ],

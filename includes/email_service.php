@@ -7,6 +7,7 @@ use PHPMailer\PHPMailer\Exception;
 require_once(__DIR__ . '/../vendor/autoload.php');
 require_once(__DIR__ . '/config.php');
 require_once(__DIR__ . '/database.php');
+require_once(__DIR__ . '/entrega_helpers.php');
 
 /**
  * Registra o log de email no banco de dados
@@ -47,7 +48,7 @@ function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status
             'status' => $status,
             'erro' => $erro,
             'eh_teste' => $eh_teste_auto ? 1 : 0,
-            'detalhes_envio' => $eh_teste_auto ? 'Enviado em modo de teste' : 'Enviado via SMTP: ' . SMTP_HOST
+            'detalhes_envio' => $eh_teste_auto ? 'Enviado em modo de teste' : 'Enviado via Hostinger Mail API: ' . EMAIL_FROM
         ];
 
         return $db->insert('email_logs', $data);
@@ -89,8 +90,8 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         return false;
     }
 
-    if (empty(SMTP_USERNAME) || empty(SMTP_PASSWORD)) {
-        $erro = "Credenciais SMTP não configuradas";
+    if (empty(MAIL_API_TOKEN) || empty(MAIL_API_MAILBOX_ID)) {
+        $erro = "Credenciais da Mail API não configuradas";
         error_log($erro);
         if ($requerimento_id) {
             logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
@@ -98,56 +99,51 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
         return false;
     }
 
-    try {
-        error_log("Iniciando envio de email para: " . $email);
+    $maxTentativas = 3;
+    $erro = null;
 
-        $mail = new PHPMailer(true);
+    for ($tentativa = 1; $tentativa <= $maxTentativas; $tentativa++) {
+        try {
+            error_log("Iniciando envio de email para: " . $email . ($tentativa > 1 ? " (tentativa {$tentativa}/{$maxTentativas})" : ""));
 
-        // Configurações do servidor SMTP
-        $mail->isSMTP();
-        $mail->Host = SMTP_HOST;
-        $mail->SMTPAuth = true;
-        $mail->SMTPSecure = SMTP_SECURE;
-        $mail->CharSet = 'UTF-8';
-        $mail->Encoding = 'base64';
+            $config = \Hostinger\Configuration::getDefaultConfiguration()->setAccessToken(MAIL_API_TOKEN);
+            $sendApi = new \Hostinger\Api\SendApi(config: $config);
 
-        $mail->Username = SMTP_USERNAME;
-        $mail->Password = SMTP_PASSWORD;
-        $mail->Port = SMTP_PORT;
+            $corpoHtml = mb_convert_encoding($mensagem, 'UTF-8', 'UTF-8');
 
-        // Configurações do remetente e destinatário
-        $mail->setFrom(EMAIL_FROM, EMAIL_FROM_NAME);
-        $mail->addAddress($email, $nome);
+            $request = new \Hostinger\Model\V1SendRequest();
+            $request->setTo([$email])
+                ->setDisplayName(EMAIL_FROM_NAME)
+                ->setSubject($assunto)
+                ->setHtml($corpoHtml)
+                // Alternativa em texto puro: sem ela, filtros de spam penalizam a mensagem —
+                // e o e-mail do alvará é justamente o que não pode cair na caixa de spam.
+                ->setText(textoSimplesDoEmail($corpoHtml));
 
-        // Configurações da mensagem
-        $mail->Subject = '=?UTF-8?B?' . base64_encode($assunto) . '?=';
-        $mail->isHTML(true);
-        $mail->Body = mb_convert_encoding($mensagem, 'UTF-8', 'UTF-8');
+            $sendApi->sendEmail(MAIL_API_MAILBOX_ID, $request);
 
-        if (!$mail->send()) {
-            $erro = $mail->ErrorInfo;
-            error_log("Erro ao enviar email: " . $erro);
-            if ($requerimento_id) {
-                logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
-            }
-            return false;
-        } else {
             error_log("Email enviado com sucesso para: " . $email);
             if ($requerimento_id) {
-                // Registrar sucesso com informações adicionais
-                $detalhes_sucesso = "Email enviado via SMTP: " . SMTP_HOST;
+                $detalhes_sucesso = "Email enviado via Hostinger Mail API: " . EMAIL_FROM;
                 logEmail($requerimento_id, $email, $assunto, $mensagem, 'SUCESSO', $detalhes_sucesso, false);
             }
             return true;
+        } catch (Throwable $e) {
+            $erro = $e->getMessage();
         }
-    } catch (Throwable $e) {
-        $erro = $e->getMessage();
-        error_log("Exceção ao enviar email: " . $erro);
-        if ($requerimento_id) {
-            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
+
+        error_log("Falha ao enviar email para {$email} (tentativa {$tentativa}/{$maxTentativas}): " . $erro);
+
+        if ($tentativa < $maxTentativas) {
+            sleep(2);
         }
-        return false;
     }
+
+    error_log("Erro ao enviar email após {$maxTentativas} tentativas: " . $erro);
+    if ($requerimento_id) {
+        logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro, false);
+    }
+    return false;
 }
 
 /**
@@ -409,10 +405,13 @@ class EmailService
         return ob_get_clean();
     }
 
-    public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null)
+    public function enviarEmailDocumentoFinal($to_email, $to_name, $protocolo, $tipo_alvara, array $documentos, $instrucoes = '', $requerimento_id = null, $url_portal = '', $validade_dias = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Seu documento final está disponível";
+            // O tipo vai no assunto: "documento final" é jargão interno, o cidadão
+            // procura pelo nome do que pediu ("Alvará de Construção").
+            $tipoCurto = tituloAmigavel($tipo_alvara);
+            $subject = "[SEMA] {$tipoCurto} pronto — protocolo #{$protocolo}";
             $nome_destinatario = $to_name;
             ob_start();
             include __DIR__ . '/../templates/email_documento_final.php';

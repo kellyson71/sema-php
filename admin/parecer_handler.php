@@ -54,6 +54,9 @@ try {
             $extrairPreview = function($caminhoHtml) {
                 if (!file_exists($caminhoHtml)) return '';
                 $html = file_get_contents($caminhoHtml);
+                // Remover blocos <style> e <script> ANTES do strip_tags
+                $html = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $html);
+                $html = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $html);
                 // Pegar só o conteúdo da div #conteudo ou do body
                 if (preg_match('/<div[^>]+id=["\']conteudo["\'][^>]*>(.*?)<\/div>/is', $html, $m)) {
                     $txt = strip_tags($m[1]);
@@ -93,11 +96,11 @@ try {
                 'parecer_tecnico_alvara_construcao_ambiental' => ['icon' => 'fa-leaf',   'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'parecer_tecnico_desmembramento'     => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
                 'parecer_tecnico_desmembramento_ambiental' => ['icon' => 'fa-leaf',      'cor' => 'text-success',   'badge' => 'Ambiental'],
-                'parecer_tecnico_habite_se'          => ['icon' => 'fa-home',            'cor' => 'text-primary',   'badge' => 'Habite-se'],
+                'parecer_tecnico_habite_se'          => ['icon' => 'fa-house',            'cor' => 'text-primary',   'badge' => 'Habite-se'],
                 'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
                 'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
-                'carta_habite_se'                    => ['icon' => 'fa-house-check',     'cor' => 'text-primary',   'badge' => 'Habite-se'],
+                'carta_habite_se'                    => ['icon' => 'fa-house',           'cor' => 'text-primary',   'badge' => 'Habite-se'],
                 'alvara_de_construcao'               => ['icon' => 'fa-hard-hat',        'cor' => 'text-warning',   'badge' => 'Construção'],
                 'alvara_de_desmembramento'           => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
                 'notificacao_fiscal'                 => ['icon' => 'fa-exclamation-triangle','cor' => 'text-warning', 'badge' => 'Notificação'],
@@ -629,6 +632,10 @@ try {
             $requerimento_id = (int)($input['requerimento_id'] ?? 0);
             if (!$requerimento_id) throw new Exception('requerimento_id obrigatório');
 
+            // Assinaturas de teste da conta Kellyson (e variações) ficam ocultas para os
+            // demais usuários — precaução até a limpeza definitiva desses dados.
+            $souContaKellyson = stripos($_SESSION['admin_email'] ?? '', 'kellyson') !== false;
+            $filtroKellyson = $souContaKellyson ? "" : "AND ad.assinante_nome NOT LIKE '%kellyson%'";
             $stmtAd = $pdo->prepare("
                 SELECT ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
                        ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo,
@@ -637,7 +644,7 @@ try {
                 FROM assinaturas_digitais ad
                 LEFT JOIN assinaturas_digitais ad2
                     ON (ad2.documento_id = ad.documento_id)
-                WHERE ad.requerimento_id = ?
+                WHERE ad.requerimento_id = ? $filtroKellyson
                 GROUP BY ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
                          ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo, ad.timestamp_assinatura
                 ORDER BY ad.timestamp_assinatura DESC

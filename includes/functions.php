@@ -117,33 +117,42 @@ function gerarUrlPendencia(int $pendenciaId, string $protocolo): string
     return $base . '/pendencia.php?token=' . urlencode(gerarTokenPendencia($pendenciaId, $protocolo));
 }
 
-/**
- * Gera token seguro para acesso público ao documento final (Setor 2).
- */
-function gerarTokenDocumentoFinal(int $requerimentoId, string $protocolo): string
-{
-    $assinatura = hash_hmac('sha256', $requerimentoId . '|docfinal|' . $protocolo, DB_PASS . '|' . SMTP_PASSWORD);
-    return $requerimentoId . '.df.' . substr($assinatura, 0, 32);
-}
+// Funções puras da entrega (rótulo, texto puro, token, URL) — sem dependência de
+// config/database, para poderem ser testadas isoladamente.
+require_once __DIR__ . '/entrega_helpers.php';
 
-function validarTokenDocumentoFinal(string $token, int $requerimentoId, string $protocolo): bool
+/**
+ * Busca o lote de entrega válido para um token: existe, não foi revogado e não
+ * expirou. Retorna as linhas do lote (uma por documento) ou [] se inválido.
+ *
+ * Esta é a única autenticação do link público — não há HMAC a conferir.
+ */
+function buscarLoteEntregaValido(PDO $pdo, string $token): array
 {
     if ($token === '') {
-        return false;
+        return [];
     }
-    return hash_equals(gerarTokenDocumentoFinal($requerimentoId, $protocolo), $token);
-}
 
-function gerarUrlDocumentoFinal(int $requerimentoId, string $protocolo): string
-{
-    $base = rtrim(BASE_URL, '/');
-    if (!preg_match('#^https?://#i', $base)) {
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-        $base = $protocol . '://' . $host . '/' . ltrim($base, '/');
-        $base = rtrim($base, '/');
-    }
-    return $base . '/documento_final.php?token=' . urlencode(gerarTokenDocumentoFinal($requerimentoId, $protocolo));
+    // Traz junto quem assinou cada documento: a página de entrega é onde o cidadão
+    // (ou um cartório, um banco) confere a autenticidade do alvará.
+    $stmt = $pdo->prepare("
+        SELECT df.id, df.requerimento_id, df.lote_id, df.documento_id, df.caminho_arquivo,
+               df.nome_arquivo, df.instrucoes, df.enviado_em, df.expira_em, df.visualizado_em,
+               GROUP_CONCAT(DISTINCT ad.assinante_nome ORDER BY ad.timestamp_assinatura SEPARATOR ', ') AS assinantes,
+               MAX(ad.timestamp_assinatura) AS assinado_em
+        FROM documentos_finais df
+        LEFT JOIN assinaturas_digitais ad
+               ON ad.requerimento_id = df.requerimento_id
+              AND ad.documento_id = df.documento_id
+        WHERE df.token_acesso = ?
+          AND df.revogado_em IS NULL
+          AND (df.expira_em IS NULL OR df.expira_em > NOW())
+        GROUP BY df.id
+        ORDER BY df.id ASC
+    ");
+    $stmt->execute([$token]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
