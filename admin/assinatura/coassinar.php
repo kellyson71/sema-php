@@ -23,11 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $documentoId    = trim($_POST['documento_id']    ?? '');
-$requerimentoId = (int) ($_POST['requerimento_id'] ?? 0);
 $adminId        = $_SESSION['admin_id'] ?? null;
 $pinAssinatura  = $_POST['pin_assinatura'] ?? '';
 
-if (!$documentoId || !$requerimentoId || !$adminId) {
+// O processo a que o documento pertence é lido do banco (etapa 1), nunca do POST:
+// um requerimento_id vindo do cliente registraria a assinatura no processo errado.
+$requerimentoId = 0;
+
+if (!$documentoId || !$adminId) {
     ob_clean();
     echo json_encode(['success' => false, 'error' => 'Dados insuficientes ou sessão expirada.']);
     exit;
@@ -45,6 +48,14 @@ try {
         $pdo->rollBack();
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Este documento foi criado antes da atualização de co-assinatura e não suporta múltiplas assinaturas.']);
+        exit;
+    }
+
+    $requerimentoId = (int) ($fonte['requerimento_id'] ?? 0);
+    if (!$requerimentoId) {
+        $pdo->rollBack();
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Não foi possível identificar o processo deste documento.']);
         exit;
     }
 
