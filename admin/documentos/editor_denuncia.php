@@ -4,6 +4,10 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../conexao.php';
 verificaLogin();
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $denuncia_id = filter_input(INPUT_GET, 'denuncia_id', FILTER_VALIDATE_INT);
 $template    = filter_input(INPUT_GET, 'template', FILTER_DEFAULT);
 
@@ -40,6 +44,7 @@ include '../header.php';
             --a4-footer-h:   14mm;
             --a4-margin-lr:  15mm;
             --a4-usable-h:   256mm;
+            --page-gap:      28px;
         }
         /* Ocultar imagem de fundo no editor */
         .note-editable #fundo-imagem,
@@ -62,7 +67,11 @@ include '../header.php';
         }
 
         .a4-sema-header {
+            /* Altura EXATA da margem superior do TCPDF: a folha 1 fecha em
+               27 + 256 + 14 = 297mm, igual ao PDF. */
+            height: var(--a4-header-h);
             padding: 6mm var(--a4-margin-lr) 0 var(--a4-margin-lr);
+            box-sizing: border-box;
             flex-shrink: 0; background: #fff; z-index: 5;
         }
         .a4-sema-header .header-content {
@@ -80,7 +89,9 @@ include '../header.php';
         .a4-sema-header .header-line { height: 1.2px; background: #2d8661; }
 
         .a4-sema-footer {
-            padding: 0 var(--a4-margin-lr) 6mm;
+            height: var(--a4-footer-h);
+            padding: 0 var(--a4-margin-lr);
+            box-sizing: border-box; overflow: hidden;
             border-top: 0.5px solid #d2d2d2; margin-top: auto;
             flex-shrink: 0; text-align: center; background: #fff; z-index: 5;
         }
@@ -102,9 +113,13 @@ include '../header.php';
             font-family: "Times New Roman", Times, serif !important;
             font-size: 12pt !important; line-height: 1.4 !important;
             color: #1e1e1e !important; text-align: justify !important;
-            padding: 2mm var(--a4-margin-lr) 10mm !important;
+            /* Sem padding vertical: o topo do editável é o topo da área útil
+               da folha 1, exatamente onde o TCPDF começa a escrever. */
+            padding: 0 var(--a4-margin-lr) !important;
             min-height: var(--a4-usable-h) !important; height: auto !important;
             overflow: visible !important; box-sizing: border-box !important;
+            position: relative;
+            overflow-wrap: break-word !important; word-break: break-word !important;
         }
         .note-editable table { width: 100%; border-collapse: collapse; }
         .note-editable td, .note-editable th {
@@ -114,20 +129,81 @@ include '../header.php';
             margin-bottom: 12px; text-indent: 50px; line-height: 1.7;
         }
 
-        /* Quebra de página visual */
-        .page-break-indicator {
-            position: absolute; left: -15mm; right: -15mm; height: 0;
-            pointer-events: none; z-index: 10;
+        /* Separador entre folhas: rodapé da folha que termina, faixa da mesa
+           e cabeçalho da folha que começa. Inserido ENTRE os nós do texto,
+           nunca dentro deles — não parte parágrafo nem move o cursor. */
+        .note-editable .page-gap {
+            width: 100%; position: relative; background: #fff;
+            user-select: none; pointer-events: none; z-index: 8;
         }
-        .page-break-indicator::before {
-            content: ''; position: absolute; left: 0; right: 0; top: 0;
-            border-top: 2px dashed #ffb0b0;
+        .note-editable .page-gap .page-gap-inner {
+            margin-left: calc(-1 * var(--a4-margin-lr));
+            margin-right: calc(-1 * var(--a4-margin-lr));
         }
-        .page-break-indicator::after {
-            content: attr(data-page-label); position: absolute; right: 0; top: -9px;
-            font-size: 7.5pt; font-weight: 700; color: #bd4848;
-            font-family: 'Helvetica Neue', sans-serif; background: #fff;
-            padding: 0 6px; border: 1px solid #ffb0b0;
+        .page-gap .page-gap-footer {
+            height: var(--a4-footer-h);
+            border-top: .5px solid #d2d2d2;
+            display: flex; align-items: flex-end; justify-content: center;
+            padding-bottom: 3mm; box-sizing: border-box;
+            color: #a5aaa7; font: 600 6pt 'Helvetica Neue', Arial, sans-serif;
+            background: #fff;
+        }
+        .page-gap .page-gap-space {
+            height: var(--page-gap); background: #d0d4da;
+            border-top: 1px solid #c3c8ce; border-bottom: 1px solid #c3c8ce;
+            box-shadow: inset 0 8px 14px rgba(19,45,32,.06), inset 0 -8px 14px rgba(19,45,32,.05);
+        }
+        .page-gap .page-gap-header {
+            height: var(--a4-header-h);
+            padding: 6mm var(--a4-margin-lr) 0;
+            box-sizing: border-box; background: #fff;
+        }
+        .page-gap .page-gap-header-inner { display: flex; align-items: center; gap: 4mm; height: 17mm; }
+        .page-gap .page-gap-header img { height: 17mm; width: auto; object-fit: contain; }
+        .page-gap .page-gap-prefeitura { font: 700 8pt 'Helvetica Neue',Arial,sans-serif; color: #282828; }
+        .page-gap .page-gap-secretaria { margin-top: 1px; font: 700 6pt 'Helvetica Neue',Arial,sans-serif; color: #646464; }
+        .page-gap .page-gap-line { height: 1.2px; background: #2d8661; }
+
+
+        /* ═══════════════════════════════════════════════
+           FIDELIDADE COM O PDF
+           O TCPDF ignora margens verticais de div/p/h1..h6 — o espaço
+           vertical desses blocos é zerado por setHtmlVSpace() em
+           admin/assinatura/gerar_pdf.php, e o espaçamento no documento
+           final acaba sendo exatamente uma linha.
+           Os modelos trazem o próprio <style> com margens generosas, que o
+           navegador aplica e o PDF não: era essa diferença que inflava o
+           editor e fazia a contagem de folhas divergir do PDF.
+        ═══════════════════════════════════════════════ */
+        .note-editable p,
+        .note-editable div,
+        .note-editable h1, .note-editable h2, .note-editable h3,
+        .note-editable h4, .note-editable h5, .note-editable h6 {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* Tabelas: o TCPDF monta a linha com a altura de UMA linha de texto
+           (sem padding vertical) e reserva ~5mm antes e depois da tabela.
+           Medido em admin/assinatura/gerar_pdf.php: passo de linha 5,43mm,
+           espaço texto→tabela 12,36mm contra 7,20mm de passo normal. */
+        .note-editable table {
+            border-collapse: collapse;
+            margin: 5.2mm 0 !important;
+        }
+        .note-editable td,
+        .note-editable th {
+            padding: 0 2mm !important;
+            font-size: 11pt !important;
+            line-height: var(--doc-line-h) !important;
+            vertical-align: middle;
+        }
+
+        /* O separador de folha é do editor, não do documento: mantém a altura. */
+        .note-editable .page-gap,
+        .note-editable .page-gap div {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         .btn-sema   { background: var(--sema-green); border-color: var(--sema-green); color: #fff; }
@@ -182,6 +258,9 @@ include '../header.php';
                        class="btn btn-outline-secondary fw-medium px-3">
                         <i class="fas fa-arrow-left me-1"></i> Voltar
                     </a>
+                    <button class="btn btn-outline-success fw-medium px-3" onclick="previewPdfDenuncia()">
+                        <i class="fas fa-eye me-2"></i> Pré-visualizar PDF
+                    </button>
                     <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
                         <i class="fas fa-signature me-2"></i> Assinar e Finalizar
                     </button>
@@ -213,7 +292,7 @@ include '../header.php';
                 <i class="fas fa-file-signature fs-2 text-success"></i>
               </div>
               <h4 class="fw-bold text-dark">Deseja finalizar a assinatura digital?</h4>
-              <p class="text-muted mb-0">Após a confirmação, o documento será gerado com carimbo de assinatura digital.</p>
+              <p class="text-muted mb-0">O PDF será registrado com a assinatura somente na última página.</p>
             </div>
             <div class="bg-light p-3 rounded-3 mb-4 text-center border">
               <a href="../diretrizes_assinatura.php" target="_blank" class="text-decoration-none fw-bold text-sema">
@@ -222,6 +301,14 @@ include '../header.php';
               </a>
             </div>
             <form id="formCheckout">
+              <div class="mb-3 text-start">
+                <label for="senhaAssinaturaDenuncia" class="form-label fw-bold small text-sema">
+                  <i class="fas fa-lock me-1"></i> Confirme sua identidade
+                </label>
+                <input type="password" class="form-control" id="senhaAssinaturaDenuncia" required
+                       maxlength="128" autocomplete="current-password" placeholder="Digite sua senha de acesso">
+                <div class="form-text">A senha confirma que a assinatura foi realizada por você.</div>
+              </div>
               <div class="form-check p-3 mb-3 border rounded border-success" style="background:rgba(16,185,129,0.06)">
                 <input class="form-check-input ms-1 me-2 border-success shadow-none" type="checkbox"
                        id="checkDiretrizes" required style="transform:scale(1.3);margin-top:5px">
@@ -250,7 +337,29 @@ include '../header.php';
       </div>
     </div>
 
+    <div class="modal fade" id="modalPreviewPdfDenuncia" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-lg-down">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header bg-white border-bottom px-4 py-3">
+            <div>
+              <h5 class="modal-title fw-bold text-dark"><i class="fas fa-file-pdf text-success me-2"></i>Pré-visualização do documento</h5>
+              <small class="text-muted">Folhas separadas, com a assinatura reservada para a última página.</small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div style="height:min(82vh,900px);background:#3f4542;padding:14px;position:relative;">
+            <div id="previewLoadingDenuncia" class="position-absolute top-50 start-50 translate-middle text-white small">
+              <i class="fas fa-spinner fa-spin me-2"></i>Montando as páginas…
+            </div>
+            <iframe id="previewFrameDenuncia" name="previewFrameDenuncia" src="about:blank" title="Pré-visualização paginada" style="width:100%;height:100%;border:0;border-radius:8px;background:#626765;"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Paginação visual da folha A4, compartilhada com o editor de pareceres -->
+    <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_paginacao.js"></script>
     <script>
     (function waitForJQuery() {
         if (typeof window.jQuery === 'undefined') { setTimeout(waitForJQuery, 50); return; }
@@ -266,9 +375,13 @@ include '../header.php';
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($templateLabel) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
+    const csrfToken     = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
 
-    const PAGE_USABLE_PX = 256 * 3.7795;
-
+    /* ═══════════════════════════════════════════════════════════
+       FOLHA A4 E PAGINAÇÃO VISUAL
+       A paginação de verdade é do TCPDF (admin/assinatura/gerar_pdf.php);
+       js/editor_paginacao.js só desenha onde o corte vai cair.
+    ═══════════════════════════════════════════════════════════ */
     function gerarHeaderHtml() {
         return `
             <div class="a4-sema-header">
@@ -283,86 +396,44 @@ include '../header.php';
             </div>`;
     }
 
-    function gerarFooterHtml(totalPages) {
+    function gerarFooterHtml() {
         return `
             <div class="a4-sema-footer">
-                <div class="a4-footer-page" id="visual-page-counter">&mdash; Página 1 de ${totalPages} &mdash;</div>
+                <div class="a4-footer-page" id="visual-page-counter">1 página no PDF</div>
             </div>`;
     }
+
+    let _lastTotalPages = 1;
 
     function montarCanvasMultiPagina() {
         if (document.querySelector('.a4-page-sheet')) return;
         const editingArea = document.querySelector('.note-editing-area');
         if (!editingArea) return;
-        const parent = editingArea.parentNode;
 
         const sheet = document.createElement('div');
         sheet.className = 'a4-page-sheet';
         sheet.innerHTML = gerarHeaderHtml();
 
-        parent.insertBefore(sheet, editingArea);
+        editingArea.parentNode.insertBefore(sheet, editingArea);
         sheet.appendChild(editingArea);
 
         const footerEl = document.createElement('div');
-        footerEl.innerHTML = gerarFooterHtml(1);
+        footerEl.innerHTML = gerarFooterHtml();
         sheet.appendChild(footerEl.firstElementChild);
 
-        iniciarMonitorPaginas();
-    }
-
-    let _lastTotalPages = 1;
-    function iniciarMonitorPaginas() {
-        const editable = document.querySelector('.note-editable');
-        if (!editable) return;
-        let _debounceTimer = null;
-        let _updating = false;
-
-        const observer = new MutationObserver(function(mutations) {
-            if (_updating) return;
-            const isOnlyIndicators = mutations.every(function(m) {
-                return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).every(function(n) {
-                    return n.nodeType === 1 && n.classList && n.classList.contains('page-break-indicator');
-                });
-            });
-            if (isOnlyIndicators) return;
-            clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 150);
+        SemaPaginacao.iniciar({
+            logoUrl:  logoSemaUrl,
+            editavel: () => document.querySelector('.note-editable'),
+            folha:    () => document.querySelector('.a4-page-sheet'),
+            badge:    null,
+            aoAtualizar(total) {
+                _lastTotalPages = total;
+                const contador = document.getElementById('visual-page-counter');
+                if (contador) {
+                    contador.textContent = total + ' página' + (total > 1 ? 's' : '') + ' no PDF';
+                }
+            },
         });
-
-        function recalcularPaginas() {
-            if (_updating) return;
-            _updating = true;
-            observer.disconnect();
-
-            const alturaConteudo = editable.scrollHeight;
-            const paginasNecessarias = Math.max(1, Math.ceil((alturaConteudo - 50) / PAGE_USABLE_PX));
-
-            editable.querySelectorAll('.page-break-indicator').forEach(function(i) { i.remove(); });
-
-            for (let p = 1; p < paginasNecessarias; p++) {
-                const indicator = document.createElement('div');
-                indicator.className = 'page-break-indicator';
-                indicator.setAttribute('data-page-label', 'Corte da Página ' + p + ' / ' + (p + 1));
-                indicator.style.top = (p * PAGE_USABLE_PX) + 'px';
-                editable.appendChild(indicator);
-            }
-
-            if (paginasNecessarias !== _lastTotalPages) {
-                const counter = document.getElementById('visual-page-counter');
-                if (counter) counter.innerHTML = '&mdash; Página 1 a ' + paginasNecessarias + ' &mdash;';
-                _lastTotalPages = paginasNecessarias;
-            }
-
-            _updating = false;
-            observer.observe(editable, { childList: true, subtree: true, characterData: true });
-        }
-
-        editable.addEventListener('input', function() {
-            clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 150);
-        });
-        observer.observe(editable, { childList: true, subtree: true, characterData: true });
-        setTimeout(recalcularPaginas, 300);
     }
 
     function waitForSummernote(cb) {
@@ -461,12 +532,64 @@ include '../header.php';
         const chk = document.getElementById('checkDiretrizes');
         chk.checked = false;
         chk.setCustomValidity('O aceite nas diretrizes é obrigatório.');
+        document.getElementById('senhaAssinaturaDenuncia').value = '';
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
+    }
+
+    function obterConteudoDenunciaLimpo() {
+        let html = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
+            ? $('#editor-conteudo').summernote('code')
+            : document.getElementById('editor-conteudo').value;
+        return SemaPaginacao.limparHtml(html);
+    }
+
+    function previewPdfDenuncia() {
+        const html = obterConteudoDenunciaLimpo();
+        if (!html || html.trim() === '' || html === '<p><br></p>') {
+            Swal.fire('Atenção', 'O documento está vazio.', 'warning');
+            return;
+        }
+
+        const frame = document.getElementById('previewFrameDenuncia');
+        const loading = document.getElementById('previewLoadingDenuncia');
+        frame.dataset.pending = '1';
+        loading.style.display = '';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPreviewPdfDenuncia')).show();
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '../assinatura/preview_pdf.php';
+        form.target = 'previewFrameDenuncia';
+        const campos = {
+            conteudo_parecer: html,
+            requerimento_id: 'DEN-' + String(denunciaId).padStart(6, '0'),
+            modo_assinatura: 'assinar',
+            csrf_token: csrfToken,
+        };
+        Object.entries(campos).forEach(([nome, valor]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = nome;
+            input.value = valor;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('checkDiretrizes').addEventListener('change', function() {
             this.setCustomValidity(this.checked ? '' : 'O aceite nas diretrizes é obrigatório.');
+        });
+        const frame = document.getElementById('previewFrameDenuncia');
+        frame.addEventListener('load', function() {
+            if (this.dataset.pending !== '1') return;
+            delete this.dataset.pending;
+            document.getElementById('previewLoadingDenuncia').style.display = 'none';
+        });
+        document.getElementById('modalPreviewPdfDenuncia').addEventListener('hidden.bs.modal', function() {
+            frame.src = 'about:blank';
         });
         carregarTemplate();
     });
@@ -480,21 +603,15 @@ include '../header.php';
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-        let conteudoHtml = '';
-        if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
-            conteudoHtml = $('#editor-conteudo').summernote('code');
-        } else {
-            conteudoHtml = document.getElementById('editor-conteudo').value;
-        }
-
-        // Remover indicadores visuais de quebra de página
-        conteudoHtml = conteudoHtml.replace(/<div[^>]+class="page-break-indicator"[^>]*><\/div>/g, '');
+        const conteudoHtml = obterConteudoDenunciaLimpo();
 
         const fazDownload = document.getElementById('checkDownload').checked;
         const fd = new FormData();
         fd.append('conteudo_parecer', conteudoHtml);
         fd.append('denuncia_id',      denunciaId);
         fd.append('template_salvo',   templateNome);
+        fd.append('pin_assinatura',   document.getElementById('senhaAssinaturaDenuncia').value);
+        fd.append('csrf_token',       csrfToken);
 
         fetch('../assinatura/processa_assinatura_denuncia.php', { method: 'POST', body: fd })
         .then(res => res.json())
@@ -525,6 +642,10 @@ include '../header.php';
                 });
             } else {
                 Swal.fire('Erro', ret.error || 'Não foi possível gerar o documento.', 'error');
+                if (ret.code === 'senha_incorreta') {
+                    document.getElementById('senhaAssinaturaDenuncia').value = '';
+                    document.getElementById('senhaAssinaturaDenuncia').focus();
+                }
             }
         })
         .catch(() => {

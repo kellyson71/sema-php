@@ -5,20 +5,22 @@
  * o preview seja gerado EXATAMENTE como o documento final.
  */
 require_once __DIR__ . '/parecer_service.php';
+require_once __DIR__ . '/html_paginacao.php';
 
 /**
  * Remove CSS que causa overlays visuais (tarjas) no TCPDF:
  *  - position:absolute/fixed/relative → TCPDF renderiza como bloco sobreposto
  *  - background-color em <span> → TCPDF preenche retângulo colorido sobre o texto
  *  - z-index, overflow → sem efeito no TCPDF mas podem confundir o parser
- *  - elementos de UI do editor (page-gap, page-break-indicator)
+ *  - estrutura visual de folhas do editor (page-gap, doc-page-content)
  */
 function sanitizarHtmlParaPdf(string $html): string {
     // 1. Strip spans var-field (highlight do editor)
     $html = ParecerService::stripVarSpans($html);
 
-    // 2. Remove elementos visuais do editor (separadores de página)
-    $html = preg_replace('/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
+    // 2. Remove a estrutura visual de folhas do editor (separadores e
+    //    invólucros), contando aninhamento — ver includes/html_paginacao.php.
+    $html = removerEstruturaPaginacaoHtml($html);
 
     // 3. Remove position absolute/fixed/relative de qualquer style inline
     $html = preg_replace('/\bposition\s*:\s*(absolute|fixed|relative|sticky)\b\s*[;]?/i', '', $html);

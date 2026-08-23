@@ -22,6 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    ob_clean();
+    echo json_encode(['success' => false, 'error' => 'A sessão de assinatura expirou. Recarregue a página e tente novamente.']);
+    exit;
+}
+
 $documentoId    = trim($_POST['documento_id']    ?? '');
 $adminId        = $_SESSION['admin_id'] ?? null;
 $pinAssinatura  = $_POST['pin_assinatura'] ?? '';
@@ -30,7 +38,7 @@ $pinAssinatura  = $_POST['pin_assinatura'] ?? '';
 // um requerimento_id vindo do cliente registraria a assinatura no processo errado.
 $requerimentoId = 0;
 
-if (!$documentoId || !$adminId) {
+if (!$documentoId || !$adminId || trim($pinAssinatura) === '') {
     ob_clean();
     echo json_encode(['success' => false, 'error' => 'Dados insuficientes ou sessão expirada.']);
     exit;
@@ -59,6 +67,16 @@ try {
         exit;
     }
 
+    // Somente o servidor indicado em uma solicitação pendente pode assinar.
+    $stmtPermissao = $pdo->prepare("SELECT id FROM solicitacoes_assinatura WHERE documento_id = ? AND destinatario_id = ? AND status = 'pendente' LIMIT 1");
+    $stmtPermissao->execute([$documentoId, $adminId]);
+    if (!$stmtPermissao->fetchColumn()) {
+        $pdo->rollBack();
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Não há uma solicitação de assinatura pendente para você neste documento.']);
+        exit;
+    }
+
     // 2. Verificar se o admin já assinou este documento
     $stmtCheck = $pdo->prepare("SELECT id FROM assinaturas_digitais WHERE documento_id = ? AND assinante_id = ?");
     $stmtCheck->execute([$documentoId, $adminId]);
@@ -75,45 +93,47 @@ try {
     $admin = $stmtAdmin->fetch(PDO::FETCH_ASSOC);
 
     if (!$admin) {
+        $pdo->rollBack();
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Administrador não encontrado.']);
         exit;
     }
 
-    // 3b. Assinatura avançada: PIN é opcional. Se fornecido e a chave existir,
-    //     usa RSA (nível avançado). Caso contrário, registra como nível simples.
+    // 3b. A confirmação de identidade é obrigatória. Quando há uma chave
+    //     pessoal configurada, a assinatura também recebe o nível avançado.
     $servicoAvancada = new AssinaturaAvancadaService($pdo);
     $hashConteudo    = AssinaturaAvancadaService::hashConteudo($fonte['conteudo_html']);
     $assinaturaRsa = null;
     $pinAssinatura = trim($pinAssinatura);
 
-    if ($pinAssinatura !== '') {
-        if ($servicoAvancada->temChave((int) $adminId)) {
-            // Admin com PIN configurado → RSA avançado
-            try {
-                $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
-            } catch (RuntimeException $eRsa) {
-                if ($eRsa->getMessage() === 'PIN_INCORRETO') {
-                    if ($pdo->inTransaction()) $pdo->rollBack();
-                    ob_clean();
-                    echo json_encode(['success' => false, 'code' => 'senha_incorreta',
-                        'error' => 'Senha de acesso incorreta.']);
-                    exit;
-                }
-                error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
-            }
-        } else {
-            // Sem PIN → verifica senha de login como confirmação de identidade
-            $stSenha = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
-            $stSenha->execute([$adminId]);
-            $hashSenha = $stSenha->fetchColumn();
-            if (!$hashSenha || !password_verify($pinAssinatura, $hashSenha)) {
-                if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($servicoAvancada->temChave((int) $adminId)) {
+        // Admin com PIN configurado: aplica assinatura RSA avançada.
+        try {
+            $assinaturaRsa = $servicoAvancada->assinar((int) $adminId, $pinAssinatura, $hashConteudo);
+        } catch (RuntimeException $eRsa) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($eRsa->getMessage() === 'PIN_INCORRETO') {
                 ob_clean();
                 echo json_encode(['success' => false, 'code' => 'senha_incorreta',
                     'error' => 'Senha de acesso incorreta.']);
                 exit;
             }
+            error_log('[coassinar] Erro RSA: ' . $eRsa->getMessage());
+            ob_clean();
+            echo json_encode(['success' => false, 'error' => 'Não foi possível aplicar sua assinatura avançada. Tente novamente.']);
+            exit;
+        }
+    } else {
+        // Sem chave pessoal: verifica a senha de login.
+        $stSenha = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
+        $stSenha->execute([$adminId]);
+        $hashSenha = $stSenha->fetchColumn();
+        if (!$hashSenha || !password_verify($pinAssinatura, $hashSenha)) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            ob_clean();
+            echo json_encode(['success' => false, 'code' => 'senha_incorreta',
+                'error' => 'Senha de acesso incorreta.']);
+            exit;
         }
     }
     $nivelCoAs = $assinaturaRsa !== null ? 'avancada' : 'simples';
@@ -172,14 +192,9 @@ try {
 
     $numero_processo = "Processo_#{$requerimentoId}";
     $verifyUrl = rtrim(BASE_URL, '/') . '/verificar';
-    $sigPos = ($fonte['sig_pos_x'] !== null && $fonte['sig_pos_y'] !== null)
-        ? ['x' => (float) $fonte['sig_pos_x'], 'y' => (float) $fonte['sig_pos_y']]
-        : null;
-
     emitirParecerAssinado($fonte['conteudo_html'], $assinantes, $numero_processo, 'F', $caminhoFisico, [
         'verify_url' => $verifyUrl,
         'doc_codigo' => $documentoId,
-        'sig_pos'    => $sigPos,
     ]);
 
     if (!file_exists($caminhoFisico)) {

@@ -4,6 +4,8 @@ if (!defined('BASE_URL')) {
     require_once dirname(__DIR__, 2) . '/includes/config.php';
 }
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 2) . '/includes/assinatura_layout_helper.php';
+require_once dirname(__DIR__, 2) . '/includes/html_paginacao.php';
 
 class SEMA_PDF extends TCPDF {
     
@@ -12,6 +14,9 @@ class SEMA_PDF extends TCPDF {
     public $assinante_data = '';
     public $assinante_cpf = '';
     public $assinante_matricula = '';
+
+    /** Y (mm) onde o texto terminou na última folha — base para o carimbo. */
+    public $fimConteudoY = null;
 
     // Header Premium com Marca D'água
     public function Header() {
@@ -116,8 +121,10 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     $html = trim($conteudo_html);
 
     $html = preg_replace('/\s+id=("|\')(documento|conteudo|fundo-imagem)\1/i', '', $html);
-    // Marcadores visuais de corte/separação de página do editor — nunca vão para o PDF
-    $html = preg_replace('/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/i', '', $html);
+    // Estrutura visual de folhas do editor — nunca chega ao PDF. A varredura
+    // conta aninhamento; a regex preguiçosa antiga parava no primeiro </div> e
+    // derramava o miolo do separador (cabeçalho, "Página N") dentro do parecer.
+    $html = removerEstruturaPaginacaoHtml($html);
     $html = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $html);
     // Summernote injeta <p><br></p> ao apertar Enter — no editor viram "respiros"
     // visualmente discretos, mas no TCPDF cada um vira uma linha cheia. Removemos
@@ -235,12 +242,23 @@ function renderizarParecerPdf(string $conteudo_html, array $assinantes, string $
 
     $pdf->writeHTML($htmlCorpo, true, false, true, false, '');
 
+    // Onde o texto terminou de fato. Precisa ser lido AQUI: depois de
+    // deletePage()/setPage() o TCPDF não restaura o Y da folha anterior, e ler
+    // GetY() nesse ponto devolveria o Y da folha apagada (topo da página),
+    // fazendo o carimbo achar que havia espaço sobrando e cair sobre o texto.
+    $fimConteudoY = (float) $pdf->GetY();
+
     $pageCount = $pdf->getNumPages();
-    $blankTrailingPageThreshold = (float) ($layout['margin_top'] ?? 27.0) + 6.0;
-    if ($pageCount > 1 && $pdf->GetY() <= $blankTrailingPageThreshold) {
+    $blankTrailingPageThreshold = (float) ($layout['margin_top'] ?? A4_CABECALHO_MM) + 6.0;
+    if ($pageCount > 1 && $fimConteudoY <= $blankTrailingPageThreshold) {
         $pdf->deletePage($pageCount);
         $pdf->setPage($pdf->getNumPages());
+        // A folha em branco só existia porque o texto foi exatamente até o pé da
+        // folha anterior: a folha atual está cheia.
+        $fimConteudoY = A4_ALTURA_MM - A4_RODAPE_MM;
     }
+
+    $pdf->fimConteudoY = $fimConteudoY;
 
     return $pdf;
 }
@@ -256,56 +274,51 @@ function _mascararCpfCarimbo(string $cpf): string
 }
 
 /**
- * Dimensões do bloco de assinatura digital (mm) conforme nº de assinantes.
- * Centralizado para que preview (editor) e PDF usem os mesmos números.
- */
-function dimensoesBlocoAssinatura(int $nAssinantes): array
-{
-    $w = 88.0;
-    $h = 20.0 + max(0, $nAssinantes - 1) * 7.5;
-    return [$w, $h];
-}
-
-/**
- * Posiciona o bloco de assinatura digital sem interferir na paginação.
+ * Posiciona o bloco de assinatura sem nunca interferir na paginação.
+ *
+ * A posição é determinística: rodapé da última folha REAL do PDF, alinhado à
+ * direita. Se o texto chegar perto demais desse ponto, o carimbo ganha uma
+ * folha exclusiva — jamais é desenhado por cima do conteúdo.
  *
  * $opcoes:
- *   verify_url  — URL completa de verificação pública (vira QR code)
- *   doc_codigo  — código curto exibido ao lado do QR
- *   sig_pos     — ['x' => mm, 'y' => mm] canto superior-esquerdo do bloco
- *                 na última página; null = inferior-direito padrão
+ *   verify_url  — URL completa de verificação pública
+ *   doc_codigo  — código curto exibido no rodapé do bloco
  */
 function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes, array $opcoes = []): void
 {
     if (empty($assinantes)) return;
 
+    // Fim real do conteúdo, medido logo após o writeHTML.
+    $fimConteudoY = $pdf->fimConteudoY !== null ? (float) $pdf->fimConteudoY : (float) $pdf->GetY();
     $pdf->lastPage();
-    $pdf->SetAutoPageBreak(false);
-
-    $pw = $pdf->getPageWidth();
-    $ph = $pdf->getPageHeight();
 
     // Modo linha manual: apenas um assinante com tipo='manual'
     if (($assinantes[0]['tipo'] ?? '') === 'manual') {
-        $bW = 70;
-        $bX = ($pw - $bW) / 2;
-        $bY = $ph - 14 - 13;
+        $bW = 70.0;
+        $bH = 13.0;
+        $bX = (A4_LARGURA_MM - $bW) / 2;
+        $bY = A4_ALTURA_MM - A4_RODAPE_MM - $bH;
+
+        // A linha manual também faz parte do documento. Se não houver espaço,
+        // ela recebe uma última folha própria em vez de cobrir o texto.
+        if (assinaturaPrecisaNovaPagina($fimConteudoY, $bY)) {
+            $pdf->AddPage();
+            $pdf->lastPage();
+        }
+        $pdf->SetAutoPageBreak(false);
         _renderLinhaAssinaturaManual($pdf, $assinantes[0], $bX, $bY, $bW);
         return;
     }
 
     [$bW, $bH] = dimensoesBlocoAssinatura(count($assinantes));
+    [$bX, $bY] = posicaoBlocoAssinatura($bW, $bH);
 
-    $pos = $opcoes['sig_pos'] ?? null;
-    if (is_array($pos) && isset($pos['x'], $pos['y'])) {
-        // Limita dentro da área útil da página
-        $bX = max(10.0, min((float) $pos['x'], $pw - $bW - 10.0));
-        $bY = max(25.0, min((float) $pos['y'], $ph - $bH - 12.0));
-    } else {
-        $bX = $pw - 15 - $bW;
-        $bY = $ph - 14 - $bH;
+    if (assinaturaPrecisaNovaPagina($fimConteudoY, $bY)) {
+        $pdf->AddPage();
+        $pdf->lastPage();
     }
 
+    $pdf->SetAutoPageBreak(false);
     _renderBlocoAssinaturaGov($pdf, $assinantes, $bX, $bY, $bW, $bH, $opcoes);
 }
 
@@ -437,9 +450,8 @@ function _renderLinhaAssinaturaManual(SEMA_PDF $pdf, array $assinante, float $bX
  *   - array indexado de arrays de assinante (múltiplos)
  *
  * $opcoes (todas opcionais):
- *   verify_url — URL de verificação pública (gera QR no carimbo)
+ *   verify_url — URL de verificação pública exibida no carimbo
  *   doc_codigo — código curto do documento
- *   sig_pos    — ['x' => mm, 'y' => mm] posição do bloco na última página
  */
 function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero_processo, $modo_saida = 'D', $caminho_salvar = null, array $opcoes = []) {
 
@@ -452,11 +464,12 @@ function emitirParecerAssinado($conteudo_html, $assinante_ou_assinantes, $numero
     $layout = [
         'body_font_size' => 12.0,
         'body_line_height' => 1.40,       // editor: --doc-line-h: 1.4
-        'margin_left' => 15.0,
-        'margin_top' => 27.0,
-        'margin_right' => 15.0,
+        'margin_left' => A4_MARGEM_LATERAL_MM,
+        'margin_top' => A4_CABECALHO_MM,
+        'margin_right' => A4_MARGEM_LATERAL_MM,
         'footer_margin' => 12.0,
-        'page_break_bottom' => 15.0,
+        // 297 − 27 − 14 = 256mm de área útil, exatamente o que o editor desenha.
+        'page_break_bottom' => A4_RODAPE_MM,
         'cell_height_ratio' => 1.0,
         'table_cell_v_padding' => 5.0,    // editor: --doc-table-vpad: 5px
         'table_cell_h_padding' => 8.0,    // editor: --doc-table-hpad: 8px

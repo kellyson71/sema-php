@@ -13,6 +13,10 @@ if (!$requerimento_id || empty($template)) {
     exit;
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $stmt = $pdo->prepare("SELECT protocolo, status FROM requerimentos WHERE id = ?");
 $stmt->execute([$requerimento_id]);
 $req = $stmt->fetch();
@@ -64,15 +68,19 @@ include '../header.php';
         /* Editor fullscreen */
         #secao-editor {
             min-height: calc(100vh - var(--topbar-height, 60px) - 70px);
-            background: #d0d4da;
+            /* Sem fundo próprio: quem pinta o cinza é a .a4-outer-wrapper. */
         }
 
         /* ═══════════════════════════════════════════════
            CANVAS CONTÍNUO — "Folha Infinita"
         ═══════════════════════════════════════════════ */
         .a4-outer-wrapper {
-            background: #d0d4da;
-            padding: 24px 16px 32px;
+            /* A "mesa" cinza agora é só a coluna da folha, não a largura toda:
+               o rail fica ao lado, sobre o fundo normal da página. */
+            background: #ecefec;
+            border: 1px solid #e3e8e4;
+            border-radius: 16px;
+            padding: 22px 16px 28px;
             min-height: 100%;
         }
 
@@ -93,7 +101,11 @@ include '../header.php';
            HEADER SEMA (topo da primeira folha)
         ═══════════════════════════════════════════════ */
         .a4-sema-header {
+            /* Altura EXATA da margem superior do TCPDF: assim a primeira folha
+               fecha em 27 + 256 + 14 = 297mm, igual ao PDF. */
+            height: var(--a4-header-h);
             padding: 6mm var(--a4-margin-lr) 0 var(--a4-margin-lr);
+            box-sizing: border-box;
             flex-shrink: 0;
             background: #fff;
             z-index: 5;
@@ -134,10 +146,13 @@ include '../header.php';
            FOOTER (base da última folha)
         ═══════════════════════════════════════════════ */
         .a4-sema-footer {
-            padding: 0 var(--a4-margin-lr) 6mm;
+            height: var(--a4-footer-h);
+            padding: 0 var(--a4-margin-lr);
+            box-sizing: border-box;
             border-top: 0.5px solid #d2d2d2;
             margin-top: auto;
             flex-shrink: 0;
+            overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             text-align: center;
             background: #fff;
@@ -161,8 +176,9 @@ include '../header.php';
         }
 
         /* ═══════════════════════════════════════════════
-           ASSINATURA DIGITAL — preview ARRASTÁVEL, fiel ao
-           bloco do PDF (88mm × 20mm, QR à esquerda, padrão gov.br)
+           ASSINATURA DIGITAL — espelho do bloco do PDF
+           (88mm × 20mm). A posição é decidida pelo TCPDF:
+           rodapé da última folha real. Aqui é só reflexo.
         ═══════════════════════════════════════════════ */
         .a4-signature-badge {
             position: absolute;
@@ -174,30 +190,14 @@ include '../header.php';
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             z-index: 30;
             box-shadow: 0 2px 8px rgba(0,0,0,0.14);
-            cursor: grab;
+            cursor: default;
             user-select: none;
-            touch-action: none;
+            pointer-events: none;
             display: flex;
             gap: 2.5mm;
             padding: 2mm;
             box-sizing: border-box;
             transition: box-shadow .15s;
-        }
-        .a4-signature-badge.dragging {
-            cursor: grabbing;
-            box-shadow: 0 10px 28px rgba(0,0,0,0.3);
-            opacity: .92;
-        }
-        .a4-signature-badge:hover::after {
-            content: 'Arraste para reposicionar a assinatura';
-            position: absolute;
-            top: -26px; left: 50%;
-            transform: translateX(-50%);
-            background: #1e293b; color: #fff;
-            font-size: 10px; font-weight: 600;
-            padding: 4px 10px; border-radius: 6px;
-            white-space: nowrap;
-            pointer-events: none;
         }
         .a4-signature-badge .sig-logo {
             width: 15mm; height: 15mm;
@@ -274,7 +274,9 @@ include '../header.php';
             line-height: var(--doc-line-h) !important;
             color: #1e1e1e !important;
             text-align: justify !important;
-            padding: 2mm var(--a4-margin-lr) 10mm !important;
+            /* Sem padding vertical: o topo do editável é exatamente o topo da
+               área útil da folha 1, que é onde o TCPDF começa a escrever. */
+            padding: 0 var(--a4-margin-lr) !important;
             min-height: var(--a4-usable-h) !important;
             height: auto !important;
             overflow: visible !important;
@@ -300,49 +302,95 @@ include '../header.php';
             font-size: 9pt; border: 1px solid #000; padding: 8px 10px;
         }
 
-        /* ═══════════════════════════════════════════════
-           MARCADOR DE CORTE DE PÁGINA
-           O TCPDF pagina o fluxo contínuo cortando a cada 256mm
-           úteis — inclusive NO MEIO de um parágrafo. O marcador é
-           um overlay na posição exata do corte: o texto acima fica
-           na página N, o texto abaixo vai para a página N+1.
-        ═══════════════════════════════════════════════ */
-        .note-editable .page-cut {
-            position: absolute;
-            left: 0; right: 0;
-            height: 0;
+        /* Separador entre folhas: rodapé da folha que termina, faixa da mesa
+           e cabeçalho da folha que começa. É inserido ENTRE os nós do texto,
+           nunca dentro deles — por isso não parte parágrafo nem move o cursor.
+           A altura sai da soma dos três blocos internos, o que permite usar a
+           mesma marcação como <div>, como <li> ou como <tr> de tabela. */
+        .note-editable .page-gap {
+            width: 100%;
+            position: relative;
+            background: #fff;
+            user-select: none;
             pointer-events: none;
-            z-index: 12;
+            z-index: 8;
         }
-        .note-editable .page-cut::before {
-            content: '';
-            position: absolute;
-            left: calc(-1 * var(--a4-margin-lr));
-            right: calc(-1 * var(--a4-margin-lr));
-            top: 0;
-            border-top: 2px dashed #64a3d8;
+        /* Sangra até a borda do papel, apagando as margens laterais do texto. */
+        .note-editable .page-gap .page-gap-inner {
+            margin-left: calc(-1 * var(--a4-margin-lr));
+            margin-right: calc(-1 * var(--a4-margin-lr));
         }
-        /* sombra suave abaixo do corte = "início da próxima folha" */
-        .note-editable .page-cut::after {
-            content: '';
-            position: absolute;
-            left: calc(-1 * var(--a4-margin-lr));
-            right: calc(-1 * var(--a4-margin-lr));
-            top: 2px;
-            height: 12px;
-            background: linear-gradient(rgba(100, 163, 216, .14), transparent);
+        .page-gap .page-gap-footer {
+            height: var(--a4-footer-h);
+            border-top: .5px solid #d2d2d2;
+            display:flex;
+            align-items:flex-end;
+            justify-content:center;
+            padding-bottom:3mm;
+            box-sizing:border-box;
+            color:#a5aaa7;
+            font:600 6pt 'Helvetica Neue', Arial, sans-serif;
+            background:#fff;
         }
-        .note-editable .page-cut .pc-label {
-            position: absolute;
-            right: calc(-1 * var(--a4-margin-lr) + 4px);
-            top: -11px;
-            background: #1e5a96;
-            color: #fff;
-            font: 700 9px 'Helvetica Neue', sans-serif;
-            padding: 3px 9px;
-            border-radius: 10px;
-            white-space: nowrap;
-            box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        .page-gap .page-gap-space {
+            height: var(--page-gap);
+            background:#ecefec;
+            border-top:1px solid #dce2de;
+            border-bottom:1px solid #dce2de;
+            box-shadow:inset 0 8px 14px rgba(19,45,32,.06), inset 0 -8px 14px rgba(19,45,32,.05);
+        }
+        .page-gap .page-gap-header {
+            height: var(--a4-header-h);
+            padding:6mm var(--a4-margin-lr) 0;
+            box-sizing:border-box;
+            background:#fff;
+        }
+        .page-gap .page-gap-header-inner { display:flex; align-items:center; gap:4mm; height:17mm; }
+        .page-gap .page-gap-header img { height:17mm; width:auto; object-fit:contain; }
+        .page-gap .page-gap-prefeitura { font:700 8pt 'Helvetica Neue',Arial,sans-serif; color:#282828; }
+        .page-gap .page-gap-secretaria { margin-top:1px; font:700 6pt 'Helvetica Neue',Arial,sans-serif; color:#646464; }
+        .page-gap .page-gap-line { height:1.2px; background:#2d8661; }
+
+
+        /* ═══════════════════════════════════════════════
+           FIDELIDADE COM O PDF
+           O TCPDF ignora margens verticais de div/p/h1..h6 — o espaço
+           vertical desses blocos é zerado por setHtmlVSpace() em
+           admin/assinatura/gerar_pdf.php, e o espaçamento no documento
+           final acaba sendo exatamente uma linha.
+           Os modelos trazem o próprio <style> com margens generosas, que o
+           navegador aplica e o PDF não: era essa diferença que inflava o
+           editor e fazia a contagem de folhas divergir do PDF.
+        ═══════════════════════════════════════════════ */
+        .note-editable p,
+        .note-editable div,
+        .note-editable h1, .note-editable h2, .note-editable h3,
+        .note-editable h4, .note-editable h5, .note-editable h6 {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* Tabelas: o TCPDF monta a linha com a altura de UMA linha de texto
+           (sem padding vertical) e reserva ~5mm antes e depois da tabela.
+           Medido em admin/assinatura/gerar_pdf.php: passo de linha 5,43mm,
+           espaço texto→tabela 12,36mm contra 7,20mm de passo normal. */
+        .note-editable table {
+            border-collapse: collapse;
+            margin: 5.2mm 0 !important;
+        }
+        .note-editable td,
+        .note-editable th {
+            padding: 0 2mm !important;
+            font-size: 11pt !important;
+            line-height: var(--doc-line-h) !important;
+            vertical-align: middle;
+        }
+
+        /* O separador de folha é do editor, não do documento: mantém a altura. */
+        .note-editable .page-gap,
+        .note-editable .page-gap div {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         /* ═══════════════════════════════════════════════
@@ -394,6 +442,61 @@ include '../header.php';
             transition: all .15s ease;
         }
         .btn-preview:hover { background: var(--sema-green); color: #fff; }
+        .doc-autosave-status { display:inline-block; margin-left:8px; font-size:.72rem; color:#718078; }
+        .doc-autosave-status.salvando { color:#a26a12; }
+        .doc-autosave-status.salvo { color:#26734d; }
+        .doc-autosave-status.erro { color:#b13232; }
+        .review-box { background:#f7faf8; border:1px solid #cfe3d7; border-radius:12px; padding:14px 16px; }
+        .review-box-title { color:#14532d; font-size:.86rem; font-weight:800; margin-bottom:10px; }
+        .review-box-grid { display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:.8rem; }
+        .review-box-grid span { color:#718078; }
+        .review-box-grid strong { color:#1a2e1e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .signature-dialog { max-width:980px; }
+        .signature-modal { overflow:hidden; background:#fff; }
+        .signature-modal-header { display:flex; align-items:center; gap:15px; padding:22px 28px; background:linear-gradient(135deg,#153e2c 0%,#216044 100%); color:#fff; }
+        .signature-modal-icon { width:46px; height:46px; border-radius:14px; flex:none; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.14); color:#d9f4e3; font-size:1.1rem; }
+        .signature-modal-heading { flex:1; min-width:0; }
+        .signature-modal-kicker { font-size:.63rem; font-weight:800; letter-spacing:.13em; color:#bce4ca; margin-bottom:3px; }
+        .signature-modal-heading .modal-title { font-size:1.15rem; letter-spacing:-.01em; }
+        .signature-modal-heading p { margin:3px 0 0; color:#d8e9dd; font-size:.78rem; }
+        .signature-modal-header .btn-close { filter:brightness(0) invert(1); opacity:.75; align-self:flex-start; margin-top:2px; }
+        .signature-modal .review-box { background:#f8fbf9; border-color:#d9e8de; box-shadow:none; padding:17px 18px; }
+        .signature-modal .review-box-title { font-size:.9rem; display:flex; align-items:center; }
+        .signature-modal .review-box-grid { grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr); gap:6px 12px; }
+        .signature-modal .modo-lista { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+        .signature-modal .modo-card { min-height:142px; display:flex; flex-direction:column; align-items:flex-start; gap:9px; padding:15px; border-radius:13px; position:relative; }
+        .signature-modal .modo-card .mc-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+        .signature-modal .modo-card .mc-check { position:absolute; top:14px; right:14px; }
+        .signature-modal .modo-card .mc-title { font-size:.84rem; }
+        .signature-modal .modo-card .mc-desc { font-size:.72rem; line-height:1.45; }
+        .signature-modal .pin-box { margin-top:2px; }
+        .signature-modal .aceite-box { margin-bottom:0; }
+        .signature-modal .signature-confirm-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:18px; margin-top:20px; border-top:1px solid #edf2ee; }
+        .signature-modal .signature-confirm-footer .btn { min-height:42px; border-radius:10px; }
+        .pdf-preview-dialog { max-width:1180px; }
+        .pdf-preview-modal { overflow:hidden; background:#f4f6f5; }
+        .pdf-preview-head { display:flex; align-items:center; gap:13px; padding:15px 18px; background:#fff; border-bottom:1px solid #dfe6e2; }
+        .pdf-preview-head-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex:none; background:#eaf4ee; color:var(--sema-green); }
+        .pdf-preview-head-copy { flex:1; min-width:0; }
+        .pdf-preview-head-copy strong { display:block; color:#17231c; font-size:.95rem; }
+        .pdf-preview-head-copy span { display:block; color:#718078; font-size:.74rem; margin-top:2px; }
+        .pdf-preview-chip { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border-radius:999px; background:#f0f7f3; color:#286143; font-size:.72rem; font-weight:700; white-space:nowrap; }
+        .pdf-preview-stage { position:relative; height:min(82vh,900px); min-height:560px; padding:14px; background:#3f4542; }
+        .pdf-preview-stage iframe { width:100%; height:100%; display:block; border:0; border-radius:8px; background:#626765; }
+        .pdf-preview-loading { position:absolute; inset:14px; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; color:#dce7e1; background:#3f4542; border-radius:8px; font-size:.82rem; }
+        .pdf-preview-loading.loaded { display:none; }
+        @media (max-width:760px) {
+            .signature-modal-header { padding:18px; }
+            .signature-modal .modo-lista { grid-template-columns:1fr; }
+            .signature-modal .modo-card { min-height:0; flex-direction:row; align-items:center; }
+            .signature-modal .modo-card .mc-desc { max-width:80%; }
+            .signature-modal .review-box-grid { grid-template-columns:auto 1fr; }
+            .signature-modal .signature-confirm-footer { flex-direction:column-reverse; align-items:stretch; }
+            .pdf-preview-chip { display:none; }
+            .pdf-preview-stage { height:calc(100vh - 88px); min-height:0; padding:0; }
+            .pdf-preview-stage iframe, .pdf-preview-loading { border-radius:0; }
+            .pdf-preview-loading { inset:0; }
+        }
         /* Etiqueta de etapa */
         .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
@@ -465,22 +568,31 @@ include '../header.php';
         .section-header h5 { margin: 0; font-weight: 700; color: #1e293b; }
     </style>
 
-    <!-- Navegação de Topo -->
-    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-        <div class="d-flex align-items-center gap-3">
-            <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-sm btn-light border fw-medium px-3 text-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Voltar
-            </a>
-            <div>
-                <h5 class="mb-0 fw-bold text-dark">
-                    <i class="fas fa-edit me-2" style="color: var(--sema-green)"></i> Editor de Documento
-                </h5>
-                <small class="text-muted">Edite e assine o documento oficial do processo</small>
-            </div>
+    <!-- Trilha + stepper: aqui é o passo 2 (Modelo já escolhido). -->
+    <div class="proc-crumb">
+        <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>">
+            <i class="fas fa-arrow-left" style="font-size:.72rem"></i> Modelos
+        </a>
+        <span class="proc-crumb-sep">/</span>
+        <span class="proc-crumb-proto">#<?= htmlspecialchars($req['protocolo']) ?></span>
+        <?php if ($label !== ''): ?>
+            <span class="proc-crumb-sep">/</span>
+            <span><?= htmlspecialchars($label) ?></span>
+        <?php endif; ?>
+    </div>
+
+    <div class="doc-head">
+        <div class="doc-head-main">
+            <h2>Editar documento</h2>
+            <p>Campos em destaque vêm do protocolo. Edite o texto direto na página.</p>
         </div>
-        <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: #f0fdf4; color: var(--sema-green); border: 1px solid #bbf7d0; font-size: 0.85rem;">
-            <i class="fas fa-hashtag me-1"></i><?= htmlspecialchars($req['protocolo']) ?>
-        </span>
+        <ol class="doc-stepper" aria-label="Etapas para emitir o documento">
+            <li class="doc-step feito"><span class="doc-step-num"><i class="fas fa-check" style="font-size:.55rem"></i></span>Modelo</li>
+            <li class="doc-step-fio" aria-hidden="true"></li>
+            <li class="doc-step ativo"><span class="doc-step-num">2</span>Editar</li>
+            <li class="doc-step-fio" aria-hidden="true"></li>
+            <li class="doc-step"><span class="doc-step-num">3</span>Assinar</li>
+        </ol>
     </div>
 
     <!-- Skeleton loader enquanto o template carrega -->
@@ -493,7 +605,7 @@ include '../header.php';
     <div class="py-0 d-none" id="secao-editor">
 
         <!-- Barra de ações do editor -->
-        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3">
+        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3 doc-editor-barra">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0 fw-bold text-dark" id="editor-title">
@@ -503,6 +615,9 @@ include '../header.php';
                         Campos <span style="font-weight:700">em negrito</span>
                         são preenchidos automaticamente pelo protocolo.
                     </small>
+                    <span id="doc-autosave-status" class="doc-autosave-status" aria-live="polite">
+                        <i class="fas fa-cloud me-1"></i>Pronto
+                    </span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-3">
@@ -511,7 +626,7 @@ include '../header.php';
                     <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
                         <i class="fas fa-bookmark me-1"></i> Salvar Template
                     </button>
-                    <button class="btn btn-preview fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar — o que você vê é exatamente o documento final">
+                    <button class="btn btn-preview fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar. O que você vê é o documento final">
                         <i class="fas fa-eye me-1"></i> Pré-visualizar PDF
                     </button>
                     <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
@@ -522,23 +637,75 @@ include '../header.php';
         </div>
 
         <!-- Wrapper que simula a "mesa" de trabalho com a página A4 -->
-        <div class="a4-outer-wrapper rounded-3">
-            <textarea id="editor-conteudo"></textarea>
+        <div class="doc-layout">
+          <div class="doc-col-principal">
+            <div class="a4-outer-wrapper rounded-3">
+                <textarea id="editor-conteudo"></textarea>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════
+               Rail do editor: os campos que vieram do protocolo e o
+               que acontece depois de assinar. A lista é montada a
+               partir dos <span class="var-field"> que o
+               ParecerService::aplicarHighlights() deixou no HTML —
+               nenhum dado novo vem do servidor pra isso.
+          ══════════════════════════════════════════════════ -->
+          <aside class="doc-rail">
+            <div class="doc-rail-card">
+                <div class="doc-rail-head doc-campos-head">
+                    <span>Campos do documento</span>
+                    <span class="doc-campos-vazios" id="doc-campos-vazios" style="display:none"></span>
+                </div>
+                <div id="doc-campos-lista">
+                    <div class="doc-rail-vazio">Carregando campos…</div>
+                </div>
+                <div class="doc-campos-nota" id="doc-campos-nota" style="display:none">
+                    Campos vazios podem ser preenchidos direto na página, antes de assinar.
+                </div>
+            </div>
+
+            <div class="doc-rail-card">
+                <div class="doc-rail-head">Depois de assinar</div>
+                <ul class="doc-pos-assinar">
+                    <li><i class="fas fa-qrcode"></i>PDF registrado com QR de verificação pública</li>
+                    <li><i class="fas fa-folder-open"></i>Anexado à aba Documentos do processo</li>
+                    <li><i class="fas fa-paper-plane"></i>Disponível para envio ao cidadão</li>
+                </ul>
+            </div>
+          </aside>
         </div>
 
     </div><!-- /secao-editor -->
 
     <!-- Modal de Confirmação -->
     <div class="modal fade" id="modalConfirmacao" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-          <div class="modal-header modal-header-sema px-4 py-3">
-             <h5 class="modal-title fw-bold">
-                <i class="fas fa-file-signature me-2"></i> Assinar e Finalizar Documento
-             </h5>
+      <div class="modal-dialog modal-dialog-centered modal-xl signature-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 signature-modal">
+          <div class="signature-modal-header">
+             <div class="signature-modal-icon"><i class="fas fa-file-signature"></i></div>
+             <div class="signature-modal-heading">
+                 <div class="signature-modal-kicker">ETAPA 3 · FINALIZAÇÃO</div>
+                 <h5 class="modal-title fw-bold">Assinar e finalizar documento</h5>
+                 <p>Revise o conteúdo, escolha como o documento será finalizado e confirme a operação.</p>
+             </div>
              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body p-4">
+          <div class="modal-body p-4 p-lg-5">
+
+              <div class="review-box mb-4" id="blocoRevisaoDocumento">
+                  <div class="review-box-title"><i class="fas fa-clipboard-check me-2"></i>Revise antes de finalizar</div>
+                  <div class="review-box-grid">
+                      <span>Processo</span><strong id="reviewProtocolo">Aguardando</strong>
+                      <span>Documento</span><strong id="reviewDocumento">Aguardando</strong>
+                      <span>Campos</span><strong id="reviewCampos">Aguardando</strong>
+                      <span>Páginas</span><strong id="reviewPaginas">Aguardando</strong>
+                  </div>
+                  <label class="aceite-box mt-3 mb-0" for="checkRevisao">
+                      <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkRevisao" style="margin-top:2px;">
+                      <span style="font-size:.84rem;cursor:pointer;">Revisei o conteúdo e confirmo que os dados estão corretos. <span class="text-danger">*</span></span>
+                  </label>
+              </div>
 
               <!-- Seletor de modo: lista vertical com hierarquia clara -->
               <div class="mb-1 etapa-kicker">Etapa 1 de 2</div>
@@ -567,7 +734,7 @@ include '../header.php';
                       <div class="mc-icon"><i class="fas fa-pen-ruler"></i></div>
                       <div>
                           <div class="mc-title">Gerar com linha para assinatura manual</div>
-                          <div class="mc-desc">Sem assinatura eletrônica — o documento será assinado à caneta</div>
+                          <div class="mc-desc">Sem assinatura eletrônica. O documento será assinado à caneta</div>
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
@@ -620,7 +787,7 @@ include '../header.php';
                   </div>
                   <p class="text-muted mb-3" style="font-size:.78rem;">
                       É a primeira vez que você assina. Crie um PIN pessoal (mínimo 6 caracteres): ele cifra sua chave criptográfica exclusiva.
-                      Sem o seu PIN, ninguém — nem o sistema — consegue assinar em seu nome. Guarde-o com segurança.
+                      Sem o seu PIN, ninguém, nem mesmo o sistema, consegue assinar em seu nome. Guarde-o com segurança.
                   </p>
                   <div class="row g-2">
                       <div class="col-6">
@@ -669,7 +836,7 @@ include '../header.php';
                       </label>
                   </div>
 
-                  <div class="d-grid gap-3 d-md-flex justify-content-md-end pt-3">
+                  <div class="signature-confirm-footer">
                       <button type="button" class="btn btn-light fw-medium px-4 border"
                               data-bs-dismiss="modal">Revisar Documento</button>
                       <button type="button" class="btn btn-sema fw-bold px-5"
@@ -678,6 +845,30 @@ include '../header.php';
                       </button>
                   </div>
               </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prévia fiel: o próprio PDF final, página por página -->
+    <div class="modal fade" id="modalPreviewPdf" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-fullscreen-xl-down pdf-preview-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 pdf-preview-modal">
+          <div class="pdf-preview-head">
+            <div class="pdf-preview-head-icon"><i class="fas fa-file-pdf"></i></div>
+            <div class="pdf-preview-head-copy">
+              <strong>Pré-visualização do documento</strong>
+              <span>Confira cada folha separadamente. A assinatura aparece somente na última página.</span>
+            </div>
+            <span class="pdf-preview-chip"><i class="fas fa-layer-group"></i><span id="previewPageHint">Página por página</span></span>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="pdf-preview-stage">
+            <div class="pdf-preview-loading" id="previewPdfLoading">
+              <div class="spinner-border spinner-border-sm" role="status"></div>
+              <span>Montando as páginas do PDF…</span>
+            </div>
+            <iframe id="previewPdfFrame" name="previewPdfFrame" src="about:blank" title="Pré-visualização paginada do documento"></iframe>
           </div>
         </div>
       </div>
@@ -741,6 +932,10 @@ include '../header.php';
                     <option value="">Carregando seus templates...</option>
                   </select>
                 </div>
+                <div id="templateVersoesBox" class="mb-3" style="display:none;">
+                  <label class="form-label fw-semibold small">Versões anteriores</label>
+                  <div id="templateVersoesLista" class="small text-muted"></div>
+                </div>
                 <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.8rem">
                   <i class="fas fa-triangle-exclamation mt-1 flex-shrink-0"></i>
                   <span>O template selecionado será permanentemente substituído pelo conteúdo atual do editor.</span>
@@ -757,6 +952,8 @@ include '../header.php';
 
     <!-- SweetAlert2 pode ser carregado de forma independente do jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Paginação visual da folha A4, compartilhada com o editor de denúncias -->
+    <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_paginacao.js"></script>
     <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
          Usamos um carregador dinâmico que aguarda o jQuery estar pronto. -->
     <script>
@@ -776,13 +973,18 @@ include '../header.php';
 
     <script>
     const reqId         = <?= $requerimento_id ?>;
+    const reqProtocolo  = <?= json_encode($req['protocolo'] ?? '') ?>;
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
     const adminNome     = <?= json_encode($_SESSION['admin_nome_completo'] ?? $_SESSION['admin_nome'] ?? 'Assinante') ?>;
     const adminCargo    = <?= json_encode($_SESSION['admin_cargo'] ?? 'Administrador(a)') ?>;
+    const csrfToken     = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
     let currentTemplate = templateNome;
     let adminTemChave   = null; // null = ainda não consultado
+    let currentDraftId  = 0;
+    let autosaveTimer   = null;
+    let autosaveInFlight = false;
 
     /* ─── Icon Picker ────────────────────────────────────────── */
     const ICONES_DISPONIVEIS = [
@@ -821,14 +1023,12 @@ include '../header.php';
     }
 
     /* ═══════════════════════════════════════════════════════════
-       CANVAS MULTI-PÁGINA (Página Contínua)
-       Evita bugs de seleção e digitação mantendo o texto em um 
-       bloco único, mas indica visualmente onde o PDF irá cortar.
+       FOLHA A4 E PAGINAÇÃO VISUAL
+       A paginação de verdade é do TCPDF (admin/assinatura/gerar_pdf.php).
+       Aqui só montamos a folha e deixamos js/editor_paginacao.js desenhar
+       onde o corte vai cair. O carimbo de assinatura acompanha a decisão
+       do PDF: rodapé da última folha, com folha exclusiva se não couber.
     ═══════════════════════════════════════════════════════════ */
-    // 297mm(total) - 27mm(header) - 14mm(footer) = 256mm
-    // TCPDF corta as páginas exatamente nesse limite.
-    const PAGE_USABLE_PX = 256 * 3.7795; 
-
     function gerarHeaderHtml() {
         return `
             <div class="a4-sema-header">
@@ -843,12 +1043,11 @@ include '../header.php';
             </div>`;
     }
 
-    function gerarFooterHtml(totalPages) {
+    function gerarFooterHtml() {
         return `
             <div class="a4-sema-footer">
                 <div class="a4-footer-sign">Assinatura eletrônica de ${escapeHtml(adminNome)}  |  ${escapeHtml(adminCargo)}</div>
-                <div class="a4-footer-date">O QR code e o código de verificação são gerados na assinatura</div>
-                <div class="a4-footer-page" id="visual-page-counter">&mdash; Página 1 de ${totalPages} &mdash;</div>
+                <div class="a4-footer-page" id="visual-page-counter">1 página no PDF</div>
             </div>`;
     }
 
@@ -865,194 +1064,41 @@ include '../header.php';
             </div>`;
     }
 
-    /* ═══════════════════════════════════════════════════════════
-       BADGE DE ASSINATURA ARRASTÁVEL
-       A posição é mantida em mm (mesma unidade do TCPDF) relativa
-       à ÚLTIMA página. O PDF coloca o bloco exatamente onde o
-       usuário soltou no preview.
-    ═══════════════════════════════════════════════════════════ */
-    const SIG_W_MM = 88, SIG_H_MM = 20;
-    // Padrão = inferior-direito, idêntico ao default do gerar_pdf.php
-    let sigPos = { x: 210 - 15 - SIG_W_MM, y: 297 - 14 - SIG_H_MM };
-    let sigPosCustomizada = false;
+    let _lastTotalPages = 1;
 
-    function _sheet()    { return document.querySelector('.a4-page-sheet'); }
-    function _editable() { return document.querySelector('.note-editable'); }
-    function _badge()    { return document.getElementById('sigBadge'); }
-    function pxPerMm()   { const s = _sheet(); return s ? s.getBoundingClientRect().width / 210 : 3.7795; }
-
-    /** Topo (px, relativo à folha) da última página visual. */
-    function lastPageTopPx() {
-        const ed = _editable(), s = _sheet();
-        if (!ed || !s) return 0;
-        const gaps = ed.querySelectorAll('.page-gap');
-        if (!gaps.length) return 0;
-        const g = gaps[gaps.length - 1];
-        const sheetTop = s.getBoundingClientRect().top;
-        // Conteúdo após o separador começa em y=27mm (header) na página do PDF
-        return (g.getBoundingClientRect().bottom - sheetTop) - 27 * pxPerMm();
-    }
-
-    function posicionarBadge() {
-        const b = _badge(), s = _sheet();
-        if (!b || !s) return;
-        const k = pxPerMm();
-        const topPx = lastPageTopPx() + sigPos.y * k;
-        b.style.left   = (sigPos.x * k) + 'px';
-        b.style.top    = topPx + 'px';
-        b.style.right  = 'auto';
-        b.style.bottom = 'auto';
-        // Folha precisa ser alta o bastante para conter o badge
-        const minH = topPx + SIG_H_MM * k + 14 * k;
-        if (s.offsetHeight < minH) s.style.minHeight = minH + 'px';
-    }
-
-    function clampSigPos() {
-        sigPos.x = Math.max(10, Math.min(sigPos.x, 210 - SIG_W_MM - 10));
-        sigPos.y = Math.max(25, Math.min(sigPos.y, 297 - SIG_H_MM - 12));
-    }
-
-    function iniciarDragBadge() {
-        const b = _badge(), s = _sheet();
-        if (!b || !s) return;
-        let dragging = false, offX = 0, offY = 0;
-
-        b.addEventListener('pointerdown', function(e) {
-            dragging = true;
-            b.classList.add('dragging');
-            const r = b.getBoundingClientRect();
-            offX = e.clientX - r.left;
-            offY = e.clientY - r.top;
-            b.setPointerCapture(e.pointerId);
-            e.preventDefault();
-        });
-        b.addEventListener('pointermove', function(e) {
-            if (!dragging) return;
-            const sr = s.getBoundingClientRect();
-            const k = pxPerMm();
-            sigPos.x = (e.clientX - offX - sr.left) / k;
-            sigPos.y = ((e.clientY - offY - sr.top) - lastPageTopPx()) / k;
-            clampSigPos();
-            sigPosCustomizada = true;
-            posicionarBadge();
-        });
-        b.addEventListener('pointerup', function(e) {
-            dragging = false;
-            b.classList.remove('dragging');
-            b.releasePointerCapture(e.pointerId);
-        });
-    }
-
-    /**
-     * Monta o canvas contínuo
-     */
     function montarCanvasMultiPagina() {
         if (document.querySelector('.a4-page-sheet')) return;
         const editingArea = document.querySelector('.note-editing-area');
         if (!editingArea) return;
-        const parent = editingArea.parentNode;
 
-        // Container geral de página (folha contínua)
         const sheet = document.createElement('div');
         sheet.className = 'a4-page-sheet';
-        
-        // Inserir Header
         sheet.innerHTML = gerarHeaderHtml();
 
-        // Mover editing-area para dentro da folha
-        parent.insertBefore(sheet, editingArea);
+        editingArea.parentNode.insertBefore(sheet, editingArea);
         sheet.appendChild(editingArea);
 
-        // Inserir Footer
         const footerEl = document.createElement('div');
-        footerEl.innerHTML = gerarFooterHtml(1);
+        footerEl.innerHTML = gerarFooterHtml();
         sheet.appendChild(footerEl.firstElementChild);
 
-        // Inserir Badge de Assinatura (arrastável, fiel ao PDF)
         sheet.insertAdjacentHTML('beforeend', gerarSignatureBadgeHtml());
-        iniciarDragBadge();
-        posicionarBadge();
 
-        iniciarMonitorPaginas();
+        SemaPaginacao.iniciar({
+            logoUrl:   logoSemaUrl,
+            editavel:  () => document.querySelector('.note-editable'),
+            folha:     () => document.querySelector('.a4-page-sheet'),
+            badge:     () => document.getElementById('sigBadge'),
+            aoAtualizar(total) {
+                _lastTotalPages = total;
+                const contador = document.getElementById('visual-page-counter');
+                if (contador) {
+                    contador.textContent = total + ' página' + (total > 1 ? 's' : '') + ' no PDF';
+                }
+            },
+        });
     }
 
-    /**
-     * MARCADORES DE CORTE DE PÁGINA
-     * O TCPDF pagina o fluxo contínuo: corta a cada 256mm úteis, inclusive no
-     * MEIO de um parágrafo (a linha de cima fica na página N, a de baixo vai
-     * para a N+1). O marcador é um overlay posicionado exatamente no Y do
-     * corte — funciona para qualquer conteúdo, inclusive um parágrafo gigante.
-     * Para conferência 100% fiel existe o botão "Pré-visualizar PDF".
-     */
-    let _lastTotalPages = 1;
-    function iniciarMonitorPaginas() {
-        const editable = document.querySelector('.note-editable');
-        if (!editable) return;
-
-        let _debounceTimer = null;
-        let _updating = false;
-
-        const observer = new MutationObserver(function(mutations) {
-            if (_updating) return;
-            // Ignorar mutações causadas pelos próprios marcadores
-            const isOnlyCuts = mutations.every(function(m) {
-                return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).every(function(n) {
-                    return n.nodeType === 1 && n.classList && n.classList.contains('page-cut');
-                });
-            });
-            if (isOnlyCuts) return;
-
-            clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 200);
-        });
-
-        function recalcularPaginas() {
-            if (_updating) return;
-            _updating = true;
-            observer.disconnect();
-
-            editable.querySelectorAll('.page-cut').forEach(function(c) { c.remove(); });
-
-            const cs = getComputedStyle(editable);
-            const padTop = parseFloat(cs.paddingTop) || 0;
-            const padBottom = parseFloat(cs.paddingBottom) || 0;
-
-            // Altura real do conteúdo, sem os paddings do canvas
-            const contentH = editable.scrollHeight - padTop - padBottom;
-            const totalPaginas = Math.max(1, Math.ceil(contentH / PAGE_USABLE_PX));
-
-            // Um marcador por corte, na posição exata do fluxo contínuo
-            for (let p = 1; p < totalPaginas; p++) {
-                const cut = document.createElement('div');
-                cut.className = 'page-cut';
-                cut.setAttribute('contenteditable', 'false');
-                cut.style.top = (padTop + p * PAGE_USABLE_PX) + 'px';
-                cut.innerHTML = '<span class="pc-label">fim da pág. ' + p + ' ↓ pág. ' + (p + 1) + '</span>';
-                editable.appendChild(cut);
-            }
-
-            if (totalPaginas !== _lastTotalPages) {
-                const counter = document.getElementById('visual-page-counter');
-                if (counter) counter.innerHTML = '&mdash; ' + totalPaginas + ' página' + (totalPaginas > 1 ? 's' : '') + ' no PDF &mdash;';
-                _lastTotalPages = totalPaginas;
-            }
-
-            // Reposiciona o badge de assinatura na última página
-            posicionarBadge();
-
-            _updating = false;
-            observer.observe(editable, { childList: true, subtree: true, characterData: true });
-        }
-
-        editable.addEventListener('input', function() {
-            clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recalcularPaginas, 200);
-        });
-
-        observer.observe(editable, { childList: true, subtree: true, characterData: true });
-
-        setTimeout(recalcularPaginas, 300);
-    }
 
     /* ─── Carregar template ao abrir a página ───────────────── */
     function carregarTemplate() {
@@ -1104,6 +1150,17 @@ include '../header.php';
             if ($editor.data('summernote')) {
                 $editor.summernote('destroy');
             }
+
+            // Recuperação local para o caso de queda de conexão/aba fechada.
+            // Só oferece a restauração quando há uma versão recente diferente.
+            try {
+                const salvoLocal = JSON.parse(localStorage.getItem('sema_doc_rascunho_' + reqId + '_' + templateNome) || 'null');
+                const recente = salvoLocal && (Date.now() - Number(salvoLocal.atualizado_em || 0)) < 7 * 24 * 60 * 60 * 1000;
+                if (recente && salvoLocal.html && salvoLocal.html !== html
+                    && window.confirm('Encontramos uma edição local mais recente deste documento. Deseja restaurá-la?')) {
+                    html = salvoLocal.html;
+                }
+            } catch (e) {}
             $editor.val(html);
 
             $editor.summernote({
@@ -1124,13 +1181,359 @@ include '../header.php';
                 callbacks: {
                     onInit: function() {
                         montarCanvasMultiPagina();
+                        montarPainelCampos();
+                        iniciarAutosave();
+                    },
+                    // Editar o documento pode mudar (ou apagar) um campo vindo
+                    // do protocolo — o painel tem que refletir isso na hora.
+                    onChange: function() {
+                        sincronizarPainelCampos();
+                        agendarAutosave();
+                        clearTimeout(window.__campoTimer);
+                        window.__campoTimer = setTimeout(montarPainelCampos, 400);
                     }
                 }
             });
         });
     }
 
+    /* ─── Painel "Campos do documento" ─────────────────────
+       Lê os <span class="var-field" data-var="..."> que o
+       ParecerService::aplicarHighlights() deixou no HTML. Nada disso
+       vem de uma chamada nova ao servidor: os campos já estão na
+       página, só não eram mostrados em lugar nenhum.
+
+       O contador de vazios só aparece se realmente houver algum —
+       hoje o preenchimento cobre todos os campos, então o normal é
+       o painel não mostrar contador nenhum. */
+    const ROTULOS_CAMPO = {
+        protocolo: 'Protocolo',
+        nome_requerente: 'Requerente',
+        cpf_cnpj_requerente: 'CPF/CNPJ do requerente',
+        email_requerente: 'E-mail do requerente',
+        telefone_requerente: 'Telefone do requerente',
+        endereco_objetivo: 'Endereço do imóvel',
+        tipo_alvara: 'Tipo de alvará',
+        numero_documento_ano: 'Número do documento / ano',
+        ano_atual: 'Ano',
+        nome_interessado: 'Interessado',
+        cpf_interessado: 'CPF/CNPJ do interessado',
+        nome_proprietario: 'Nome do proprietário',
+        cpf_cnpj_proprietario: 'CPF/CNPJ do proprietário',
+        area_lote: 'Área do lote',
+        area_construida: 'Área construída',
+        area: 'Área',
+        area_total_terreno: 'Área total do terreno',
+        area_remanescente: 'Área remanescente',
+        especificacao: 'Especificação',
+        detalhes_imovel: 'Detalhes do imóvel',
+        cadastro_imobiliario: 'Cadastro imobiliário',
+        inicio_obra: 'Início da obra',
+        termino_obra: 'Término da obra',
+        responsavel_tecnico_nome: 'Responsável técnico',
+        responsavel_tecnico_registro: 'Registro profissional',
+        responsavel_tecnico_numero: 'Número do documento técnico',
+        responsavel_tecnico_tipo_documento: 'Tipo do documento técnico',
+        atividade: 'Atividade',
+        cnae_descricao: 'CNAE',
+        art_numero: 'ART/RRT',
+        observacoes: 'Observações',
+        data_atual: 'Data atual',
+    };
+
+    function rotuloCampo(chave) {
+        if (ROTULOS_CAMPO[chave]) return ROTULOS_CAMPO[chave];
+        // Fallback: nome_do_campo -> "Nome do campo"
+        const texto = chave.replace(/_/g, ' ').trim();
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    // Textos que o preenchimento automático usa quando não achou o dado.
+    // Contam como vazio: são um recado, não um valor do documento.
+    const PLACEHOLDERS = ['não informado', 'nao informado', 'a ser informado',
+                          'a ser informada', '-', '—', 'n/a'];
+
+    function ehVazio(valor) {
+        const v = String(valor || '').trim().toLowerCase();
+        return v === '' || PLACEHOLDERS.indexOf(v) !== -1;
+    }
+
+    function autosaveStatus(texto, estado) {
+        const el = document.getElementById('doc-autosave-status');
+        if (!el) return;
+        el.className = 'doc-autosave-status' + (estado ? ' ' + estado : '');
+        el.innerHTML = estado === 'salvando'
+            ? '<i class="fas fa-spinner fa-spin me-1"></i>' + escapeHtml(texto)
+            : '<i class="fas fa-cloud me-1"></i>' + escapeHtml(texto);
+    }
+
+    function iniciarAutosave() {
+        const editavel = document.querySelector('.note-editable');
+        if (editavel && !editavel.dataset.autosaveLigado) {
+            editavel.dataset.autosaveLigado = '1';
+            editavel.addEventListener('input', agendarAutosave);
+        }
+        autosaveStatus('Alterações salvas', 'salvo');
+    }
+
+    function agendarAutosave() {
+        clearTimeout(autosaveTimer);
+        autosaveStatus('Salvando…', 'salvando');
+        autosaveTimer = setTimeout(salvarRascunho, 900);
+    }
+
+    async function salvarRascunho() {
+        if (autosaveInFlight) return;
+        // Rascunho preserva os spans var-field para que o painel continue
+        // editável ao recuperar o documento. A limpeza só acontece no PDF.
+        const htmlComPaginacao = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
+            ? $('#editor-conteudo').summernote('code')
+            : document.getElementById('editor-conteudo')?.value || '';
+        const html = removerEstruturaPaginacao(htmlComPaginacao);
+        if (!html || html.trim() === '') return;
+
+        const dados = {};
+        document.querySelectorAll('.doc-campo-input').forEach((input) => {
+            dados[input.dataset.campo] = input.value;
+        });
+        const chaveLocal = 'sema_doc_rascunho_' + reqId + '_' + templateNome;
+        const payloadLocal = { html, dados, atualizado_em: Date.now() };
+        try { localStorage.setItem(chaveLocal, JSON.stringify(payloadLocal)); } catch (e) {}
+
+        autosaveInFlight = true;
+        const body = new URLSearchParams({
+            action: 'salvar_rascunho',
+            requerimento_id: reqId,
+            rascunho_id: currentDraftId,
+            nome: templateLabel || templateNome || 'Documento em edição',
+            conteudo_html: html,
+            dados_json: JSON.stringify(dados),
+            csrf_token: csrfToken
+        });
+
+        try {
+            const res = await fetch('../parecer_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body
+            });
+            const ret = await res.json();
+            if (!ret.success) throw new Error(ret.error || 'Falha ao salvar');
+            currentDraftId = Number(ret.rascunho_id || currentDraftId);
+            autosaveStatus('Salvo às ' + (ret.salvo_em || '').slice(-8), 'salvo');
+        } catch (e) {
+            // O espelho local continua disponível mesmo sem conexão.
+            autosaveStatus('Salvo localmente · conexão pendente', 'erro');
+        } finally {
+            autosaveInFlight = false;
+        }
+    }
+
+    function validarCamposAntesDeAssinar() {
+        const pendentes = [];
+        document.querySelectorAll('.var-field').forEach((el) => {
+            const chave = el.dataset.var || '';
+            const valor = (el.textContent || '').trim();
+            if (chave && ehVazio(valor) && !pendentes.includes(chave)) pendentes.push(chave);
+        });
+        return pendentes;
+    }
+
+    function validarFormatoCampos() {
+        const erros = [];
+        document.querySelectorAll('.doc-campo-input').forEach((input) => {
+            const chave = input.dataset.campo || '';
+            const valor = input.value.trim();
+            if (!valor || ehVazio(valor)) return;
+            const digitos = valor.replace(/\D/g, '');
+            if ((chave.includes('cpf') || chave.includes('cnpj')) && ![11, 14].includes(digitos.length)) {
+                erros.push(rotuloCampo(chave) + ': CPF/CNPJ inválido');
+            }
+            if ((chave.includes('area') || chave.includes('numero_pavimentos')) && !/^[\d.,\s]+(?:m²)?$/i.test(valor)) {
+                erros.push(rotuloCampo(chave) + ': informe apenas números');
+            }
+            if ((chave.includes('inicio') || chave.includes('termino')) && !/^\d{2}\/\d{2}\/\d{4}$/.test(valor)) {
+                erros.push(rotuloCampo(chave) + ': use DD/MM/AAAA');
+            }
+        });
+        return erros;
+    }
+
+    /* Atualiza o formulário lateral quando a pessoa edita diretamente a folha.
+       O Summernote dispara onChange para cada alteração; não reconstruímos a
+       lista aqui para não roubar seleção/foco dos inputs do painel. */
+    function sincronizarPainelCampos() {
+        const editavel = document.querySelector('.note-editable');
+        const lista = document.getElementById('doc-campos-lista');
+        if (!editavel || !lista) return;
+
+        lista.querySelectorAll('.doc-campo-input').forEach((input) => {
+            const chave = input.dataset.campo;
+            const alvo = Array.from(editavel.querySelectorAll('.var-field'))
+                .find((el) => el.dataset.campoIdx === chave || el.dataset.var === chave);
+            if (!alvo) return;
+
+            const valor = (alvo.textContent || '').trim();
+            // Não sobrescreve o campo enquanto ele próprio está sendo digitado.
+            if (document.activeElement !== input) input.value = ehVazio(valor) ? '' : valor;
+
+            const linha = input.closest('.doc-campo');
+            if (linha) linha.classList.toggle('vazio', ehVazio(valor));
+        });
+
+        atualizarContadorVazios();
+    }
+
+    function montarPainelCampos() {
+        const lista = document.getElementById('doc-campos-lista');
+        if (!lista) return;
+
+        const editavel = document.querySelector('.note-editable');
+        const campos = editavel ? Array.from(editavel.querySelectorAll('.var-field')) : [];
+
+        if (campos.length === 0) {
+            lista.innerHTML = '<div class="doc-rail-vazio">Este documento não usa campos do protocolo.</div>';
+            document.getElementById('doc-campos-vazios').style.display = 'none';
+            document.getElementById('doc-campos-nota').style.display = 'none';
+            return;
+        }
+
+        // Um mesmo campo pode aparecer várias vezes no documento; a lista mostra
+        // uma linha por campo — e editar essa linha altera TODAS as ocorrências.
+        const vistos = new Map();
+        campos.forEach((el, i) => {
+            const chave = el.dataset.var || ('campo_' + i);
+            el.dataset.campoIdx = chave;
+            if (!vistos.has(chave)) vistos.set(chave, el);
+        });
+
+        // Preserva o foco: montarPainelCampos() roda a cada edição no documento,
+        // e sem isto o campo sendo digitado perderia o cursor no meio da frase.
+        const emFoco = document.activeElement;
+        const chaveFoco = emFoco && emFoco.classList && emFoco.classList.contains('doc-campo-input')
+            ? emFoco.dataset.campo : null;
+        const posFoco = chaveFoco ? emFoco.selectionStart : null;
+
+        let vazios = 0;
+        const linhas = [];
+        vistos.forEach((el, chave) => {
+            const valor = (el.textContent || '').trim();
+            const vazio = ehVazio(valor);
+            if (vazio) vazios++;
+            linhas.push(`
+                <div class="doc-campo${vazio ? ' vazio' : ''}">
+                    <label class="doc-campo-rotulo" for="campo-${escapeHtml(chave)}">${escapeHtml(rotuloCampo(chave))}</label>
+                    <span class="doc-campo-entrada">
+                        <input type="text" class="doc-campo-input" id="campo-${escapeHtml(chave)}"
+                               data-campo="${escapeHtml(chave)}"
+                               value="${vazio ? '' : escapeHtml(valor)}"
+                               placeholder="${vazio ? escapeHtml(valor || 'preencher') : ''}"
+                               autocomplete="off" spellcheck="false">
+                        <button type="button" class="doc-campo-ir" data-ir="${escapeHtml(chave)}"
+                                title="Mostrar no documento" tabindex="-1">
+                            <i class="fas fa-location-crosshairs"></i>
+                        </button>
+                    </span>
+                </div>`);
+        });
+
+        lista.innerHTML = linhas.join('');
+
+        lista.querySelectorAll('.doc-campo-input').forEach((input) => {
+            // 'input' aplica ao vivo: o texto aparece na folha enquanto se digita.
+            input.addEventListener('input', () => aplicarCampo(input.dataset.campo, input.value));
+            // Enter/Esc só tiram o foco — não há "salvar", a folha já mudou.
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); input.blur(); }
+            });
+            input.addEventListener('focus', () => irParaCampo(input.dataset.campo, true));
+        });
+        lista.querySelectorAll('.doc-campo-ir').forEach((btn) => {
+            btn.addEventListener('click', () => irParaCampo(btn.dataset.ir));
+        });
+
+        if (chaveFoco) {
+            const volta = lista.querySelector('.doc-campo-input[data-campo="' + chaveFoco + '"]');
+            if (volta) {
+                volta.focus();
+                if (posFoco != null) { try { volta.setSelectionRange(posFoco, posFoco); } catch (e) {} }
+            }
+        }
+
+        const badge = document.getElementById('doc-campos-vazios');
+        const nota  = document.getElementById('doc-campos-nota');
+        if (vazios > 0) {
+            badge.textContent = vazios === 1 ? '1 a preencher' : vazios + ' a preencher';
+            badge.style.display = '';
+            nota.style.display = '';
+        } else {
+            badge.style.display = 'none';
+            nota.style.display = 'none';
+        }
+    }
+
+    /* Escreve o valor em TODAS as ocorrências do campo no documento.
+       Mexe direto no DOM do Summernote: como o conteúdo é lido de volta com
+       summernote('code') na hora de salvar/assinar, a alteração entra
+       naturalmente no que vai para o servidor. */
+    function aplicarCampo(chave, valor) {
+        const editavel = document.querySelector('.note-editable');
+        if (!editavel) return;
+        // O índice é colocado no primeiro carregamento, mas manter o fallback
+        // pelo data-var também cobre documentos antigos/drafts sem esse índice.
+        const alvos = Array.from(editavel.querySelectorAll('.var-field'))
+            .filter((el) => el.dataset.campoIdx === chave || el.dataset.var === chave);
+        const texto = String(valor);
+        alvos.forEach((el) => { el.textContent = texto; });
+
+        // Marca o estado na hora, sem esperar o próximo montarPainelCampos().
+        const linha = document.querySelector('.doc-campo-input[data-campo="' + chave + '"]')?.closest('.doc-campo');
+        if (linha) linha.classList.toggle('vazio', ehVazio(texto));
+        atualizarContadorVazios();
+    }
+
+    function atualizarContadorVazios() {
+        const badge = document.getElementById('doc-campos-vazios');
+        const nota  = document.getElementById('doc-campos-nota');
+        if (!badge) return;
+        const vazios = document.querySelectorAll('.doc-campo.vazio').length;
+        if (vazios > 0) {
+            badge.textContent = vazios === 1 ? '1 a preencher' : vazios + ' a preencher';
+            badge.style.display = '';
+            if (nota) nota.style.display = '';
+        } else {
+            badge.style.display = 'none';
+            if (nota) nota.style.display = 'none';
+        }
+    }
+
+    /* Mostra o campo na folha. Ao focar o input (suave) só rola até ele;
+       ao clicar na mira (discreto=false) também pisca, que é quando a
+       pessoa pediu explicitamente "onde fica isto?". */
+    function irParaCampo(chave, suave) {
+        const editavel = document.querySelector('.note-editable');
+        if (!editavel) return;
+        const alvo = editavel.querySelector('.var-field[data-campo-idx="' + chave + '"]')
+                  || editavel.querySelector('.var-field[data-var="' + chave + '"]');
+        if (!alvo) return;
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Realce permanente enquanto o campo está em edição, para não se perder
+        // de vista no meio de um documento de várias páginas.
+        editavel.querySelectorAll('.var-field.campo-ativo')
+            .forEach((el) => el.classList.remove('campo-ativo'));
+        alvo.classList.add('campo-ativo');
+        if (suave) return;
+        alvo.classList.remove('campo-piscando');
+        void alvo.offsetWidth; // reinicia a animação se clicarem duas vezes seguidas
+        alvo.classList.add('campo-piscando');
+        setTimeout(() => alvo.classList.remove('campo-piscando'), 1600);
+    }
+
     /* ─── Conteúdo do editor, limpo dos elementos visuais ──── */
+    function removerEstruturaPaginacao(html) {
+        return SemaPaginacao.limparHtml(html);
+    }
+
     function obterConteudoLimpo() {
         let html = '';
         if (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote')) {
@@ -1138,8 +1541,7 @@ include '../header.php';
         } else {
             html = document.getElementById('editor-conteudo').value;
         }
-        // Separadores de página do editor (Google Docs style) — nunca vão ao servidor
-        html = html.replace(/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/g, '');
+        html = removerEstruturaPaginacao(html);
         // Spans var-field viram texto puro
         html = html.replace(
             /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
@@ -1153,7 +1555,7 @@ include '../header.php';
         return html;
     }
 
-    /* ─── Pré-visualizar o PDF REAL (TCPDF) em nova aba ────── */
+    /* ─── Pré-visualizar o PDF real, em folhas separadas ───── */
     function previewPdf() {
         const html = obterConteudoLimpo();
         if (!html || html.trim() === '' || html === '<p><br></p>') {
@@ -1164,19 +1566,25 @@ include '../header.php';
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '../assinatura/preview_pdf.php';
-        form.target = '_blank';
+        form.target = 'previewPdfFrame';
         const campos = {
             conteudo_parecer: html,
             requerimento_id:  reqId,
             modo_assinatura:  modoAtivo,
-            sig_pos_x: sigPosCustomizada ? sigPos.x.toFixed(1) : '',
-            sig_pos_y: sigPosCustomizada ? sigPos.y.toFixed(1) : '',
+            csrf_token: csrfToken,
         };
         for (const [k, v] of Object.entries(campos)) {
             const inp = document.createElement('input');
             inp.type = 'hidden'; inp.name = k; inp.value = v;
             form.appendChild(inp);
         }
+        const loading = document.getElementById('previewPdfLoading');
+        if (loading) loading.classList.remove('loaded');
+        const previewFrame = document.getElementById('previewPdfFrame');
+        if (previewFrame) previewFrame.dataset.pending = '1';
+        const pageHint = document.getElementById('previewPageHint');
+        if (pageHint) pageHint.textContent = `${_lastTotalPages} página${_lastTotalPages > 1 ? 's' : ''}`;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPreviewPdf')).show();
         document.body.appendChild(form);
         form.submit();
         form.remove();
@@ -1189,6 +1597,16 @@ include '../header.php';
             Swal.fire('Atenção', 'O documento não pode estar vazio.', 'warning');
             return;
         }
+
+        document.getElementById('reviewProtocolo').textContent = reqProtocolo || 'Não informado';
+        document.getElementById('reviewDocumento').textContent = templateLabel || templateNome || 'Documento';
+        const totalCampos = document.querySelectorAll('.var-field').length;
+        const pendentes = validarCamposAntesDeAssinar().length;
+        document.getElementById('reviewCampos').textContent = totalCampos
+            ? `${totalCampos} ocorrência(s)${pendentes ? ` · ${pendentes} pendente(s)` : ' · tudo preenchido'}`
+            : 'Redação livre';
+        document.getElementById('reviewPaginas').textContent = `${_lastTotalPages} página${_lastTotalPages > 1 ? 's' : ''} · assinatura na última`;
+        document.getElementById('checkRevisao').checked = false;
 
         const chk = document.getElementById('checkDiretrizes');
         chk.checked = false;
@@ -1283,6 +1701,36 @@ include '../header.php';
         const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const isSemAssinar = modoAtivo === 'sem_assinar';
 
+        if (!document.getElementById('checkRevisao').checked) {
+            sacudirAceite('blocoRevisaoDocumento', 'Confirme a revisão do documento antes de finalizar.');
+            return;
+        }
+
+        const camposPendentes = validarCamposAntesDeAssinar();
+        if (camposPendentes.length > 0) {
+            const nomes = camposPendentes.slice(0, 6).map(rotuloCampo).join(', ');
+            const extra = camposPendentes.length > 6
+                ? ` e mais ${camposPendentes.length - 6}` : '';
+            Swal.fire({
+                title: 'Há campos pendentes',
+                html: `Preencha <strong>${escapeHtml(nomes)}${extra}</strong> antes de finalizar o documento.`,
+                icon: 'warning'
+            });
+            const primeiro = document.querySelector('.doc-campo.vazio .doc-campo-input');
+            if (primeiro) primeiro.focus();
+            return;
+        }
+
+        const errosFormato = validarFormatoCampos();
+        if (errosFormato.length) {
+            Swal.fire({ title: 'Revise os dados', html: errosFormato.slice(0, 5).map(escapeHtml).join('<br>'), icon: 'warning' });
+            return;
+        }
+
+        // Garante que a última edição também esteja preservada antes de abrir
+        // o fluxo irreversível de assinatura.
+        await salvarRascunho();
+
         // Validação dos checkboxes conforme modo (com feedback visual)
         const checkDiretrizes = document.getElementById('checkDiretrizes');
         const checkManual     = document.getElementById('checkManual');
@@ -1335,10 +1783,7 @@ include '../header.php';
         fd.append('download',         fazDownload);
         fd.append('modo_assinatura',  modoAtivo);
         fd.append('pin_assinatura',   pinParaAssinar);
-        if (sigPosCustomizada) {
-            fd.append('sig_pos_x', sigPos.x.toFixed(1));
-            fd.append('sig_pos_y', sigPos.y.toFixed(1));
-        }
+        fd.append('csrf_token',       csrfToken);
         if (modoAtivo === 'assinar_e_requisitar') {
             destinatarios.forEach(d => fd.append('coassinatura_destinatarios[]', d));
             fd.append('coassinatura_mensagem', document.getElementById('coassMensagem').value);
@@ -1403,6 +1848,7 @@ include '../header.php';
     /* ─── Carregar templates do usuário no dropdown ────────── */
     function carregarTemplatesParaModal() {
         const sel = document.getElementById('selectTemplateExistente');
+        document.getElementById('templateVersoesBox').style.display = 'none';
         sel.innerHTML = '<option value="">Carregando...</option>';
         fetch('../parecer_handler.php', {
             method: 'POST',
@@ -1415,6 +1861,7 @@ include '../header.php';
                 sel.innerHTML = ret.templates.map(t =>
                     `<option value="${t.id}">${escapeHtml(t.nome)}</option>`
                 ).join('');
+                sel.dispatchEvent(new Event('change'));
             } else {
                 sel.innerHTML = '<option value="">Nenhum template personalizado ainda</option>';
             }
@@ -1424,11 +1871,60 @@ include '../header.php';
         });
     }
 
+    document.getElementById('selectTemplateExistente')?.addEventListener('change', function() {
+        const id = this.value;
+        const box = document.getElementById('templateVersoesBox');
+        const lista = document.getElementById('templateVersoesLista');
+        if (!id) { box.style.display = 'none'; return; }
+        box.style.display = '';
+        lista.innerHTML = '<span><i class="fas fa-spinner fa-spin me-1"></i>Carregando versões…</span>';
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'listar_versoes_template', id: id })
+        }).then(r => r.json()).then(ret => {
+            if (!ret.success) throw new Error(ret.error || 'Não foi possível carregar versões.');
+            if (!ret.versoes.length) {
+                lista.innerHTML = '<span>Este modelo ainda não possui versões anteriores.</span>';
+                return;
+            }
+            lista.innerHTML = ret.versoes.map(v => `
+                <div class="d-flex align-items-center justify-content-between gap-2 border rounded p-2 mb-1">
+                    <span>Versão ${v.numero_versao} · ${escapeHtml(v.criado_em || '')}</span>
+                    <button type="button" class="btn btn-sm btn-outline-success"
+                            onclick="restaurarVersaoTemplate(${id}, ${v.id})">
+                        <i class="fas fa-rotate-left me-1"></i>Restaurar
+                    </button>
+                </div>`).join('');
+        }).catch(err => { lista.innerHTML = `<span class="text-danger">${escapeHtml(err.message)}</span>`; });
+    });
+
+    function restaurarVersaoTemplate(templateId, versaoId) {
+        Swal.fire({
+            title: 'Restaurar versão?',
+            text: 'A versão atual será preservada no histórico antes da restauração.',
+            icon: 'question', showCancelButton: true,
+            confirmButtonText: 'Restaurar', cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch('../parecer_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'restaurar_versao_template', template_id: templateId, versao_id: versaoId, csrf_token: csrfToken })
+            }).then(r => r.json()).then(ret => {
+                if (!ret.success) throw new Error(ret.error || 'Não foi possível restaurar.');
+                Swal.fire({ icon: 'success', title: 'Versão restaurada', timer: 1800, showConfirmButton: false });
+                carregarTemplatesParaModal();
+            }).catch(err => Swal.fire('Erro', err.message, 'error'));
+        });
+    }
+
     /* ─── Salvar template (novo ou substituindo) ──────────── */
     function salvarTemplate(modo) {
-        const rawHtml = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
+        const rawHtmlComPaginacao = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
             ? $('#editor-conteudo').summernote('code')
             : document.getElementById('editor-conteudo').value;
+        const rawHtml = removerEstruturaPaginacao(rawHtmlComPaginacao);
 
         if (!rawHtml || rawHtml.trim() === '' || rawHtml === '<p><br></p>') {
             Swal.fire('Atenção', 'O editor está vazio.', 'warning'); return;
@@ -1457,6 +1953,7 @@ include '../header.php';
             conteudo_html: templateHtml,
             template_base: templateNome,
             icone:         icone,
+            csrf_token:    csrfToken,
         });
         if (modo === 'novo')       { body.append('nome', nome); body.append('descricao', desc); }
         if (modo === 'substituir') { body.append('id', utId); }
@@ -1490,6 +1987,22 @@ include '../header.php';
         return d.innerHTML;
     }
 
-    document.addEventListener('DOMContentLoaded', function() { carregarTemplate(); });
+    document.addEventListener('DOMContentLoaded', function() {
+        const previewFrame = document.getElementById('previewPdfFrame');
+        const previewModal = document.getElementById('modalPreviewPdf');
+        if (previewFrame) {
+            previewFrame.addEventListener('load', function() {
+                if (this.dataset.pending !== '1') return;
+                delete this.dataset.pending;
+                document.getElementById('previewPdfLoading')?.classList.add('loaded');
+            });
+        }
+        if (previewModal) {
+            previewModal.addEventListener('hidden.bs.modal', function() {
+                if (previewFrame) previewFrame.src = 'about:blank';
+            });
+        }
+        carregarTemplate();
+    });
     </script>
 <?php include '../footer.php'; ?>

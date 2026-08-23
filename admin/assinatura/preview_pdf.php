@@ -25,6 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    http_response_code(419);
+    die('A sessão da pré-visualização expirou. Recarregue o editor e tente novamente.');
+}
+
 $conteudo = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
 $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 $modoAssinatura = $_POST['modo_assinatura'] ?? 'assinar';
@@ -47,10 +54,6 @@ $assinante = [
     'data_hora' => date('d/m/Y \à\s H:i:s'),
 ];
 
-$sigPosX = isset($_POST['sig_pos_x']) && $_POST['sig_pos_x'] !== '' ? (float) $_POST['sig_pos_x'] : null;
-$sigPosY = isset($_POST['sig_pos_y']) && $_POST['sig_pos_y'] !== '' ? (float) $_POST['sig_pos_y'] : null;
-$sigPos  = ($sigPosX !== null && $sigPosY !== null) ? ['x' => $sigPosX, 'y' => $sigPosY] : null;
-
 $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
 require_once __DIR__ . '/gerar_pdf.php';
@@ -62,7 +65,6 @@ $verifyUrlDemo = rtrim(BASE_URL, '/') . '/verificar';
 $opcoes = [
     'verify_url' => ($modoAssinatura !== 'sem_assinar') ? $verifyUrlDemo : '',
     'doc_codigo' => 'PREVIEW',
-    'sig_pos'    => $sigPos,
 ];
 
 if (ob_get_length()) ob_clean();
