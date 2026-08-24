@@ -10,16 +10,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * Testes das regras de validação do formulário principal.
  *
  * Como o processar_formulario.php mistura lógica com saída HTTP, os testes aqui
- * exercitam a lógica de validação de forma isolada — replicando as mesmas
- * regras aplicadas no servidor para garantir consistência.
+ * exercitam a lógica de validação isolada usada pelo servidor.
  */
 class ValidacaoFormularioTest extends TestCase
 {
-    // ─── Helpers de validação (espelham processar_formulario.php) ─────────────
+    // ─── Helpers de validação ─────────────────────────────────────────────────
 
     private function validarEmail(string $email): bool
     {
-        return (bool) preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $email);
+        return emailRequerenteValido($email);
     }
 
     private function validarTamanhoArquivo(int $bytes): bool
@@ -112,6 +111,19 @@ class ValidacaoFormularioTest extends TestCase
             [''],
             ['espaco no meio@email.com'],
         ];
+    }
+
+    #[Test]
+    public function confirmacaoDeEmailAceitaDiferencaDeMaiusculasEEspacosExternos(): void
+    {
+        $this->assertTrue(emailsRequerenteCoincidem('Pessoa@Email.com', '  pessoa@email.com  '));
+    }
+
+    #[Test]
+    public function confirmacaoDeEmailRejeitaEnderecoDiferenteOuVazio(): void
+    {
+        $this->assertFalse(emailsRequerenteCoincidem('pessoa@email.com', 'pessoa@outro.com'));
+        $this->assertFalse(emailsRequerenteCoincidem('pessoa@email.com', ''));
     }
 
     // ─── Validação de tamanho de arquivo ──────────────────────────────────────

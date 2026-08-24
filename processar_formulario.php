@@ -14,6 +14,7 @@ require_once 'includes/functions.php';
 require_once 'includes/models.php';
 require_once 'includes/email_service.php';
 require_once 'includes/admin_notifications.php';
+require_once 'includes/public_form_components.php';
 
 // Verificar se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,16 +63,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Dados do requerente
     $requerente = [
-        'nome' => $_POST['requerente']['nome'] ?? '',
-        'email' => $_POST['requerente']['email'] ?? '',
-        'cpf_cnpj' => $_POST['requerente']['cpf_cnpj'] ?? '',
-        'telefone' => $_POST['requerente']['telefone'] ?? ''
+        'nome' => trim($_POST['requerente']['nome'] ?? ''),
+        'email' => trim($_POST['requerente']['email'] ?? ''),
+        'cpf_cnpj' => trim($_POST['requerente']['cpf_cnpj'] ?? ''),
+        'telefone' => trim($_POST['requerente']['telefone'] ?? '')
     ];
+    $emailConfirmacao = trim($_POST['requerente']['email_confirmacao'] ?? '');
 
     // Validação dos dados do requerente
     if (empty($requerente['nome']) || empty($requerente['email']) || empty($requerente['cpf_cnpj']) || empty($requerente['telefone'])) {
         $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'Todos os campos do requerente são obrigatórios.');
+        redirect('index.php');
+    }
+    if (!emailRequerenteValido($requerente['email'])) {
+        $_SESSION['form_data'] = $_POST;
+        setMensagem('erro', 'Informe um endereço de e-mail válido.');
+        redirect('index.php');
+    }
+    if (!emailsRequerenteCoincidem($requerente['email'], $emailConfirmacao)) {
+        $_SESSION['form_data'] = $_POST;
+        setMensagem('erro', 'A confirmação do e-mail não coincide com o endereço informado.');
         redirect('index.php');
     }
 
@@ -130,6 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $comprovante_pagamento = trim($_POST['comprovante_pagamento'] ?? '');
     $possui_estudo = isset($_POST['possui_estudo_ambiental']) ? (int) $_POST['possui_estudo_ambiental'] : null;
     $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental'] ?? '');
+    if ($tipo_estudo_ambiental === '__outro__') {
+        $tipo_estudo_ambiental = trim($_POST['tipo_estudo_ambiental_outro'] ?? '');
+    }
     $data_certidao_municipal = $_POST['data_certidao_municipal'] ?? '';
     $enquadramento_atividade = trim($_POST['enquadramento_atividade'] ?? '');
     $localizacao_google_maps = trim($_POST['localizacao_google_maps'] ?? '');
@@ -142,8 +157,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
     $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
     $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
-    $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_art'] ?? $_POST['responsavel_tecnico_numero'] ?? '');
+    // O nome oficial persistido é responsavel_tecnico_numero; o alias antigo
+    // continua aceito para preservar rascunhos e integrações anteriores.
+    $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_numero'] ?? $_POST['responsavel_tecnico_art'] ?? '');
     $descricao_atividade = trim($_POST['especificacao'] ?? $_POST['descricao_atividade'] ?? '');
+
+    // A exigência acompanha a lista oficial de documentos do serviço.
+    $documentosObrigatoriosTipo = array_values(array_filter((array) ($tipoInfo['documentos'] ?? []), 'is_string'));
+    $exigeResponsavelTecnico = (bool) preg_match('/\bART(?:s)?\b|\bRRT(?:s)?\b|respons[aá]vel t[eé]cnico/i', implode(' ', $documentosObrigatoriosTipo));
+    if ($exigeResponsavelTecnico && ($responsavel_tecnico_nome === '' || $responsavel_tecnico_tipo_documento === '' || $responsavel_tecnico_registro === '' || $responsavel_tecnico_art === '')) {
+        $_SESSION['form_data'] = $_POST;
+        setMensagem('erro', 'Informe todos os dados obrigatórios do responsável técnico, incluindo conselho, registro e ART/RRT.');
+        redirect('index.php');
+    }
 
     // Campos adicionais dos modelos (construção / habite-se / desmembramento)
     $cadastro_imobiliario     = trim($_POST['cadastro_imobiliario'] ?? '');
@@ -156,6 +182,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eng_fiscal_registro      = trim($_POST['eng_fiscal_registro'] ?? '');
 
     $observacoes = '';
+    $desmembramentoLotesJson = null;
+
+    if ($tipoAlvara === 'desmembramento') {
+        $toArea = static function ($value): float {
+            $value = trim((string) $value);
+            if ($value === '') return 0.0;
+            if (strpos($value, ',') !== false) {
+                $value = str_replace(',', '.', str_replace('.', '', $value));
+            }
+            return (float) $value;
+        };
+        $confrontacoes = static function (string $prefix = '') use ($toArea): array {
+            $lados = [];
+            foreach (['norte', 'oeste', 'leste', 'sul'] as $rumo) {
+                $metragem = $_POST[$prefix . 'confrontacao_' . $rumo . '_metragem'] ?? '';
+                $descricao = trim((string) ($_POST[$prefix . 'confrontacao_' . $rumo . '_descricao'] ?? ''));
+                $lados[$rumo] = [
+                    'metragem' => $toArea($metragem),
+                    'descricao' => $descricao,
+                ];
+            }
+            return $lados;
+        };
+
+        $lotes = [];
+        $areaPrimeiroLote = $toArea($_POST['area_lote'] ?? '');
+        $lotes[] = [
+            'ordem' => 1,
+            'area' => $areaPrimeiroLote,
+            'confrontacoes' => $confrontacoes(),
+        ];
+        foreach ((array) ($_POST['lotes'] ?? []) as $index => $lotePost) {
+            if (!is_array($lotePost)) continue;
+            $lados = [];
+            foreach (['norte', 'oeste', 'leste', 'sul'] as $rumo) {
+                $ladoPost = (array) ($lotePost['confrontacoes'][$rumo] ?? []);
+                $lados[$rumo] = [
+                    'metragem' => $toArea($ladoPost['metragem'] ?? ''),
+                    'descricao' => trim((string) ($ladoPost['descricao'] ?? '')),
+                ];
+            }
+            $lotes[] = [
+                'ordem' => count($lotes) + 1,
+                'area' => $toArea($lotePost['area'] ?? ''),
+                'confrontacoes' => $lados,
+            ];
+        }
+
+        $totalTerreno = $toArea($_POST['area_total_terreno'] ?? '');
+        $somaLotes = array_sum(array_column($lotes, 'area'));
+        $inconsistencia = $totalTerreno > 0 && $somaLotes > $totalTerreno;
+        foreach ($lotes as $lote) {
+            if ($lote['area'] <= 0) {
+                $_SESSION['form_data'] = $_POST;
+                setMensagem('erro', 'Informe uma área válida para cada lote do desmembramento.');
+                redirect('index.php');
+            }
+            foreach ($lote['confrontacoes'] as $lado) {
+                if ($lado['metragem'] <= 0 || $lado['descricao'] === '') {
+                    $_SESSION['form_data'] = $_POST;
+                    setMensagem('erro', 'Informe a metragem e o confrontante de cada lado de todos os lotes.');
+                    redirect('index.php');
+                }
+            }
+        }
+        $area_remanescente = number_format(max(0, $totalTerreno - $somaLotes), 2, ',', '.');
+        $desmembramentoLotesJson = json_encode([
+            'area_total_terreno' => $totalTerreno,
+            'soma_lotes' => $somaLotes,
+            'area_remanescente' => max(0, $totalTerreno - $somaLotes),
+            'inconsistencia' => $inconsistencia,
+            'lotes' => $lotes,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
 
     $requerimento = [
         'protocolo' => $protocolo,
@@ -184,6 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'termino_obra' => $termino_obra ?: null,
         'area_total_terreno' => $area_total_terreno ?: null,
         'area_remanescente' => $area_remanescente ?: null,
+        'desmembramento_lotes_json' => $desmembramentoLotesJson,
         'alvara_construcao_numero' => $alvara_construcao_numero ?: null,
         'eng_fiscal_nome' => $eng_fiscal_nome ?: null,
         'eng_fiscal_registro' => $eng_fiscal_registro ?: null,
@@ -194,15 +295,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     // Validação do endereço do objetivo
-    if (empty($requerimento['endereco_objetivo'])) {
+    if (!enderecoPauDosFerrosValido((string) $requerimento['endereco_objetivo'])) {
         $_SESSION['form_data'] = $_POST;
-        setMensagem('erro', 'O endereço do objetivo é obrigatório.');
+        setMensagem('erro', 'Informe a localização no padrão mínimo: rua, número ou SN, bairro e Pau dos Ferros/RN.');
         redirect('index.php');
+    }
+
+    foreach (['localizacao_area' => 'localização da área', 'endereco_imovel' => 'endereço do imóvel'] as $campoEndereco => $rotuloEndereco) {
+        if (isset($_POST[$campoEndereco]) && trim((string) $_POST[$campoEndereco]) !== '' && !enderecoPauDosFerrosValido((string) $_POST[$campoEndereco])) {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Revise a ' . $rotuloEndereco . ': informe rua, número ou SN, bairro e Pau dos Ferros/RN.');
+            redirect('index.php');
+        }
     }
 
     // Validações específicas para tipologias ambientais
     $exigeDiarioOficial = $isAmbiental && ($tipoInfo['exige_diario_oficial'] ?? true);
     if ($isAmbiental) {
+        if ($descricao_atividade === '') {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Informe a atividade ou finalidade do empreendimento.');
+            redirect('index.php');
+        }
+
+        if ($enquadramento_atividade === '') {
+            $_SESSION['form_data'] = $_POST;
+            setMensagem('erro', 'Selecione o enquadramento ambiental da atividade.');
+            redirect('index.php');
+        }
+
         if ($exigeDiarioOficial && empty($publicacao_diario_oficial)) {
             $_SESSION['form_data'] = $_POST;
             setMensagem('erro', 'Informe os dados da publicação em Diário Oficial.');
@@ -347,6 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } // Redirecionar para a página de sucesso com o protocolo
     $_SESSION['protocolo'] = $protocolo;
     $_SESSION['proprietario_nome'] = $proprietario['nome'];
+    $_SESSION['email_confirmacao_destino'] = $requerente['email'];
 
     // Enviar email de confirmação
     try {
@@ -372,8 +494,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Falha ao enviar email de confirmação para: " . $requerente['email']);
             $_SESSION['email_confirmacao_falhou'] = true;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Erro ao enviar email de confirmação: " . $e->getMessage());
+        $_SESSION['email_confirmacao_falhou'] = true;
     }
 
     setMensagem('sucesso', 'Requerimento enviado com sucesso!');

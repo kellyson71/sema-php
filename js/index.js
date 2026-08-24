@@ -205,6 +205,9 @@ function handlePhone(event) {
     input.setAttribute('aria-expanded', 'true');
     wrapper.classList.add('aberto');
     if (select.value) input.select();
+    window.requestAnimationFrame(function () {
+      wrapper.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
   }
 
   function fechar() {

@@ -103,88 +103,15 @@ $cor = $denuncia ? corStatus($denuncia['status']) : corStatus('');
     <title>Acompanhar Denúncia — Secretaria Municipal de Meio Ambiente</title>
     <link rel="icon" href="./assets/img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/public-redesign.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Viga&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Tudo escopado em #dc para não colidir com as regras globais de css/index.css */
-        #dc { max-width: 640px; margin: 0 auto; padding: 44px 16px 72px; font-family: Roboto, sans-serif; }
-
-        #dc .dc-hero { text-align: center; margin-bottom: 26px; }
-        #dc .dc-logo { height: 84px; width: auto; margin: 0 auto 18px; display: block; }
-        #dc .dc-title { font-family: Viga, sans-serif; color: #fff; font-size: 1.9rem; margin: 0 0 6px; letter-spacing: .5px; }
-        #dc .dc-sub { color: rgba(255,255,255,.72); font-size: .95rem; margin: 0; }
-
-        /* Painel de busca — vidro translúcido sobre o azul, como o resto do site */
-        #dc .dc-busca { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
-            border-radius: 16px; padding: 20px; backdrop-filter: blur(8px); }
-        #dc .dc-busca-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        #dc .dc-input { flex: 1; min-width: 200px; padding: 14px 16px; border: 0; border-radius: 10px;
-            background: #fff; color: #1e293b; font-size: 1rem; font-family: monospace; letter-spacing: 1px; }
-        #dc .dc-input:focus { outline: 3px solid rgba(0,150,64,.4); }
-        #dc .dc-input::placeholder { color: #9aa4b2; letter-spacing: .5px; }
-        #dc .dc-btn { border: 0; border-radius: 10px; background: #009640; color: #fff; padding: 0 22px;
-            font-size: .95rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center;
-            gap: 8px; transition: background .2s, transform .1s; min-height: 48px; }
-        #dc .dc-btn:hover { background: #007a33; }
-        #dc .dc-btn:active { transform: translateY(1px); }
-        #dc .dc-dica { color: rgba(255,255,255,.6); font-size: .8rem; margin: 12px 2px 0; }
-        #dc .dc-dica strong { color: rgba(255,255,255,.85); font-family: monospace; }
-
-        #dc .dc-erro { margin-top: 18px; background: rgba(220,38,38,.14); border: 1px solid rgba(248,113,113,.4);
-            color: #ffe1e1; border-radius: 12px; padding: 13px 16px; font-size: .9rem; display: flex; gap: 10px; align-items: flex-start; }
-
-        /* Card branco de resultado */
-        #dc .dc-card { margin-top: 22px; background: #fff; border-radius: 20px; overflow: hidden;
-            box-shadow: 0 18px 50px rgba(3,20,50,.32); }
-        #dc .dc-card-top { padding: 22px 26px; border-bottom: 1px solid #eef1f5;
-            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-        #dc .dc-proto { font-family: monospace; font-weight: 700; font-size: 1.1rem; color: #0f172a; letter-spacing: 1px; }
-        #dc .dc-status { font-size: .8rem; font-weight: 700; padding: 6px 14px; border-radius: 999px;
-            background: <?= $cor[0] ?>; color: <?= $cor[1] ?>; display: inline-flex; align-items: center; gap: 7px; }
-        #dc .dc-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: <?= $cor[2] ?>; }
-
-        #dc .dc-card-body { padding: 22px 26px 26px; }
-        #dc .dc-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 8px; }
-        #dc .dc-meta div { font-size: .86rem; color: #475467; }
-        #dc .dc-meta strong { color: #0f172a; }
-
-        #dc .dc-sectitle { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-            color: #94a3b8; margin: 24px 0 14px; }
-
-        #dc .dc-tl { position: relative; margin-left: 5px; padding-left: 22px; border-left: 2px solid #e5eaf0; }
-        #dc .dc-tl-item { position: relative; padding-bottom: 18px; }
-        #dc .dc-tl-item:last-child { padding-bottom: 0; }
-        #dc .dc-tl-item::before { content: ''; position: absolute; left: -29px; top: 3px; width: 13px; height: 13px;
-            border-radius: 50%; background: #009640; border: 2.5px solid #fff; box-shadow: 0 0 0 2px #cfe9d8; }
-        #dc .dc-tl-data { font-size: .74rem; color: #94a3b8; margin-bottom: 3px; }
-        #dc .dc-tl-texto { font-size: .92rem; color: #334155; line-height: 1.55; white-space: pre-wrap; }
-
-        #dc .dc-vazio { text-align: center; color: #64748b; font-size: .9rem; padding: 18px;
-            background: #f6f9fc; border: 1px dashed #d6dee8; border-radius: 12px; }
-
-        #dc .dc-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        #dc .dc-foto { display: block; border-radius: 14px; overflow: hidden; border: 1px solid #e6eaf0; aspect-ratio: 4/3; }
-        #dc .dc-foto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s; }
-        #dc .dc-foto:hover img { transform: scale(1.05); }
-        #dc .dc-arquivo { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border: 1px solid #e6eaf0;
-            border-radius: 12px; text-decoration: none; color: #334155; font-size: .9rem; margin-bottom: 8px; transition: background .15s; }
-        #dc .dc-arquivo:hover { background: #f6f9fc; }
-        #dc .dc-arquivo i { color: #009640; font-size: 1.05rem; }
-
-        #dc .dc-priv { margin-top: 22px; padding-top: 16px; border-top: 1px solid #eef1f5;
-            font-size: .78rem; color: #94a3b8; display: flex; gap: 9px; align-items: flex-start; }
-        #dc .dc-priv i { color: #009640; margin-top: 2px; }
-
-        @media (max-width: 480px) {
-            #dc .dc-title { font-size: 1.5rem; }
-            #dc .dc-btn { width: 100%; justify-content: center; }
-        }
-    </style>
+    <script src="./js/index.js" defer></script>
     <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
-<body>
+<body class="denuncia-consulta-page">
     <header>
         <nav>
             <ul>
@@ -194,40 +121,50 @@ $cor = $denuncia ? corStatus($denuncia['status']) : corStatus('');
                 <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros"><img src="./assets/img/youtube.png" alt="YouTube"></a></li>
             </ul>
         </nav>
+        <nav class="public-top-actions" aria-label="Atalhos do serviço público">
+            <a href="./index.php">Protocolo eletrônico</a>
+            <a href="./consultar/index.php">Consulte seu Alvará</a>
+            <a href="./termos_uso.php">Termos de uso</a>
+        </nav>
         <div class="user-options">
             <p id="alter-font">Tamanho da fonte</p>
-            <button onclick="increaseFont()">A+</button>
+            <button type="button" data-acao="aumentar">A+</button>
             <p>|</p>
-            <button onclick="decreaseFont()">A-</button>
+            <button type="button" data-acao="diminuir">A-</button>
+            <button type="button" title="Alto contraste" aria-label="Alto contraste" data-acao="contraste"><i class="fas fa-circle-half-stroke"></i></button>
         </div>
     </header>
 
     <main>
-        <div id="dc">
+        <section id="dc" class="dc-page">
             <div class="dc-hero">
-                <img class="dc-logo" src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
-                <h1 class="dc-title">Acompanhar Denúncia</h1>
-                <p class="dc-sub">Consulte o andamento da sua denúncia pelo número de protocolo.</p>
+                <img class="dc-logo" src="./assets/img/logo-sema-vertical-redesign.png" alt="Secretaria Municipal de Meio Ambiente">
+                <div>
+                    <p class="dc-kicker">Canal oficial SEMA</p>
+                    <h1 class="dc-title">Acompanhar Denúncia</h1>
+                    <p class="dc-sub">Consulte o andamento público pelo número de protocolo informado no registro.</p>
+                </div>
             </div>
 
             <form method="GET" action="consultar_denuncia.php" class="dc-busca">
+                <label for="protocolo" class="dc-label">Número do protocolo</label>
                 <div class="dc-busca-row">
-                    <input class="dc-input" type="text" name="protocolo" placeholder="DEN-00000000-XXXXX"
+                    <input class="dc-input" id="protocolo" type="text" name="protocolo" placeholder="DEN-00000000-XXXXX"
                            value="<?= htmlspecialchars($protocolo) ?>" autocomplete="off" autofocus>
-                    <button class="dc-btn" type="submit"><i class="fas fa-magnifying-glass"></i> Consultar</button>
+                    <button class="dc-btn" type="submit">Consultar protocolo</button>
                 </div>
                 <p class="dc-dica">O protocolo foi informado quando você registrou a denúncia — ex.: <strong>DEN-20260722-5E1A0</strong>.</p>
             </form>
 
             <?php if ($erro): ?>
-                <div class="dc-erro"><i class="fas fa-circle-exclamation" style="margin-top:2px;"></i><span><?= htmlspecialchars($erro) ?></span></div>
+                <div class="dc-erro"><span><?= htmlspecialchars($erro) ?></span></div>
             <?php endif; ?>
 
             <?php if ($denuncia): ?>
                 <div class="dc-card">
                     <div class="dc-card-top">
                         <span class="dc-proto"><?= htmlspecialchars($denuncia['protocolo_publico']) ?></span>
-                        <span class="dc-status"><?= htmlspecialchars($denuncia['status']) ?></span>
+                        <span class="dc-status" style="background: <?= htmlspecialchars($cor[0]) ?>; color: <?= htmlspecialchars($cor[1]) ?>; --dc-status-dot: <?= htmlspecialchars($cor[2]) ?>;"><?= htmlspecialchars($denuncia['status']) ?></span>
                     </div>
                     <div class="dc-card-body">
                         <div class="dc-meta">
@@ -273,52 +210,31 @@ $cor = $denuncia ? corStatus($denuncia['status']) : corStatus('');
                         <?php endif; ?>
 
                         <div class="dc-priv">
-                            <i class="fas fa-shield-halved"></i>
                             <span>Por segurança, esta consulta mostra apenas o andamento e os registros liberados pela fiscalização. Dados de pessoas envolvidas não são exibidos.</span>
                         </div>
                     </div>
                 </div>
             <?php endif; ?>
-        </div>
+        </section>
     </main>
 
-    <footer>
-        <div>
-            <div>
-                <a href="./consultar/index.php" class="consulta-btn">
-                    <i class="fas fa-search"></i>
-                    <span>Consulte seu Alvará</span>
-                </a>
-            </div>
-            <div>
-                <a href="./consultar_denuncia.php" class="consulta-btn" style="background:#f59e0b; color:#fff;">
-                    <i class="fas fa-magnifying-glass-location"></i>
-                    <span>Acompanhe sua Denúncia</span>
-                </a>
-            </div>
-            <div>
-                <img src="./assets/img/phone.png" alt="Telefone">
-                WhatsApp (84) 99668-6413
-            </div>
-            <div>
-                <img src="./assets/img/email.png" alt="Email">
-                fiscalizacaosemapdf@gmail.com
-            </div>
-        </div>
-        <div>
-            <span>
-                © 2023 - Todos os direitos reservados. Programa da&ensp;<a href="https://www.paudosferros.rn.gov.br/">Prefeitura de Pau dos Ferros</a>
-                <p>Desenvolvido por&ensp;<a href="https://github.com/kellyson71" style="text-decoration: none; color: inherit;">Kellyson Raphael</a></p>
-            </span>
-            <div>
-                <img src="./assets/img/Logo.png" alt="SEAD">
-            </div>
-        </div>
-    </footer>
+    <div style="display:block; width:100%; line-height:0; font-size:0;">
+        <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style="display:block; width:100%; height:70px;">
+            <path d="M0,35 C360,80 1080,-10 1440,35 L1440,70 L0,70 Z" fill="#0a1a2e"/>
+        </svg>
+    </div>
 
-    <script>
-        function increaseFont() { document.body.style.fontSize = parseInt(window.getComputedStyle(document.body).fontSize) + 1 + 'px'; }
-        function decreaseFont() { document.body.style.fontSize = parseInt(window.getComputedStyle(document.body).fontSize) - 1 + 'px'; }
-    </script>
+    <footer class="dc-footer">
+        <section>
+            <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png" alt="SEMA — Secretaria Municipal de Meio Ambiente">
+            <nav class="dc-footer-links" aria-label="Links da consulta pública">
+                <a href="./index.php">Protocolo eletrônico</a>
+                <a href="./consultar/index.php">Consulte seu Alvará</a>
+                <a href="./acessibilidade.php">Acessibilidade</a>
+                <a href="./termos_uso.php">Termos de uso</a>
+            </nav>
+            <p>© <?= date('Y') ?> Prefeitura Municipal de Pau dos Ferros — Secretaria Municipal de Meio Ambiente.</p>
+        </section>
+    </footer>
 </body>
 </html>

@@ -1,11 +1,16 @@
 <?php
 // Inclui configurações antes de qualquer redirecionamento
 include_once 'includes/config.php';
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+}
 
 // Inclui o arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 // Inclui tabela de enquadramento CONEMA para licenciamento ambiental
 include_once 'enquadramento_conema.php';
+include_once 'includes/public_form_components.php';
 
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -14,16 +19,67 @@ if (empty($_SESSION['csrf_token'])) {
 $tipoRules = [];
 foreach ($tipos_alvara as $slug => $tipo) {
     $isAmbiental = ($tipo['categoria'] ?? '') === 'ambiental';
+    // Os documentos são a fonte de verdade: quando a lista obrigatória
+    // menciona ART/RRT, o cadastro do responsável técnico é obrigatório.
+    $documentosObrigatoriosTipo = array_values(array_filter((array) ($tipo['documentos'] ?? []), 'is_string'));
+    $exigeResponsavelTecnico = (bool) preg_match('/\bART(?:s)?\b|\bRRT(?:s)?\b|respons[aá]vel t[eé]cnico/i', implode(' ', $documentosObrigatoriosTipo));
     $tipoRules[$slug] = [
         'categoria' => $tipo['categoria'] ?? '',
         'ambiental' => $isAmbiental,
         'exige_diario_oficial' => $isAmbiental && ($tipo['exige_diario_oficial'] ?? true),
         'exige_ctf' => (bool) ($tipo['exige_ctf'] ?? false),
         'exige_licenca_anterior' => (bool) ($tipo['exige_licenca_anterior'] ?? false),
+        'exige_responsavel_tecnico' => $exigeResponsavelTecnico,
         'limite_upload' => $isAmbiental ? MAX_FILE_SIZE_AMBIENTAL : MAX_FILE_SIZE,
-        'limite_upload_label' => $isAmbiental ? '40MB' : '10MB',
+        'limite_upload_label' => '100MB',
     ];
 }
+
+$categoriasPublicas = [
+    'obras'              => 'Obras e Construção',
+    'ambiental'          => 'Licenças Ambientais',
+    'outro'              => 'Outros Serviços',
+    'denuncia_autoriza'  => 'Denúncias e Autorizações',
+];
+
+$tiposAlvaraPublicos = [];
+foreach ($categoriasPublicas as $catSlug => $catNome) {
+    $tiposDaCategoria = [];
+    foreach ($tipos_alvara as $slug => $tipo) {
+        if (($tipo['categoria'] ?? '') !== $catSlug || !empty($tipo['oculto'])) {
+            continue;
+        }
+        $tiposDaCategoria[] = [
+            'slug' => $slug,
+            'nome' => $tipo['nome'],
+            'desabilitado' => !empty($tipo['desabilitado']),
+        ];
+    }
+    if ($tiposDaCategoria) {
+        $tiposAlvaraPublicos[] = [
+            'slug' => $catSlug,
+            'nome' => $catNome,
+            'tipos' => $tiposDaCategoria,
+        ];
+    }
+}
+
+ob_start();
+foreach ($enquadramento_conema as $cat): ?>
+<optgroup label="<?= htmlspecialchars($cat['titulo'], ENT_QUOTES, 'UTF-8') ?>">
+    <?php foreach ($cat['atividades'] as $slug => $ativ): ?>
+    <option value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($ativ['nome'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($ativ['potencial'], ENT_QUOTES, 'UTF-8') ?>)</option>
+    <?php endforeach; ?>
+</optgroup>
+<?php endforeach;
+$enquadramentoOptionsHtml = ob_get_clean();
+
+$locationTemplates = [
+    'denunciante_endereco' => renderLocationComposer('denunciante_endereco', 'Seu endereço', false),
+    'proprietario_endereco' => renderLocationComposer('proprietario_endereco', 'Endereço / local da ocorrência', false),
+    'localizacao_area' => renderLocationComposer('localizacao_area', 'Localização da área'),
+    'endereco_imovel' => renderLocationComposer('endereco_imovel', 'Endereço do imóvel'),
+];
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -70,11 +126,16 @@ foreach ($tipos_alvara as $slug => $tipo) {
 
     <!-- CSS -->
     <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/public-redesign.css?v=<?= (int) filemtime(__DIR__ . '/css/public-redesign.css') ?>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <script src="./js/index.js" defer></script>
+    <script src="./js/public-form.js?v=<?= (int) filemtime(__DIR__ . '/js/public-form.js') ?>" defer></script>
     <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>
 
@@ -129,11 +190,18 @@ foreach ($tipos_alvara as $slug => $tipo) {
             </ul>
         </nav>
 
+        <nav class="public-top-actions" aria-label="Atalhos do serviço público">
+            <a href="./consultar_denuncia.php">Acompanhe sua Denúncia</a>
+            <button type="button" onclick="document.getElementById('modal-legislacao').style.display='flex'">Legislação Municipal</button>
+            <button type="button" onclick="document.getElementById('modal-estudos').style.display='flex'">Estudos Ambientais</button>
+        </nav>
+
         <div class="user-options">
             <p id="alter-font">Tamanho da fonte</p>
-            <button onclick="increaseFont()">A+</button>
+            <button type="button" data-acao="aumentar">A+</button>
             <p>|</p>
-            <button onclick="decreaseFont()">A-</button>
+            <button type="button" data-acao="diminuir">A-</button>
+            <button type="button" title="Alto contraste" aria-label="Alto contraste" data-acao="contraste"><i class="fas fa-circle-half-stroke"></i></button>
         </div>
     </header>
 
@@ -147,15 +215,23 @@ foreach ($tipos_alvara as $slug => $tipo) {
                     <input type="text" id="site_empresa" name="site_empresa" tabindex="-1" autocomplete="off">
                 </div>
                 <div class="form-header">
-                    <img src="./assets/img/Logo_sema.png" alt="Secretaria Municipal de Meio Ambiente">
+                    <img src="./assets/img/logo-sema-vertical-redesign.png" alt="Secretaria Municipal de Meio Ambiente">
                     <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
-                    <p>PROTOCOLO ELETRÔNICO — ALVARÁS, DENÚNCIAS E AUTORIZAÇÕES</p>
+                    <p>PROTOCOLO ELETRÔNICO · ALVARÁS · DENÚNCIAS · AUTORIZAÇÕES</p>
                 </div>
 
-                <div style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
+                <div class="public-info-banner" style="max-width:800px;margin:14px auto 0;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);display:flex;gap:10px;align-items:center;font-size:0.8rem;">
                     <i class="fas fa-info-circle" style="font-size:0.78rem;flex-shrink:0;"></i>
                     <span>O boleto será enviado por email após a análise inicial. Pagamento e comprovante são enviados depois por link seguro da equipe.</span>
                 </div>
+                <?php $adminUrl = 'admin/index.php'; include __DIR__ . '/includes/admin_session_badge.php'; ?>
+
+                <nav class="public-step-nav" aria-label="Etapas do requerimento">
+                    <button type="button" class="public-step is-active" data-public-step="1"><span>1</span> Serviço e identificação</button>
+                    <button type="button" class="public-step" data-public-step="2"><span>2</span> Dados do serviço</button>
+                    <button type="button" class="public-step" data-public-step="3"><span>3</span> Documentos e envio</button>
+                    <small class="public-step-counter" aria-live="polite" role="status">Etapa 1 de 3</small>
+                </nav>
 
                 <?php
                 // DEBUG: Verificar conteúdo da sessão
@@ -199,65 +275,11 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 }
                 ?>
 
-                <?php if (!empty($formData)): ?>
-                <script>
-                // Restaurar dados do formulário
-                document.addEventListener('DOMContentLoaded', function() {
-                    const formData = <?php echo json_encode($formData); ?>;
-                    
-                    // Restaurar campos do requerente
-                    if (formData.requerente) {
-                        if (formData.requerente.nome) document.querySelector('input[name="requerente[nome]"]').value = formData.requerente.nome;
-                        if (formData.requerente.email) document.querySelector('input[name="requerente[email]"]').value = formData.requerente.email;
-                        if (formData.requerente.cpf_cnpj) document.querySelector('input[name="requerente[cpf_cnpj]"]').value = formData.requerente.cpf_cnpj;
-                        if (formData.requerente.telefone) document.querySelector('input[name="requerente[telefone]"]').value = formData.requerente.telefone;
-                    }
-                    
-                    // Restaurar endereço
-                    if (formData.endereco_objetivo) {
-                        document.querySelector('input[name="endereco_objetivo"]').value = formData.endereco_objetivo;
-                    }
-                    
-                    // Restaurar tipo de alvará
-                    if (formData.tipo_alvara) {
-                        const selectAlvara = document.getElementById('tipo_alvara');
-                        selectAlvara.value = formData.tipo_alvara;
-                        selectAlvara.dispatchEvent(new Event('change'));
-                    }
-                    
-                    // Restaurar campos do proprietário
-                    if (formData.proprietario) {
-                        setTimeout(() => {
-                            if (formData.proprietario.nome) {
-                                const nomeInput = document.querySelector('input[name="proprietario[nome]"]');
-                                if (nomeInput) nomeInput.value = formData.proprietario.nome;
-                            }
-                            if (formData.proprietario.cpf_cnpj) {
-                                const cpfInput = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
-                                if (cpfInput) cpfInput.value = formData.proprietario.cpf_cnpj;
-                            }
-                        }, 300);
-                    }
-                    
-                    // Restaurar campos dinâmicos (CTF, licença anterior, etc)
-                    setTimeout(() => {
-                        Object.keys(formData).forEach(key => {
-                            const input = document.querySelector(`input[name="${key}"], textarea[name="${key}"]`);
-                            if (input && formData[key]) {
-                                input.value = formData[key];
-                            }
-                        });
-                    }, 500);
-                    
-                    console.log('Dados do formulário restaurados');
-                });
-                </script>
-                <?php endif; ?>
-
                 <!-- Seção 1: Dados do Proprietário (oculta em modo denúncia) -->
                 <div class="form-section secao-alvara">
                     <div class="form-section-label">Dados do Proprietário do Imóvel</div>
                     <input type="hidden" name="mesmo_requerente" value="false">
+                    <p class="public-field-note">Caso o requerente seja o próprio proprietário, repita aqui os mesmos dados informados em Dados do Requerente.</p>
                     <div class="form-part-2" id="proprietario-fields">
                         <input id="proprietario_nome" name="proprietario[nome]"
                             placeholder="Nome Completo do Proprietário *" autocomplete="name">
@@ -270,54 +292,76 @@ foreach ($tipos_alvara as $slug => $tipo) {
                 <!-- Seção 2: Dados do Requerente (oculta em modo denúncia) -->
                 <div class="form-section secao-alvara">
                     <div class="form-section-label">Dados do Requerente</div>
+                    <p class="public-field-note">Use um e-mail que você acessa. A confirmação, o boleto e os documentos finais serão enviados para esse endereço.</p>
                     <div class="form-part-2">
                         <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
-                        <input data-required="true" type="email" name="requerente[email]" placeholder="Digite seu email *" autocomplete="email">
                         <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
                             placeholder="CPF ou CNPJ do Requerente" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
-                        <input type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
+                        <input data-required="true" type="email" id="requerente_email" name="requerente[email]" placeholder="E-mail para receber as comunicações *" autocomplete="email" inputmode="email" maxlength="191">
+                        <input data-required="true" type="email" id="requerente_email_confirmacao" name="requerente[email_confirmacao]" placeholder="Confirme o e-mail *" autocomplete="email" inputmode="email" maxlength="191">
+                        <input class="public-field-wide" type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
                             name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
                     </div>
                 </div>
 
+                <div class="form-section secao-alvara public-responsavel-comum" id="responsavel-tecnico-comum" hidden>
+                    <!-- O bloco é preenchido pelo fluxo selecionado e aparece uma única vez na etapa 1. -->
+                </div>
+
                 <!-- Seção 3: Endereço do Objetivo (oculta em modo denúncia) -->
                 <div class="form-section secao-alvara">
-                    <div class="form-part-2">
-                        <input data-required="true" name="endereco_objetivo"
-                            placeholder="Localização de Obras (Rua, número, bairro, CEP) *" autocomplete="street-address">
-                    </div>
+                    <?= renderLocationComposer('endereco_objetivo', 'Localização da obra ou objetivo', true, $formData['endereco_objetivo'] ?? '') ?>
                     <div style="margin-top: 24px;">
                         <div class="form-section-label">Notificado pelo Fiscal de Obras? *</div>
-                        <div style="display: flex; gap: 16px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                        <div class="public-radio-row" style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label>
                                 <input type="radio" name="notificado_fiscal_obras" value="1" data-required="true" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Sim
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: rgba(255,255,255,0.85); font-size: 0.95rem;">
+                            <label>
                                 <input type="radio" name="notificado_fiscal_obras" value="0" style="width:16px;height:16px;accent-color:#22c55e;cursor:pointer;"> Não
                             </label>
                         </div>
                     </div>
                 </div>
 
+                <div class="form-section public-denuncia-location-section" hidden>
+                    <?= renderLocationComposer('proprietario_endereco', 'Local da ocorrência', true, $formData['proprietario_endereco'] ?? '') ?>
+                    <p class="public-field-note">Informe onde a situação denunciada está acontecendo. O município será sempre Pau dos Ferros/RN.</p>
+                </div>
+
                 <!-- Seção 4: Tipo de Solicitação -->
                 <div class="form-section form-section-alvara">
                     <div class="tipo-alvara-container">
                         <div class="tipo-alvara-titulo">
-                            <i class="fas fa-clipboard-list"></i>
                             SELECIONE O TIPO DE SOLICITAÇÃO
                         </div>
                         <div class="tipo-alvara-content">
                             <div class="tipo-alvara-left">
+                                <div class="public-service-picker">
+                                    <label for="tipo_alvara_busca">Selecione a solicitação</label>
+                                    <div id="combobox-tipo" class="combobox-tipo">
+                                        <input type="text" id="tipo_alvara_busca" autocomplete="off"
+                                            placeholder="Busque por construção, denúncia, licença..."
+                                            role="combobox" aria-expanded="false" aria-controls="tipo_alvara_lista">
+                                        <i class="fas fa-search" aria-hidden="true"></i>
+                                        <ul id="tipo_alvara_lista" class="tipo-alvara-lista" role="listbox" hidden></ul>
+                                    </div>
+                                    <div id="categoria-atalhos" class="categoria-atalhos" aria-label="Categorias de solicitação">
+                                        <?php foreach ($categoriasPublicas as $catSlug => $catNome): ?>
+                                        <button type="button" class="categoria-btn" data-categoria="<?= htmlspecialchars($catSlug) ?>">
+                                            <?= htmlspecialchars($catNome) ?>
+                                        </button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <p id="mudar-tipo-link" class="mudar-tipo-link" style="display:none;">
+                                        <button type="button" id="btn-mudar-tipo">Trocar serviço</button>
+                                    </p>
+                                </div>
+
                                 <select required name="tipo_alvara" id="tipo_alvara" title="Tipo de Solicitação">
                                     <option value="" hidden>Selecione o tipo de solicitação...</option>
                                     <?php
-                                    $categorias = [
-                                        'obras'              => 'Obras e Construção',
-                                        'ambiental'          => 'Licenças Ambientais',
-                                        'outro'              => 'Outros Serviços',
-                                        'denuncia_autoriza'  => 'Denúncias e Autorizações',
-                                    ];
-                                    foreach ($categorias as $catSlug => $catNome):
+                                    foreach ($categoriasPublicas as $catSlug => $catNome):
                                         $tiposDaCategoria = array_filter($tipos_alvara, fn($t) => ($t['categoria'] ?? '') === $catSlug && empty($t['oculto']));
                                         if (empty($tiposDaCategoria)) continue;
                                     ?>
@@ -332,18 +376,22 @@ foreach ($tipos_alvara as $slug => $tipo) {
                                     </optgroup>
                                     <?php endforeach; ?>
                                 </select>
-
-                                <div id="campos_dinamicos">
-                                    <!-- Os campos específicos serão carregados aqui -->
-                                </div>
-                            </div>
-
-                            <div class="tipo-alvara-right">
-                                <div id="documentos_necessarios" class="documentos-container">
-                                    <!-- A lista de documentos necessários será exibida aqui -->
-                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="form-section public-dynamic-section" hidden>
+                    <div class="form-section-label" id="public-dynamic-title">Dados da solicitação</div>
+                    <div id="campos_dinamicos">
+                        <!-- Os campos específicos serão carregados aqui -->
+                    </div>
+                </div>
+
+                <div class="form-section public-docs-section" hidden>
+                    <div class="form-section-label">Documentos e envio</div>
+                    <div id="documentos_necessarios" class="documentos-container" hidden>
+                        <!-- A lista de documentos necessários será exibida aqui -->
                     </div>
                 </div>
 
@@ -364,134 +412,32 @@ foreach ($tipos_alvara as $slug => $tipo) {
 
                 <div class="captcha"></div>
 
+                <div class="public-wizard-actions" aria-label="Navegação das etapas">
+                    <button type="button" id="public-step-back"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    <button type="button" id="public-step-next">Continuar <i class="fas fa-arrow-right"></i></button>
+                </div>
+
                 <button type="submit" id="botao">
                     <i class="fas fa-paper-plane"></i> Enviar Requerimento
                 </button>
             </form>
 
             <script>
+                window.SEMA_TIPOS_ALVARA = <?= json_encode($tiposAlvaraPublicos, JSON_UNESCAPED_UNICODE) ?>;
                 window.SEMA_FORM_CONFIG = {
                     csrfToken: <?= json_encode($_SESSION['csrf_token']) ?>,
                     tipoRules: <?= json_encode($tipoRules, JSON_UNESCAPED_UNICODE) ?>,
+                    formData: <?= json_encode($formData, JSON_UNESCAPED_UNICODE) ?>,
+                    hasServerFormData: <?= json_encode(!empty($formData)) ?>,
+                    enquadramentoOptionsHtml: <?= json_encode($enquadramentoOptionsHtml, JSON_UNESCAPED_UNICODE) ?>,
+                    locationTemplates: <?= json_encode($locationTemplates, JSON_UNESCAPED_UNICODE) ?>,
                     denunciaUpload: {
-                        maxBytes: 20 * 1024 * 1024,
-                        maxLabel: '20MB',
+                        maxBytes: 100 * 1024 * 1024,
+                        maxLabel: '100MB',
                         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'mp4', 'mov'],
                         allowedTypes: ['image/jpeg', 'image/png', 'application/pdf', 'video/mp4', 'video/quicktime']
                     }
                 };
-            </script>
-            
-            <script>
-            document.getElementById('form').addEventListener('submit', function(e) {
-                clearFormErrors();
-
-                const tipoAlvara = document.getElementById('tipo_alvara').value;
-                let firstInvalid = null;
-
-                function markInvalid(field, message) {
-                    if (!field) return;
-                    field.classList.add('field-invalid');
-                    field.setAttribute('aria-invalid', 'true');
-                    const host = field.closest('.form-toggle') || field.closest('.form-part-4') || field.parentElement;
-                    let error = host.querySelector(':scope > .field-error');
-                    if (!error) {
-                        error = document.createElement('div');
-                        error.className = 'field-error';
-                        host.appendChild(error);
-                    }
-                    error.textContent = message;
-                    if (!firstInvalid) firstInvalid = field;
-                }
-
-                function requireValue(selector, message) {
-                    const field = document.querySelector(selector);
-                    if (!field || !field.value.trim()) {
-                        markInvalid(field, message);
-                        return false;
-                    }
-                    return true;
-                }
-
-                function requireChecked(selector, hostSelector, message) {
-                    if (document.querySelector(selector)) return true;
-                    const host = document.querySelector(hostSelector);
-                    markInvalid(host?.querySelector('input, select, textarea') || host, message);
-                    return false;
-                }
-
-                if (!tipoAlvara) {
-                    markInvalid(document.getElementById('tipo_alvara'), 'Selecione o tipo de solicitação.');
-                }
-
-                if (tipoAlvara === 'denuncia') {
-                    const anonimo = document.getElementById('chk_anonimo')?.checked;
-                    if (!anonimo) {
-                        requireValue('input[name="denunciante_nome"]', 'Informe seu nome ou marque denúncia anônima.');
-                    }
-                    requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
-                    requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
-                    if (document.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
-                        requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
-                    }
-                } else {
-                    requireValue('input[name="requerente[nome]"]', 'Informe o nome do requerente.');
-                    requireValue('input[name="requerente[email]"]', 'Informe o e-mail do requerente.');
-                    requireValue('input[name="requerente[cpf_cnpj]"]', 'Informe o CPF ou CNPJ do requerente.');
-                    requireValue('input[name="requerente[telefone]"]', 'Informe o telefone do requerente.');
-                    requireValue('input[name="endereco_objetivo"]', 'Informe a localização da obra ou objetivo.');
-                    requireChecked('input[name="notificado_fiscal_obras"]:checked', 'input[name="notificado_fiscal_obras"]', 'Informe se houve notificação pelo fiscal de obras.');
-
-                    const email = document.querySelector('input[name="requerente[email]"]');
-                    if (email?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
-                        markInvalid(email, 'Informe um e-mail válido.');
-                    }
-
-                    const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]');
-                    const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
-                    if (nomeProprietario?.value.trim() || cpfProprietario?.value.trim()) {
-                        if (!nomeProprietario.value.trim()) markInvalid(nomeProprietario, 'Informe o nome do proprietário.');
-                        if (!cpfProprietario.value.trim()) markInvalid(cpfProprietario, 'Informe o CPF ou CNPJ do proprietário.');
-                    }
-
-                    const rules = window.SEMA_FORM_CONFIG?.tipoRules?.[tipoAlvara] || {};
-                    if (rules.ambiental) {
-                        if (rules.exige_diario_oficial) {
-                            requireValue('input[name="publicacao_diario_oficial"]', 'Informe os dados da publicação em Diário Oficial.');
-                        }
-                        if (rules.exige_ctf) {
-                            requireValue('input[name="ctf_numero"]', 'Informe o número do Cadastro Técnico Federal.');
-                        }
-                        if (rules.exige_licenca_anterior) {
-                            requireValue('input[name="licenca_anterior_numero"]', 'Informe o número da licença anterior.');
-                        }
-                        const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
-                        if (!possuiEstudo) {
-                            requireChecked('input[name="possui_estudo_ambiental"]:checked', 'input[name="possui_estudo_ambiental"]', 'Informe se há estudo ambiental.');
-                        } else if (possuiEstudo.value === '1') {
-                            requireValue('input[name="tipo_estudo_ambiental"]', 'Informe o tipo de estudo ambiental.');
-                        }
-                    }
-                }
-
-                if (firstInvalid) {
-                    e.preventDefault();
-                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (typeof firstInvalid.focus === 'function') firstInvalid.focus({ preventScroll: true });
-                    return false;
-                }
-
-                document.getElementById('loading').style.display = 'flex';
-                document.getElementById('botao').disabled = true;
-            });
-
-            function clearFormErrors() {
-                document.querySelectorAll('.field-invalid').forEach(el => {
-                    el.classList.remove('field-invalid');
-                    el.removeAttribute('aria-invalid');
-                });
-                document.querySelectorAll('.field-error').forEach(el => el.remove());
-            }
             </script>
         </section>
     </main>
@@ -741,28 +687,35 @@ foreach ($tipos_alvara as $slug => $tipo) {
                  style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
 
             <!-- Botões de ação -->
-            <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px;">
-                <a href="./consultar/index.php"
-                   style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-                   onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                    <i class="fas fa-search" style="color:#4ade80;"></i> Consulte seu Alvará
+            <section class="public-footer-actions" aria-label="Atalhos principais">
+                <a class="public-action-card public-action-card-green" href="./consultar/index.php">
+                    <strong>Consulte seu Alvará</strong>
+                    <small>Acompanhe processos protocolados</small>
                 </a>
-                <a href="./consultar_denuncia.php"
-                   style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; text-decoration:none; font-size:0.9rem; font-weight:600; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-                   onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                    <i class="fas fa-magnifying-glass-location" style="color:#fcd34d;"></i> Acompanhe sua Denúncia
+                <a class="public-action-card public-action-card-yellow" href="./consultar_denuncia.php">
+                    <strong>Acompanhe sua Denúncia</strong>
+                    <small>Consulte o andamento pelo protocolo</small>
                 </a>
-                <button onclick="document.getElementById('modal-legislacao').style.display='flex'"
-                        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                    <i class="fas fa-book-open" style="color:#60a5fa;"></i> Legislação Municipal
+                <button class="public-action-card public-action-card-blue" type="button" onclick="document.getElementById('modal-legislacao').style.display='flex'">
+                    <strong>Legislação Municipal</strong>
+                    <small>Consulte normas e códigos vigentes</small>
                 </button>
-                <button onclick="document.getElementById('modal-estudos').style.display='flex'"
-                        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22); border-radius:10px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; letter-spacing:0.5px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:all 0.2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
-                    <i class="fas fa-magnifying-glass-chart" style="color:#4ade80;"></i> Estudos Ambientais
+                <button class="public-action-card public-action-card-cyan" type="button" onclick="document.getElementById('modal-estudos').style.display='flex'">
+                    <strong>Estudos Ambientais</strong>
+                    <small>Acesse diagnósticos e materiais técnicos</small>
                 </button>
             </section>
+
+            <!-- Links legais -->
+            <nav aria-label="Links legais e institucionais"
+                 style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px 18px; margin-bottom:28px; font-size:0.88rem;">
+                <a href="./acessibilidade.php"
+                   style="color:rgba(255,255,255,0.78); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.35);">Acessibilidade</a>
+                <a href="./termos_uso.php"
+                   style="color:rgba(255,255,255,0.78); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.35);">Termos de uso</a>
+                <button type="button" onclick="document.getElementById('modal-privacidade').style.display='flex'"
+                        style="border:0; background:transparent; padding:0; color:rgba(255,255,255,0.78); font:inherit; cursor:pointer; border-bottom:1px dotted rgba(255,255,255,0.35);">Avisos legais e privacidade</button>
+            </nav>
 
             <!-- Contatos como texto -->
             <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:28px; margin-bottom:36px;">
@@ -805,507 +758,36 @@ foreach ($tipos_alvara as $slug => $tipo) {
     <!-- Faixa gráfica institucional -->
     <div style="width:100%; height:50px; background:url('./assets/img/faixa.png') repeat-x center / auto 100%; line-height:0; font-size:0;"></div>
 
+    <div id="modal-privacidade" onclick="if(event.target===this)this.style.display='none'"
+         style="display:none; position:fixed; inset:0; z-index:9200; background:rgba(0,0,0,0.62); overflow-y:auto; padding:24px 16px; align-items:flex-start; justify-content:center;">
+        <div style="width:min(720px, 96vw); margin:30px auto; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,0.35);">
+            <div style="padding:22px 26px; background:#009640; color:#fff; display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                <h2 style="margin:0; font-size:1.15rem;">Avisos legais e privacidade</h2>
+                <button type="button" onclick="document.getElementById('modal-privacidade').style.display='none'"
+                        style="border:0; background:transparent; color:#fff; font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div style="padding:24px 28px; color:#333; font-size:0.94rem; line-height:1.7;">
+                <p>Este formulário eletrônico é canal oficial da Secretaria Municipal de Meio Ambiente de Pau dos Ferros/RN para protocolo de solicitações, denúncias e documentos administrativos.</p>
+                <p>Os dados informados são tratados para identificação do interessado, instrução processual, análise técnica, fiscalização, comunicação oficial, cumprimento de obrigações legais e exercício de políticas públicas municipais, observadas a Lei Geral de Proteção de Dados Pessoais (Lei Federal nº 13.709/2018), a legislação de acesso à informação e as normas de arquivo público.</p>
+                <p>O sistema utiliza cookies e tecnologias similares necessários à segurança, manutenção de sessão, acessibilidade, prevenção de abuso e medição estatística de uso. Quando houver ferramenta de análise, os dados são usados de forma agregada para melhoria do serviço público digital.</p>
+                <p>O envio do formulário implica ciência de que informações falsas, incompletas ou documentos inverídicos podem gerar responsabilização administrativa, civil e penal.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="public-cookie-notice" id="public-cookie-notice" hidden>
+        <div>
+            <strong>Uso de cookies</strong>
+            <p>Usamos cookies necessários à segurança e ao funcionamento do serviço, além de medição estatística para melhorar o atendimento digital.</p>
+        </div>
+        <a href="./termos_uso.php">Saiba mais</a>
+        <button type="button" id="public-cookie-accept">Entendi</button>
+    </div>
+
     <!-- Loading Spinner -->
     <div id="loading" class="loading" style="display: none;">
         <div class="loading-spinner"></div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const documentosDiv = document.getElementById('documentos_necessarios');
-
-            // Adiciona a mensagem inicial
-            documentosDiv.innerHTML = `
-            <div class="mensagem-inicial">
-                <i class="fas fa-file-alt"></i>
-                <p>Selecione um tipo de alvará acima para visualizar os documentos necessários e iniciar o processo de requerimento.</p>
-            </div>
-        `;
-
-            // Carregamento de campos para o tipo de solicitação
-            const tipoAlvaraSelect = document.getElementById('tipo_alvara');
-            const secoesAlvara = document.querySelectorAll('.secao-alvara');
-            const form = document.getElementById('form');
-            const declaracaoVeracidade = document.getElementById('declaracao_veracidade');
-
-            function ativarModoAlvara() {
-                secoesAlvara.forEach(s => {
-                    s.style.display = '';
-                    s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
-                });
-                if (declaracaoVeracidade) declaracaoVeracidade.required = true;
-                form.action = 'processar_formulario.php';
-            }
-
-            function ativarModoDenuncia() {
-                secoesAlvara.forEach(s => {
-                    s.style.display = 'none';
-                    s.querySelectorAll('[data-required]').forEach(el => { el.required = false; });
-                });
-                if (declaracaoVeracidade) declaracaoVeracidade.required = false;
-                form.action = 'processar_denuncia_publica.php';
-            }
-
-            // Inicializa required corretamente no load
-            secoesAlvara.forEach(s => {
-                s.querySelectorAll('[data-required]').forEach(el => { el.required = true; });
-            });
-
-            if (tipoAlvaraSelect) {
-                tipoAlvaraSelect.addEventListener('change', function() {
-                    const tipo = this.value;
-
-                    // Modo denúncia: esconde seções de alvará, muda action do form
-                    if (tipo === 'denuncia') {
-                        ativarModoDenuncia();
-                    } else {
-                        ativarModoAlvara();
-                    }
-
-                    // Mostrar loading enquanto carrega
-                    documentosDiv.innerHTML = `
-                    <div class="mensagem-carregando">
-                        <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #009640; margin-bottom: 15px;"></div>
-                        <p>Carregando informações...</p>
-                    </div>
-                `;
-
-                    // Fazemos uma requisição direta para a página PHP que processa os documentos
-                    fetch('scripts/obter_documentos.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: 'tipo=' + encodeURIComponent(tipo)
-                        })
-                        .then(response => response.text())
-                        .then(data => {
-                            documentosDiv.innerHTML = data;
-
-                            // Adicionamos os novos campos para o formulário principal
-                            const inputsFile = documentosDiv.querySelectorAll('input[type="file"]');
-                            inputsFile.forEach(input => {
-                                input.setAttribute('form', 'form');
-                                input.addEventListener('change', function() {
-                                    validarArquivoUpload(this);
-                                });
-                            });
-                        })
-                        .catch(error => {
-                            console.error('Erro:', error);
-                            documentosDiv.innerHTML = `
-                            <div class="mensagem-erro">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <p>Não foi possível carregar os documentos necessários. Por favor, tente novamente.</p>
-                            </div>
-                        `;
-                        });
-
-                    // Carregamento de campos dinâmicos específicos
-                    const camposDinamicos = document.getElementById('campos_dinamicos');
-
-                    if (tipo === '') {
-                        camposDinamicos.innerHTML = '';
-                        ativarModoAlvara();
-                        documentosDiv.innerHTML = `
-                        <div class="mensagem-inicial">
-                            <i class="fas fa-file-alt"></i>
-                            <p>Selecione o tipo de solicitação acima para visualizar os documentos necessários e iniciar o processo.</p>
-                        </div>
-                    `;
-                        return;
-                    }
-
-                    const tipoRules = window.SEMA_FORM_CONFIG?.tipoRules || {};
-                    const currentRules = tipoRules[tipo] || {};
-
-                    let campos = '';
-
-                    // ── Campos específicos da denúncia pública ────────────────
-                    if (tipo === 'denuncia') {
-                        campos = `
-                        <div class="form-section-label" style="margin-top:0;">Qual equipe deve analisar esta denúncia? <span style="color:#f87171">*</span></div>
-                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;margin-bottom:18px;">
-                            ${[
-                                ['meio_ambiente',    'fa-leaf',      '#22c55e', 'Meio Ambiente (SEMA)', 'Desmatamento, poluição, queimada, maus-tratos a animais, área de preservação...'],
-                                ['obras_urbanismo',  'fa-hard-hat',  '#f59e0b', 'Obras e Serviços Urbanos', 'Construção irregular, entulho, obstrução de via, terreno sujo...'],
-                            ].map(([val, icone, cor, titulo, desc]) => `
-                                <label style="flex:1;min-width:220px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);">
-                                    <input type="radio" name="setor" value="${val}" required
-                                        style="width:16px;height:16px;margin-top:2px;accent-color:${cor};cursor:pointer;">
-                                    <span>
-                                        <span style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem;">
-                                            <i class="fas ${icone}" style="color:${cor};"></i> ${titulo}
-                                        </span>
-                                        <span style="display:block;font-size:.78rem;color:rgba(255,255,255,0.55);margin-top:2px;">${desc}</span>
-                                    </span>
-                                </label>
-                            `).join('')}
-                        </div>
-                        <div style="margin-bottom:10px;">
-                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.9rem;">
-                                <input type="checkbox" name="anonimo" id="chk_anonimo" value="1"
-                                    style="width:16px;height:16px;accent-color:#ef4444;cursor:pointer;">
-                                Realizar denúncia anônima (sua identidade não será registrada)
-                            </label>
-                        </div>
-                        <div id="bloco_denunciante">
-                            <div class="form-grid-2" style="margin-top:8px;">
-                                <input id="denunciante_nome" name="denunciante_nome"
-                                    placeholder="Seu nome completo *">
-                                <input name="denunciante_endereco"
-                                    placeholder="Seu endereço (opcional)">
-                            </div>
-                        </div>
-                        <div class="form-section-label" style="margin-top:18px;">Dados do Proprietário / Responsável pela Área (opcional)</div>
-                        <div class="form-grid-2" style="margin-top:8px;">
-                            <input name="proprietario_nome" placeholder="Nome do proprietário">
-                            <input name="proprietario_contato" placeholder="Contato (telefone, e-mail)">
-                        </div>
-                        <div style="margin-top:8px;">
-                            <input name="proprietario_endereco" placeholder="Endereço / local da ocorrência" style="width:100%">
-                        </div>
-                        <div class="form-section-label" style="margin-top:18px;">Tipo de Ocorrência <span style="color:#f87171">*</span></div>
-                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;" id="tipos_denuncia_grid">
-                            ${[
-                                ['obstrucao_via',       'Obstrução de via'],
-                                ['terreno_sujo',        'Terreno sujo'],
-                                ['terreno_baldio',      'Terreno baldio'],
-                                ['esgoto_via',          'Esgoto em via pública'],
-                                ['construcao_irregular','Construção irregular'],
-                                ['entulho_construcao',  'Entulho em construção civil'],
-                                ['entulho_via',         'Entulho em via pública'],
-                                ['outros',              'Outros'],
-                            ].map(([val, label]) => `
-                                <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:.85rem;min-width:170px;">
-                                    <input type="checkbox" name="tipos_denuncia[]" value="${val}"
-                                        style="width:15px;height:15px;accent-color:#ef4444;cursor:pointer;"
-                                        onchange="toggleOutros(this)">
-                                    ${label}
-                                </label>
-                            `).join('')}
-                        </div>
-                        <div id="bloco_outros" style="display:none;margin-top:10px;">
-                            <input name="outros_descricao" placeholder="Descreva a ocorrência *" style="width:100%">
-                        </div>
-                        <div class="form-section-label" style="margin-top:18px;">Detalhes adicionais</div>
-                        <textarea name="observacoes" rows="4"
-                            style="width:100%;margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);font-size:.9rem;resize:vertical;"
-                            placeholder="Descreva os fatos com o máximo de detalhes possível..."></textarea>
-                        `;
-                        camposDinamicos.innerHTML = campos;
-
-                        // Toggle anônimo
-                        document.getElementById('chk_anonimo').addEventListener('change', function() {
-                            const bloco = document.getElementById('bloco_denunciante');
-                            const nomeInput = document.getElementById('denunciante_nome');
-                            bloco.style.display = this.checked ? 'none' : '';
-                            nomeInput.required = !this.checked;
-                        });
-                        // required inicial no nome do denunciante
-                        document.getElementById('denunciante_nome').required = true;
-
-                        return; // não carrega campos de alvará
-                    }
-
-                    // ── Campos dos tipos de alvará / autorização ────────────
-                    if (tipo === 'autorizacao_area_publica') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="localizacao_area" placeholder="Localização da área / logradouro *">
-                                <input name="informacoes_evento" placeholder="Nome / descrição do evento">
-                            </div>
-                            <div style="margin-top:8px;">
-                                <input name="cro_cronograma" placeholder="CRO / cronograma do evento (datas e horários)"
-                                    style="width:100%">
-                            </div>
-                            <div style="margin-top:8px;">
-                                <textarea name="detalhamento" rows="3"
-                                    style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
-                                    placeholder="Detalhamento da solicitação..."></textarea>
-                            </div>
-                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
-                                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
-                                Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
-                            </div>
-                        `;
-                    } else if (tipo === 'licenca_uso_ocupacao_solo') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="endereco_imovel" placeholder="Endereço do imóvel *">
-                                <input name="numero_cadastro" placeholder="Nº do cadastro imobiliário (se souber)">
-                            </div>
-                            <div style="margin-top:8px;">
-                                <textarea name="observacoes_solo" rows="3"
-                                    style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:.9rem;resize:vertical;"
-                                    placeholder="Observações sobre o uso pretendido..."></textarea>
-                            </div>
-                            <div style="margin-top:8px;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;color:rgba(255,255,255,0.55);font-size:.82rem;">
-                                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
-                                Quando aplicável, o boleto e demais orientações para pagamento serão enviados posteriormente pelos canais oficiais.
-                            </div>
-                        `;
-                    } else if (tipo === 'construcao') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="area_construcao" placeholder="Área total de construção (m²) *">
-                                <input required name="numero_pavimentos" placeholder="Número de pavimentos *">
-                            </div>
-                            <div class="form-grid-2">
-                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
-                                <div></div>
-                            </div>
-                            <div class="form-grid-2">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                            </div>
-                            <div class="form-grid-2">
-                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
-                                    <option value="" hidden>Tipo de Documento *</option>
-                                    <option value="ART">ART</option>
-                                    <option value="RRT">RRT</option>
-                                    <option value="TRT">TRT</option>
-                                    <option value="ART/RRT">ART/RRT</option>
-                                </select>
-                                <input required name="responsavel_tecnico_art" placeholder="Número do Documento *">
-                            </div>
-                            <div class="form-grid-2">
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
-                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
-                                </label>
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término / previsão de término
-                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
-                                </label>
-                            </div>
-                            <textarea required name="especificacao" placeholder="Especificação da obra (ex: edificação residencial unifamiliar de pavimento térreo, padrão popular, composição do imóvel...) *" rows="3"></textarea>
-                        `;
-                    } else if (tipo === 'habite_se' || tipo === 'habite_se_simples') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="area_construida" placeholder="Área Construída (m²) *">
-                                <input required name="numero_pavimentos" placeholder="Número de Pavimentos *">
-                            </div>
-                            <div class="form-grid-2">
-                                <input name="cadastro_imobiliario" placeholder="Cadastro Imobiliário (Sequencial)">
-                                <input name="alvara_construcao_numero" placeholder="Nº do Alvará de Construção (anterior)">
-                            </div>
-                            <div class="form-grid-2">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                            </div>
-                            <div class="form-grid-2">
-                                <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
-                                    <option value="" hidden>Tipo de Documento *</option>
-                                    <option value="ART">ART</option>
-                                    <option value="RRT">RRT</option>
-                                    <option value="TRT">TRT</option>
-                                    <option value="ART/RRT">ART/RRT</option>
-                                </select>
-                                <input required name="responsavel_tecnico_numero" placeholder="Número do Documento (ART/RRT/TRT) *">
-                            </div>
-                            <div class="form-grid-2">
-                                <input name="eng_fiscal_nome" placeholder="Engenheiro fiscal que emitiu o parecer">
-                                <input name="eng_fiscal_registro" placeholder="CREA do engenheiro fiscal">
-                            </div>
-                            <div class="form-grid-2">
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Início da obra
-                                    <input type="date" name="inicio_obra" style="width:100%; margin-top:4px;">
-                                </label>
-                                <label style="color:rgba(255,255,255,0.72); font-size:0.82rem;">Término da obra
-                                    <input type="date" name="termino_obra" style="width:100%; margin-top:4px;">
-                                </label>
-                            </div>
-                            <textarea required name="especificacao" placeholder="Composição do imóvel (ex: 1 sala, 2 quartos, 1 banheiro, 1 cozinha, 1 varanda...) *" rows="3"></textarea>
-                        `;
-                    } else if (tipo === 'desmembramento') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="area_lote" placeholder="Área desmembrada / do lote (m²) *">
-                                <input required name="area_total_terreno" placeholder="Área total do terreno (m²) *">
-                            </div>
-                            <div class="form-grid-2">
-                                <input required name="area_remanescente" placeholder="Área remanescente (m²) *">
-                                <input name="cadastro_imobiliario" placeholder="Nº do Cadastro Imobiliário (se souber)">
-                            </div>
-                            <div class="form-grid-2">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                            </div>
-                            <div class="form-grid-2">
-                                <div style="display: flex; gap: 10px; width: 100%;">
-                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
-                                        <option value="" hidden>Tipo *</option>
-                                        <option value="ART">ART</option>
-                                        <option value="RRT">RRT</option>
-                                        <option value="TRT">TRT</option>
-                                        <option value="ART/RRT">ART/RRT</option>
-                                    </select>
-                                    <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
-                                </div>
-                                <div></div>
-                            </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada do desmembramento (perímetro, pontos, coordenadas, confrontantes...) *" rows="4"></textarea>
-                        `;
-                    } else if (currentRules.ambiental) {
-                        campos = `
-                            <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
-                                <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">
-                                    <i class="fas fa-clipboard-check" style="margin-right:6px;"></i>Enquadramento Ambiental (Resolução CONEMA 04/2009)
-                                </div>
-                                <select required name="enquadramento_atividade" style="padding:10px; border:1px solid #ddd; border-radius:4px; width:100%; margin-bottom:8px;">
-                                    <option value="" hidden>Selecione a atividade do empreendimento *</option>
-                                    <?php foreach ($enquadramento_conema as $cat): ?>
-                                    <optgroup label="<?= htmlspecialchars($cat['titulo']) ?>">
-                                        <?php foreach ($cat['atividades'] as $slug => $ativ): ?>
-                                        <option value="<?= $slug ?>"><?= htmlspecialchars($ativ['nome']) ?> (<?= $ativ['potencial'] ?>)</option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem;">Potencial poluidor: P = Pequeno, M = Médio, G = Grande</small>
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <input name="localizacao_google_maps" placeholder="Link do Google Maps do empreendimento (opcional)" style="width:100%;">
-                                <small style="color:rgba(255,255,255,0.6); font-size:0.78rem; display:block; margin-top:4px;">
-                                    Abra o Google Maps, busque o local, clique em "Compartilhar" → "Copiar link" e cole aqui.
-                                </small>
-                            </div>
-                            <div class="form-grid-2">
-                                <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Número do Cadastro Técnico Federal ${currentRules.exige_ctf ? '*' : '(se houver)'}">
-                                <input ${currentRules.exige_licenca_anterior ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença anterior ${currentRules.exige_licenca_anterior ? '*' : '(se aplicável)'}">
-                            </div>
-                            <div class="form-grid-2">
-                                <div>
-                                    <input ${currentRules.exige_diario_oficial ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Dados da publicação em Diário Oficial${currentRules.exige_diario_oficial ? ' *' : ''}" style="width:100%;">
-                                    ${!currentRules.exige_diario_oficial ? '<small style="display:block;margin-top:5px;color:rgba(255,255,255,0.45);font-size:0.75rem;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Campo opcional para este tipo de licença</small>' : ''}
-                                </div>
-                                <input name="comprovante_pagamento" placeholder="Observação interna sobre pagamento (opcional)">
-                            </div>
-                            <div style="margin:-2px 0 12px; color:rgba(255,255,255,0.72); font-size:0.8rem;">
-                                O boleto será enviado posteriormente para o email informado. Não é necessário anexar comprovante nesta etapa.
-                            </div>
-                            <div class="form-grid-2">
-                                <label class="form-toggle">
-                                    <span>Possui estudo ambiental? *</span>
-                                    <div class="toggle-options">
-                                        <label><input type="radio" name="possui_estudo_ambiental" value="1" required> Sim</label>
-                                        <label><input type="radio" name="possui_estudo_ambiental" value="0" required> Não</label>
-                                    </div>
-                                </label>
-                                <input name="tipo_estudo_ambiental" placeholder="Tipo de estudo ambiental (EIA/RIMA, PCA, RCA...)">
-                            </div>
-                            <div class="form-grid-2">
-                                <label>
-                                    Data de emissão da certidão municipal (válida por até 2 anos) *
-                                    <input required type="date" name="data_certidao_municipal">
-                                </label>
-                            </div>
-                        `;
-                    } else if (tipo === 'licenca_previa_obras') {
-                        campos = `
-                            <div class="form-grid-2">
-                                <input required name="area_construida" placeholder="Área Construída (m²) *">
-                                <input required name="responsavel_tecnico_nome" placeholder="Nome do Responsável Técnico *">
-                            </div>
-                            <div class="form-grid-2">
-                                <input required name="responsavel_tecnico_registro" placeholder="Registro Profissional (CREA/CAU) *">
-                                <div style="display: flex; gap: 10px; width: 100%;">
-                                    <select required name="responsavel_tecnico_tipo_documento" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 30%;">
-                                        <option value="" hidden>Tipo *</option>
-                                        <option value="ART">ART</option>
-                                        <option value="RRT">RRT</option>
-                                        <option value="TRT">TRT</option>
-                                        <option value="ART/RRT">ART/RRT</option>
-                                    </select>
-                                    <input required name="responsavel_tecnico_art" placeholder="Número do Documento *" style="width: 70%;">
-                                </div>
-                            </div>
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da obra *" rows="4"></textarea>
-                        `;
-                    } else {
-                        campos = `
-                            <textarea required name="descricao_atividade" placeholder="Descrição detalhada da atividade *" rows="4"></textarea>
-                        `;
-                    }
-
-                    camposDinamicos.innerHTML = campos;
-
-                    // Controlar obrigatoriedade do tipo de estudo
-                    const estudoRadios = camposDinamicos.querySelectorAll('input[name=\"possui_estudo_ambiental\"]');
-                    const tipoEstudoInput = camposDinamicos.querySelector('input[name=\"tipo_estudo_ambiental\"]');
-                    if (estudoRadios.length && tipoEstudoInput) {
-                        estudoRadios.forEach((radio) => {
-                            radio.addEventListener('change', () => {
-                                if (radio.value === '1' && radio.checked) {
-                                    tipoEstudoInput.setAttribute('required', 'required');
-                                } else if (radio.value === '0' && radio.checked) {
-                                    tipoEstudoInput.removeAttribute('required');
-                                }
-                            });
-                        });
-                    }
-                });
-            }
-        });
-
-        function validarArquivoUpload(input) {
-            clearUploadMessage(input);
-            if (!input.files || input.files.length === 0) {
-                return true;
-            }
-
-            const tipoSelecionado = document.querySelector('select[name="tipo_alvara"]')?.value || '';
-            const isDenuncia = tipoSelecionado === 'denuncia';
-            const denunciaConfig = window.SEMA_FORM_CONFIG?.denunciaUpload || {};
-            const tipoConfig = window.SEMA_FORM_CONFIG?.tipoRules?.[tipoSelecionado] || {};
-            const limiteBytes = isDenuncia ? denunciaConfig.maxBytes : (tipoConfig.limite_upload || 10485760);
-            const limiteLabel = isDenuncia ? denunciaConfig.maxLabel : (tipoConfig.limite_upload_label || '10MB');
-            const extensoesPermitidas = isDenuncia ? denunciaConfig.allowedExtensions : ['pdf'];
-            const tiposPermitidos = isDenuncia ? denunciaConfig.allowedTypes : ['application/pdf'];
-
-            for (const file of Array.from(input.files)) {
-                const ext = file.name.toLowerCase().split('.').pop();
-                if (!extensoesPermitidas.includes(ext) || (file.type && !tiposPermitidos.includes(file.type))) {
-                    input.value = '';
-                    setUploadMessage(input, isDenuncia
-                        ? 'Envie apenas JPG, PNG, PDF, MP4 ou MOV.'
-                        : 'Envie apenas arquivos em PDF.');
-                    return false;
-                }
-                if (file.size > limiteBytes) {
-                    input.value = '';
-                    setUploadMessage(input, 'O arquivo "' + file.name + '" ultrapassa o limite de ' + limiteLabel + '.');
-                    return false;
-                }
-            }
-
-            setUploadMessage(input, Array.from(input.files).map(file => file.name).join(', '), true);
-            return true;
-        }
-
-        function clearUploadMessage(input) {
-            const current = input.parentElement?.querySelector('.upload-feedback');
-            if (current) current.remove();
-            input.classList.remove('field-invalid');
-        }
-
-        function setUploadMessage(input, message, success = false) {
-            clearUploadMessage(input);
-            const el = document.createElement('div');
-            el.className = success ? 'upload-feedback upload-feedback-ok' : 'upload-feedback upload-feedback-error';
-            el.textContent = message;
-            input.parentElement?.appendChild(el);
-            if (!success) input.classList.add('field-invalid');
-        }
-
-        function toggleOutros(checkbox) {
-            if (checkbox.value !== 'outros') return;
-            const bloco = document.getElementById('bloco_outros');
-            if (!bloco) return;
-            bloco.style.display = checkbox.checked ? '' : 'none';
-        }
-
-    </script>
 
     <style>
         .hp-field {
@@ -1325,7 +807,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         .field-error,
         .upload-feedback-error {
             margin-top: 6px;
-            color: #fecaca;
+            color: #b91c1c;
             font-size: 0.78rem;
             font-weight: 600;
             line-height: 1.35;
@@ -1333,7 +815,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
 
         .upload-feedback-ok {
             margin-top: 6px;
-            color: #bbf7d0;
+            color: #15803d;
             font-size: 0.76rem;
             line-height: 1.35;
             word-break: break-word;
@@ -1396,9 +878,9 @@ foreach ($tipos_alvara as $slug => $tipo) {
             margin-bottom: 10px;
         }
 
-        /* Estilo para labels dos campos dinâmicos - BRANCO */
+        /* Estilo para labels dos campos dinâmicos */
         .form-grid-2 > label {
-            color: white !important;
+            color: #6b7280 !important;
             font-weight: 500;
             font-size: 14px;
             display: flex;
@@ -1411,12 +893,12 @@ foreach ($tipos_alvara as $slug => $tipo) {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            color: white !important;
+            color: #6b7280 !important;
             font-weight: 500;
         }
 
         .form-toggle > span {
-            color: white !important;
+            color: #6b7280 !important;
             font-size: 14px;
             margin-bottom: 4px;
         }
@@ -1432,19 +914,19 @@ foreach ($tipos_alvara as $slug => $tipo) {
             display: flex;
             align-items: center;
             gap: 8px;
-            color: white !important;
+            color: #333 !important;
             font-size: 14px;
             cursor: pointer;
             padding: 8px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid #d9dedb;
             border-radius: 8px;
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: #fff;
             transition: all 0.3s ease;
         }
 
         .form-toggle .toggle-options label:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background-color: #f0fdf4;
+            border-color: #009640;
         }
 
         .form-toggle .toggle-options input[type="radio"] {
@@ -1457,7 +939,7 @@ foreach ($tipos_alvara as $slug => $tipo) {
         }
 
         .form-toggle .toggle-options label:has(input:checked) {
-            background-color: rgba(0, 150, 64, 0.3);
+            background-color: #f0fdf4;
             border-color: #009640;
         }
 

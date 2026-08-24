@@ -12,8 +12,9 @@ $protocolo       = $_SESSION['protocolo'];
 $sucesso         = $_SESSION['sucesso'] ?? 'Requerimento enviado com sucesso!';
 $proprietario    = $_SESSION['proprietario_nome'] ?? '';
 $emailFalhou     = !empty($_SESSION['email_confirmacao_falhou']);
+$emailDestino    = $_SESSION['email_confirmacao_destino'] ?? '';
 
-unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou']);
+unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou'], $_SESSION['email_confirmacao_destino']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -249,30 +250,30 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                     <i class="fas fa-triangle-exclamation" style="color:#b91c1c;font-size:1.1rem;"></i>
                     <span>Não conseguimos enviar a confirmação por e-mail agora. <strong>Anote o número do protocolo acima</strong> — você pode consultar o andamento a qualquer momento pelo protocolo, mesmo sem o e-mail.</span>
                 </div>
+                <?php elseif ($emailDestino): ?>
+                <div class="aviso" style="background:#eef8f2;border-left-color:#0a6b34;color:#14532d;padding:16px 18px;">
+                    <i class="fas fa-envelope-circle-check" style="color:#0a6b34;font-size:1.1rem;"></i>
+                    <span>A confirmação foi enviada para <strong><?= htmlspecialchars($emailDestino) ?></strong>. Confira também as pastas de spam e lixo eletrônico.</span>
+                </div>
                 <?php endif; ?>
 
                 <div class="aviso">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>Este é um <strong>registro de entrada interno</strong>. O protocolo oficial para acompanhamento no portal da prefeitura será enviado ao seu e-mail em até <strong>7 dias úteis</strong>.</span>
-                </div>
-
-                <div class="aviso" style="background:#fef9ec;border-left-color:#d97706;color:#78350f;padding:16px 18px;">
-                    <i class="fas fa-receipt" style="color:#d97706;font-size:1.1rem;"></i>
-                    <span>Caso este protocolo exija pagamento de taxa, o <strong>boleto será liberado por um link seguro enviado para o seu e-mail</strong>. Por essa página você poderá acessar o boleto e enviar o comprovante.</span>
+                    <span>Este é um <strong>registro de entrada interno</strong>. Guarde-o até receber o protocolo oficial por e-mail, em até <strong>7 dias úteis</strong>.</span>
                 </div>
 
                 <ul class="passos">
                     <li>
                         <span class="num">1</span>
-                        <span>Anote ou fotografe o número acima para referência interna.</span>
+                        <span>A equipe fará a análise inicial do requerimento.</span>
                     </li>
                     <li>
                         <span class="num">2</span>
-                        <span>Aguarde os e-mails da equipe. Se houver cobrança, o boleto chegará por email antes da conclusão do processo.</span>
+                        <span>Se houver taxa, você receberá um link seguro para acessar o boleto e enviar o comprovante.</span>
                     </li>
                     <li>
                         <span class="num">3</span>
-                        <span>Depois, use o protocolo oficial recebido por e-mail para acompanhar o andamento no portal do contribuinte.</span>
+                        <span>O protocolo oficial e os documentos finais serão enviados ao mesmo e-mail informado.</span>
                     </li>
                     <li>
                         <span class="num">4</span>

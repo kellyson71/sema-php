@@ -1,5 +1,9 @@
 <?php
 require_once '../includes/config.php';
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+}
 
                 // Incluir arquivos necessários
                 require_once '../includes/database.php';
@@ -93,6 +97,7 @@ require_once '../includes/config.php';
 
     <!-- CSS -->
     <link rel="stylesheet" href="../css/index.css">
+    <link rel="stylesheet" href="../css/public-redesign.css?v=<?= (int) filemtime(__DIR__ . '/../css/public-redesign.css') ?>">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -396,6 +401,7 @@ require_once '../includes/config.php';
                     <i class="fas fa-file-alt"></i>
                 </div>
                 <h2>Consulta de Alvará</h2>
+                <?php $adminUrl = '../admin/index.php'; include __DIR__ . '/../includes/admin_session_badge.php'; ?>
 
                 <?php if ($mensagem): ?>
                     <div class="mensagem <?php echo $mensagem['tipo']; ?>">

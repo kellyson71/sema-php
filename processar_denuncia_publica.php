@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/public_form_components.php';
 
 session_start();
 
@@ -48,6 +49,12 @@ $erros = [];
 if (!$anonimo && empty($denuncianteNome)) {
     $erros[] = 'Informe seu nome ou marque a opção de denúncia anônima.';
 }
+if (empty($propEndereco)) {
+    $erros[] = 'Informe o local da ocorrência.';
+}
+if (empty($observacoes)) {
+    $erros[] = 'Descreva a ocorrência denunciada.';
+}
 if (!in_array($setor, ['meio_ambiente', 'obras_urbanismo'], true)) {
     $erros[] = 'Selecione qual equipe deve analisar a denúncia.';
 }
@@ -56,6 +63,12 @@ if (empty($tiposSelecionados)) {
 }
 if (in_array('outros', (array) $tiposSelecionados, true) && empty($outrosDescricao)) {
     $erros[] = 'Descreva a ocorrência no campo "Outros".';
+}
+if (!$anonimo && $denuncianteEnd !== '' && !enderecoPauDosFerrosValido($denuncianteEnd)) {
+    $erros[] = 'Revise seu endereço: informe rua, número ou SN, bairro e Pau dos Ferros/RN.';
+}
+if ($propEndereco !== '' && !enderecoPauDosFerrosValido($propEndereco)) {
+    $erros[] = 'Revise o endereço/local da ocorrência: informe rua, número ou SN, bairro e Pau dos Ferros/RN.';
 }
 
 if (!empty($erros)) {
@@ -91,7 +104,7 @@ $extensoesPermitidas = [
     'mp4' => ['video/mp4'],
     'mov' => ['video/quicktime'],
 ];
-$limiteEvidencia = 20 * 1024 * 1024;
+$limiteEvidencia = 100 * 1024 * 1024;
 if (!empty($_FILES['evidencias']['name'][0])) {
     $arquivos = $_FILES['evidencias'];
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -108,7 +121,7 @@ if (!empty($_FILES['evidencias']['name'][0])) {
 
         if (($arquivos['size'][$i] ?? 0) > $limiteEvidencia) {
             if ($finfo) finfo_close($finfo);
-            $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Cada evidência deve ter no máximo 20MB.'];
+            $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Cada evidência deve ter no máximo 100MB.'];
             header('Location: index.php');
             exit;
         }

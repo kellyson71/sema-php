@@ -48,7 +48,7 @@ if ($tipo === 'denuncia') {
                         accept="image/jpeg,image/png,image/jpg,application/pdf,video/mp4,video/quicktime">
                 </div>
                 <span class="file-input-status"><i class="fas fa-check-circle"></i><span class="nome"></span></span>
-                <small class="formato-arquivo">Formatos aceitos: JPG, PNG, PDF, MP4 (Máx. 20MB por arquivo)</small>
+                <small class="formato-arquivo">Formatos aceitos: JPG, PNG, PDF, MP4 (Máx. 100MB por arquivo)</small>
             </div>
         </div>
         <div class="documentos-section" style="background:#fef2f2;padding:14px;border-radius:8px;margin-top:8px;">
@@ -62,7 +62,7 @@ if ($tipo === 'denuncia') {
     exit;
 }
 
-$limiteLabel = ($alvara['categoria'] ?? '') === 'ambiental' ? '40MB' : '10MB';
+$limiteLabel = '100MB';
 
 echo '<div class="documentos-lista">';
 echo '<h3>' . $alvara['nome'] . '</h3>';
