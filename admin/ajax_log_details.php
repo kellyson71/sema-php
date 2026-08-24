@@ -40,8 +40,8 @@ try {
             <?php if ($log['status'] === 'SUCESSO'): ?>
                 <div class="display-6 me-3"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <h5 class="alert-heading fw-bold mb-1">Email Enviado com Sucesso</h5>
-                    <p class="mb-0 small opacity-75">Processado em <?php echo date('d/m/Y \à\s H:i:s', strtotime($log['data_envio'])); ?></p>
+                    <h5 class="alert-heading fw-bold mb-1"><?php echo !empty($log['eh_teste']) ? 'Simulação registrada' : 'Envio aceito pelo provedor'; ?></h5>
+                    <p class="mb-0 small opacity-75">Processado em <?php echo date('d/m/Y \à\s H:i:s', strtotime($log['data_envio'])); ?> · recebimento não confirmado</p>
                 </div>
             <?php else: ?>
                 <div class="display-6 me-3"><i class="fas fa-times-circle"></i></div>
@@ -50,6 +50,23 @@ try {
                     <p class="mb-0 small opacity-75">Ocorreu um erro durante o processamento.</p>
                 </div>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="border rounded-3 p-3 h-100 bg-success-subtle border-success-subtle">
+                <div class="small text-success-emphasis fw-bold text-uppercase mb-1"><i class="fas fa-fingerprint me-1"></i> Evidência de envio</div>
+                <div class="fw-semibold text-dark"><?php echo $log['status'] === 'SUCESSO' ? 'Aceito pela Hostinger Mail API' : 'Não aceito'; ?></div>
+                <div class="small text-muted mt-1"><?php echo htmlspecialchars($log['detalhes_envio'] ?? ($log['erro'] ?? 'Sem retorno adicional.')); ?></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="border rounded-3 p-3 h-100 bg-warning-subtle border-warning-subtle">
+                <div class="small text-warning-emphasis fw-bold text-uppercase mb-1"><i class="fas fa-inbox me-1"></i> Evidência de recebimento</div>
+                <div class="fw-semibold text-dark">Não confirmada pelo provedor</div>
+                <div class="small text-muted mt-1">O registro não contém webhook de entrega ou confirmação de leitura.</div>
+            </div>
         </div>
     </div>
 
