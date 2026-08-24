@@ -23,6 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    echo json_encode(['success' => false, 'error' => 'A sessão expirou. Recarregue a página e tente novamente.']);
+    exit;
+}
+
 $documentoId    = trim($_POST['documento_id'] ?? '');
 $requerimentoId = (int) ($_POST['requerimento_id'] ?? 0);
 $motivo         = trim($_POST['motivo'] ?? '');

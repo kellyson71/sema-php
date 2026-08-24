@@ -4,6 +4,10 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/coassinatura_helper.php';
 verificaLogin();
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $documentoId = trim($_GET['documento_id'] ?? '');
 $adminId     = (int) ($_SESSION['admin_id'] ?? 0);
 
@@ -128,7 +132,7 @@ include 'header.php';
         <?php endif; ?>
 
         <div class="co-progress-label">
-            Progresso —
+            Progresso ·
             <span class="co-count"><?= $status['total_assinado'] ?> de <?= $status['total_esperado'] ?></span> assinaram
         </div>
 
@@ -157,7 +161,7 @@ include 'header.php';
                 <div class="s-ic"><i class="fas fa-xmark"></i></div>
                 <div>
                     <div class="s-nome"><?= htmlspecialchars($r['nome']) ?></div>
-                    <div class="s-meta">Recusou<?= !empty($r['motivo']) ? ' — ' . htmlspecialchars($r['motivo']) : '' ?></div>
+                    <div class="s-meta">Recusou<?= !empty($r['motivo']) ? ': ' . htmlspecialchars($r['motivo']) : '' ?></div>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -188,6 +192,7 @@ include 'header.php';
 <script>
 const _docId = <?= json_encode($documentoId) ?>;
 const _reqId = <?= (int) $requerimentoId ?>;
+const _csrfAssinatura = <?= json_encode($_SESSION['csrf_token']) ?>;
 
 function assinarDoc() {
     const pin = document.getElementById('pinCo').value;
@@ -201,6 +206,7 @@ function assinarDoc() {
     fd.append('documento_id', _docId);
     fd.append('requerimento_id', _reqId);
     fd.append('pin_assinatura', pin);
+    fd.append('csrf_token', _csrfAssinatura);
     fetch('assinatura/coassinar.php', { method:'POST', body:fd })
         .then(r => r.json())
         .then(d => {
@@ -236,6 +242,7 @@ function recusarDoc() {
         fd.append('documento_id', _docId);
         fd.append('requerimento_id', _reqId);
         fd.append('motivo', res.value.trim());
+        fd.append('csrf_token', _csrfAssinatura);
         fetch('assinatura/recusar_assinatura.php', { method:'POST', body:fd })
             .then(r => r.json())
             .then(d => {

@@ -7,11 +7,31 @@ verificaLogin();
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 if (!$requerimento_id) die("Acesso Negado: ID do requerimento não fornecido.");
 
-$stmt = $pdo->prepare("SELECT protocolo, status, setor_atual FROM requerimentos WHERE id = ?");
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// O nome do requerente vive em `requerentes`, não em `requerimentos` — mesmo
+// JOIN que admin/requerimentos.php faz. LEFT JOIN porque o cabeçalho é só
+// informativo: se o vínculo faltar, a tela abre sem o nome em vez de morrer.
+$stmt = $pdo->prepare("
+    SELECT r.protocolo, r.status, r.setor_atual, r.tipo_alvara,
+           req.nome AS requerente_nome
+    FROM requerimentos r
+    LEFT JOIN requerentes req ON r.requerente_id = req.id
+    WHERE r.id = ?
+");
 $stmt->execute([$requerimento_id]);
 $req = $stmt->fetch();
 if (!$req) die("Erro: Requerimento não encontrado.");
 $setorReq = $req['setor_atual'] ?? 'setor1';
+
+require_once __DIR__ . '/../../tipos_alvara.php';
+
+// Subtítulo do cabeçalho: "Alvará de Construção · Maria Nogueira", como no
+// redesenho. tipos_alvara.php dá o nome bonito; sem ele, cai no slug tratado.
+$tipoAlvaraNome = $tipos_alvara[$req['tipo_alvara']]['nome']
+    ?? ucwords(str_replace('_', ' ', (string) $req['tipo_alvara']));
 
 $titulo_pagina = 'Selecionar Template';
 include '../header.php';
@@ -159,53 +179,6 @@ include '../header.php';
         }
 
         /* Preview renderizada via iframe — miniatura centralizada */
-        .preview-miniature {
-            background: #fff;
-            border-radius: 6px;
-            height: 80px;
-            overflow: hidden;
-            margin-top: 10px;
-            border: 1px solid #e2e8f0;
-            position: relative;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-        }
-        .preview-miniature iframe {
-            width: 794px;
-            height: 1123px;
-            border: none;
-            transform: scale(0.22);
-            transform-origin: top center;
-            pointer-events: none;
-            flex-shrink: 0;
-        }
-        .preview-miniature::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 30px;
-            background: linear-gradient(transparent, #fff);
-            pointer-events: none;
-        }
-        .preview-miniature .expand-hint {
-            position: absolute;
-            bottom: 4px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.62rem;
-            color: #94a3b8;
-            z-index: 2;
-            background: rgba(255,255,255,0.9);
-            padding: 2px 8px;
-            border-radius: 10px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .preview-miniature:hover .expand-hint {
-            opacity: 1;
-            color: var(--sema-green);
-        }
 
         /* ═══════════════════════════════════════════════
            MODAL — Preview como folha de papel
@@ -349,47 +322,44 @@ include '../header.php';
         /* ═══════════════════════════════════════════════
            ABAS DE TEMPLATES
         ═══════════════════════════════════════════════ */
-        #tabsTemplates {
-            border-bottom: 2px solid #e2e8f0;
-        }
-        #tabsTemplates .nav-link {
-            color: #64748b;
-            border: none;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            padding: 10px 18px;
-            border-radius: 0;
-            transition: color 0.2s, border-color 0.2s;
-        }
-        #tabsTemplates .nav-link:hover {
-            color: var(--sema-green);
-            background: transparent;
-        }
-        #tabsTemplates .nav-link.active {
-            color: var(--sema-green);
-            border-bottom-color: var(--sema-green);
-            background: transparent;
-            font-weight: 700;
-        }
     </style>
 
-    <!-- Navegação de Topo -->
-    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-        <div class="d-flex align-items-center gap-3">
-            <a href="../visualizar_requerimento.php?id=<?= $requerimento_id ?>" class="btn btn-sm btn-light border fw-medium px-3 text-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Voltar
-            </a>
-            <div>
-                <h5 class="mb-0 fw-bold text-dark">
-                    <i class="fas fa-file-signature me-2" style="color: var(--sema-green)"></i> Selecionar Template
-                </h5>
-                <small class="text-muted">Escolha um modelo para gerar o documento oficial do processo</small>
-            </div>
-        </div>
-        <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: #f0fdf4; color: var(--sema-green); border: 1px solid #bbf7d0; font-size: 0.85rem;">
-            <i class="fas fa-hashtag me-1"></i><?= htmlspecialchars($req['protocolo']) ?>
-        </span>
+    <!-- ══════════════════════════════════════════════════
+         Cabeçalho do redesenho: trilha + "Escolher modelo" + stepper.
+         O stepper é estático nesta tela — aqui é sempre o passo 1;
+         editor.php acende o 2 e o modal de assinatura, o 3.
+    ══════════════════════════════════════════════════ -->
+    <div class="proc-crumb">
+        <a href="../visualizar_requerimento.php?id=<?= $requerimento_id ?>">
+            <i class="fas fa-arrow-left" style="font-size:.72rem"></i> Voltar ao processo
+        </a>
+        <span class="proc-crumb-sep">/</span>
+        <span class="proc-crumb-proto">#<?= htmlspecialchars($req['protocolo']) ?></span>
+        <span class="proc-crumb-sep">/</span>
+        <span>Gerar documento</span>
     </div>
+
+    <div class="doc-head">
+        <div class="doc-head-main">
+            <h2>Escolher modelo</h2>
+            <p>
+                <?= htmlspecialchars($tipoAlvaraNome) ?>
+                <?php if (!empty($req['requerente_nome'])): ?>
+                    · <?= htmlspecialchars($req['requerente_nome']) ?>
+                <?php endif; ?>
+            </p>
+        </div>
+        <ol class="doc-stepper" aria-label="Etapas para emitir o documento">
+            <li class="doc-step ativo"><span class="doc-step-num">1</span>Modelo</li>
+            <li class="doc-step-fio" aria-hidden="true"></li>
+            <li class="doc-step"><span class="doc-step-num">2</span>Editar</li>
+            <li class="doc-step-fio" aria-hidden="true"></li>
+            <li class="doc-step"><span class="doc-step-num">3</span>Assinar</li>
+        </ol>
+    </div>
+
+    <div class="doc-layout">
+      <div class="doc-col-principal">
 
     <!-- Seção: Meus Modelos (topo, visível apenas se houver) -->
     <div id="secao-meus-modelos" style="display:none;margin-bottom:24px;">
@@ -399,73 +369,97 @@ include '../header.php';
         <div class="row g-3 mb-2" id="lista-meus-templates"></div>
     </div>
 
-    <!-- Abas de navegação -->
-    <ul class="nav nav-tabs mb-4" id="tabsTemplates" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold active" id="tab-todos" data-bs-toggle="tab"
-                    data-bs-target="#pane-todos" type="button" role="tab">
-                <i class="fas fa-layer-group me-2 text-success"></i> Todos os Modelos
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold" id="tab-historico" data-bs-toggle="tab"
-                    data-bs-target="#pane-historico" type="button" role="tab">
-                <i class="fas fa-history me-2 text-warning"></i> Histórico
-            </button>
-        </li>
-    </ul>
-
-    <div class="tab-content" id="tabsTemplatesContent">
-
-        <!-- Aba: Todos os Modelos -->
-        <div class="tab-pane fade show active" id="pane-todos" role="tabpanel">
-            <!-- Recomendados para o setor -->
-            <div id="secao-recomendados" style="display:none;margin-bottom:24px;">
-                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
-                    <i class="fas fa-bolt me-1" style="color:#f59e0b"></i>Recomendados para este setor
-                </p>
-                <div class="row g-3" id="lista-recomendados"></div>
-            </div>
-            <!-- Grupo: Ambiental / Pareceres -->
-            <div id="secao-ambiental" style="margin-bottom:24px;">
-                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
-                    <i class="fas fa-leaf me-1" style="color:#059669"></i>Ambiental / Pareceres
-                </p>
-                <div class="row g-3" id="lista-ambiental">
-                    <?php for($i=0;$i<4;$i++): ?><div class="col-xl-3 col-md-4 col-sm-6"><div class="skeleton skeleton-card"></div></div><?php endfor; ?>
-                </div>
-            </div>
-            <!-- Grupo: Alvarás / Obras -->
-            <div id="secao-obras" style="margin-bottom:24px;">
-                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
-                    <i class="fas fa-helmet-safety me-1" style="color:#d97706"></i>Alvarás / Obras
-                </p>
-                <div class="row g-3" id="lista-obras">
-                    <?php for($i=0;$i<4;$i++): ?><div class="col-xl-3 col-md-4 col-sm-6"><div class="skeleton skeleton-card"></div></div><?php endfor; ?>
-                </div>
-            </div>
-            <!-- Outros modelos -->
-            <div id="secao-outros" style="display:none;margin-bottom:24px;">
-                <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:10px;">
-                    <i class="fas fa-file-alt me-1" style="color:#6b7280"></i>Outros
-                </p>
-                <div class="row g-3" id="lista-outros"></div>
-            </div>
+    <!-- Busca + filtros por categoria (chips), como no redesenho -->
+    <div class="doc-filtros">
+        <div class="doc-busca">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="search" id="busca-modelo" placeholder="Buscar modelo por nome"
+                   autocomplete="off" aria-label="Buscar modelo por nome">
         </div>
+        <div class="doc-chips" id="doc-chips">
+            <button type="button" class="doc-chip ativo" data-cat="todos">Todos</button>
+            <button type="button" class="doc-chip" data-cat="final">Documento final</button>
+            <button type="button" class="doc-chip" data-cat="parecer">Parecer técnico</button>
+            <button type="button" class="doc-chip" data-cat="fiscal">Fiscalização</button>
+        </div>
+    </div>
 
-        <!-- Aba: Histórico -->
-        <div class="tab-pane fade" id="pane-historico" role="tabpanel">
-            <div class="row g-3 mb-4" id="lista-historico">
-                <div class="col-12">
-                    <div class="text-center text-muted py-3">
-                        <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
-                        <small>Verificando histórico...</small>
+    <div id="doc-sem-resultado" class="doc-vazio" style="display:none">
+        <i class="fas fa-magnifying-glass"></i>
+        Nenhum modelo corresponde à busca.
+    </div>
+
+            <?php /* Seções do redesenho: o agrupamento passou a ser por FINALIDADE
+                     do documento (o que ele faz no processo), não pela área temática.
+                     Cada bloco é preenchido pelo JS a partir do slug do template. */ ?>
+            <div class="doc-secoes">
+                <section class="doc-secao" id="secao-final" data-grupo="final">
+                    <header class="doc-secao-head">
+                        <h3>Documento final</h3>
+                        <span class="doc-secao-contagem"></span>
+                        <span class="doc-secao-hint">Vai assinado para o cidadão e encerra o processo</span>
+                    </header>
+                    <div class="doc-grid" id="lista-final">
+                        <?php for ($i = 0; $i < 3; $i++): ?><div class="skeleton skeleton-card"></div><?php endfor; ?>
                     </div>
+                </section>
+
+                <section class="doc-secao" id="secao-parecer" data-grupo="parecer">
+                    <header class="doc-secao-head">
+                        <h3>Parecer técnico</h3>
+                        <span class="doc-secao-contagem"></span>
+                        <span class="doc-secao-hint">Análise interna que fundamenta a decisão — cada tipo tem a versão ambiental</span>
+                    </header>
+                    <div class="doc-grid" id="lista-parecer">
+                        <?php for ($i = 0; $i < 3; $i++): ?><div class="skeleton skeleton-card"></div><?php endfor; ?>
+                    </div>
+                </section>
+
+                <section class="doc-secao" id="secao-fiscal" data-grupo="fiscal">
+                    <header class="doc-secao-head">
+                        <h3>Fiscalização</h3>
+                        <span class="doc-secao-contagem"></span>
+                        <span class="doc-secao-hint">Usados a partir de vistoria ou denúncia</span>
+                    </header>
+                    <div class="doc-grid" id="lista-fiscal"></div>
+                </section>
+
+                <section class="doc-secao" id="secao-outros" data-grupo="outros" style="display:none">
+                    <header class="doc-secao-head">
+                        <h3>Outros</h3>
+                        <span class="doc-secao-contagem"></span>
+                        <span class="doc-secao-hint">Modelos sem categoria definida</span>
+                    </header>
+                    <div class="doc-grid" id="lista-outros"></div>
+                </section>
+            </div>
+
+      </div><!-- /doc-col-principal -->
+
+      <!-- ══════════════════════════════════════════════════
+           Rail: documentos que já existem neste processo (era a aba
+           "Histórico") e a saída para um documento em branco.
+      ══════════════════════════════════════════════════ -->
+      <aside class="doc-rail">
+        <div class="doc-rail-card">
+            <div class="doc-rail-head">Documentos deste processo</div>
+            <div id="lista-historico">
+                <div class="doc-rail-vazio">
+                    <div class="spinner-border spinner-border-sm me-2 text-secondary" role="status"></div>
+                    Verificando histórico...
                 </div>
             </div>
         </div>
 
-    </div><!-- /tab-content -->
+        <div class="doc-rail-branco">
+            <div class="doc-rail-branco-tit">Nenhum modelo serve?</div>
+            <p>Comece de uma página em branco com o cabeçalho oficial da secretaria já aplicado.</p>
+            <a href="editor.php?requerimento_id=<?= $requerimento_id ?>&template=em_branco">
+                <i class="fas fa-file" style="color:#66756d"></i>Documento em branco
+            </a>
+        </div>
+      </aside>
+    </div><!-- /doc-layout -->
 
     <!-- Modal de preview expandida — folha de papel -->
     <div class="preview-modal-overlay" id="previewModal" onclick="fecharPreviewModal(event)">
@@ -499,6 +493,7 @@ include '../header.php';
 
     <script>
     const reqId = <?= $requerimento_id ?>;
+    const csrfToken = <?= json_encode($_SESSION['csrf_token']) ?>;
     const adminNivel = <?= json_encode($_SESSION['admin_nivel'] ?? '') ?>;
     const setorReq = <?= json_encode($setorReq) ?>;
     let favoritosSet = new Set();
@@ -516,13 +511,6 @@ include '../header.php';
     const setorUsuario = nivelParaSetor[adminNivel] || setorReq;
 
     // Templates recomendados por setor (badges que têm prioridade)
-    const recomendadosPorSetor = {
-        'setor1': ['Ambiental', 'Parecer', 'Habite-se', 'Licença'],
-        'setor2': ['Construção', 'Habite-se', 'Desmembramento', 'Licença'],
-        'setor3': [],
-    };
-    const badgesAmbiental = ['Ambiental', 'Parecer', 'Licença', 'Livre'];
-    const badgesObras     = ['Construção', 'Habite-se', 'Desmembramento', 'Econômico'];
 
     /* ─── Helpers de badge ─────────────────────────────────── */
     function badgeClass(badge) {
@@ -562,53 +550,171 @@ include '../header.php';
     }
 
     /* ─── Montar HTML de um card de template ───────────────── */
+    /* ─── Famílias visuais dos modelos ─────────────────────
+       Cor e ícone por assunto, nos valores do redesenho. O verde é o
+       padrão; só Auto de Infração foge para o vermelho, por ser o único
+       documento punitivo do conjunto. */
+    const FAMILIAS = {
+        construcao:     { rotulo: 'Construção',      cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-helmet-safety' },
+        ambiental:      { rotulo: 'Ambiental',       cor: '#0d5433', bg: '#e9f1ec', icone: 'fa-leaf' },
+        desmembramento: { rotulo: 'Desmembramento',  cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-map-location-dot' },
+        habitese:       { rotulo: 'Habite-se',       cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-house-circle-check' },
+        licenca:        { rotulo: 'Licença',         cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-clipboard-check' },
+        economico:      { rotulo: 'Econômico',       cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-store' },
+        notificacao:    { rotulo: 'Notificação',     cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-triangle-exclamation' },
+        auto:           { rotulo: 'Auto de infração',cor: '#b13232', bg: '#f7eaea', icone: 'fa-ban' },
+        laudo:          { rotulo: 'Laudo',           cor: '#3d5c46', bg: '#eef2ef', icone: 'fa-microscope' },
+        comunicado:     { rotulo: 'Comunicado',      cor: '#55635b', bg: '#eef2ef', icone: 'fa-bullhorn' },
+        generico:       { rotulo: 'Modelo',          cor: '#55635b', bg: '#eef2ef', icone: 'fa-file-signature' },
+    };
+
+    /* Grupo = o que o documento FAZ no processo. Sai do slug do template,
+       que é estável — o badge é texto de exibição e pode mudar. */
+    function grupoDoTemplate(nome) {
+        const n = String(nome || '').toLowerCase();
+        if (n.indexOf('parecer_tecnico') === 0 || n.indexOf('parecer') === 0) return 'parecer';
+        if (['notificacao_fiscal', 'auto_de_infracao', 'laudo_relatorio_tecnico',
+             'comunicados_orientacoes'].indexOf(n) !== -1) return 'fiscal';
+        if (['alvara_de_construcao', 'carta_habite_se', 'alvara_de_desmembramento',
+             'licenca_previa_projeto', 'licenca_atividade_economica'].indexOf(n) !== -1) return 'final';
+        return 'outros';
+    }
+
+    function familiaDoTemplate(nome, badge) {
+        const n = String(nome || '').toLowerCase();
+        if (n.indexOf('ambiental') !== -1) return FAMILIAS.ambiental;
+        if (n.indexOf('construcao') !== -1) return FAMILIAS.construcao;
+        if (n.indexOf('habite') !== -1) return FAMILIAS.habitese;
+        if (n.indexOf('desmembramento') !== -1) return FAMILIAS.desmembramento;
+        if (n.indexOf('licenca_previa') !== -1) return FAMILIAS.licenca;
+        if (n.indexOf('economica') !== -1) return FAMILIAS.economico;
+        if (n.indexOf('notificacao') !== -1) return FAMILIAS.notificacao;
+        if (n.indexOf('auto_de_infracao') !== -1) return FAMILIAS.auto;
+        if (n.indexOf('laudo') !== -1) return FAMILIAS.laudo;
+        if (n.indexOf('comunicado') !== -1) return FAMILIAS.comunicado;
+        return FAMILIAS.generico;
+    }
+
     function buildCardTemplate(t, idx) {
-        const nome       = t.nome  || t;
+        const nome       = t.nome || t;
         const label      = t.label_amigavel || nome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const desc       = t.descricao  || 'Modelo padrão oficial da secretaria.';
-        const icone      = t.icone      || 'fa-file-signature';
-        const cor        = t.icone_cor  || 'text-secondary';
-        const badge      = t.badge      || 'Parecer';
-        const preview    = t.preview    || desc;
-        const delay      = (idx * 0.06).toFixed(2);
+        const desc       = t.descricao || 'Modelo padrão oficial da secretaria.';
+        const familia    = familiaDoTemplate(nome, t.badge);
+        const badge      = t.badge || familia.rotulo;
         const isFav      = favoritosSet.has(nome);
-        const favIcon    = isFav ? 'fas fa-star text-warning' : 'far fa-star text-muted';
+        const favIcon    = isFav ? 'fas fa-star' : 'far fa-star';
+        const favCor     = isFav ? '#e0a91b' : '#c8d2cc';
         const favTitle   = isFav ? 'Remover dos Meus Modelos' : 'Adicionar aos Meus Modelos';
         const isMelhor   = t.melhor_match === true;
-        const extraClass = isMelhor ? ' melhor-match' : '';
-        const melhorBadge= isMelhor
-            ? `<span class="badge-melhor-match"><i class="fas fa-star me-1" style="font-size:.55rem"></i>Melhor encaixe</span>`
-            : '';
-        const fillScore  = (t.fill_score != null && t.fill_score > 0)
-            ? `<div class="mt-1" style="font-size:.62rem;color:#94a3b8;text-align:right">${t.fill_score}% preenchível</div>`
-            : '';
+        const urlEditor  = `editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(nome)}`;
+        const fillTexto  = (t.fill_score != null && t.fill_score > 0)
+            ? `${t.fill_score}% preenchido`
+            : 'Modelo em branco';
 
         return `
-        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="tpl-card-${escapeHtml(nome)}" style="animation-delay:${delay}s">
-            <div class="card template-card border-0 shadow-sm h-100 position-relative${extraClass}">
-                ${melhorBadge}
-                <button class="btn btn-sm position-absolute top-0 end-0 m-2 p-1 border-0 bg-transparent"
-                        style="z-index:2;line-height:1" title="${favTitle}"
-                        onclick="toggleFavorito('${escaparAttr(nome)}', this)">
-                    <i class="${favIcon}" style="font-size:1rem"></i>
-                </button>
-                <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(nome)}"
-                   class="card-body text-center p-4 text-decoration-none d-block"
-                   title="${escaparAttr(desc)}">
-                    <div class="icon-wrap mb-1">
-                        <i class="fas ${icone} ${cor} fs-2"></i>
-                    </div>
-                    <span class="tpl-badge ${badgeClass(badge)} mb-2 d-inline-block">${badge}</span>
-                    <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature" onclick="expandirPreview('${escaparAttr(nome)}', '${escaparAttr(label)}', event)">
-                        <iframe src="../templates/${encodeURIComponent(nome)}.html" loading="lazy" sandbox></iframe>
-                        <span class="expand-hint"><i class="fas fa-expand me-1"></i>Expandir</span>
-                    </div>
-                    ${fillScore}
-                </a>
+        <div class="tpl-card template-card-wrapper${isMelhor ? ' melhor' : ''}"
+             id="tpl-card-${escapeHtml(nome)}" data-grupo="${grupoDoTemplate(nome)}">
+            <div class="tpl-card-corpo" onclick="location.href='${urlEditor}'">
+                <span class="tpl-icone" style="background:${familia.bg};color:${familia.cor}">
+                    <i class="fas ${familia.icone}"></i>
+                </span>
+                <span class="tpl-txt">
+                    <span class="tpl-badges">
+                        <span class="tpl-badge">${escapeHtml(badge)}</span>
+                        ${isMelhor ? '<span class="tpl-melhor"><i class="fas fa-wand-magic-sparkles"></i>MELHOR ENCAIXE</span>' : ''}
+                    </span>
+                    <span class="tpl-nome">${escapeHtml(label)}</span>
+                    <span class="tpl-desc">${escapeHtml(desc)}</span>
+                </span>
+                <span class="tpl-acoes">
+                    <button type="button" class="tpl-fav" title="${favTitle}"
+                            onclick="event.stopPropagation();toggleFavorito('${escaparAttr(nome)}', this)">
+                        <i class="${favIcon}" style="color:${favCor}"></i>
+                    </button>
+                    <?php /* A miniatura em iframe saiu do card no redesenho, mas a
+                             prévia em tamanho de folha continua útil antes de escolher
+                             — virou este botão, em vez de sumir junto. */ ?>
+                    <button type="button" class="tpl-olho" title="Ver prévia do modelo"
+                            onclick="event.stopPropagation();expandirPreview('${escaparAttr(nome)}', '${escaparAttr(label)}', event)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </span>
+            </div>
+            <div class="tpl-rodape" onclick="location.href='${urlEditor}'">
+                <span class="tpl-fill">${fillTexto}</span>
+                <span class="tpl-usar">Usar <i class="fas fa-arrow-right"></i></span>
             </div>
         </div>`;
     }
+
+    /* ─── Busca e chips de categoria ───────────────────────
+       Filtram no cliente o que já está na tela. As seções continuam
+       existindo (Recomendados / Ambiental / Obras / Outros); a busca
+       esconde os cards que não casam e, junto, a seção que ficou vazia,
+       pra não sobrar um título solto sobre o nada. */
+    function aplicarFiltros() {
+        const termo = (document.getElementById('busca-modelo')?.value || '')
+            .trim().toLowerCase();
+        const chip = document.querySelector('.doc-chip.ativo');
+        const cat = chip ? chip.dataset.cat : 'todos';
+
+        let visiveisTotal = 0;
+
+        document.querySelectorAll('.doc-secao').forEach((secao) => {
+            const grupo = secao.dataset.grupo;
+            const cards = Array.from(secao.querySelectorAll('.tpl-card'));
+            if (cards.length === 0) { secao.style.display = 'none'; return; }
+
+            let visiveis = 0;
+            cards.forEach((card) => {
+                const casa = !termo || (card.textContent || '').toLowerCase().includes(termo);
+                card.style.display = casa ? '' : 'none';
+                if (casa) visiveis += 1;
+            });
+
+            // O chip filtra por grupo; a busca, por texto. Os dois se somam.
+            const catOk = cat === 'todos' || cat === grupo;
+            secao.style.display = (catOk && visiveis > 0) ? '' : 'none';
+            if (catOk) visiveisTotal += visiveis;
+
+            // A contagem do cabeçalho passa a refletir o que está filtrado,
+            // senão diz "6 modelos" com dois na tela.
+            const contagem = secao.querySelector('.doc-secao-contagem');
+            if (contagem) {
+                const n = termo ? visiveis : cards.length;
+                contagem.textContent = n === 1 ? '1 modelo' : n + ' modelos';
+            }
+        });
+
+        // "Meus Modelos" acompanha a busca, mas ignora o chip de finalidade:
+        // é uma lista pessoal, não uma das categorias oficiais.
+        const secMeus = document.getElementById('secao-meus-modelos');
+        if (secMeus && secMeus.dataset.tinhaConteudo === '1') {
+            let algum = false;
+            secMeus.querySelectorAll('.template-card-wrapper').forEach((card) => {
+                const casa = !termo || (card.textContent || '').toLowerCase().includes(termo);
+                card.style.display = casa ? '' : 'none';
+                if (casa) algum = true;
+            });
+            secMeus.style.display = (algum && cat === 'todos') ? 'block' : 'none';
+            if (algum && cat === 'todos') visiveisTotal += 1;
+        }
+
+        const vazio = document.getElementById('doc-sem-resultado');
+        if (vazio) vazio.style.display = visiveisTotal > 0 ? 'none' : 'block';
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.id === 'busca-modelo') aplicarFiltros();
+    });
+
+    document.addEventListener('click', function (e) {
+        const chip = e.target.closest('.doc-chip');
+        if (!chip) return;
+        document.querySelectorAll('.doc-chip').forEach((c) => c.classList.remove('ativo'));
+        chip.classList.add('ativo');
+        aplicarFiltros();
+    });
 
     /* ─── Toggle favorito ──────────────────────────────────── */
     function toggleFavorito(nome, btn) {
@@ -616,7 +722,7 @@ include '../header.php';
         fetch('../parecer_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ action: 'favoritar_template', template_nome: nome })
+            body: new URLSearchParams({ action: 'favoritar_template', template_nome: nome, csrf_token: csrfToken })
         })
         .then(r => r.json())
         .then(ret => {
@@ -632,8 +738,10 @@ include '../header.php';
                 btn.title = 'Adicionar aos Meus Modelos';
             }
             btn.disabled = false;
-            // Recarregar aba "Meus Modelos" se estiver visível
-            if (document.getElementById('tab-meus').classList.contains('active')) {
+            // Atualizar "Meus Modelos" somente quando a seção já estiver visível.
+            // A tela não usa mais abas, então não há `tab-meus` para consultar.
+            const secMeus = document.getElementById('secao-meus-modelos');
+            if (secMeus && secMeus.dataset.tinhaConteudo === '1') {
                 carregarTemplates();
             }
         })
@@ -642,98 +750,81 @@ include '../header.php';
 
     /* ─── Montar HTML de um card de histórico ───────────────── */
     function buildHistCard(h, idx) {
+        // Formato de rail: linha compacta, não mais card em grade de 4 colunas.
         const nome      = h.label || h.nome || 'Documento';
         const isDb      = h.origem === 'db';
         const icone     = isDb ? 'fa-pen-to-square' : 'fa-file-pdf';
-        const cor       = isDb ? 'text-primary'  : 'text-danger';
-        const tipoBadge = isDb
-            ? '<span class="badge bg-primary-subtle text-primary" style="font-size:.65rem">Rascunho</span>'
-            : '<span class="badge bg-danger-subtle text-danger" style="font-size:.65rem">Assinado</span>';
-        const delay     = (idx * 0.07).toFixed(2);
+        const cor       = isDb ? '#3762d9' : '#b13232';
+        const selo      = isDb ? 'Rascunho' : 'Assinado';
         const labelEnc  = encodeURIComponent(h.label || h.nome || 'Documento');
 
         return `
-        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-            <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(h.id)}&label=${labelEnc}"
-               class="card hist-card shadow-sm border-0 text-decoration-none">
-                <div class="card-body p-3 d-flex align-items-start gap-3">
-                    <div class="hist-icon-wrap">
-                        <i class="fas ${icone} ${cor}"></i>
-                    </div>
-                    <div class="overflow-hidden flex-grow-1">
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            ${tipoBadge}
-                        </div>
-                        <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size:.82rem" title="${escaparAttr(nome)}">${escapeHtml(nome)}</h6>
-                        <small class="text-muted d-block">${h.data}</small>
-                        <small class="text-success fw-medium" style="font-size:.7rem">
-                            <i class="fas fa-copy me-1"></i> Usar como base
-                        </small>
-                    </div>
-                </div>
-            </a>
-        </div>`;
+        <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(h.id)}&label=${labelEnc}"
+           class="doc-rail-item" title="${escaparAttr(nome)}">
+            <i class="fas ${icone} doc-rail-ic" style="color:${cor}"></i>
+            <span class="doc-rail-corpo">
+                <span class="doc-rail-nome">${escapeHtml(nome)}</span>
+                <span class="doc-rail-meta">${selo} · ${escapeHtml(h.data || '')}</span>
+                <span class="doc-rail-usar">Usar como base</span>
+            </span>
+        </a>`;
     }
 
     /* ─── Card de template do usuário (personalizado ou favorito) */
+    /* ─── Card de "Meus Modelos" (favorito ou personalizado) ──
+       Mesmo formato dos demais, para a página não ter dois desenhos de card.
+       O que muda é a cor do ícone e o badge. */
     function buildUserTemplateCard(t, idx) {
-        const delay = (idx * 0.06).toFixed(2);
-        const label = escapeHtml(t.nome);
-        const desc  = escapeHtml(t.descricao || '');
         const isFav = t.tipo === 'favorito';
+        const label = t.nome;
+        const desc  = t.descricao || (isFav ? 'Modelo marcado como favorito.' : 'Modelo salvo por você.');
 
-        if (isFav) {
-            // Card de favorito — igual ao card padrão mas com estrela preenchida e sem botão excluir
-            const icone = t.icone || 'fa-file-signature';
-            const cor   = t.icone_cor || 'text-secondary';
-            const badge = t.badge || 'Parecer';
-            const preview = escapeHtml(t.preview || t.descricao || '');
-            return `
-            <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" style="animation-delay:${delay}s">
-                <div class="card template-card border-0 shadow-sm h-100 position-relative" style="border-bottom:3px solid #f59e0b !important;">
-                    <button class="btn btn-sm position-absolute top-0 end-0 m-2 p-1 border-0 bg-transparent"
-                            style="z-index:2;line-height:1" title="Remover dos Meus Modelos"
-                            onclick="toggleFavorito('${escaparAttr(t.nome)}', this)">
-                        <i class="fas fa-star text-warning" style="font-size:1rem"></i>
-                    </button>
-                    <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(t.nome)}"
-                       class="card-body text-center p-4 text-decoration-none d-block">
-                        <div class="icon-wrap mb-1" style="background:#fef3c7;">
-                            <i class="fas ${icone} ${cor} fs-2"></i>
-                        </div>
-                        <span class="tpl-badge construcao mb-2 d-inline-block" style="background:#fef3c7;color:#92400e;">Favorito</span>
-                        <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                        <div class="preview-miniature">${preview}</div>
-                    </a>
-                </div>
-            </div>`;
-        }
+        const familia = isFav
+            ? familiaDoTemplate(t.nome, t.badge)
+            : { bg: '#e9f1ec', cor: '#0d5433', icone: 'fa-bookmark' };
 
-        // Card personalizado
-        const icone    = t.icone || 'fa-bookmark';
-        const tplId    = encodeURIComponent('user_tpl:' + t.id);
-        const labelEnc = encodeURIComponent(t.nome);
+        const url = isFav
+            ? `editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(t.nome)}`
+            : `editor.php?requerimento_id=${reqId}&template=${encodeURIComponent('user_tpl:' + t.id)}&label=${encodeURIComponent(t.nome)}`;
+
+        const acaoCanto = isFav
+            ? `<button type="button" class="tpl-fav" title="Remover dos Meus Modelos"
+                       onclick="event.stopPropagation();toggleFavorito('${escaparAttr(t.nome)}', this)">
+                   <i class="fas fa-star" style="color:#e0a91b"></i>
+               </button>`
+            : `<span class="tpl-acoes">
+                   <button type="button" class="tpl-fav" title="Duplicar modelo"
+                           onclick="event.stopPropagation();duplicarTemplateUsuario(${t.id}, event)">
+                       <i class="fas fa-copy" style="color:#9aa9a0;font-size:.82rem"></i>
+                   </button>
+                   <button type="button" class="tpl-fav" title="Excluir modelo"
+                           onclick="event.stopPropagation();excluirTemplateUsuario(${t.id}, event)">
+                       <i class="fas fa-trash-can" style="color:#c8d2cc;font-size:.82rem"></i>
+                   </button>
+               </span>`;
+
         return `
-        <div class="col-xl-3 col-md-4 col-sm-6 template-card-wrapper" id="user-tpl-${t.id}" style="animation-delay:${delay}s">
-            <div class="card template-card border-0 shadow-sm h-100 position-relative" style="border-bottom:3px solid #1c4b36 !important;">
-                <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle p-0 d-flex align-items-center justify-content-center"
-                        style="width:22px;height:22px;font-size:.7rem;z-index:2"
-                        title="Excluir modelo" onclick="excluirTemplateUsuario(${t.id}, event)">
-                    <i class="fas fa-times"></i>
-                </button>
-                <a href="editor.php?requerimento_id=${reqId}&template=${tplId}&label=${labelEnc}"
-                   class="card-body text-center p-4 text-decoration-none d-block">
-                    <div class="icon-wrap mb-1" style="background:#d1fae5;">
-                        <i class="fas ${icone} text-success fs-2"></i>
-                    </div>
-                    <span class="tpl-badge mb-2 d-inline-block" style="background:#d1fae5;color:#065f46;">Personalizado</span>
-                    <h6 class="fw-bold text-dark lh-sm mb-1" style="font-size:.85rem">${label}</h6>
-                    <div class="preview-miniature">${desc}</div>
-                    <small class="text-muted d-block mt-1" style="font-size:.7rem">${t.data || ''}</small>
-                </a>
+        <div class="tpl-card template-card-wrapper" ${isFav ? '' : `id="user-tpl-${t.id}"`}>
+            <div class="tpl-card-corpo" onclick="location.href='${url}'">
+                <span class="tpl-icone" style="background:${familia.bg};color:${familia.cor}">
+                    <i class="fas ${familia.icone}"></i>
+                </span>
+                <span class="tpl-txt">
+                    <span class="tpl-badges">
+                        <span class="tpl-badge">${isFav ? 'Favorito' : 'Personalizado'}</span>
+                    </span>
+                    <span class="tpl-nome">${escapeHtml(label)}</span>
+                    <span class="tpl-desc">${escapeHtml(desc)}</span>
+                </span>
+                ${acaoCanto}
+            </div>
+            <div class="tpl-rodape" onclick="location.href='${url}'">
+                <span class="tpl-fill">${t.data ? escapeHtml(t.data) : 'Modelo seu'}</span>
+                <span class="tpl-usar">Usar <i class="fas fa-arrow-right"></i></span>
             </div>
         </div>`;
     }
+
 
     /* ─── Excluir template do usuário ────────────────────────── */
     function excluirTemplateUsuario(id, evt) {
@@ -742,7 +833,7 @@ include '../header.php';
         fetch('../parecer_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ action: 'excluir_template_usuario', id: id })
+            body: new URLSearchParams({ action: 'excluir_template_usuario', id: id, csrf_token: csrfToken })
         })
         .then(r => r.json())
         .then(ret => {
@@ -756,6 +847,21 @@ include '../header.php';
                 }
             }
         });
+    }
+
+    function duplicarTemplateUsuario(id, evt) {
+        evt.preventDefault(); evt.stopPropagation();
+        fetch('../parecer_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'duplicar_template_usuario', id: id, csrf_token: csrfToken })
+        })
+        .then(r => r.json())
+        .then(ret => {
+            if (!ret.success) throw new Error(ret.error || 'Não foi possível duplicar o modelo.');
+            carregarTemplates();
+        })
+        .catch(err => Swal.fire('Erro', err.message, 'error'));
     }
 
     function emptyStateMeusTemplates() {
@@ -780,48 +886,47 @@ include '../header.php';
             const listHist  = document.getElementById('lista-historico');
             const listMeus  = document.getElementById('lista-meus-templates');
             const secMeus   = document.getElementById('secao-meus-modelos');
-            const secRec    = document.getElementById('secao-recomendados');
-            const listRec   = document.getElementById('lista-recomendados');
-            const listAmb   = document.getElementById('lista-ambiental');
-            const listObr   = document.getElementById('lista-obras');
-            const listOut   = document.getElementById('lista-outros');
-            const secOut    = document.getElementById('secao-outros');
+            const GRUPOS = ['final', 'parecer', 'fiscal', 'outros'];
 
-            // ── Favoritos no Set ─────────────────────────────
-            if (ret.favoritos) favoritosSet = new Set(ret.favoritos);
-
-            // ── Meus Modelos (topo) ──────────────────────────
-            if (ret.user_templates && ret.user_templates.length > 0) {
-                listMeus.innerHTML = ret.user_templates.map((t, i) => buildUserTemplateCard(t, i)).join('');
-                secMeus.style.display = 'block';
-            }
-
-            // ── Todos os Modelos: separar em grupos ──────────
+            // ── Modelos, distribuídos por finalidade ─────────
             if (ret.success && ret.templates && ret.templates.length > 0) {
-                const recomendados = recomendadosPorSetor[setorUsuario] || [];
-                const tplsRec  = ret.templates.filter(t => recomendados.includes(t.badge));
-                const tplsAmb  = ret.templates.filter(t => badgesAmbiental.includes(t.badge) && !recomendados.includes(t.badge));
-                const tplsObr  = ret.templates.filter(t => badgesObras.includes(t.badge) && !recomendados.includes(t.badge));
-                const tplsOut  = ret.templates.filter(t => !recomendados.includes(t.badge) && !badgesAmbiental.includes(t.badge) && !badgesObras.includes(t.badge));
+                const porGrupo = { final: [], parecer: [], fiscal: [], outros: [] };
+                ret.templates.forEach((t) => {
+                    porGrupo[grupoDoTemplate(t.nome)].push(t);
+                });
 
-                if (tplsRec.length > 0) {
-                    listRec.innerHTML = tplsRec.map((t, i) => buildCardTemplate(t, i)).join('');
-                    secRec.style.display = 'block';
-                }
-                listAmb.innerHTML = tplsAmb.length > 0 ? tplsAmb.map((t, i) => buildCardTemplate(t, i)).join('') : '<div class="col-12"><p class="text-muted small">Nenhum modelo nesta categoria.</p></div>';
-                listObr.innerHTML = tplsObr.length > 0 ? tplsObr.map((t, i) => buildCardTemplate(t, i)).join('') : '<div class="col-12"><p class="text-muted small">Nenhum modelo nesta categoria.</p></div>';
-                if (tplsOut.length > 0) {
-                    listOut.innerHTML = tplsOut.map((t, i) => buildCardTemplate(t, i)).join('');
-                    secOut.style.display = 'block';
-                }
+                GRUPOS.forEach((g) => {
+                    const secao = document.getElementById('secao-' + g);
+                    const lista = document.getElementById('lista-' + g);
+                    if (!secao || !lista) return;
+
+                    const itens = porGrupo[g];
+                    lista.innerHTML = itens.map((t, i) => buildCardTemplate(t, i)).join('');
+
+                    const contagem = secao.querySelector('.doc-secao-contagem');
+                    if (contagem) {
+                        contagem.textContent = itens.length === 1 ? '1 modelo' : itens.length + ' modelos';
+                    }
+                    // "Outros" é uma rede de segurança: só aparece se algum
+                    // modelo novo não couber em nenhum dos três grupos.
+                    secao.style.display = itens.length > 0 ? '' : 'none';
+                });
             } else {
-                listAmb.innerHTML = `<div class="col-12"><div class="alert alert-danger d-flex align-items-center gap-3 rounded-3">
-                    <i class="fas fa-triangle-exclamation fs-4"></i>
-                    <div><strong>Falha ao carregar os modelos.</strong><br>
-                    <small class="text-muted">${ret.error || 'Nenhum template encontrado.'}</small></div>
-                </div></div>`;
-                listObr.innerHTML = '';
+                const lista = document.getElementById('lista-final');
+                if (lista) {
+                    lista.innerHTML = `<div class="doc-vazio-erro">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <strong>Falha ao carregar os modelos.</strong>
+                        <span>${ret.error || 'Nenhum template encontrado.'}</span>
+                    </div>`;
+                }
+                ['parecer', 'fiscal', 'outros'].forEach((g) => {
+                    const sec = document.getElementById('secao-' + g);
+                    if (sec) sec.style.display = 'none';
+                });
             }
+
+            aplicarFiltros();
 
             // ── Histórico ────────────────────────────────────
             if (ret.historico_recente && ret.historico_recente.length > 0) {
@@ -834,12 +939,20 @@ include '../header.php';
             }
         })
         .catch(err => {
-            document.getElementById('lista-ambiental').innerHTML = `
-            <div class="col-12"><div class="alert alert-danger rounded-3">
-                <i class="fas fa-wifi-slash me-2"></i>
-                <strong>Falha na conexão.</strong>
-                <br><small class="text-muted">${err.message || ''}</small>
-            </div></div>`;
+            // A seção "Documento final" é a primeira da página: é onde o aviso
+            // de falha aparece sem a pessoa precisar rolar.
+            const lista = document.getElementById('lista-final');
+            if (lista) {
+                lista.innerHTML = `<div class="doc-vazio-erro">
+                    <i class="fas fa-wifi-slash"></i>
+                    <strong>Falha na conexão com o servidor.</strong>
+                    <span>${err.message || 'Verifique sua conexão e recarregue a página.'}</span>
+                </div>`;
+            }
+            ['parecer', 'fiscal', 'outros'].forEach((g) => {
+                const sec = document.getElementById('secao-' + g);
+                if (sec) sec.style.display = 'none';
+            });
         });
     }
 

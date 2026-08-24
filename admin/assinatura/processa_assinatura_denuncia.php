@@ -37,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 header('Content-Type: application/json');
 
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    ob_clean(); echo json_encode(['success' => false, 'error' => 'A sessão de assinatura expirou. Recarregue a página e tente novamente.']); exit;
+}
+
 $conteudo    = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
 $denuncia_id = (int)trim($_POST['denuncia_id'] ?? 0);
 $template    = $_POST['template_salvo'] ?? 'Documento';
@@ -63,7 +69,7 @@ try {
     }
 
     // Buscar dados do admin
-    $stmtA = $pdo->prepare("SELECT nome, nome_completo, cargo, cpf, matricula_portaria FROM administradores WHERE id = ?");
+    $stmtA = $pdo->prepare("SELECT nome, nome_completo, cargo, cpf, matricula_portaria, senha FROM administradores WHERE id = ?");
     $stmtA->execute([$admin_id]);
     $admin = $stmtA->fetch(PDO::FETCH_ASSOC);
     if (!$admin) {
@@ -71,6 +77,15 @@ try {
     }
 } catch (Exception $e) {
     ob_clean(); echo json_encode(['success' => false, 'error' => 'Erro SQL: ' . $e->getMessage()]); exit;
+}
+
+$senhaAssinatura = (string) ($_POST['pin_assinatura'] ?? '');
+if ($senhaAssinatura === '' || empty($admin['senha']) || !password_verify($senhaAssinatura, $admin['senha'])) {
+    ob_clean(); echo json_encode([
+        'success' => false,
+        'code' => 'senha_incorreta',
+        'error' => 'A senha de acesso informada não confere.',
+    ]); exit;
 }
 
 $assinante = [

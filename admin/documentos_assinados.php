@@ -72,6 +72,7 @@ function buildSignedDocsUrl(array $overrides = []): string
 }
 
 include 'header.php';
+include __DIR__ . '/includes/acervo_tabs.php';
 ?>
 <style>
     .signed-shell { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
