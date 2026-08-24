@@ -1,0 +1,410 @@
+/*
+ * processo-ui.css — vocabulário visual do redesenho do painel (Claude Design).
+ *
+ * Extraído de dentro de <style> em admin/visualizar_requerimento.php. Enquanto
+ * morava lá, nenhuma outra tela do admin conseguia usar estes componentes —
+ * era a razão de o redesenho não "propagar" para as telas de documentos e
+ * modelos. Agora o header.php carrega este arquivo em TODAS as telas do admin.
+ *
+ * Não confundir com css/sema-design-system.css, que é do site PÚBLICO (azul
+ * institucional). O painel administrativo usa a paleta verde: #14532d de ação,
+ * #0f3d23 na barra lateral.
+ *
+ * Componentes daqui: .proc-crumb, .proc-header, .cmd-bar (+ .cmd-btn*),
+ * .proc-resumo-*, .proc-timeline-* e a responsividade dos três.
+ */
+
+.proc-crumb { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:.8rem; color:#66756d; }
+.proc-crumb a { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid #e3e8e4; border-radius:9px; background:#fff; font-weight:700; color:#102117; text-decoration:none; }
+.proc-crumb a:hover { border-color:#14532d; color:#14532d; }
+.proc-crumb-sep { color:#c8d2cc; }
+.proc-crumb-proto { font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace; font-weight:500; }
+
+.proc-header { display:flex; align-items:flex-start; gap:24px; flex-wrap:wrap; padding:20px 22px; background:#fff; border:1px solid #e3e8e4; border-radius:16px; margin-bottom:14px; }
+.proc-header.finalizado { background:#f8f9fa; border-color:#dee2e6; }
+.proc-header.indeferido { background:#fef2f2; border-color:#fecaca; }
+.proc-header-main { min-width:280px; flex:1; }
+.proc-protocol-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
+.proc-protocol { font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace; font-size:1.5rem; font-weight:500; color:#102117; letter-spacing:-.01em; }
+.proc-copy-btn { width:28px; height:28px; border:1px solid #e3e8e4; border-radius:8px; background:#fff; color:#8fa399; cursor:pointer; font-size:.72rem; flex-shrink:0; }
+.proc-copy-btn:hover { color:#14532d; border-color:#c4d8cc; }
+.proc-name { font-size:1.02rem; font-weight:700; color:#102117; }
+.proc-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; font-size:.82rem; color:#66756d; }
+.proc-tipo { display:inline-flex; padding:3px 10px; border-radius:999px; background:#e6f2ea; color:#0f4425; font-size:.74rem; font-weight:700; }
+.proc-status { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px; background:#f1f5f0; color:#374151; font-size:.76rem; font-weight:700; }
+.proc-status .dot { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.proc-dias-aberto { color:#b7791f; font-weight:600; }
+.proc-actions { flex:none; display:flex; align-items:flex-start; }
+.btn-nao-visto { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:11px; border:1px solid #e3e8e4; background:#fbfcfb; color:#21372b; font-size:.84rem; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-nao-visto:hover { border-color:#14532d; color:#14532d; }
+@media (max-width:640px) { .proc-header { padding:16px; gap:12px; } }
+
+/* ---- Barra de comando (sticky) ---- */
+.cmd-bar { position:sticky; top:calc(var(--topbar-height, 60px) + 8px); z-index:25; display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#fff; border:1px solid #e3e8e4; border-radius:14px; padding:11px 13px; margin-bottom:14px; box-shadow:0 8px 20px rgba(16,33,23,.06); }
+.cmd-btn { display:inline-flex; align-items:center; gap:7px; padding:10px 14px; border-radius:11px; border:1px solid #d3dbd5; background:#fff; color:#21372b; font-size:.85rem; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
+.cmd-btn:hover { border-color:#14532d; color:#14532d; }
+.cmd-btn i.cmd-ic { color:#66756d; }
+.cmd-btn-primary { display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border-radius:11px; background:#14532d; color:#fff; font-size:.88rem; font-weight:700; border:0; cursor:pointer; text-decoration:none; }
+.cmd-btn-primary:hover { background:#0f4425; color:#fff; }
+.cmd-btn-danger { display:inline-flex; align-items:center; gap:7px; padding:9px 13px; border-radius:999px; border:1px solid #f3cccc; background:transparent; color:#b13232; font-size:.82rem; font-weight:600; cursor:pointer; }
+.cmd-btn-danger:hover { background:#fdf2f2; border-color:#e39b9b; }
+.cmd-sep { width:1px; height:26px; background:#e3e8e4; margin:0 4px 0 auto; }
+.cmd-more-btn { width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center; border-radius:11px; border:1px solid #d3dbd5; background:#fff; color:#66756d; cursor:pointer; }
+.cmd-more-btn:hover { border-color:#14532d; color:#14532d; }
+.cmd-bar .dropdown-menu { border-radius:13px; border:1px solid #e3e8e4; box-shadow:0 16px 36px rgba(16,33,23,.16); padding:6px; min-width:280px; }
+.cmd-bar .dropdown-item { display:flex; align-items:flex-start; gap:10px; padding:9px 10px; border-radius:9px; font-size:.84rem; font-weight:600; color:#21372b; white-space:normal; }
+.cmd-bar .dropdown-item:hover, .cmd-bar .dropdown-item:focus { background:#f7f9f7; color:#21372b; }
+.cmd-bar .dropdown-item i { width:16px; text-align:center; margin-top:2px; flex-shrink:0; }
+.cmd-item-desc { display:block; font-size:.75rem; font-weight:500; color:#8fa399; margin-top:1px; }
+.cmd-tip { display:flex; align-items:flex-start; gap:10px; padding:11px 14px; border-radius:12px; margin-bottom:14px; }
+/* ---- Resumos do fim da página (comunicação + movimentações) ----
+   Valores tirados do redesenho: cartão 16px de raio, cabeçalho em
+   maiúsculas .68rem com tracking largo, separadores #eef2ef. */
+.proc-resumos { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:14px; }
+.proc-resumo-card { background:#fff; border:1px solid #e3e8e4; border-radius:16px; overflow:hidden; }
+.proc-resumo-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 15px; border-bottom:1px solid #eef2ef; }
+.proc-resumo-titulo { font-size:.68rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#3d5c46; }
+.proc-resumo-link { font-size:.75rem; font-weight:600; color:#14532d; text-decoration:none; }
+.proc-resumo-link:hover { text-decoration:underline; color:#0f4425; }
+.proc-resumo-item { display:flex; align-items:flex-start; gap:10px; padding:11px 15px; border-bottom:1px solid #f4f7f5; text-decoration:none; color:inherit; }
+.proc-resumo-item:last-child { border-bottom:0; }
+.proc-resumo-item:hover { background:#f7f9f7; }
+.proc-resumo-ic { font-size:.82rem; margin-top:2px; flex-shrink:0; }
+.proc-resumo-corpo { flex:1; min-width:0; }
+.proc-resumo-assunto { display:block; font-size:.82rem; font-weight:600; color:#102117; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proc-resumo-meta { display:block; font-size:.73rem; color:#8fa399; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proc-resumo-vazio { padding:14px 15px; font-size:.8rem; color:#8fa399; }
+
+/* Timeline: bolinha vazada + fio, sem fio depois do último item */
+.proc-timeline { padding:14px 15px 6px; }
+.proc-timeline-linha { display:grid; grid-template-columns:18px minmax(0,1fr); gap:11px; }
+.proc-timeline-marca { display:flex; flex-direction:column; align-items:center; }
+.proc-timeline-dot { width:9px; height:9px; border-radius:50%; background:#fff; border:2px solid #a7c3b2; margin-top:4px; flex-shrink:0; }
+.proc-timeline-fio { flex:1; width:2px; background:#eef2ef; min-height:14px; }
+.proc-timeline-conteudo { padding-bottom:14px; }
+
+/* ══ Responsividade — telas estreitas ══ */
+@media (max-width:768px) {
+    /* respiro lateral: px-4 do Bootstrap come 48px em tela de 360 */
+    .container-fluid.px-4 { padding-left:.85rem !important; padding-right:.85rem !important; }
+
+    /* Cabeçalho do processo */
+    .proc-header { padding:15px; gap:12px; }
+    .proc-header-main { min-width:0; flex:1 1 100%; }
+    .proc-protocol { font-size:1.2rem; word-break:break-all; }
+    .proc-crumb { flex-wrap:wrap; row-gap:6px; }
+    .proc-actions { width:100%; }
+    .proc-actions .btn-nao-visto { width:100%; justify-content:center; }
+
+    /* Barra de comando: vira grade de 2 colunas e deixa de ser sticky —
+       grudada no topo ela roubava metade da tela e cobria os cards. */
+    .cmd-bar { position:static; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:8px; padding:10px; }
+    .cmd-bar > * { min-width:0; }
+    .cmd-bar .cmd-btn-primary { grid-column:1 / -1; }
+    .cmd-btn, .cmd-btn-primary, .cmd-btn-danger { width:100%; justify-content:center; text-align:center; white-space:normal; line-height:1.25; }
+    .cmd-bar .dropdown { display:flex; }
+    .cmd-bar .dropdown > .cmd-btn { flex:1; }
+    .cmd-sep { display:none; }
+    .cmd-more-btn { width:100%; height:auto; min-height:42px; }
+    /* min-width:280px estourava a viewport em telas de 320px */
+    .cmd-bar .dropdown-menu { min-width:0; width:calc(100vw - 1.7rem); max-width:340px; }
+    .cmd-tip { padding:10px 12px; font-size:.82rem; }
+
+    /* Abas: rolagem horizontal em vez de empilhar em 3 linhas */
+    .nav-tabs { flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .nav-tabs::-webkit-scrollbar { display:none; }
+    .nav-tabs .nav-item { flex:0 0 auto; }
+    .nav-tabs .nav-link { padding:.6rem .85rem; margin-right:0; font-size:.84rem; white-space:nowrap; }
+
+    /* Cards e toolbars abaixo da barra de ações */
+    .modern-card { border-radius:12px; }
+    .modern-card .card-body { padding:.9rem; }
+    .documents-toolbar { align-items:stretch; }
+    .documents-toolbar-actions { width:100%; }
+    .documents-toolbar-actions .btn { flex:1 1 auto; justify-content:center; }
+    .detail-actions-primary .btn,
+    .detail-actions-secondary .btn { flex:1 1 100%; justify-content:center; }
+    .detail-actions-note { width:100%; }
+    .act-btn { flex:1 1 100%; }
+
+    /* Resumos: em telas estreitas o auto-fit já cai pra 1 coluna; só
+       reduzimos o respiro pra não desperdiçar largura. */
+    .proc-resumos { gap:10px; margin-top:12px; }
+    .proc-resumo-head { padding:11px 13px; }
+    .proc-resumo-item { padding:10px 13px; }
+}
+
+@media (max-width:420px) {
+    .cmd-bar { grid-template-columns:1fr; }
+    .proc-protocol { font-size:1.05rem; }
+    .nav-tabs .nav-link { padding:.55rem .7rem; font-size:.8rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EMITIR DOCUMENTO — telas documentos/selecionar.php e editor.php
+   ══════════════════════════════════════════════════════════════ */
+
+/* ---- Cabeçalho + stepper Modelo → Editar → Assinar ---- */
+.doc-head { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
+            background:#fff; border:1px solid #e3e8e4; border-radius:16px; padding:16px 20px; margin-bottom:14px; }
+.doc-head-main { min-width:0; }
+.doc-head-main h2 { margin:0 0 4px; font-size:1.28rem; font-weight:800; color:#102117; }
+.doc-head-main p { margin:0; font-size:.85rem; color:#66756d; }
+
+.doc-stepper { display:flex; align-items:center; gap:0; margin:0; padding:0; list-style:none; }
+.doc-step { display:flex; align-items:center; gap:8px; font-size:.8rem; font-weight:600; color:#9ca3af; }
+.doc-step-num { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid #e3e8e4;
+                color:#9ca3af; display:flex; align-items:center; justify-content:center;
+                font-size:.68rem; font-weight:800; flex-shrink:0; }
+.doc-step.ativo { color:#14532d; font-weight:700; }
+.doc-step.ativo .doc-step-num { background:#14532d; border-color:#14532d; color:#fff; }
+/* Passo já cumprido: mesmo verde do ativo, mas sem o peso do texto */
+.doc-step.feito { color:#3d7a56; }
+.doc-step.feito .doc-step-num { background:#e6f2ea; border-color:#a7c3b2; color:#0f4425; }
+.doc-step-fio { width:34px; height:2px; background:#e3e8e4; margin:0 10px; }
+
+/* ---- Duas colunas: modelos + rail ---- */
+.doc-layout { display:flex; gap:16px; align-items:flex-start; }
+.doc-col-principal { flex:1; min-width:0; }
+.doc-rail { width:320px; flex:none; display:flex; flex-direction:column; gap:12px; }
+
+/* ---- Busca + chips de categoria ---- */
+.doc-filtros { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.doc-busca { display:flex; align-items:center; gap:9px; padding:0 13px; height:40px;
+             border:1px solid #e3e8e4; border-radius:11px; background:#fff; flex:1; min-width:220px; }
+.doc-busca i { color:#8fa399; font-size:.82rem; }
+.doc-busca input { flex:1; min-width:0; border:0; background:transparent; outline:none;
+                   font-family:inherit; font-size:.86rem; color:#102117; }
+.doc-chips { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.doc-chip { padding:0 14px; height:40px; border-radius:11px; border:1px solid #e3e8e4; background:#fff;
+            color:#66756d; font-family:inherit; font-size:.83rem; font-weight:600; cursor:pointer; }
+.doc-chip:hover { border-color:#c4d8cc; color:#14532d; }
+.doc-chip.ativo { background:#14532d; border-color:#14532d; color:#fff; }
+
+.doc-vazio { padding:26px 16px; text-align:center; color:#8fa399; font-size:.86rem; }
+.doc-vazio i { display:block; font-size:1.3rem; margin-bottom:8px; opacity:.6; }
+
+/* ---- Rodapé do card de modelo ---- */
+.tpl-rodape { display:flex; align-items:center; justify-content:space-between; gap:8px;
+              padding:9px 14px; border-top:1px solid #f2f6f4; background:#fbfcfb; cursor:pointer; }
+.tpl-fill { font-size:.72rem; color:#8fa399; }
+.tpl-usar { font-size:.72rem; font-weight:700; color:#14532d; white-space:nowrap; }
+.tpl-usar i { font-size:.62rem; }
+.template-card:hover .tpl-rodape { background:#f2f6f3; }
+
+/* ---- Rail: documentos do processo + documento em branco ---- */
+.doc-rail-card { background:#fff; border:1px solid #e3e8e4; border-radius:16px; overflow:hidden; }
+.doc-rail-head { padding:12px 15px; border-bottom:1px solid #eef2ef; font-size:.68rem; font-weight:800;
+                 letter-spacing:.1em; text-transform:uppercase; color:#3d5c46; }
+.doc-rail-item { display:flex; align-items:flex-start; gap:11px; padding:12px 15px;
+                 border-bottom:1px solid #f4f7f5; text-decoration:none; color:inherit; }
+.doc-rail-item:last-child { border-bottom:0; }
+.doc-rail-item:hover { background:#fbfcfb; }
+.doc-rail-ic { font-size:.9rem; margin-top:2px; flex-shrink:0; }
+.doc-rail-corpo { flex:1; min-width:0; }
+.doc-rail-nome { display:block; font-size:.82rem; font-weight:600; color:#102117;
+                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.doc-rail-meta { display:block; font-size:.73rem; color:#8fa399; margin-top:2px; }
+.doc-rail-usar { display:inline-block; margin-top:6px; font-size:.72rem; font-weight:700; color:#14532d; }
+.doc-rail-vazio { padding:14px 15px; font-size:.8rem; color:#8fa399; }
+
+.doc-rail-branco { background:#f7f9f7; border:1px dashed #cfdad3; border-radius:16px; padding:15px; }
+.doc-rail-branco-tit { font-size:.8rem; font-weight:700; color:#21372b; margin-bottom:5px; }
+.doc-rail-branco p { margin:0 0 11px; font-size:.78rem; line-height:1.5; color:#66756d; }
+.doc-rail-branco a { display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border-radius:9px;
+                     border:1px solid #d3dbd5; background:#fff; color:#21372b; font-size:.8rem;
+                     font-weight:600; text-decoration:none; }
+.doc-rail-branco a:hover { border-color:#14532d; color:#14532d; }
+
+/* O design manda o rail descer para baixo dos modelos em telas médias,
+   antes mesmo do breakpoint de celular — em 1024px uma coluna de 320px
+   ao lado da grade deixa os cards espremidos demais. */
+@media (max-width:1199px) {
+    .doc-layout { flex-direction:column; align-items:stretch; }
+    .doc-rail { width:100%; }
+}
+
+@media (max-width:768px) {
+    .doc-head { padding:14px 16px; gap:14px; }
+    .doc-head-main h2 { font-size:1.12rem; }
+    /* O stepper rola em vez de quebrar: os 3 passos precisam ficar em linha
+       pra continuarem lendo como "1 → 2 → 3". */
+    .doc-stepper { width:100%; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+    .doc-stepper::-webkit-scrollbar { display:none; }
+    .doc-step { flex-shrink:0; }
+    .doc-step-fio { width:22px; margin:0 7px; }
+    .doc-filtros { gap:8px; }
+    .doc-busca { min-width:100%; order:-1; }
+    .doc-chips { width:100%; overflow-x:auto; scrollbar-width:none; flex-wrap:nowrap; }
+    .doc-chips::-webkit-scrollbar { display:none; }
+    .doc-chip { flex-shrink:0; height:36px; }
+}
+
+/* Grade dos modelos: o redesenho pede auto-fill de 232px, não as colunas
+   fixas do Bootstrap — ao lado do rail de 320px, col-xl-3 espremia os cards.
+   Neutralizamos .row/.col-* no lugar de reescrever cada card no JS. */
+.doc-col-principal .row {
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(232px,1fr));
+    gap:12px;
+    margin:0;
+}
+.doc-col-principal .row > [class*="col-"] {
+    width:100%; max-width:none; flex:none; padding-left:0; padding-right:0;
+}
+
+/* Barra de ações do editor: acompanha a rolagem porque a folha A4 é longa —
+   sem isso "Assinar e finalizar" desaparece assim que se começa a escrever. */
+.doc-editor-barra { position:sticky; top:12px; z-index:20; }
+
+@media (max-width:768px) {
+    /* Em telas estreitas a barra empilha e ficaria alta demais para grudar
+       no topo: melhor devolver o espaço à folha. */
+    .doc-editor-barra { position:static; }
+    .doc-editor-barra .btn { flex:1 1 auto; justify-content:center; }
+}
+
+/* ---- Painel "Campos do documento" (rail do editor) ---- */
+.doc-campos-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.doc-campos-vazios { font-size:.68rem; font-weight:800; letter-spacing:.04em; padding:2px 8px;
+                     border-radius:999px; background:#fdf2f2; color:#b13232; text-transform:none; }
+/* Cada campo é editável no lugar: digitar aqui escreve direto na folha. */
+.doc-campo { display:block; width:100%; padding:8px 15px; border-bottom:1px solid #f4f7f5; background:#fff; }
+.doc-campo:last-child { border-bottom:0; }
+.doc-campo-rotulo { display:block; font-size:.72rem; color:#8fa399; margin-bottom:3px; cursor:pointer; }
+.doc-campo-entrada { display:flex; align-items:center; gap:4px; }
+.doc-campo-input { flex:1; min-width:0; padding:5px 8px; border:1px solid transparent; border-radius:7px;
+                   background:#f7f9f7; color:#102117; font-family:inherit; font-size:.82rem;
+                   font-weight:600; outline:none; }
+.doc-campo-input:hover { border-color:#e3e8e4; }
+.doc-campo-input:focus { border-color:#14532d; background:#fff; box-shadow:0 0 0 3px rgba(20,83,45,.09); }
+.doc-campo-input::placeholder { color:#c48b8b; font-style:italic; font-weight:500; }
+/* Faixa vermelha à esquerda: dá para varrer a lista e ver o que falta sem ler. */
+.doc-campo.vazio { box-shadow:inset 3px 0 0 #e8b4b4; }
+.doc-campo.vazio .doc-campo-input { background:#fdf6f6; }
+.doc-campo-ir { width:26px; height:26px; flex-shrink:0; border:0; border-radius:7px; background:transparent;
+                color:#c8d2cc; cursor:pointer; font-size:.74rem; padding:0; }
+.doc-campo-ir:hover { background:#f2f6f3; color:#14532d; }
+
+/* Campo em edição, marcado na folha enquanto se digita. */
+.var-field.campo-ativo { background:#eaf3ee; box-shadow:0 0 0 2px #cfe3d7; border-radius:3px; }
+.doc-campos-nota { padding:11px 15px; border-top:1px solid #eef2ef; background:#fbfcfb;
+                   font-size:.75rem; line-height:1.45; color:#66756d; }
+
+/* Pisca o campo na folha quando ele é clicado no painel — sem isso, num
+   documento de várias páginas, a rolagem para num lugar qualquer e a pessoa
+   não sabe qual dos textos é o campo. */
+@keyframes campoPiscando {
+    0%, 100% { background:transparent; box-shadow:none; }
+    25%, 75% { background:#fff3bf; box-shadow:0 0 0 3px #fff3bf; }
+}
+.var-field.campo-piscando { animation:campoPiscando .8s ease-in-out 2; border-radius:3px; }
+
+/* ---- "Depois de assinar" ---- */
+.doc-pos-assinar { list-style:none; margin:0; padding:12px 15px; display:flex;
+                   flex-direction:column; gap:10px; }
+.doc-pos-assinar li { display:flex; align-items:flex-start; gap:10px; font-size:.79rem;
+                      line-height:1.45; color:#3d5c46; }
+.doc-pos-assinar i { color:#3d7a56; font-size:.8rem; margin-top:2px; width:15px;
+                     text-align:center; flex-shrink:0; }
+
+/* No editor o rail acompanha a rolagem da folha (que é longa); o topo de 96px
+   deixa espaço para a barra de ações sticky logo acima. */
+#secao-editor .doc-rail { position:sticky; top:96px; align-self:flex-start; }
+
+@media (max-width:1199px) {
+    /* Empilhado, sticky não faz sentido: o rail passa a ser um bloco no fim. */
+    #secao-editor .doc-rail { position:static; }
+}
+
+/* ---- Abas do Acervo (documentos assinados / arquivados / envios) ---- */
+.acervo-abas { display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid #e3e8e4;
+               overflow-x:auto; scrollbar-width:none; }
+.acervo-abas::-webkit-scrollbar { display:none; }
+.acervo-aba { display:inline-flex; align-items:center; gap:7px; flex-shrink:0; padding:10px 14px;
+              border-bottom:2px solid transparent; color:#66756d; font-size:.86rem; font-weight:600;
+              text-decoration:none; white-space:nowrap; }
+.acervo-aba:hover { color:#14532d; }
+.acervo-aba i { font-size:.82rem; opacity:.75; }
+.acervo-aba.ativa { color:#14532d; border-bottom-color:#14532d; }
+.acervo-aba.ativa i { opacity:1; }
+
+/* ---- Busca da topbar: seções, preview de requerimento ---- */
+.search-section-head { display:flex; align-items:center; justify-content:space-between; gap:8px;
+                       padding:9px 14px 5px; font-size:.66rem; font-weight:800; letter-spacing:.12em;
+                       text-transform:uppercase; color:#8fa399; }
+.search-section-hint { font-weight:600; letter-spacing:0; text-transform:none; font-size:.72rem; color:#a9b5ae; }
+.search-atalhos-head { border-top:1px solid #f2f6f4; margin-top:4px; }
+
+.search-req .search-result-title { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.search-req .search-result-title .mono { font-family:'Geist Mono',ui-monospace,monospace;
+                                         font-size:.8rem; color:#14532d; flex-shrink:0; }
+.search-req-nome { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+/* O trecho digitado, realçado dentro do resultado. */
+.search-results mark { background:#fff3bf; color:inherit; padding:0 1px; border-radius:2px; }
+
+.search-loading { padding:12px 14px; font-size:.8rem; color:#8fa399; }
+.search-loading i { margin-right:6px; }
+
+/* ══ Escolher modelo v2 — seções por finalidade + card horizontal ══ */
+.doc-secoes { display:flex; flex-direction:column; gap:22px; }
+.doc-secao-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.doc-secao-head h3 { margin:0; font-size:.95rem; font-weight:800; color:#102117; }
+.doc-secao-contagem { font-size:.72rem; font-weight:700; color:#8fa399; }
+.doc-secao-hint { flex:1; min-width:120px; font-size:.78rem; color:#8fa399; text-align:right; }
+
+.doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:12px; }
+
+/* Card: ícone à esquerda, texto alinhado à esquerda. A miniatura em iframe
+   saiu — carregava um HTML por card só para mostrar um borrão ilegível. */
+.tpl-card { display:flex; flex-direction:column; background:#fff; border:1px solid #e3e8e4;
+            border-radius:14px; overflow:hidden; transition:border-color .15s ease, box-shadow .15s ease; }
+.tpl-card:hover { border-color:#c4d8cc; box-shadow:0 8px 20px rgba(16,33,23,.07); }
+.tpl-card.melhor { border-color:#a7c3b2; }
+.tpl-card-corpo { display:flex; align-items:flex-start; gap:12px; padding:15px 15px 12px; cursor:pointer; flex:1; }
+.tpl-icone { width:44px; height:44px; border-radius:12px; display:flex; align-items:center;
+             justify-content:center; flex-shrink:0; font-size:1.05rem; }
+.tpl-txt { flex:1; min-width:0; }
+.tpl-badges { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.tpl-badge { display:inline-flex; font-size:.66rem; font-weight:700; letter-spacing:.08em;
+             text-transform:uppercase; color:#8fa399; }
+.tpl-melhor { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px;
+              background:#14532d; color:#fff; font-size:.62rem; font-weight:800; letter-spacing:.04em; }
+.tpl-melhor i { font-size:.55rem; }
+.tpl-nome { display:block; margin-top:7px; font-size:.88rem; font-weight:700; color:#102117; line-height:1.32; }
+.tpl-desc { display:block; margin-top:4px; font-size:.76rem; color:#8fa399; line-height:1.45; text-wrap:pretty; }
+.tpl-fav { width:26px; height:26px; border:0; border-radius:8px; background:transparent;
+           cursor:pointer; flex-shrink:0; padding:0; }
+.tpl-fav:hover { background:#f2f6f3; }
+
+.doc-vazio-erro { grid-column:1/-1; display:flex; flex-direction:column; gap:4px; padding:18px;
+                  border:1px solid #f3cccc; border-radius:12px; background:#fdf6f6; color:#b13232;
+                  font-size:.85rem; }
+.doc-vazio-erro i { font-size:1.1rem; }
+.doc-vazio-erro span { color:#8fa399; font-size:.78rem; }
+
+@media (max-width:768px) {
+    .doc-secao-hint { display:none; }
+    .doc-grid { grid-template-columns:1fr; }
+}
+
+/* ---- Atalho "Para assinar" na topbar ---- */
+.topbar-assinar { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 13px;
+                  border:1px solid #c4d8cc; border-radius:10px; background:#f2f7f3; color:#14532d;
+                  font-size:.85rem; font-weight:700; text-decoration:none; flex-shrink:0; white-space:nowrap; }
+.topbar-assinar:hover { background:#e6efe9; color:#0f4425; }
+.topbar-assinar i { font-size:.85rem; }
+.topbar-assinar-num { font-size:.7rem; font-weight:800; padding:1px 7px; border-radius:999px;
+                      background:#14532d; color:#fff; }
+
+/* Em tela estreita fica só o ícone com o número — o rótulo é o que sobra. */
+@media (max-width:900px) {
+    .topbar-assinar { padding:0 10px; gap:6px; }
+    .topbar-assinar-txt { display:none; }
+}
+
+/* Ações do canto do card: favoritar e ver prévia. */
+.tpl-acoes { display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
+.tpl-olho { width:26px; height:26px; border:0; border-radius:8px; background:transparent;
+            color:#c8d2cc; cursor:pointer; padding:0; font-size:.78rem; }
+.tpl-olho:hover { background:#f2f6f3; color:#14532d; }

@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   padding: 0;
 }
 
@@ -37,9 +37,9 @@
 }
 
 .page-title {
-  margin: 0 0 6px;
+  margin: 0 0 3px;
   color: var(--req-ink);
-  font-size: 1.85rem;
+  font-size: 1.32rem;
   font-weight: 800;
   line-height: 1.05;
 }
@@ -58,10 +58,10 @@
 }
 
 .toolbar-button {
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 13px;
   border: 1px solid var(--req-line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   color: var(--req-ink);
   display: inline-flex;
@@ -116,21 +116,21 @@
 
 .req-summary-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+  gap: 7px;
+  margin-bottom: 8px;
 }
 
 .summary-chip {
-  padding: 10px 12px;
+  padding: 7px 10px;
   border: 1px solid var(--req-line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
   color: var(--req-ink);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -153,8 +153,9 @@
 .summary-chip span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 0.74rem;
+  gap: 6px;
+  font-size: 0.73rem;
+  min-width: 0;
   color: var(--req-muted);
   font-weight: 700;
 }
@@ -165,7 +166,7 @@
 }
 
 .summary-chip strong {
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   color: var(--req-ink);
   font-weight: 800;
 }
@@ -173,15 +174,15 @@
 .req-category-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .category-chip {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 5px 11px;
   border: 1px solid var(--req-line);
   border-radius: 999px;
   background: #fff;
@@ -255,7 +256,7 @@
 }
 
 .req-filter-bar {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .active-filter-row {
@@ -290,15 +291,15 @@
 }
 
 .req-filter-search {
-  min-width: min(360px, 100%);
-  flex: 1 1 360px;
+  min-width: min(300px, 100%);
+  flex: 1 1 300px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 14px;
+  gap: 9px;
+  min-height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--req-line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
 }
 
@@ -308,11 +309,12 @@
 
 .req-filter-search input {
   flex: 1;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--req-ink);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .req-filter-label {
@@ -322,15 +324,15 @@
 }
 
 .req-filter-select {
-  width: 210px;
+  width: 168px;
   max-width: 100%;
-  min-height: 42px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--req-line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
   color: var(--req-ink);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .success-message,
@@ -1082,3 +1084,23 @@
     min-width: 100%;
   }
 }
+
+/* Botão discreto da barra de filtros (ex.: "Encerrados") — tracejado enquanto
+   desligado, sólido quando o filtro está ativo. */
+.toolbar-button-ghost {
+  border-style: dashed;
+  color: var(--req-muted);
+  font-weight: 600;
+}
+
+.toolbar-button-ghost:hover {
+  border-style: solid;
+  color: var(--req-primary-strong);
+}
+
+.toolbar-button-ghost.is-on {
+  border-style: solid;
+  border-color: #dde8e2;
+  color: #5a8a6a;
+}
+

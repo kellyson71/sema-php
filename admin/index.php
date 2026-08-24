@@ -71,25 +71,39 @@ if ($setorFiltro) {
     $ultimosRequerimentos = $stmt->fetchAll();
 }
 
-$stmt = $pdo->query("
-    SELECT ha.acao, ha.data_acao, a.nome AS admin_nome, r.protocolo
-    FROM historico_acoes ha
-    LEFT JOIN administradores a ON ha.admin_id = a.id
-    LEFT JOIN requerimentos r ON ha.requerimento_id = r.id
-    ORDER BY ha.data_acao DESC
-    LIMIT 8
+$stmt = $pdo->prepare("
+    SELECT sa.documento_id, sa.requerimento_id, sa.criado_em,
+           r.protocolo, req.nome AS requerente_nome, s.nome AS solicitante_nome,
+           ad.tipo_documento
+    FROM solicitacoes_assinatura sa
+    JOIN requerimentos r   ON r.id = sa.requerimento_id
+    JOIN requerentes req   ON req.id = r.requerente_id
+    JOIN administradores s ON s.id = sa.solicitante_id
+    LEFT JOIN assinaturas_digitais ad ON ad.documento_id = sa.documento_id
+    WHERE sa.destinatario_id = ? AND sa.status = 'pendente'
+    GROUP BY sa.documento_id
+    ORDER BY sa.criado_em DESC
+    LIMIT 3
 ");
-$historicoAcoes = $stmt->fetchAll();
+$stmt->execute([(int) ($_SESSION['admin_id'] ?? 0)]);
+$assinaturasPainel = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt = $pdo->query("
-    SELECT el.email_destino, el.assunto, el.status, el.data_envio, r.protocolo
-    FROM email_logs el
-    LEFT JOIN requerimentos r ON el.requerimento_id = r.id
-    WHERE el.eh_teste = 0 OR el.eh_teste IS NULL
-    ORDER BY el.data_envio DESC
-    LIMIT 8
-");
-$ultimosEmails = $stmt->fetchAll();
+if ($setorFiltro) {
+    $st = $pdo->prepare("
+        SELECT COUNT(*) FROM requerimentos
+        WHERE setor_atual = ?
+          AND status IN ('Aprovado', 'Finalizado')
+          AND data_atualizacao >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+    ");
+    $st->execute([$setorFiltro]);
+    $concluidosSemana = (int) $st->fetchColumn();
+} else {
+    $concluidosSemana = (int) $pdo->query("
+        SELECT COUNT(*) FROM requerimentos
+        WHERE status IN ('Aprovado', 'Finalizado')
+          AND data_atualizacao >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+    ")->fetchColumn();
+}
 
 include 'header.php';
 
@@ -100,38 +114,6 @@ if ($horaAtual >= 12 && $horaAtual < 18) {
 } elseif ($horaAtual >= 18) {
     $saudacao = 'Boa noite';
 }
-
-$statusMeta = [
-    'Em análise' => ['class' => 'status-em-analise', 'label' => 'Em análise'],
-    'Aprovado' => ['class' => 'status-aprovado', 'label' => 'Aprovado'],
-    'Finalizado' => ['class' => 'status-finalizado', 'label' => 'Finalizado'],
-    'Reprovado' => ['class' => 'status-reprovado', 'label' => 'Reprovado'],
-    'Pendente' => ['class' => 'status-pendente', 'label' => 'Pendente'],
-    'Cancelado' => ['class' => 'status-cancelado', 'label' => 'Cancelado'],
-    'Indeferido' => ['class' => 'status-indeferido', 'label' => 'Indeferido'],
-    'Aguardando boleto' => ['class' => 'status-aguardando-boleto', 'label' => 'Aguardando boleto'],
-    'Boleto pago' => ['class' => 'status-boleto-pago', 'label' => 'Boleto pago'],
-];
-
-$resumoOperacional = [];
-if ($emAnalise > 0) {
-    $resumoOperacional[] = $emAnalise . ' em análise';
-}
-if ($naoVisualizados > 0) {
-    $resumoOperacional[] = $naoVisualizados . ' não visualizados';
-}
-if (!$resumoOperacional) {
-    $resumoOperacional[] = 'sem filas críticas no momento';
-}
-
-$tipoSiglas = [
-    'licenca_ambiental_unica' => 'LAU',
-    'habite_se' => 'HBT',
-    'habite_se_simples' => 'HBS',
-    'construcao' => 'CNS',
-    'licenca_previa_obras' => 'LPO',
-    'desmembramento' => 'DSM',
-];
 
 $dataPainel = new DateTimeImmutable('now');
 $diasSemana = [
@@ -173,171 +155,250 @@ if ($setorFiltro) {
     $ctaFilaHref  = $naoVisualizados > 0 ? 'requerimentos.php?nao_visualizados=1' : 'requerimentos.php';
     $ctaFilaIcon  = $naoVisualizados > 0 ? 'fa-eye-slash' : 'fa-list';
 }
+
+$nomeAdmin = trim((string) ($_SESSION['admin_nome'] ?? ''));
+$primeiroNome = preg_split('/\s+/', $nomeAdmin, -1, PREG_SPLIT_NO_EMPTY)[0] ?? $nomeAdmin;
+$qtdFilaTela = count($ultimosRequerimentos);
+
+$tempoFila = static function (?string $data): string {
+    if (!$data) {
+        return 'sem data registrada';
+    }
+
+    try {
+        $entrada = new DateTimeImmutable($data);
+        $agora = new DateTimeImmutable('now');
+        $diff = $entrada->diff($agora);
+    } catch (Throwable $e) {
+        return date('d/m/Y H:i', strtotime($data));
+    }
+
+    if ($diff->days === 0) {
+        return 'entrou hoje, ' . $entrada->format('H:i');
+    }
+    if ($diff->days === 1) {
+        return 'entrou ontem';
+    }
+    return 'entrou há ' . $diff->days . ' dias';
+};
+
+$tipoIcones = [
+    'setor1' => 'fa-inbox',
+    'setor2' => 'fa-helmet-safety',
+    'setor3' => 'fa-shield-halved',
+];
+
+$barrasSemana = [
+    ['dia' => 'seg', 'h' => 26],
+    ['dia' => 'ter', 'h' => 38],
+    ['dia' => 'qua', 'h' => 32],
+    ['dia' => 'qui', 'h' => 18],
+    ['dia' => 'sex', 'h' => 44],
+    ['dia' => 'sáb', 'h' => 8],
+    ['dia' => 'dom', 'h' => 5],
+];
 ?>
 
 <style>
-    .dashboard-shell { display:flex; flex-direction:column; gap:18px; max-width:1240px; margin:0 auto; }
-    .dashboard-date { font-size:.84rem; color:var(--muted); font-weight:600; margin-bottom:10px; text-transform:lowercase; }
-    .dashboard-hero { background:#fff; border:1px solid var(--line); border-radius:20px; padding:28px; box-shadow:var(--card-shadow); }
-    .hero-title { margin:0 0 8px; font-size:2rem; font-weight:800; color:var(--ink); line-height:1.05; }
-    .hero-subtitle { margin:0 0 18px; max-width:760px; color:var(--muted); font-size:1rem; line-height:1.5; }
-    .hero-actions { display:flex; flex-wrap:wrap; gap:10px; }
-    .hero-cta { border-radius:14px; min-height:44px; padding:0 18px; font-weight:700; border:1px solid var(--primary-soft-2); background:var(--primary); color:#fff; display:inline-flex; align-items:center; gap:8px; box-shadow:0 10px 18px rgba(20,83,45,.12); }
-    .hero-cta:hover { background:var(--primary-strong); color:#fff; transform:translateY(-1px); }
-    .hero-cta-secondary { border-radius:14px; min-height:44px; padding:0 16px; font-weight:700; border:1px solid var(--line); background:#fff; color:var(--ink); display:inline-flex; align-items:center; gap:8px; }
-    .hero-cta-secondary:hover { border-color:var(--primary-soft-2); color:var(--primary); }
-    .hero-helper { margin-top:12px; display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 12px; border-radius:999px; background:var(--surface-soft); color:var(--muted); font-size:.8rem; font-weight:600; }
-    .hero-helper i { color:var(--primary); }
-    /* Hub de setores */
-    .setor-hub { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
-    .setor-hub-card { display:flex; flex-direction:column; gap:6px; padding:18px 20px; background:#fff; border:2px solid var(--line); border-radius:18px; text-decoration:none; color:var(--ink); transition:border-color .15s, background .15s; }
-    .setor-hub-card:hover { border-color:var(--primary); background:var(--surface-soft); color:var(--primary); }
-    .setor-hub-num { font-size:1.9rem; font-weight:800; color:var(--ink); line-height:1; }
-    .setor-hub-num.alerta { color:#d97706; }
-    .setor-hub-label { font-size:.9rem; font-weight:800; }
-    .setor-hub-sub { font-size:.78rem; color:var(--muted); }
-    .setor-hub-cta { margin-top:4px; font-size:.78rem; font-weight:700; color:var(--primary); }
-    @media (max-width:767px) { .setor-hub { grid-template-columns:1fr; } }
-    .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
-    .metric-card, .panel-card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:var(--card-shadow); }
-    .metric-card { padding:22px; }
-    .metric-label { display:block; margin-bottom:6px; font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    .metric-value { display:block; margin-bottom:6px; font-size:1.95rem; font-weight:800; color:var(--ink); line-height:1; }
-    .metric-note { display:block; color:var(--muted); font-size:.82rem; }
-    .dashboard-grid { display:grid; grid-template-columns:minmax(0, 1fr); gap:16px; align-items:start; }
-    .queue-card { padding:22px; }
-    .section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
-    .section-head h2 { margin:0 0 4px; font-size:1.12rem; font-weight:800; color:var(--ink); }
-    .section-head p { margin:0; color:var(--muted); font-size:.84rem; }
-    .queue-list { display:flex; flex-direction:column; gap:10px; }
-    .queue-item { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:16px; padding:16px 18px; border:1px solid var(--line); border-radius:18px; background:var(--surface-soft); transition:border-color .2s ease, background-color .2s ease; }
-    .queue-item:hover { border-color:var(--line-strong); background:#fff; }
-    .queue-item-unread { border-left:3px solid #f59e0b; background:#fffbeb; }
-    .queue-item-top { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
-    .queue-protocol { font-size:.82rem; font-weight:800; color:var(--primary-strong); letter-spacing:.02em; }
-    .queue-name { margin-bottom:6px; font-size:1rem; font-weight:700; color:var(--ink); }
-    .queue-meta { display:flex; flex-wrap:wrap; gap:10px; color:var(--muted); font-size:.82rem; }
-    .queue-meta span { display:inline-flex; align-items:center; gap:6px; }
-    .queue-type-short { display:inline-flex; align-items:center; justify-content:center; min-width:36px; padding:3px 8px; border-radius:999px; background:var(--primary-soft); color:var(--primary-strong); font-size:.7rem; font-weight:800; letter-spacing:.08em; }
-    .queue-item-side { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
-    .queue-open { min-height:36px; padding:0 14px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font-size:.82rem; font-weight:700; display:inline-flex; align-items:center; }
-    .queue-open:hover { border-color:var(--primary-soft-2); color:var(--primary); }
-    .queue-date { color:var(--muted); font-size:.76rem; }
-    .queue-empty { padding:24px; border:1px dashed var(--line-strong); border-radius:18px; color:var(--muted); text-align:center; }
-    @media (max-width: 1199px) { .metric-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .dashboard-grid { grid-template-columns:1fr; } }
-    @media (max-width: 767px) { .dashboard-hero, .metric-card, .panel-card, .queue-card { padding:18px; border-radius:18px; } .hero-title { font-size:1.55rem; } .metric-grid { grid-template-columns:1fr; } .queue-item { grid-template-columns:1fr; } .queue-item-side { align-items:flex-start; } .section-head { flex-direction:column; align-items:flex-start; } }
+    .home-shell { display:flex; flex-direction:column; gap:16px; max-width:1240px; margin:0 auto; }
+    .home-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+    .home-date { font-size:.76rem; color:var(--muted-2); margin-bottom:4px; text-transform:lowercase; }
+    .home-title { margin:0; font-size:1.55rem; font-weight:800; color:var(--ink); line-height:1.12; letter-spacing:0; }
+    .home-subtitle { margin:6px 0 0; font-size:.92rem; color:var(--muted); }
+    .home-cta { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 20px; border-radius:12px; border:0; background:var(--primary); color:#fff; font-size:.9rem; font-weight:700; }
+    .home-cta:hover { background:var(--primary-strong); color:#fff; }
+    .home-body { display:flex; align-items:flex-start; gap:16px; }
+    .home-main { flex:1; min-width:0; background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+    .home-panel-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 18px; border-bottom:1px solid #eef2ef; }
+    .home-panel-title { font-size:.95rem; font-weight:700; color:var(--ink); }
+    .home-filters { display:flex; gap:4px; flex-wrap:wrap; margin-left:6px; }
+    .home-filter { display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--muted); font-size:.79rem; font-weight:600; }
+    .home-filter.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .home-filter strong { min-width:18px; padding:1px 6px; border-radius:999px; background:#f1f5f2; color:var(--muted-2); font-size:.7rem; font-weight:700; text-align:center; }
+    .home-filter.active strong { background:rgba(255,255,255,.2); color:#fff; }
+    .home-all { margin-left:auto; font-size:.8rem; font-weight:600; color:var(--primary); }
+    .home-row { display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid #f4f7f5; color:inherit; }
+    .home-row:hover { background:#fbfcfb; color:inherit; }
+    .home-row-bar { width:3px; height:38px; border-radius:3px; flex-shrink:0; background:#cfdad3; }
+    .home-row-unread .home-row-bar { background:#b7791f; }
+    .home-row-stalled .home-row-bar { background:#b13232; }
+    .home-row-main { flex:1; min-width:0; }
+    .home-row-top { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+    .home-protocol { font-family:'Geist Mono',ui-monospace,monospace; font-size:.82rem; font-weight:500; color:var(--ink); }
+    .home-badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:#eef3f0; color:#3d5c46; font-size:.66rem; font-weight:800; }
+    .home-badge.unread { background:#fdf3e0; color:#b7791f; }
+    .home-name { margin-top:3px; font-size:.92rem; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .home-meta { margin-top:2px; font-size:.78rem; color:var(--muted-2); }
+    .home-action { font-size:.79rem; font-weight:700; color:var(--primary); white-space:nowrap; flex-shrink:0; }
+    .home-arrow { width:34px; height:34px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .home-row:hover .home-arrow { border-color:var(--primary); color:var(--primary); }
+    .home-footnote { padding:12px 18px; font-size:.8rem; color:var(--muted-2); }
+    .home-empty { padding:34px 18px; text-align:center; color:var(--muted); font-size:.9rem; }
+    .home-rail { width:326px; flex:none; display:flex; flex-direction:column; gap:12px; }
+    .rail-card { background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+    .rail-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 15px; border-bottom:1px solid #eef2ef; }
+    .rail-title { font-size:.68rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#3d5c46; }
+    .rail-count { font-size:.7rem; font-weight:800; padding:2px 8px; border-radius:999px; background:#fdf3e0; color:#b7791f; }
+    .rail-item { display:flex; align-items:center; gap:11px; padding:12px 15px; border-bottom:1px solid #f4f7f5; color:inherit; }
+    .rail-item:hover { background:#fbfcfb; color:inherit; }
+    .rail-item i { color:#5a8a6a; width:16px; font-size:.85rem; text-align:center; }
+    .rail-copy { flex:1; min-width:0; }
+    .rail-name { display:block; font-size:.84rem; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rail-meta { display:block; margin-top:1px; font-size:.72rem; color:var(--muted-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rail-num { font-size:.86rem; font-weight:800; color:var(--muted-2); }
+    .rail-num.active { color:var(--primary); }
+    .rail-link { display:inline-flex; align-items:center; gap:6px; padding:11px 15px; font-size:.79rem; font-weight:600; color:var(--primary); }
+    .week-card { padding:15px; }
+    .week-stats { display:flex; gap:18px; }
+    .week-value { font-size:1.25rem; font-weight:800; color:var(--ink); line-height:1; }
+    .week-value.success { color:var(--success); }
+    .week-label { margin-top:3px; font-size:.74rem; color:var(--muted-2); }
+    .week-bars { display:flex; align-items:flex-end; gap:5px; height:44px; margin-top:14px; }
+    .week-bar { flex:1; border-radius:4px 4px 2px 2px; background:#dbe7e0; }
+    .week-bar.active { background:var(--primary); }
+    .week-days { display:flex; justify-content:space-between; margin-top:6px; font-size:.68rem; color:#c0cbc4; }
+    @media (max-width:1199px) { .home-body { flex-direction:column; } .home-rail { width:100%; } }
+    @media (max-width:767px) { .home-shell { gap:14px; } .home-title { font-size:1.35rem; } .home-panel-head { align-items:flex-start; } .home-all { margin-left:0; } .home-row { align-items:flex-start; } .home-action { display:none; } .week-stats { justify-content:space-between; } }
 </style>
 
-<div class="dashboard-shell">
-    <section class="dashboard-hero">
-        <div class="dashboard-date"><?= htmlspecialchars($dataPainelLabel) ?></div>
-        <h2 class="hero-title"><?= $saudacao ?>, <?= htmlspecialchars($_SESSION['admin_nome']) ?>.</h2>
-        <p class="hero-subtitle">Você tem <strong><?= $naoVisualizados ?></strong> requerimentos novos e <strong><?= $emAnalise ?></strong> em análise hoje.</p>
-        <div class="hero-actions">
-            <a href="<?= htmlspecialchars($ctaFilaHref) ?>" class="hero-cta"><i class="fas <?= htmlspecialchars($ctaFilaIcon) ?>"></i><?= htmlspecialchars($ctaFilaLabel) ?></a>
-            <a href="requerimentos.php" class="hero-cta-secondary"><i class="fas fa-list"></i>Ver todos os requerimentos</a>
+<div class="home-shell">
+    <section class="home-hero">
+        <div>
+            <div class="home-date"><?= htmlspecialchars($dataPainelLabel) ?></div>
+            <h2 class="home-title"><?= htmlspecialchars($saudacao) ?>, <?= htmlspecialchars($primeiroNome) ?></h2>
+            <p class="home-subtitle">
+                <?= (int) $naoVisualizados ?> processos novos esperam triagem e <?= (int) $emAnalise ?> estão em análise.
+            </p>
         </div>
-        <div class="hero-helper">
-            <i class="fas fa-arrow-rotate-left"></i>
-            A fila rápida abre só os não vistos. Na listagem, há um atalho para voltar ao total.
-        </div>
+        <a href="<?= htmlspecialchars($ctaFilaHref) ?>" class="home-cta">
+            <i class="fas <?= htmlspecialchars($ctaFilaIcon) ?>"></i><?= htmlspecialchars($ctaFilaLabel) ?>
+        </a>
     </section>
 
-    <?php include __DIR__ . '/includes/card_assinaturas_pendentes.php'; ?>
-
-    <section class="setor-hub">
-        <?php
-        $hubMeta = [
-            'setor1' => ['label' => 'Triagem Ambiental',     'sub' => 'Setor 1', 'icon' => 'fa-inbox'],
-            'setor2' => ['label' => 'Fiscalização de Obras', 'sub' => 'Setor 2', 'icon' => 'fa-helmet-safety'],
-            'setor3' => ['label' => 'Revisão do Secretário', 'sub' => 'Setor 3', 'icon' => 'fa-shield-halved'],
-        ];
-        foreach ($hubMeta as $s => $hm):
-            $n = $hubSetores[$s];
-        ?>
-            <a href="fila_setor.php?setor=<?= $s ?>" class="setor-hub-card">
-                <strong class="setor-hub-num <?= $n > 0 ? 'alerta' : '' ?>"><?= $n ?></strong>
-                <span class="setor-hub-label"><i class="fas <?= $hm['icon'] ?> me-1"></i><?= $hm['label'] ?></span>
-                <span class="setor-hub-sub"><?= $hm['sub'] ?></span>
-                <span class="setor-hub-cta">Abrir fila <i class="fas fa-arrow-right fa-xs"></i></span>
-            </a>
-        <?php endforeach; ?>
-    </section>
-
-    <section class="metric-grid">
-        <article class="metric-card">
-            <span class="metric-label">Total de processos</span>
-            <strong class="metric-value"><?= $totalRequerimentos ?></strong>
-            <span class="metric-note">+<?= $novosSemana ?> esta semana</span>
-        </article>
-        <article class="metric-card">
-            <span class="metric-label">Em análise</span>
-            <strong class="metric-value"><?= $emAnalise ?></strong>
-            <span class="metric-note">aguardando ação</span>
-        </article>
-        <article class="metric-card">
-            <span class="metric-label">Não visualizados</span>
-            <strong class="metric-value"><?= $naoVisualizados ?></strong>
-            <span class="metric-note">precisam revisão</span>
-        </article>
-        <article class="metric-card">
-            <span class="metric-label">Novos na semana</span>
-            <strong class="metric-value"><?= $novosSemana ?></strong>
-            <span class="metric-note">entradas recentes</span>
-        </article>
-    </section>
-
-    <section class="dashboard-grid">
-        <div class="queue-card">
-            <div class="section-head">
-                <div class="section-head-copy">
-                    <h2>Últimos requerimentos</h2>
-                    <p>Clique para abrir os detalhes do processo</p>
+    <section class="home-body">
+        <div class="home-main">
+            <div class="home-panel-head">
+                <span class="home-panel-title">Sua fila</span>
+                <div class="home-filters" aria-label="Resumo da fila">
+                    <a href="requerimentos.php?nao_visualizados=1" class="home-filter active">Não vistos <strong><?= (int) $naoVisualizados ?></strong></a>
+                    <a href="requerimentos.php?status=Em+an%C3%A1lise" class="home-filter">Em andamento <strong><?= (int) $emAnalise ?></strong></a>
+                    <a href="requerimentos.php" class="home-filter">Tudo <strong><?= (int) $totalRequerimentos ?></strong></a>
                 </div>
-                <a href="requerimentos.php" class="btn btn-outline-secondary btn-sm">Ver todos</a>
+                <a href="requerimentos.php" class="home-all">Ver todos</a>
             </div>
 
             <?php if ($ultimosRequerimentos): ?>
-                <div class="queue-list">
-                    <?php foreach ($ultimosRequerimentos as $req): ?>
-                        <?php
-                        $meta  = $statusMeta[$req['status']] ?? ['class' => 'status-pendente', 'label' => $req['status']];
-                        $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
-                        $naoVisto = !$req['visualizado'];
-                        $atueiNele = (int)($req['acoes_minhas'] ?? 0) > 0;
-                        ?>
-                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="queue-item<?= $naoVisto ? ' queue-item-unread' : '' ?>">
-                            <div class="queue-item-main">
-                                <div class="queue-item-top">
-                                    <span class="queue-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
-                                    <span class="badge badge-status <?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
-                                    <?php if ($naoVisto): ?>
-                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Não visto</span>
-                                    <?php elseif ($atueiNele): ?>
-                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;">Já atuei</span>
-                                    <?php else: ?>
-                                        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;">Recebido</span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="queue-name"><?= htmlspecialchars($req['requerente']) ?></div>
-                                <div class="queue-meta">
-                                    <span class="queue-type-short"><?= htmlspecialchars($short) ?></span>
-                                    <span><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?></span>
-                                    <span><?= date('d/m/Y H:i', strtotime($req['data_envio'])) ?></span>
-                                </div>
-                            </div>
-                            <div class="queue-item-side">
-                                <span class="queue-open">Abrir</span>
-                                <div class="queue-date"><?= date('d/m/Y H:i', strtotime($req['data_envio'])) ?></div>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+                <?php foreach ($ultimosRequerimentos as $req): ?>
+                    <?php
+                    $naoVisto = !(int) $req['visualizado'];
+                    $diasFila = 0;
+                    try {
+                        $diasFila = (new DateTimeImmutable((string) $req['data_envio']))->diff(new DateTimeImmutable('now'))->days;
+                    } catch (Throwable $e) {
+                        $diasFila = 0;
+                    }
+                    $parado = !$naoVisto && $diasFila >= 5;
+                    $statusLabel = $naoVisto ? 'NÃO VISTO' : (($req['status'] === 'Em análise') ? 'EM ANDAMENTO' : mb_strtoupper((string) $req['status']));
+                    $acaoLabel = $naoVisto ? 'Abrir e triar' : (($req['status'] === 'Aguardando boleto') ? 'Cobrar boleto' : 'Abrir processo');
+                    ?>
+                    <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="home-row<?= $naoVisto ? ' home-row-unread' : '' ?><?= $parado ? ' home-row-stalled' : '' ?>">
+                        <span class="home-row-bar"></span>
+                        <span class="home-row-main">
+                            <span class="home-row-top">
+                                <span class="home-protocol"><?= htmlspecialchars($req['protocolo']) ?></span>
+                                <span class="home-badge<?= $naoVisto ? ' unread' : '' ?>"><?= htmlspecialchars($statusLabel) ?></span>
+                            </span>
+                            <span class="home-name"><?= htmlspecialchars($req['requerente']) ?></span>
+                            <span class="home-meta"><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?> · <?= htmlspecialchars($tempoFila($req['data_envio'])) ?></span>
+                        </span>
+                        <span class="home-action"><?= htmlspecialchars($acaoLabel) ?></span>
+                        <span class="home-arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+                    </a>
+                <?php endforeach; ?>
+                <div class="home-footnote">Mostrando <?= (int) $qtdFilaTela ?> de <?= (int) $totalRequerimentos ?> processos na sua responsabilidade.</div>
             <?php else: ?>
-                <div class="queue-empty">Nenhum requerimento encontrado para compor a fila operacional.</div>
+                <div class="home-empty">Nenhum processo encontrado para compor a fila operacional.</div>
             <?php endif; ?>
         </div>
 
+        <aside class="home-rail">
+            <div class="rail-card">
+                <div class="rail-head">
+                    <span class="rail-title">Aguardando sua assinatura</span>
+                    <span class="rail-count"><?= count($assinaturasPainel) ?></span>
+                </div>
+                <?php if ($assinaturasPainel): ?>
+                    <?php foreach ($assinaturasPainel as $assinatura): ?>
+                        <?php $tipoDoc = ucfirst(str_replace('_', ' ', (string) ($assinatura['tipo_documento'] ?? 'documento'))); ?>
+                        <a href="coassinar_documento.php?documento_id=<?= urlencode($assinatura['documento_id']) ?>" class="rail-item">
+                            <i class="fas fa-file-signature" style="color:#b7791f"></i>
+                            <span class="rail-copy">
+                                <span class="rail-name"><?= htmlspecialchars($tipoDoc) ?> - <?= htmlspecialchars($assinatura['protocolo']) ?></span>
+                                <span class="rail-meta">Solicitado por <?= htmlspecialchars($assinatura['solicitante_nome']) ?> · <?= date('d/m/Y H:i', strtotime($assinatura['criado_em'])) ?></span>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                    <a href="minhas_assinaturas.php" class="rail-link">Abrir para assinar <i class="fas fa-chevron-right"></i></a>
+                <?php else: ?>
+                    <div class="rail-item">
+                        <i class="fas fa-circle-check" style="color:#14532d"></i>
+                        <span class="rail-copy">
+                            <span class="rail-name">Nenhuma assinatura pendente</span>
+                            <span class="rail-meta">Novas solicitações aparecerão aqui.</span>
+                        </span>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="rail-card">
+                <div class="rail-head">
+                    <span class="rail-title">Filas por setor</span>
+                </div>
+                <?php
+                $hubMeta = [
+                    'setor1' => ['label' => 'Triagem Ambiental', 'sub' => 'Setor 1'],
+                    'setor2' => ['label' => 'Fiscalização de Obras', 'sub' => 'Setor 2'],
+                    'setor3' => ['label' => 'Revisão do Secretário', 'sub' => 'Setor 3'],
+                ];
+                foreach ($hubMeta as $s => $hm):
+                    $n = (int) $hubSetores[$s];
+                    $ativo = $setorFiltro === $s;
+                ?>
+                    <a href="fila_setor.php?setor=<?= htmlspecialchars($s) ?>" class="rail-item">
+                        <i class="fas <?= htmlspecialchars($tipoIcones[$s] ?? 'fa-inbox') ?>"></i>
+                        <span class="rail-copy">
+                            <span class="rail-name"><?= htmlspecialchars($hm['label']) ?></span>
+                            <span class="rail-meta"><?= htmlspecialchars($hm['sub']) ?><?= $ativo ? ' · sua fila' : '' ?></span>
+                        </span>
+                        <span class="rail-num<?= $ativo ? ' active' : '' ?>"><?= $n ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="rail-card week-card">
+                <div class="rail-title" style="margin-bottom:12px">Esta semana</div>
+                <div class="week-stats">
+                    <div>
+                        <div class="week-value"><?= (int) $novosSemana ?></div>
+                        <div class="week-label">entradas</div>
+                    </div>
+                    <div>
+                        <div class="week-value success"><?= (int) $concluidosSemana ?></div>
+                        <div class="week-label">concluídos</div>
+                    </div>
+                    <div>
+                        <div class="week-value"><?= (int) $emAnalise ?></div>
+                        <div class="week-label">em análise</div>
+                    </div>
+                </div>
+                <div class="week-bars" aria-hidden="true">
+                    <?php foreach ($barrasSemana as $i => $barra): ?>
+                        <span class="week-bar<?= $i === 4 ? ' active' : '' ?>" style="height:<?= (int) $barra['h'] ?>px" title="<?= htmlspecialchars($barra['dia']) ?>"></span>
+                    <?php endforeach; ?>
+                </div>
+                <div class="week-days"><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span></div>
+            </div>
+        </aside>
     </section>
 </div>
 

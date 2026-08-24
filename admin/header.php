@@ -34,7 +34,7 @@ $notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 
 $assinaturasPendentes = contarAssinaturasPendentesPara($pdo, (int) $_SESSION['admin_id']);
 
 $pageTitles = [
-    'index.php' => 'Dashboard',
+    'index.php' => 'Painel Inicial',
     'requerimentos.php' => 'Requerimentos',
     'documentos_assinados.php' => 'Documentos Assinados',
     'estatisticas.php' => 'Estatísticas',
@@ -113,6 +113,9 @@ if ($isAnalista) {
     <script src="https://cdn.tiny.cloud/1/djvd4vhwlkk5pio6pmjhmqd0a0j0iwziovpy9rz7k4jvzboi/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Geist+Mono:wght@500&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
+    <!-- Vocabulário do redesenho (proc-*, cmd-*): antes vivia inline dentro de
+         visualizar_requerimento.php, o que impedia as outras telas de usá-lo. -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/<?= adminAssetUrl('includes/processo-ui.css') ?>">
     <style>
         :root {
             --ink: #102117;
@@ -129,8 +132,8 @@ if ($isAnalista) {
             --primary-strong: #0f4425;
             --primary-soft: #e5f2ea;
             --primary-soft-2: #d8eadf;
-            --sidebar-bg: #14532d;
-            --sidebar-bg-2: #14532d;
+            --sidebar-bg: #0f3d23;
+            --sidebar-bg-2: #0f3d23;
             --sidebar-line: rgba(255, 255, 255, 0.08);
             --sidebar-text: rgba(255, 255, 255, 0.78);
             --sidebar-text-strong: #ffffff;
@@ -143,9 +146,9 @@ if ($isAnalista) {
             --success-soft: #def2e6;
             --danger: #b13232;
             --danger-soft: #fce7e7;
-            --sidebar-width: 258px;
-            --sidebar-collapsed-width: 84px;
-            --topbar-height: 72px;
+            --sidebar-width: 236px;
+            --sidebar-collapsed-width: 72px;
+            --topbar-height: 60px;
             --radius-lg: 22px;
             --radius-md: 16px;
             --radius-sm: 12px;
@@ -189,12 +192,12 @@ if ($isAnalista) {
             position: fixed;
             inset: 0 auto 0 0;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+            background: var(--sidebar-bg);
             color: var(--sidebar-text);
             border-right: 1px solid var(--sidebar-line);
             display: flex;
             flex-direction: column;
-            padding: 18px 14px 14px;
+            padding: 16px 12px 12px;
             transition: width 0.24s ease, transform 0.24s ease;
             z-index: 1040;
             overflow: hidden;
@@ -220,9 +223,9 @@ if ($isAnalista) {
         }
 
         .sidebar-logo {
-            height: 52px;
+            height: 38px;
             width: auto;
-            max-width: 164px;
+            max-width: 120px;
             object-fit: contain;
             filter: brightness(1.02);
             display: block;
@@ -262,18 +265,28 @@ if ($isAnalista) {
         }
 
         .sidebar-section {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
+
+        /* O design espaça os itens de um grupo em 2px — o menu fica denso e
+           os grupos ("Acervo e Dados", "Administração") é que respiram. */
+        .sidebar-section ul {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
 
         .menu-header {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 0 8px 10px;
-            font-size: 0.72rem;
+            padding: 0 12px 7px;
+            margin: 0;
+            font-size: 0.66rem;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: rgba(255, 255, 255, 0.48);
+            letter-spacing: 0.14em;
+            color: rgba(255, 255, 255, 0.38);
             font-weight: 700;
         }
 
@@ -293,11 +306,11 @@ if ($isAnalista) {
             width: 100%;
             display: flex;
             align-items: center;
-            gap: 12px;
-            min-height: 46px;
-            padding: 7px 10px;
+            gap: 11px;
+            min-height: 0;
+            padding: 10px 12px;
             border: 1px solid transparent;
-            border-radius: 14px;
+            border-radius: 10px;
             background: transparent;
             color: var(--sidebar-text) !important;
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
@@ -308,23 +321,31 @@ if ($isAnalista) {
         .sidebar-menu .nav-link:hover,
         .sidebar-menu .nav-link:not(.collapsed) {
             color: var(--sidebar-text-strong) !important;
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.07);
+            border-color: transparent;
         }
 
         .sidebar-link.active {
-            background: var(--sidebar-active);
-            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.13);
+            border-color: transparent;
+        }
+
+        /* No design o item ativo se distingue pelo ícone verde-claro, não por
+           uma borda — é o que dá o "você está aqui" sem pesar o menu. */
+        .sidebar-link.active .sidebar-link-icon {
+            color: #8fe0b0;
+        }
+
+        .sidebar-link.active .sidebar-link-title {
+            font-weight: 600;
         }
 
         .sidebar-link-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
+            width: 17px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
+            background: transparent;
             font-size: 0.88rem;
             color: inherit;
             flex-shrink: 0;
@@ -345,14 +366,17 @@ if ($isAnalista) {
 
         .sidebar-link-title {
             display: block;
-            font-size: 0.9rem;
-            font-weight: 600;
+            font-size: 0.88rem;
+            font-weight: 500;
             line-height: 1.15;
             color: inherit;
         }
 
+        /* O redesenho deixa só o nome do item — as legendas ("Fila principal
+           de protocolos" etc.) dobravam a altura do menu e é o que mais pesava
+           visualmente. Para trazê-las de volta: display: block. */
         .sidebar-link-caption {
-            display: block;
+            display: none;
             margin-top: 2px;
             font-size: 0.72rem;
             line-height: 1.2;
@@ -395,40 +419,130 @@ if ($isAnalista) {
             font-size: 0.78rem;
         }
 
+        /* ---- Rodapé da barra: linha de utilidades + cartão do usuário ---- */
+        .sidebar-utility-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-mini-acao {
+            position: relative;
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border: 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.55);
+            font-family: inherit;
+            font-size: 0.68rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .sidebar-mini-acao:hover {
+            background: rgba(255, 255, 255, 0.11);
+            color: #fff;
+        }
+
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .sidebar-user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: var(--primary-soft);
+            color: var(--primary-strong);
+            font-weight: 800;
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .sidebar-user-txt {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-user-nome {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-cargo {
+            display: block;
+            font-size: 0.71rem;
+            color: rgba(255, 255, 255, 0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-sair {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-user-sair:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        /* Recolhida: sobra só o avatar, centralizado. */
+        body.sidebar-collapsed .sidebar-utility-row,
+        body.sidebar-collapsed .sidebar-user-txt,
+        body.sidebar-collapsed .sidebar-user-sair {
+            display: none;
+        }
+
+        body.sidebar-collapsed .sidebar-user {
+            justify-content: center;
+            padding: 8px;
+        }
+
         .sidebar-utility {
             padding-top: 14px;
             border-top: 1px solid rgba(255, 255, 255, 0.09);
         }
 
-        .sidebar-utility-label {
-            margin: 0 10px 8px;
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: rgba(238, 244, 239, 0.44);
-            font-weight: 700;
-        }
 
         .sidebar-utility-link,
-        .sidebar-utility-action {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 0 0 8px;
-            padding: 11px 12px;
-            border-radius: 14px;
-            color: var(--sidebar-text);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-        }
 
         .sidebar-utility-link:hover,
-        .sidebar-utility-action:hover {
-            color: var(--sidebar-text-strong);
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.08);
-        }
 
         .content-wrapper {
             min-height: 100vh;
@@ -443,12 +557,12 @@ if ($isAnalista) {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(280px, 520px) auto;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             min-height: var(--topbar-height);
-            padding: 14px 20px;
-            background: rgba(255, 255, 255, 0.96);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--line);
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid #e6ebe7;
         }
 
         .topbar-left {
@@ -483,7 +597,7 @@ if ($isAnalista) {
         }
 
         .topbar-eyebrow {
-            display: inline-flex;
+            display: none;
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
@@ -505,8 +619,8 @@ if ($isAnalista) {
 
         .topbar-title {
             margin: 0;
-            font-size: 1.18rem;
-            font-weight: 800;
+            font-size: 0.95rem;
+            font-weight: 700;
             line-height: 1.1;
             color: var(--ink);
             white-space: nowrap;
@@ -521,12 +635,12 @@ if ($isAnalista) {
         .topbar-search-box {
             display: flex;
             align-items: center;
-            gap: 12px;
-            min-height: 46px;
-            padding: 0 14px;
+            gap: 9px;
+            min-height: 36px;
+            padding: 0 12px;
             border: 1px solid var(--line);
-            border-radius: 14px;
-            background: #fff;
+            border-radius: 10px;
+            background: var(--surface-soft);
             transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
 
@@ -554,6 +668,7 @@ if ($isAnalista) {
         }
 
         .topbar-search-hint {
+            font-family: 'Geist Mono', ui-monospace, monospace;
             display: inline-flex;
             align-items: center;
             padding: 5px 9px;
@@ -1057,7 +1172,7 @@ if ($isAnalista) {
         .content-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(11, 31, 23, 0.38);
+            background: rgba(16, 33, 23, 0.42);
             display: none;
             z-index: 1035;
         }
@@ -1096,18 +1211,13 @@ if ($isAnalista) {
         body.sidebar-collapsed .sidebar-brand-copy,
         body.sidebar-collapsed .menu-header span,
         body.sidebar-collapsed .sidebar-link-text,
-        body.sidebar-collapsed .sidebar-link-badge,
-        body.sidebar-collapsed .sidebar-link-chevron,
-        body.sidebar-collapsed .sidebar-utility-label,
-        body.sidebar-collapsed .sidebar-utility span {
+        body.sidebar-collapsed .sidebar-link-chevron {
             display: none !important;
         }
 
         body.sidebar-collapsed .sidebar-link,
         body.sidebar-collapsed .sidebar-menu .nav-link,
-        body.sidebar-collapsed .sidebar-brand,
-        body.sidebar-collapsed .sidebar-utility-link,
-        body.sidebar-collapsed .sidebar-utility-action {
+        body.sidebar-collapsed .sidebar-brand {
             justify-content: center;
         }
 
@@ -1121,17 +1231,38 @@ if ($isAnalista) {
         }
 
         body.sidebar-collapsed .sidebar-link-content {
-            display: none;
+            display: contents;
+        }
+
+        /* Com o menu recolhido o contador não cabe, mas "tem coisa nova"
+           não pode se perder: o badge vira um ponto no canto do ícone, com
+           um anel da cor da barra pra destacar do fundo. É o comportamento
+           do redesenho (om-side-dot). */
+        body.sidebar-collapsed .sidebar-link,
+        body.sidebar-collapsed .sidebar-menu .nav-link {
+            position: relative;
+        }
+
+        body.sidebar-collapsed .sidebar-link-badge {
+            position: absolute;
+            top: 7px;
+            right: 16px;
+            width: 9px;
+            height: 9px;
+            min-width: 0;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 0;
+            line-height: 0;
+            overflow: hidden;
+            box-shadow: 0 0 0 2px var(--sidebar-bg);
         }
 
         body.sidebar-collapsed .sidebar-logo {
             height: 38px;
-            max-width: 46px;
+            max-width: 40px;
         }
 
-        body.sidebar-collapsed .sidebar-version-bar {
-            display: none;
-        }
 
         @media (max-width: 1199px) {
             .topbar {
@@ -1144,12 +1275,15 @@ if ($isAnalista) {
             }
         }
 
-        @media (max-width: 991px) {
+        /* Redesenho: a barra vira gaveta só no celular (≤640). Entre 641 e
+           1024 ela fica no modo mini — quem cuida disso é o footer.php, que
+           liga a classe .sidebar-collapsed por matchMedia. */
+        @media (max-width: 640px) {
             .sidebar {
                 top: 14px;
                 bottom: 14px;
                 left: 14px;
-                width: min(286px, calc(100vw - 28px));
+                width: min(246px, calc(100vw - 28px));
                 border-radius: 18px;
                 transform: translateX(calc(-100% - 20px));
                 box-shadow: 0 28px 55px rgba(11, 31, 23, 0.26);
@@ -1203,44 +1337,9 @@ if ($isAnalista) {
         }
 
         /* ── Version bar ── */
-        .sidebar-version-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding: 8px 12px;
-            border-radius: 12px;
-            background: rgba(0, 0, 0, 0.18);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-        }
 
-        .sidebar-version-tag {
-            font-family: 'Geist Mono', ui-monospace, monospace;
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.50);
-            letter-spacing: 0.04em;
-        }
 
-        .sidebar-changelog-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: 0;
-            background: transparent;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.60);
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 999px;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
 
-        .sidebar-changelog-btn:hover {
-            background: rgba(255, 255, 255, 0.10);
-            color: #fff;
-        }
 
         .sidebar-new-dot {
             width: 7px;
@@ -1384,7 +1483,6 @@ if ($isAnalista) {
 
         <div class="sidebar-scroll sidebar-menu">
             <div class="sidebar-section">
-                <div class="menu-header"><span>Principal</span></div>
                 <ul>
                     <li>
                         <a href="<?= $adminBase ?>index.php" class="sidebar-link <?= $currentPage === 'index.php' ? 'active' : '' ?>" title="Painel Inicial">
@@ -1410,6 +1508,10 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php /* Só aparece quando há algo esperando assinatura — ou quando
+                             a pessoa já está na tela. Item fixo pra quem nunca assina
+                             nada era peso morto na barra. */ ?>
+                    <?php if ($assinaturasPendentes > 0 || $currentPage === 'minhas_assinaturas.php'): ?>
                     <li>
                         <a href="<?= $adminBase ?>minhas_assinaturas.php" class="sidebar-link <?= $currentPage === 'minhas_assinaturas.php' ? 'active' : '' ?>" title="Para assinar">
                             <span class="sidebar-link-icon"><i class="fas fa-file-signature"></i></span>
@@ -1424,6 +1526,7 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php endif; ?>
                     <li>
                         <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
                             <span class="sidebar-link-icon"><i class="fas fa-layer-group"></i></span>
@@ -1449,97 +1552,32 @@ if ($isAnalista) {
                 </ul>
             </div>
 
-            <?php if ($isAdmin): /* Operação = simulação de perfil, só faz sentido para admin */ ?>
             <div class="sidebar-section">
+                <div class="menu-header"><span>Acervo</span></div>
                 <ul>
-                    <li class="nav-item">
-                        <a href="#submenuOperacao" data-bs-toggle="collapse"
-                           class="nav-link <?= $isOperacaoSectionOpen ? '' : 'collapsed' ?>" title="Operação">
-                            <span class="sidebar-link-icon"><i class="fas fa-briefcase" style="color:#86efac;"></i></span>
-                            <div class="sidebar-link-content">
-                                <span class="sidebar-link-text">
-                                    <span class="sidebar-link-title">Operação</span>
-                                </span>
-                                <i class="fas fa-chevron-down sidebar-link-chevron"></i>
-                            </div>
-                        </a>
-                        <div class="collapse <?= $isOperacaoSectionOpen ? 'show' : '' ?>" id="submenuOperacao">
-                            <ul class="sidebar-submenu">
-                                <li>
-                                    <a href="<?= $adminBase ?>simular_perfil.php?role=analista" class="sidebar-link <?= ($currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente') ? 'active' : '' ?>" title="Triagem de Protocolos">
-                                        <span class="sidebar-link-icon"><i class="fas fa-magnifying-glass" style="color:#86efac;"></i></span>
-                                        <span class="sidebar-link-content">
-                                            <span class="sidebar-link-text">
-                                                <span class="sidebar-link-title">Triagem de Protocolos</span>
-                                            </span>
-                                        </span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-            <?php endif; ?>
-
-            <div class="sidebar-section">
-                <div class="menu-header"><span>Acervo e Dados</span></div>
-                <ul>
-                    <li class="nav-item">
-                        <a href="#submenuRelatorios" data-bs-toggle="collapse" class="nav-link <?= $isDataSectionOpen ? '' : 'collapsed' ?>" title="Acervo e Dados">
+                    <?php /* Achatado: Arquivados, Doc. Assinados e Hist. Envios eram um
+                             submenu que precisava abrir antes de escolher. Agora são abas
+                             dentro das próprias telas (includes/acervo_tabs.php) e a barra
+                             mostra só a porta de entrada. */ ?>
+                    <li>
+                        <a href="<?= $adminBase ?>documentos_assinados.php" class="sidebar-link <?= in_array($currentPage, ['documentos_assinados.php','requerimentos_arquivados.php','logs_email.php'], true) ? 'active' : '' ?>" title="Documentos">
                             <span class="sidebar-link-icon"><i class="fas fa-folder-open"></i></span>
-                            <div class="sidebar-link-content">
+                            <span class="sidebar-link-content">
                                 <span class="sidebar-link-text">
-                                    <span class="sidebar-link-title">Acervo e Dados</span>
-                                    <span class="sidebar-link-caption">Histórico, indicadores e documentos</span>
+                                    <span class="sidebar-link-title">Documentos</span>
                                 </span>
-                                <i class="fas fa-chevron-down sidebar-link-chevron"></i>
-                            </div>
+                            </span>
                         </a>
-                        <div class="collapse <?= $isDataSectionOpen ? 'show' : '' ?>" id="submenuRelatorios">
-                            <ul class="sidebar-submenu">
-                                <li>
-                                    <a href="<?= $adminBase ?>requerimentos_arquivados.php" class="sidebar-link <?= $currentPage === 'requerimentos_arquivados.php' ? 'active' : '' ?>">
-                                        <span class="sidebar-link-icon"><i class="fas fa-box-archive"></i></span>
-                                        <span class="sidebar-link-content">
-                                            <span class="sidebar-link-text">
-                                                <span class="sidebar-link-title">Arquivados</span>
-                                            </span>
-                                        </span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="<?= $adminBase ?>documentos_assinados.php" class="sidebar-link <?= $currentPage === 'documentos_assinados.php' ? 'active' : '' ?>">
-                                        <span class="sidebar-link-icon"><i class="fas fa-file-signature"></i></span>
-                                        <span class="sidebar-link-content">
-                                            <span class="sidebar-link-text">
-                                                <span class="sidebar-link-title">Doc. Assinados</span>
-                                            </span>
-                                        </span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="<?= $adminBase ?>estatisticas.php" class="sidebar-link <?= $currentPage === 'estatisticas.php' ? 'active' : '' ?>">
-                                        <span class="sidebar-link-icon"><i class="fas fa-chart-column"></i></span>
-                                        <span class="sidebar-link-content">
-                                            <span class="sidebar-link-text">
-                                                <span class="sidebar-link-title">Estatísticas</span>
-                                            </span>
-                                        </span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="<?= $adminBase ?>logs_email.php" class="sidebar-link <?= $currentPage === 'logs_email.php' ? 'active' : '' ?>">
-                                        <span class="sidebar-link-icon"><i class="fas fa-envelope-open-text"></i></span>
-                                        <span class="sidebar-link-content">
-                                            <span class="sidebar-link-text">
-                                                <span class="sidebar-link-title">Hist. Envios</span>
-                                            </span>
-                                        </span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>estatisticas.php" class="sidebar-link <?= $currentPage === 'estatisticas.php' ? 'active' : '' ?>" title="Estatísticas">
+                            <span class="sidebar-link-icon"><i class="fas fa-chart-simple"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Estatísticas</span>
+                                </span>
+                            </span>
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -1549,17 +1587,6 @@ if ($isAnalista) {
                 <div class="menu-header"><span>Administração</span></div>
                 <ul>
                     <?php if ($isAdmin): ?>
-                        <li>
-                            <a href="<?= $adminBase ?>sugestoes.php" class="sidebar-link <?= $currentPage === 'sugestoes.php' ? 'active' : '' ?>" title="Sugestões">
-                                <span class="sidebar-link-icon"><i class="fas fa-lightbulb"></i></span>
-                                <span class="sidebar-link-content">
-                                    <span class="sidebar-link-text">
-                                        <span class="sidebar-link-title">Sugestões</span>
-                                        <span class="sidebar-link-caption">Melhorias enviadas pelos cidadãos</span>
-                                    </span>
-                                </span>
-                            </a>
-                        </li>
                         <li>
                             <a href="<?= $adminBase ?>administradores.php" class="sidebar-link <?= $currentPage === 'administradores.php' ? 'active' : '' ?>" title="Gerenciar Usuários">
                                 <span class="sidebar-link-icon"><i class="fas fa-users-gear"></i></span>
@@ -1577,30 +1604,55 @@ if ($isAnalista) {
 
         </div>
 
+        <?php
+        // Iniciais para o avatar do rodapé (KP), no padrão do redesenho:
+        // primeira letra do primeiro e do último nome.
+        $nomeSidebar = trim((string) ($_SESSION['admin_nome'] ?? ''));
+        $partesNome  = preg_split('/\s+/', $nomeSidebar, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $iniciaisSidebar = '';
+        if ($partesNome) {
+            $iniciaisSidebar = mb_strtoupper(mb_substr($partesNome[0], 0, 1));
+            if (count($partesNome) > 1) {
+                $iniciaisSidebar .= mb_strtoupper(mb_substr(end($partesNome), 0, 1));
+            }
+        }
+        ?>
         <div class="sidebar-utility">
-            <div class="sidebar-version-bar">
-                <span class="sidebar-version-tag"><i class="fas fa-code-branch me-1"></i>v<?= APP_VERSION ?></span>
-                <button type="button" id="openChangelogBtn" class="sidebar-changelog-btn" title="Histórico de atualizações">
+            <div class="sidebar-utility-row">
+                <button type="button" id="openChangelogBtn" class="sidebar-mini-acao" title="Novidades da versão <?= APP_VERSION ?>">
                     <span class="sidebar-new-dot" id="sidebarNewDot"></span>
-                    Novidades
+                    <i class="fas fa-code-branch"></i>v<?= APP_VERSION ?>
                 </button>
+                <a href="https://wa.me/5584981087357" target="_blank" class="sidebar-mini-acao" title="Problemas? Fale conosco no WhatsApp">
+                    <i class="fab fa-whatsapp"></i>Suporte
+                </a>
             </div>
-            <div class="sidebar-utility-label">Ações rápidas</div>
-            <a href="https://wa.me/5584981087357" target="_blank" class="sidebar-utility-link" title="Fale conosco no WhatsApp">
-                <i class="fab fa-whatsapp"></i>
-                <span>Problemas? Fale conosco</span>
-            </a>
-            <?php if (isset($_SESSION['admin_nivel_original'])): ?>
-                <a href="<?= $adminBase ?>simular_perfil.php?sair=1" class="sidebar-utility-action" style="color:#fcd34d;">
-                    <i class="fas fa-rotate-left"></i>
-                    <span>Voltar ao meu perfil</span>
-                </a>
-            <?php else: ?>
-                <a href="<?= $adminBase ?>logout.php" class="sidebar-utility-action">
-                    <i class="fas fa-right-from-bracket"></i>
-                    <span>Sair</span>
-                </a>
-            <?php endif; ?>
+
+            <!-- Cartão de quem está logado — no redesenho é ele que fecha a
+                 barra, no lugar do botão "Sair" de largura inteira. -->
+            <div class="sidebar-user">
+                <span class="sidebar-user-avatar">
+                    <?php if ($avatarPath): ?>
+                        <img src="<?= htmlspecialchars($avatarPath) ?>" alt="">
+                    <?php else: ?>
+                        <?= htmlspecialchars($iniciaisSidebar ?: '?') ?>
+                    <?php endif; ?>
+                </span>
+                <span class="sidebar-user-txt">
+                    <span class="sidebar-user-nome"><?= htmlspecialchars($nomeSidebar) ?></span>
+                    <span class="sidebar-user-cargo"><?= htmlspecialchars($roleLabel) ?></span>
+                </span>
+                <?php if (isset($_SESSION['admin_nivel_original'])): ?>
+                    <a href="<?= $adminBase ?>simular_perfil.php?sair=1" class="sidebar-user-sair"
+                       style="color:#fcd34d" title="Voltar ao meu perfil">
+                        <i class="fas fa-rotate-left"></i>
+                    </a>
+                <?php else: ?>
+                    <a href="<?= $adminBase ?>logout.php" class="sidebar-user-sair" title="Sair">
+                        <i class="fas fa-right-from-bracket"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
         </div>
     </aside>
 
@@ -1742,12 +1794,24 @@ if ($isAnalista) {
                         type="search"
                         id="globalSearchInput"
                         class="topbar-search-input"
-                        placeholder="Buscar atalhos, requerimentos ou nomes..."
+                        placeholder="Buscar por nome, protocolo ou atalho..."
+                        aria-label="Busca inteligente por nome, protocolo ou atalho"
                         autocomplete="off"
                     >
-                    <span class="topbar-search-hint">/ buscar</span>
+                    <span class="topbar-search-hint" id="globalSearchHint">/</span>
                 </div>
                 <div class="search-results" id="globalSearchResults">
+                    <?php /* Preview dos requerimentos — preenchido por ajax/busca_rapida.php
+                             enquanto se digita. Os atalhos de tela abaixo continuam existindo,
+                             mas deixam de ser o conteúdo principal da busca. */ ?>
+                    <div id="searchReqSection" class="d-none">
+                        <div class="search-section-head">
+                            <span>Requerimentos</span>
+                            <span class="search-section-hint" id="searchReqHint"></span>
+                        </div>
+                        <div id="searchReqList"></div>
+                    </div>
+                    <div class="search-section-head search-atalhos-head d-none" id="searchAtalhosHead">Ir para</div>
                     <?php foreach ($searchItems as $item): ?>
                         <?php $searchText = strtolower($item['label'] . ' ' . $item['caption']); ?>
                         <a
@@ -1763,11 +1827,25 @@ if ($isAnalista) {
                             </span>
                         </a>
                     <?php endforeach; ?>
-                    <div class="search-empty d-none" id="globalSearchEmpty">Nenhum atalho encontrado para a busca atual.</div>
+                    <div class="search-empty d-none" id="globalSearchEmpty">Nada encontrado para esta busca.</div>
+                    <div class="search-loading d-none" id="globalSearchLoading">
+                        <i class="fas fa-circle-notch fa-spin"></i> Procurando…
+                    </div>
                 </div>
             </div>
 
             <div class="topbar-right">
+                <?php /* Atalho para a fila de assinatura, sempre visível quando há algo
+                         esperando — é o caminho mais curto para o Secretário, e não
+                         depende de a barra lateral estar aberta ou recolhida. */ ?>
+                <?php if ($assinaturasPendentes > 0): ?>
+                    <a href="<?= $adminBase ?>minhas_assinaturas.php" class="topbar-assinar"
+                       title="<?= (int) $assinaturasPendentes ?> documento(s) aguardando sua assinatura">
+                        <i class="fas fa-file-signature"></i>
+                        <span class="topbar-assinar-txt">Para assinar</span>
+                        <span class="topbar-assinar-num"><?= $assinaturasPendentes > 99 ? '99+' : (int) $assinaturasPendentes ?></span>
+                    </a>
+                <?php endif; ?>
                 <div class="notification-toggle">
                     <button type="button" class="icon-button" id="openNotificationSidebar" aria-label="Abrir notificações" aria-expanded="false">
                         <i class="fas fa-bell"></i>
@@ -1911,6 +1989,23 @@ if ($isAnalista) {
                                 <i class="fas fa-rotate-left me-2"></i> Sair da simulação
                             </a>
                         <?php endif; ?>
+
+                        <?php if ($isAdmin): ?>
+                            <?php /* Saíram da barra lateral: são funções de administração
+                                     esporádicas, não trabalho do dia a dia. Simular perfil
+                                     fica ao lado de "Sair da simulação", que é seu par. */ ?>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-header">Administração</div>
+                            <a class="dropdown-item" href="<?= $adminBase ?>sugestoes.php">
+                                <i class="fas fa-lightbulb me-2"></i> Sugestões
+                            </a>
+                            <?php if (!isset($_SESSION['admin_nivel_original'])): ?>
+                                <a class="dropdown-item" href="<?= $adminBase ?>simular_perfil.php?role=analista">
+                                    <i class="fas fa-user-secret me-2"></i> Simular Triagem de Protocolos
+                                </a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="<?= $adminBase ?>logout.php">
                             <i class="fas fa-right-from-bracket me-2"></i> Sair

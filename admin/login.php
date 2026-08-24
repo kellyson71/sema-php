@@ -48,6 +48,14 @@ if (time() - $_SESSION['last_attempt_time'] > 900) {
     $_SESSION['login_attempts'] = 0;
 }
 
+// No ambiente local, uma sessão presa pelo teste de força bruta não deve
+// impedir o desenvolvimento. Em produção, o bloqueio continua respeitando
+// a janela de 15 minutos normalmente.
+if (DOCKER_ENV && $_SERVER['REQUEST_METHOD'] === 'GET' && $_SESSION['login_attempts'] >= 8) {
+    $_SESSION['login_attempts'] = 0;
+    $_SESSION['last_attempt_time'] = time();
+}
+
 if ($_SESSION['login_attempts'] >= 8) {
     $tempo_restante = 900 - (time() - $_SESSION['last_attempt_time']);
     if ($tempo_restante > 0) {
@@ -142,7 +150,7 @@ function mascararEmail($email) {
 }
 
 function enviarCodigoLoginPorEmail($admin, $codigo) {
-    if (empty($admin['email'])) {
+    if (!emailDestinoValido((string) ($admin['email'] ?? ''))) {
         return false;
     }
 
@@ -186,8 +194,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
             exit;
         }
 
-        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE nome = ? AND ativo = 1");
-        $stmt->execute([$usuario]);
+        // Aceita tanto o nome institucional quanto o e-mail cadastrado.
+        $stmt = $pdo->prepare("SELECT * FROM administradores WHERE (nome = ? OR email = ?) AND ativo = 1 LIMIT 1");
+        $stmt->execute([$usuario, $usuario]);
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
@@ -202,19 +211,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
 
             $hasTotp = !empty($admin['totp_secret']);
 
-            if (!$hasTotp && empty($admin['email'])) {
+            if (!$hasTotp && !emailDestinoValido((string) ($admin['email'] ?? ''))) {
                 if (ob_get_length()) ob_clean();
                 echo json_encode(['success' => false, 'error' => "Usuário não possui e-mail ou App Autenticador cadastrado para verificação em duas etapas."]);
                 exit;
             }
 
-            $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $_SESSION['2fa_admin_data'] = $admin;
             $_SESSION['2fa_otp_code'] = $codigo;
             $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
 
             $emailMascarado = '';
-            if (!empty($admin['email'])) {
+            if (emailDestinoValido((string) ($admin['email'] ?? ''))) {
                 $enviado = enviarCodigoLoginPorEmail($admin, $codigo);
                 if ($enviado) {
                     $emailMascarado = mascararEmail($admin['email']);
@@ -307,13 +316,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
         }
 
         $admin = $_SESSION['2fa_admin_data'];
-        if (empty($admin['email'])) {
+        if (!emailDestinoValido((string) ($admin['email'] ?? ''))) {
             if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'error' => 'Este usuário não possui e-mail cadastrado para reenvio do código.']);
             exit;
         }
 
-        $codigo = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $_SESSION['2fa_otp_code'] = $codigo;
         $_SESSION['2fa_otp_expires'] = time() + (15 * 60);
 
@@ -360,36 +369,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Tipografia contemporânea e legível para a área administrativa. -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <?php if (!MODO_HOMOLOG && !DOCKER_ENV): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <?php endif; ?>
     <style>
         :root {
-            --primary: #009851;
-            --primary-600: #007840;
-            --primary-700: #0b5d38;
-            --primary-50: #e6f7ef;
-            --primary-100: #cfeedd;
-            --ink: #10233d;
-            --ink-2: #475569;
-            --ink-3: #64748b;
-            --line: #e2e8f0;
-            --line-2: #cbd5e1;
-            --bg: #f8fafc;
+            --primary: #0f3d23;
+            --primary-600: #14532d;
+            --primary-700: #0a2617;
+            --primary-50: #f1f4f1;
+            --primary-100: #e4f0e9;
+            --ink: #102117;
+            --ink-2: #4a5750;
+            --ink-3: #8b9991;
+            --line: #eef2ef;
+            --line-2: #dde4df;
+            --bg: #f4f6f3;
             --card:  #ffffff;
-            --danger: #dc2626;
-            --danger-bg: #fef2f2;
-            --success: #16a34a;
-            --success-bg: #f0fdf4;
-            --radius:    10px;
-            --radius-lg: 14px;
-            --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.10);
+            --danger: #8d2727;
+            --danger-bg: #fdf3f3;
+            --success: #1f7a4d;
+            --success-bg: #eef8f2;
+            --radius:    999px;
+            --radius-lg: 28px;
+            --shadow-card: 0 1px 2px rgba(16,33,23,.03), 0 30px 60px -34px rgba(16,33,23,.22);
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; }
         body {
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: Manrope, "Segoe UI", sans-serif;
             color: var(--ink);
             background: var(--bg);
             -webkit-font-smoothing: antialiased;
@@ -397,8 +407,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             flex-direction: column;
             min-height: 100vh;
         }
-        .display { font-family: 'Inter Tight', sans-serif; letter-spacing: -0.02em; }
-        .mono    { font-family: 'JetBrains Mono', monospace; }
+        .display { font-family: Manrope, "Segoe UI", sans-serif; letter-spacing: -0.02em; }
+        .mono    { font-family: Manrope, "Segoe UI", sans-serif; }
+        .step-meta {
+            font-family: Manrope, "Segoe UI", sans-serif;
+            font-weight: 600;
+            letter-spacing: .06em;
+        }
+        .login-heading {
+            display: grid;
+            grid-template-columns: 44px 1fr;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 26px;
+        }
+        .profile-icon {
+            width: 44px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #cfe3d7;
+            border-radius: 12px;
+            background: #eef8f2;
+            color: #087a3e;
+        }
+        .login-heading h2 { font-size: 1.55rem; line-height: 1.15; font-weight: 800; }
+        .login-heading p {
+            margin-top: 6px;
+            max-width: 39ch;
+            font-size: .88rem;
+            color: var(--ink-2);
+            line-height: 1.5;
+        }
         button, input { font-family: inherit; }
         ::selection { background: var(--primary-100); color: var(--ink); }
 
@@ -412,7 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         /* ── Brand Panel ── */
         .brand-panel {
             position: relative;
-            background: linear-gradient(160deg, var(--primary-700) 0%, var(--primary) 60%, var(--primary-600) 100%);
+            background: var(--primary);
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -420,25 +461,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             padding: 44px 48px;
             overflow: hidden;
         }
-        .brand-grid-bg {
-            position: absolute; inset: 0; width: 100%; height: 100%;
-            opacity: .10; pointer-events: none;
-        }
         .brand-glow {
-            position: absolute; right: -100px; top: -100px;
-            width: 400px; height: 400px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,.13), transparent 70%);
+            position: absolute; right: -190px; top: -150px;
+            width: 520px; height: 520px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(143,224,176,.30), transparent 68%);
             filter: blur(20px);
         }
         .brand-top { position: relative; z-index: 1; }
-        .brand-badge {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 5px 12px; border-radius: 999px;
-            background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.20);
-            font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-        }
         .brand-logo {
-            margin-top: 44px; width: 180px; display: block;
+            width: 180px; display: block;
             filter: drop-shadow(0 2px 8px rgba(0,0,0,.20));
         }
         .brand-middle { position: relative; z-index: 1; margin-top: 32px; }
@@ -457,8 +488,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             padding: 60px 32px; background: var(--bg);
         }
         .login-card {
-            width: 100%; max-width: 420px;
-            padding: 36px 36px 32px;
+            width: 100%; max-width: 452px;
+            padding: 38px 36px 32px;
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: var(--radius-lg);
@@ -474,22 +505,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         .field-wrap {
             position: relative; display: flex; align-items: center;
-            border: 1px solid var(--line-2); border-radius: var(--radius);
-            background: var(--card); transition: border-color .15s, box-shadow .15s;
+            min-height: 52px; border: 1px solid #d9dedb; border-radius: 10px;
+            background: #fff; transition: border-color .18s, box-shadow .18s;
         }
         .field-wrap:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+            background: #fff;
+            border-color: #009640;
+            box-shadow: 0 0 0 3px rgba(0, 150, 64, .12);
         }
-        .field-wrap.has-error { border-color: var(--danger); }
+        .field-wrap.has-error { background: var(--danger-bg); border-color: var(--danger); }
         .field-wrap.has-error:focus-within {
-            box-shadow: 0 0 0 4px color-mix(in oklab, var(--danger) 16%, transparent);
+            box-shadow: 0 0 0 3px rgba(141, 39, 39, .12);
         }
-        .field-icon { padding-left: 12px; display: flex; align-items: center; color: var(--ink-3); flex-shrink: 0; }
+        .field-icon { padding-left: 16px; display: flex; align-items: center; color: var(--ink-3); flex-shrink: 0; }
         .field-wrap.has-error .field-icon { color: var(--danger); }
         .field-input {
             flex: 1; border: none; outline: none; background: transparent;
-            padding: 13px 12px; font-size: 14.5px; color: var(--ink); font-weight: 500;
+            padding: 14px 12px; font-size: 1rem; color: var(--ink); font-weight: 500;
         }
         .field-input::placeholder { color: var(--ink-3); opacity: .7; }
         .field-trail { padding-right: 6px; display: flex; align-items: center; }
@@ -500,13 +532,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Buttons ── */
         .btn-primary {
-            width: 100%; border: none; border-radius: var(--radius);
+            width: 100%; height: 52px; border: none; border-radius: var(--radius);
             background: var(--primary); color: #fff;
-            padding: 13.5px 16px; font-size: 14.5px; font-weight: 600;
+            padding: 0 16px; font-size: .95rem; font-weight: 600;
             display: inline-flex; gap: 8px; align-items: center; justify-content: center;
             cursor: pointer; transition: background .15s, transform .05s;
-            box-shadow: 0 1px 0 rgba(255,255,255,.14) inset,
-                        0 4px 12px -4px color-mix(in oklab, var(--primary) 55%, transparent);
             margin-top: 4px;
         }
         .btn-primary:hover:not(:disabled) { background: var(--primary-600); }
@@ -532,64 +562,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Alerts ── */
         .alert {
-            padding: 11px 14px; border-radius: 10px;
-            display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px;
+            padding: 12px 15px; border-radius: 18px;
+            display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px;
         }
         .alert-icon { flex-shrink: 0; margin-top: 1px; }
         .alert.error {
-            background: var(--danger-bg);
-            border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+            background: var(--danger-bg); border: none;
             color: var(--danger); font-size: 13.5px;
         }
         .alert.info {
-            background: var(--primary-50); border: 1px solid var(--line);
+            background: var(--primary-50); border: none;
             color: var(--ink-2); font-size: 12.5px;
         }
-        .alert.info .alert-icon { color: var(--primary); }
+        .alert.info .alert-icon { color: #3f9d6a; }
+
+        /* Alertas de autenticação são persistentes: só saem por uma nova ação
+           explícita (ou pelo fluxo que troca de etapa), nunca por tempo. */
+        .alert[role="alert"] {
+            opacity: 1 !important;
+            visibility: visible !important;
+            animation: none !important;
+        }
 
         /* ── Method cards ── */
         .method-card {
-            border: 1.5px solid var(--line-2); border-radius: 10px; padding: 14px 16px;
-            cursor: pointer; background: var(--card); transition: all .15s;
-            display: flex; gap: 12px; align-items: flex-start; width: 100%;
+            border: none; border-radius: 20px; padding: 15px 18px;
+            cursor: pointer; background: var(--primary-50); transition: all .18s;
+            display: flex; gap: 14px; align-items: flex-start; width: 100%;
             text-align: left; margin-bottom: 10px;
         }
         .method-card:hover {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 12%, transparent);
+            background: var(--card);
+            box-shadow: 0 0 0 2px var(--primary);
         }
         .method-icon {
-            width: 36px; height: 36px; border-radius: 8px;
-            background: var(--primary-50); color: var(--primary);
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--primary-100); color: var(--primary);
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .method-title { font-weight: 600; font-size: 14px; color: var(--ink); }
         .method-desc  { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
 
         /* ── OTP inputs ── */
-        .otp-grid { display: flex; gap: 8px; margin-bottom: 6px; }
+        .otp-grid { display: flex; gap: 10px; margin-bottom: 6px; }
         .otp-digit {
-            width: 100%; height: 54px; border-radius: 10px;
-            border: 1.5px solid var(--line-2); background: var(--card);
-            text-align: center; font-family: 'Inter Tight', sans-serif;
-            font-size: 22px; font-weight: 600; color: var(--ink);
-            outline: none; transition: border-color .15s, box-shadow .15s;
+            width: 100%; height: 52px; border-radius: 8px 8px 0 0;
+            border: none; border-bottom: 2px solid var(--line-2); background: transparent;
+            text-align: center; font-family: inherit;
+            font-size: 1.2rem; font-weight: 500; color: var(--ink);
+            outline: none; transition: border-color .15s, background-color .15s;
         }
         .otp-digit:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
+            border-bottom-color: var(--primary);
+            background: var(--primary-50);
         }
-        .otp-digit.has-error { border-color: var(--danger); }
+        .otp-digit.has-error { border-bottom-color: var(--danger); }
 
         /* ── Remember device ── */
         .remember-wrap {
-            display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
-            padding: 11px 13px; border-radius: 10px;
-            background: var(--bg); border: 1px solid var(--line); margin-bottom: 4px;
+            display: flex; align-items: flex-start; gap: 11px; cursor: pointer;
+            padding: 13px 14px; border-radius: 20px;
+            background: var(--primary-50); border: none; margin-bottom: 4px;
         }
         .custom-check {
-            width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; margin-top: 1px;
-            border: 1.5px solid var(--line-2); background: var(--card);
+            width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+            border: 1px solid var(--line-2); background: var(--card);
             display: flex; align-items: center; justify-content: center;
             transition: all .15s; cursor: pointer;
         }
@@ -627,9 +664,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Homolog banner ── */
         .homolog-banner {
-            background: repeating-linear-gradient(45deg, #ff9800, #ff9800 10px, #f57c00 10px, #f57c00 20px);
-            color: #fff; text-align: center; padding: 8px; font-weight: 700;
-            font-size: .9rem; text-transform: uppercase; letter-spacing: 2px;
+            display: flex; align-items: center; justify-content: center; gap: 9px;
+            background: #f2c14e; color: #3d2d05;
+            padding: 9px 16px; font-weight: 700;
+            font-size: .74rem; text-transform: uppercase; letter-spacing: .14em;
         }
 
         /* ── Responsive ── */
@@ -648,28 +686,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body>
 
 <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
-<div class="homolog-banner">Ambiente de Homologação / Testes</div>
+<div class="homolog-banner">
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6L4 20a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L15 8V2"/><path d="M8.5 2h7"/><path d="M6.5 15h11"/></svg>
+    Ambiente de homologação
+</div>
 <?php endif; ?>
 
 <div class="layout">
 
     <!-- ══ Brand Panel ══ -->
     <aside class="brand-panel">
-        <svg class="brand-grid-bg" aria-hidden="true">
-            <defs>
-                <pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width=".6"/>
-                </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#g1)"/>
-        </svg>
         <div class="brand-glow"></div>
 
         <div class="brand-top">
-            <div class="brand-badge">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
-                Acesso Institucional
-            </div>
             <img src="../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png"
                  alt="SEMA — Secretaria Municipal de Meio Ambiente"
                  class="brand-logo">
@@ -685,15 +714,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <section class="form-panel">
         <div class="login-card">
 
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+                <span class="step-meta" id="step-eyebrow" style="font-size:.68rem;text-transform:uppercase;color:var(--ink-3)">Etapa 1 de 2 · Credenciais</span>
+                <span class="step-meta" style="font-size:.68rem;color:var(--line-2)">SEMA</span>
+            </div>
+            <div style="height:3px;border-radius:999px;background:var(--line);overflow:hidden;margin-bottom:26px">
+                <div id="step-progress" style="height:100%;border-radius:999px;background:var(--primary);transition:width .4s cubic-bezier(.2,.7,.3,1);width:18%"></div>
+            </div>
+
             <!-- ── STEP: LOGIN ── -->
             <div id="step-login" class="fade-in">
-                <div style="margin-bottom:22px">
-                    <div class="mono" style="font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase">Painel Administrativo</div>
-                    <h2 class="display" style="margin:6px 0 0;font-size:28px;font-weight:700">Bem-vindo de volta</h2>
+                <div class="login-heading">
+                    <span class="profile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="3.5"/>
+                            <path d="M5 20c.8-3.3 3.2-5 7-5s6.2 1.7 7 5"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 class="display">Entrar no painel</h2>
+                        <p>Use seu usuário ou e-mail institucional.</p>
+                    </div>
                 </div>
 
                 <?php if ($erro): ?>
-                <div class="alert error" style="margin-bottom:16px">
+                <div class="alert error" role="alert" style="margin-bottom:16px">
                     <div class="alert-icon">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
                     </div>
@@ -701,7 +746,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 </div>
                 <?php endif; ?>
 
-                <div id="login-err" class="alert error hidden" style="margin-bottom:16px">
+                <div id="login-err" class="alert error hidden" role="alert" aria-live="assertive" style="margin-bottom:16px">
                     <div class="alert-icon">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
                     </div>
@@ -713,7 +758,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <input type="hidden" name="recaptcha_token" id="recaptcha-token">
 
                     <div class="field">
-                        <label class="field-label" for="usuario">Usuário</label>
+                        <label class="field-label" for="usuario">Usuário ou e-mail</label>
                         <div class="field-wrap" id="wrap-usuario">
                             <div class="field-icon">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
@@ -756,15 +801,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
                     </button>
 
-                    <div class="alert info" style="margin-top:14px;margin-bottom:0">
-                        <div class="alert-icon">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
-                        </div>
-                        <div>
-                            <strong style="color:var(--ink);font-weight:600">Aviso de segurança.</strong>
-                            Acesso restrito a servidores autorizados. Em dispositivos compartilhados, encerre a sessão ao terminar.
-                        </div>
-                    </div>
                 </form>
             </div>
 
@@ -814,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <p id="otp-desc" style="font-size:13.5px;color:var(--ink-2);line-height:1.55"></p>
                 </div>
 
-                <div id="otp-err" class="alert error hidden" style="margin-bottom:12px">
+                <div id="otp-err" class="alert error hidden" role="alert" aria-live="assertive" style="margin-bottom:12px">
                     <div class="alert-icon">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
                     </div>
@@ -880,7 +916,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </p>
                 </div>
 
-                <div id="forgot-err" class="alert error hidden" style="margin-bottom:12px">
+                <div id="forgot-err" class="alert error hidden" role="alert" aria-live="assertive" style="margin-bottom:12px">
                     <div class="alert-icon">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
                     </div>
@@ -969,6 +1005,15 @@ let resendTimer = null, resendSecs = 60;
 const ALL_STEPS = ['login','method','otp','forgot','forgot-sent'];
 
 /* ── Navigation ── */
+const STEP_LABELS = {
+    login: 'Etapa 1 de 2 · Credenciais',
+    method: 'Etapa 2 de 2 · Verificação',
+    otp: 'Etapa 2 de 2 · Código de acesso',
+    forgot: 'Recuperação de acesso',
+    'forgot-sent': 'Recuperação de acesso',
+};
+const STEP_PROGRESS = { login: '18%', method: '58%', otp: '78%', forgot: '34%', 'forgot-sent': '70%' };
+
 function goTo(name) {
     ALL_STEPS.forEach(s => {
         const el = document.getElementById('step-' + s);
@@ -980,6 +1025,9 @@ function goTo(name) {
     target.classList.remove('fade-in');
     void target.offsetWidth;
     target.classList.add('fade-in');
+
+    document.getElementById('step-eyebrow').textContent = STEP_LABELS[name] || '';
+    document.getElementById('step-progress').style.width = STEP_PROGRESS[name] || '18%';
 
     // Reset passwords on back-to-login
     if (name === 'login') {
@@ -1336,6 +1384,9 @@ function showAlert(id, msg) {
     const el = document.getElementById(id);
     const span = el.querySelector('[data-msg]');
     if (span) span.innerHTML = msg;
+    // Não agendar remoção: a mensagem permanece até o usuário corrigir ou
+    // trocar de etapa usando uma ação explícita.
+    el.dataset.persistent = 'true';
     el.classList.remove('info');
     el.classList.add('error');
     el.classList.remove('hidden');
