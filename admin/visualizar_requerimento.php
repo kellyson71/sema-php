@@ -4,6 +4,7 @@ require_once 'helpers.php';
 require_once '../includes/email_service.php';
 require_once '../includes/pagamento_helpers.php';
 require_once '../includes/pendencia_helpers.php';
+require_once '../includes/notas_internas_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../includes/coassinatura_helper.php';
 require_once '../tipos_alvara.php';
@@ -12,6 +13,11 @@ verificaLogin();
 // CSRF — este arquivo ainda não era coberto pelo token do portal público
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+function adminPostCsrfValido(): bool
+{
+    $token = (string) ($_POST['csrf_token'] ?? '');
+    return !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -77,6 +83,169 @@ if ($flash) {
     $mensagemTipo = $flash['tipo'];
 }
 
+// Editar os dados técnicos do processo mantendo o valor original para consulta.
+$camposEditaveisProcesso = [
+    'endereco_objetivo', 'area_construcao', 'numero_pavimentos', 'area_construida',
+    'area_lote', 'area_total_terreno', 'area_remanescente', 'responsavel_tecnico_nome',
+    'responsavel_tecnico_registro', 'responsavel_tecnico_tipo_documento',
+    'responsavel_tecnico_numero', 'especificacao', 'cadastro_imobiliario',
+    'inicio_obra', 'termino_obra', 'alvara_construcao_numero', 'eng_fiscal_nome',
+    'eng_fiscal_registro', 'ctf_numero', 'licenca_anterior_numero',
+    'publicacao_diario_oficial', 'tipo_estudo_ambiental', 'possui_estudo_ambiental',
+    'notificado_fiscal_obras', 'observacoes'
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_processo'])) {
+    $csrfEdit = $_POST['csrf_token'] ?? '';
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfEdit)) {
+        setMensagem('danger', 'Sessão expirada. Recarregue a página e tente novamente.');
+        header("Location: visualizar_requerimento.php?id={$id}&tab=informacoes");
+        exit;
+    }
+
+    try {
+        $stmtAtual = $pdo->prepare('SELECT * FROM requerimentos WHERE id = ?');
+        $stmtAtual->execute([$id]);
+        $dadosAtuais = $stmtAtual->fetch(PDO::FETCH_ASSOC);
+        if (!$dadosAtuais) {
+            throw new RuntimeException('Processo não encontrado.');
+        }
+
+        $alteracoes = [];
+        foreach ($camposEditaveisProcesso as $campo) {
+            if (!array_key_exists($campo, $_POST) || !array_key_exists($campo, $dadosAtuais)) {
+                continue;
+            }
+            $novo = trim((string) $_POST[$campo]);
+            if (in_array($campo, ['possui_estudo_ambiental', 'notificado_fiscal_obras'], true)) {
+                $novo = $novo === '' ? null : (int) $novo;
+            } elseif ($novo === '') {
+                $novo = null;
+            }
+            $antigo = $dadosAtuais[$campo];
+            $antigoComparacao = $antigo === null ? '' : (string) $antigo;
+            $novoComparacao = $novo === null ? '' : (string) $novo;
+            if ($antigoComparacao !== $novoComparacao) {
+                $alteracoes[$campo] = [$antigo, $novo];
+            }
+        }
+
+        if ($alteracoes) {
+            $pdo->beginTransaction();
+            $sets = [];
+            $params = [];
+            foreach ($alteracoes as $campo => [$antigo, $novo]) {
+                $sets[] = "`{$campo}` = ?";
+                $params[] = $novo;
+                $stmtEdicao = $pdo->prepare('INSERT INTO requerimento_edicoes (requerimento_id, admin_id, campo, valor_original, valor_novo) VALUES (?, ?, ?, ?, ?)');
+                $stmtEdicao->execute([$id, $_SESSION['admin_id'], $campo, $antigo, $novo]);
+            }
+            $params[] = $id;
+            $pdo->prepare('UPDATE requerimentos SET ' . implode(', ', $sets) . ', data_atualizacao = NOW() WHERE id = ?')->execute($params);
+
+            $rotulosEdicao = [
+                'endereco_objetivo' => 'endereço', 'area_construcao' => 'área de construção',
+                'numero_pavimentos' => 'pavimentos', 'area_construida' => 'área construída',
+                'area_lote' => 'área do lote', 'area_total_terreno' => 'área total do terreno',
+                'area_remanescente' => 'área remanescente', 'responsavel_tecnico_nome' => 'responsável técnico',
+                'especificacao' => 'especificação', 'cadastro_imobiliario' => 'cadastro imobiliário',
+                'inicio_obra' => 'início da obra', 'termino_obra' => 'término da obra',
+                'observacoes' => 'observações'
+            ];
+            $nomes = array_map(static fn ($campo) => $rotulosEdicao[$campo] ?? str_replace('_', ' ', $campo), array_keys($alteracoes));
+            $stmtHist = $pdo->prepare('INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)');
+            $stmtHist->execute([$_SESSION['admin_id'], $id, 'Editou dados do processo: ' . implode(', ', $nomes)]);
+            $pdo->commit();
+            setMensagem('success', 'Dados do processo atualizados. Os valores originais continuam disponíveis na edição.');
+        } else {
+            setMensagem('info', 'Nenhuma alteração foi identificada.');
+        }
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        setMensagem('danger', 'Não foi possível atualizar os dados: ' . $e->getMessage());
+    }
+    header("Location: visualizar_requerimento.php?id={$id}&tab=informacoes");
+    exit;
+}
+
+// Edição rápida inline: um campo por vez, com histórico do valor original.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_campo_processo'])) {
+    $csrfInline = $_POST['csrf_token'] ?? '';
+    $campoInline = (string) ($_POST['campo'] ?? '');
+    $valorInline = trim((string) ($_POST['valor'] ?? ''));
+    $mapaCamposInline = [
+        'protocolo' => ['requerimentos', 'protocolo', 'id'],
+        'tipo_alvara' => ['requerimentos', 'tipo_alvara', 'id'],
+        'endereco_objetivo' => ['requerimentos', 'endereco_objetivo', 'id'],
+        'requerente_nome' => ['requerentes', 'nome', 'requerente_id'],
+        'requerente_email' => ['requerentes', 'email', 'requerente_id'],
+        'requerente_cpf_cnpj' => ['requerentes', 'cpf_cnpj', 'requerente_id'],
+        'requerente_telefone' => ['requerentes', 'telefone', 'requerente_id'],
+        'proprietario_nome' => ['proprietarios', 'nome', 'proprietario_id'],
+        'proprietario_cpf_cnpj' => ['proprietarios', 'cpf_cnpj', 'proprietario_id'],
+        'area_construcao' => ['requerimentos', 'area_construcao', 'id'],
+        'area_construida' => ['requerimentos', 'area_construida', 'id'],
+        'numero_pavimentos' => ['requerimentos', 'numero_pavimentos', 'id'],
+        'area_lote' => ['requerimentos', 'area_lote', 'id'],
+        'area_total_terreno' => ['requerimentos', 'area_total_terreno', 'id'],
+        'area_remanescente' => ['requerimentos', 'area_remanescente', 'id'],
+        'especificacao' => ['requerimentos', 'especificacao', 'id'],
+        'cadastro_imobiliario' => ['requerimentos', 'cadastro_imobiliario', 'id'],
+        'responsavel_tecnico_nome' => ['requerimentos', 'responsavel_tecnico_nome', 'id'],
+        'responsavel_tecnico_registro' => ['requerimentos', 'responsavel_tecnico_registro', 'id'],
+        'responsavel_tecnico_tipo_documento' => ['requerimentos', 'responsavel_tecnico_tipo_documento', 'id'],
+        'responsavel_tecnico_numero' => ['requerimentos', 'responsavel_tecnico_numero', 'id'],
+        'ctf_numero' => ['requerimentos', 'ctf_numero', 'id'],
+        'licenca_anterior_numero' => ['requerimentos', 'licenca_anterior_numero', 'id'],
+        'localizacao_google_maps' => ['requerimentos', 'localizacao_google_maps', 'id'],
+        'enquadramento_atividade' => ['requerimentos', 'enquadramento_atividade', 'id'],
+        'tipo_estudo_ambiental' => ['requerimentos', 'tipo_estudo_ambiental', 'id'],
+        'possui_estudo_ambiental' => ['requerimentos', 'possui_estudo_ambiental', 'id'],
+        'notificado_fiscal_obras' => ['requerimentos', 'notificado_fiscal_obras', 'id'],
+    ];
+    try {
+        if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfInline)) {
+            throw new RuntimeException('Sessão expirada.');
+        }
+        if (!isset($mapaCamposInline[$campoInline])) {
+            throw new RuntimeException('Campo não permitido.');
+        }
+        if ($campoInline === 'requerente_email' && ($valorInline === '' || strlen($valorInline) > 191 || !filter_var($valorInline, FILTER_VALIDATE_EMAIL))) {
+            throw new RuntimeException('Informe um endereço de e-mail válido para o cidadão.');
+        }
+        [$tabelaInline, $colunaInline, $chaveInline] = $mapaCamposInline[$campoInline];
+        $idAlvoInline = $chaveInline === 'id' ? $id : (int) ($requerimento[$chaveInline] ?? 0);
+        if (!$idAlvoInline) {
+            throw new RuntimeException('Registro relacionado não encontrado.');
+        }
+        $stmtInline = $pdo->prepare("SELECT `{$colunaInline}` FROM `{$tabelaInline}` WHERE id = ?");
+        $stmtInline->execute([$idAlvoInline]);
+        $originalAtualInline = $stmtInline->fetchColumn();
+        $stmtInline = $pdo->prepare("UPDATE `{$tabelaInline}` SET `{$colunaInline}` = ? WHERE id = ?");
+        $stmtInline->execute([$valorInline !== '' ? $valorInline : null, $idAlvoInline]);
+
+        $stmtOriginalInline = $pdo->prepare('SELECT valor_original FROM requerimento_edicoes WHERE requerimento_id = ? AND campo = ? ORDER BY id ASC LIMIT 1');
+        $stmtOriginalInline->execute([$id, $campoInline]);
+        $valorBaseInline = $stmtOriginalInline->fetchColumn();
+        if ($valorBaseInline === false) {
+            $valorBaseInline = $originalAtualInline;
+        }
+        $stmtInline = $pdo->prepare('INSERT INTO requerimento_edicoes (requerimento_id, admin_id, campo, valor_original, valor_novo) VALUES (?, ?, ?, ?, ?)');
+        $stmtInline->execute([$id, $_SESSION['admin_id'], $campoInline, $valorBaseInline, $valorInline !== '' ? $valorInline : null]);
+        $stmtInline = $pdo->prepare('INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)');
+        $stmtInline->execute([$_SESSION['admin_id'], $id, "Editou {$campoInline} inline (original: " . ($valorBaseInline ?: 'Não informado') . ")"]);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true, 'valor' => $valorInline, 'original' => $valorBaseInline], JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'erro' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 // Processar marcar como não lido
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_nao_lido'])) {
     try {
@@ -102,7 +271,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
     $arquivoBoleto = $_FILES['boleto_pdf'] ?? null;
     $arquivoFoiEnviado = $arquivoBoleto && ($arquivoBoleto['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
 
-    if (!$arquivoFoiEnviado) {
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif (!$arquivoFoiEnviado) {
         $mensagem = "Anexe o PDF do boleto para prosseguir.";
         $mensagemTipo = "danger";
     } else {
@@ -141,7 +313,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
                 }
             }
 
-            // Limpa comprovante anterior para que o cidadão possa reenviar
+            $emailService = new EmailService();
+            $emailEnviado = $emailService->enviarEmailBoleto(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
+                gerarUrlPagamento($id, $requerimento['protocolo']),
+                $instrucoesBoleto,
+                $id
+            );
+
+            if (!$emailEnviado) {
+                throw new RuntimeException('O e-mail com o boleto não foi aceito pelo provedor. Nada foi alterado no processo. Confira o endereço do cidadão e tente novamente.');
+            }
+
+            // As mudanças operacionais só acontecem após o provedor aceitar a
+            // mensagem. Assim uma falha não apaga o comprovante anterior.
             removerDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
 
             $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando boleto', aguardando_acao = 'boleto_pendente', comprovante_pagamento = NULL, data_atualizacao = NOW() WHERE id = ?");
@@ -158,30 +346,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_boleto_pagamen
                 $_SESSION['admin_id'],
             ]);
 
-            $acao = "Enviou nova versão do boleto para pagamento";
             $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
-            $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
-
+            $stmt->execute([$_SESSION['admin_id'], $id, "Enviou nova versão do boleto para pagamento"]);
             createAdminNotificationForRequerimento($pdo, $id, 'boleto_enviado');
 
             $pdo->commit();
 
-            $emailService = new EmailService();
-            $emailEnviado = $emailService->enviarEmailBoleto(
-                $requerimento['requerente_email'],
-                $requerimento['requerente_nome'],
-                $requerimento['protocolo'],
-                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
-                gerarUrlPagamento($id, $requerimento['protocolo']),
-                $instrucoesBoleto,
-                $id
-            );
-
             $requerimento = buscarDadosRequerimento($pdo, $id);
-            $mensagem = $emailEnviado
-                ? "Boleto enviado para pagamento com sucesso."
-                : "Boleto registrado no sistema, mas houve falha no envio do email. O link pode ser reenviado depois.";
-            $mensagemTipo = $emailEnviado ? "success" : "warning";
+            $mensagem = "Boleto enviado para {$requerimento['requerente_email']}.";
+            $mensagemTipo = "success";
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -222,8 +395,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_complementa
             $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
             $stmt->execute([$_SESSION['admin_id'], $id, "Solicitou complementação ao requerente: " . $tituloPendencia]);
 
-            $pdo->commit();
-
             $linkPendenciaGerado = gerarUrlPendencia($pendenciaId, $requerimento['protocolo']);
 
             $emailService = new EmailService();
@@ -237,10 +408,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_complementa
                 $linkPendenciaGerado
             );
 
-            $mensagem = $emailEnviado
-                ? "Solicitação de complementação enviada ao requerente."
-                : "Solicitação registrada, mas houve falha no envio do email. Repasse o link manualmente.";
-            $mensagemTipo = $emailEnviado ? "success" : "warning";
+            if (!$emailEnviado) {
+                throw new RuntimeException('O e-mail de complementação não foi aceito pelo provedor. A solicitação não foi aberta. Confira o endereço do cidadão e tente novamente.');
+            }
+
+            $pdo->commit();
+
+            $mensagem = "Solicitação de complementação enviada para {$requerimento['requerente_email']}.";
+            $mensagemTipo = "success";
             setMensagem($mensagemTipo, $mensagem);
             header("Location: visualizar_requerimento.php?id=$id");
             exit;
@@ -254,12 +429,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['solicitar_complementa
     }
 }
 
+// Aceitar uma complementação (o requerente já respondeu e está ok)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aceitar_pendencia'])) {
+    $pendenciaId = (int) ($_POST['pendencia_id'] ?? 0);
+    $pendenciaAlvo = $pendenciaId ? buscarPendencia($pdo, $pendenciaId) : null;
+    if (!$pendenciaAlvo || (int) $pendenciaAlvo['requerimento_id'] !== $id) {
+        $mensagem = "Complementação não encontrada.";
+        $mensagemTipo = "danger";
+    } else {
+        resolverPendencia($pdo, $pendenciaId, false);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Aceitou a complementação: " . $pendenciaAlvo['titulo']]);
+        $mensagem = "Complementação aceita.";
+        $mensagemTipo = "success";
+    }
+}
+
+// Marcar uma complementação como resolvida manualmente (fora do link, ex. telefone/presencial)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resolver_pendencia_manual'])) {
+    $pendenciaId = (int) ($_POST['pendencia_id'] ?? 0);
+    $pendenciaAlvo = $pendenciaId ? buscarPendencia($pdo, $pendenciaId) : null;
+    if (!$pendenciaAlvo || (int) $pendenciaAlvo['requerimento_id'] !== $id) {
+        $mensagem = "Complementação não encontrada.";
+        $mensagemTipo = "danger";
+    } else {
+        resolverPendencia($pdo, $pendenciaId, true);
+        $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+        $stmt->execute([$_SESSION['admin_id'], $id, "Marcou como resolvida manualmente a complementação: " . $pendenciaAlvo['titulo']]);
+        $mensagem = "Complementação marcada como resolvida.";
+        $mensagemTipo = "success";
+    }
+}
+
+// Pedir novamente: reabre uma complementação já respondida/aceita, criando uma
+// nova pendência a partir da anterior (mesmo fluxo de solicitar_complementacao)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_pendencia'])) {
+    $pendenciaAnteriorId = (int) ($_POST['pendencia_id'] ?? 0);
+    $descricaoPendencia = trim($_POST['descricao_pendencia'] ?? '');
+    $pendenciaAnterior = $pendenciaAnteriorId ? buscarPendencia($pdo, $pendenciaAnteriorId) : null;
+
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif (!$pendenciaAnterior || (int) $pendenciaAnterior['requerimento_id'] !== $id) {
+        $mensagem = "Complementação não encontrada.";
+        $mensagemTipo = "danger";
+    } elseif ($descricaoPendencia === '') {
+        $mensagem = "Descreva o que ainda falta antes de pedir novamente.";
+        $mensagemTipo = "danger";
+    } else {
+        try {
+            $pdo->beginTransaction();
+            $novaPendenciaId = reabrirPendencia($pdo, $pendenciaAnteriorId, $pendenciaAnterior['titulo'], $descricaoPendencia, $_SESSION['admin_id']);
+            $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Aguardando complementação', aguardando_acao = 'pendencia_aberta', data_atualizacao = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+            $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
+            $stmt->execute([$_SESSION['admin_id'], $id, "Pediu novamente a complementação: " . $pendenciaAnterior['titulo']]);
+            $linkPendenciaGerado = gerarUrlPendencia($novaPendenciaId, $requerimento['protocolo']);
+            $emailService = new EmailService();
+            $emailEnviado = $emailService->enviarEmailPendencia(
+                $requerimento['requerente_email'],
+                $requerimento['requerente_nome'],
+                $requerimento['protocolo'],
+                $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
+                $pendenciaAnterior['titulo'] . "\n\n" . $descricaoPendencia,
+                $id,
+                $linkPendenciaGerado
+            );
+            if (!$emailEnviado) {
+                throw new RuntimeException('O novo e-mail de complementação não foi aceito pelo provedor. A reabertura foi cancelada. Confira o endereço do cidadão e tente novamente.');
+            }
+            $pdo->commit();
+            $mensagem = "Nova solicitação enviada para {$requerimento['requerente_email']}.";
+            $mensagemTipo = "success";
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $mensagem = "Erro ao reabrir complementação: " . $e->getMessage();
+            $mensagemTipo = "danger";
+        }
+    }
+}
+
+// Salvar (ou atualizar) a observação interna do processo — só a equipe vê
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_nota_interna'])) {
+    $notaTexto = trim($_POST['nota_interna_texto'] ?? '');
+    if ($notaTexto === '') {
+        $mensagem = "Escreva algo antes de salvar a observação.";
+        $mensagemTipo = "danger";
+    } else {
+        salvarNotaInterna($pdo, $id, $notaTexto, (int) $_SESSION['admin_id']);
+        $mensagem = "Observação interna salva.";
+        $mensagemTipo = "success";
+    }
+}
+
 // Processar indeferimento de processo
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])) {
     $motivoIndeferimento = trim($_POST['motivo_indeferimento']);
     $orientacoesAdicionais = trim($_POST['orientacoes_adicionais']);
 
-    if (empty($motivoIndeferimento)) {
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif (empty($motivoIndeferimento)) {
         $mensagem = "É necessário informar o motivo do indeferimento.";
         $mensagemTipo = "danger";
     } elseif (strlen($motivoIndeferimento) < 10) {
@@ -274,7 +548,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                 $requerimento['protocolo'],
                 $tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara'])),
                 $motivoIndeferimento,
-                $orientacoesAdicionais
+                $orientacoesAdicionais,
+                $id
             );
 
             if ($email_enviado) {
@@ -293,7 +568,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     $stmt->execute([$observacoesCombinadas, $id]);
 
                     // Registrar no histórico de ações
-                    $acao = "Indeferiu o processo e enviou email de notificação - Motivo: {$motivoIndeferimento}";
+                    $acao = "Indeferiu o processo e enviou e-mail de notificação. Motivo: {$motivoIndeferimento}";
                     $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
                     $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
 
@@ -304,18 +579,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['indeferir_processo'])
                     // Recarregar dados do requerimento para refletir as mudanças
                     $requerimento = buscarDadosRequerimento($pdo, $id);
 
-                    $mensagem = "Processo indeferido com sucesso! O requerente foi notificado por email.";
+                    $mensagem = "Processo indeferido. A notificação foi enviada para {$requerimento['requerente_email']}.";
                     $mensagemTipo = "success";
                 } catch (PDOException $e) {
                     $pdo->rollBack();
-                    $mensagem = "Email enviado, mas houve erro ao atualizar o status: " . $e->getMessage();
+                    $mensagem = "E-mail enviado, mas houve erro ao atualizar o status: " . $e->getMessage();
                     $mensagemTipo = "warning";
                 }
             } else {
                 $mensagem = "Erro ao enviar email. Verifique as configurações de email.";
                 $mensagemTipo = "danger";
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $mensagem = "Erro ao enviar email: " . $e->getMessage();
             $mensagemTipo = "danger";
         }
@@ -444,13 +719,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_processo'])) 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocolo'])) {
     $protocolo_oficial = trim($_POST['protocolo_oficial']);
 
-    if (empty($protocolo_oficial)) {
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif (empty($protocolo_oficial)) {
         $mensagem = "É necessário informar o protocolo oficial da prefeitura.";
         $mensagemTipo = "danger";
-    } elseif (strtolower($requerimento['status']) === 'finalizado') {
-        $mensagem = "Este requerimento já está finalizado. Tem certeza que deseja enviar o email novamente?";
-        $mensagemTipo = "warning";
     } else {
+        $jaFinalizado = strtolower((string) $requerimento['status']) === 'finalizado';
         try {
             $emailService = new EmailService();
             $email_enviado = $emailService->enviarEmailProtocoloOficial(
@@ -464,12 +740,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
                 try {
                     $pdo->beginTransaction();
 
-                    // Atualizar status para "Finalizado" automaticamente e persistir o protocolo oficial
-                    $stmt = $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', aguardando_acao = 'concluido', protocolo_oficial = ?, data_atualizacao = NOW() WHERE id = ?");
+                    // O protocolo oficial é uma comunicação intermediária. A entrega
+                    // do documento final é a ação responsável por encerrar o processo.
+                    $stmt = $pdo->prepare("UPDATE requerimentos SET protocolo_oficial = ?, data_atualizacao = NOW() WHERE id = ?");
                     $stmt->execute([$protocolo_oficial, $id]);
 
                     // Registrar no histórico de ações
-                    $acao = "Enviou email com protocolo oficial: {$protocolo_oficial} e marcou como Finalizado";
+                    $acao = ($jaFinalizado ? "Reenviou" : "Enviou") . " e-mail com protocolo oficial: {$protocolo_oficial}";
                     $stmt = $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)");
                     $stmt->execute([$_SESSION['admin_id'], $id, $acao]);
 
@@ -478,39 +755,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_email_protocol
                     // Recarregar dados do requerimento para refletir as mudanças
                     $requerimento = buscarDadosRequerimento($pdo, $id);
 
-                    $mensagem = "Email com protocolo oficial enviado com sucesso! O requerimento foi automaticamente marcado como Finalizado.";
+                    $mensagem = ($jaFinalizado ? "Protocolo oficial reenviado" : "Protocolo oficial enviado") . " para {$requerimento['requerente_email']}. O envio não altera a etapa atual do processo.";
                     $mensagemTipo = "success";
                 } catch (PDOException $e) {
                     $pdo->rollBack();
-                    $mensagem = "Email enviado, mas houve erro ao atualizar o status: " . $e->getMessage();
+                    $mensagem = "E-mail enviado, mas houve erro ao atualizar os dados do protocolo: " . $e->getMessage();
                     $mensagemTipo = "warning";
                 }
             } else {
                 $mensagem = "Erro ao enviar email. Verifique as configurações de email.";
                 $mensagemTipo = "danger";
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $mensagem = "Erro ao enviar email: " . $e->getMessage();
             $mensagemTipo = "danger";
         }
-    }
-}
-
-// Salvar/editar o protocolo oficial da prefeitura sem disparar o email de finalização
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_protocolo_oficial'])) {
-    $protocolo_oficial_novo = trim($_POST['protocolo_oficial_novo'] ?? '');
-
-    try {
-        $stmt = $pdo->prepare("UPDATE requerimentos SET protocolo_oficial = ?, data_atualizacao = NOW() WHERE id = ?");
-        $stmt->execute([$protocolo_oficial_novo ?: null, $id]);
-
-        $requerimento = buscarDadosRequerimento($pdo, $id);
-
-        $mensagem = "Protocolo oficial atualizado com sucesso.";
-        $mensagemTipo = "success";
-    } catch (PDOException $e) {
-        $mensagem = "Erro ao salvar o protocolo oficial: " . $e->getMessage();
-        $mensagemTipo = "danger";
     }
 }
 
@@ -575,6 +834,21 @@ $documentoBoleto = buscarDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
 $documentoComprovanteBoleto = buscarDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
 
 $pendencias = listarPendenciasRequerimento($pdo, $id);
+$notaInterna = buscarNotaInterna($pdo, $id);
+
+$valoresOriginaisProcesso = [];
+$stmtEdicoesProcesso = $pdo->prepare('SELECT campo, valor_original FROM requerimento_edicoes WHERE requerimento_id = ? ORDER BY id ASC');
+$stmtEdicoesProcesso->execute([$id]);
+foreach ($stmtEdicoesProcesso->fetchAll(PDO::FETCH_ASSOC) as $edicaoProcesso) {
+    if (!array_key_exists($edicaoProcesso['campo'], $valoresOriginaisProcesso)) {
+        $valoresOriginaisProcesso[$edicaoProcesso['campo']] = $edicaoProcesso['valor_original'];
+    }
+}
+$temEdicoesProcesso = !empty($valoresOriginaisProcesso);
+
+$pendenciasAbertas = array_filter($pendencias, static fn ($p) => in_array($p['status'], ['aberta', 'respondida'], true));
+$cobrancaAtiva = $pagamento && empty($documentoComprovanteBoleto);
+$acoesAtivasCount = count($pendenciasAbertas) + ($cobrancaAtiva ? 1 : 0);
 
 // Buscar histórico de ações
 $stmt = $pdo->prepare("
@@ -1279,6 +1553,36 @@ include 'header.php';
         background: var(--primary-600);
     }
 
+    .nav-tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        margin-left: 5px;
+        border-radius: 999px;
+        background: var(--gray-100, #f1f5f2);
+        color: var(--gray-600, #66756d);
+        font-size: .68rem;
+        font-weight: 700;
+    }
+
+    .nav-tabs .nav-link.active .nav-tab-count {
+        background: var(--primary-soft, #e5f2ea);
+        color: var(--primary-600, #14532d);
+    }
+
+    .nav-tab-count-alert {
+        background: #fce7e7;
+        color: #b13232;
+    }
+
+    .nav-tabs .nav-link.active .nav-tab-count-alert {
+        background: #fce7e7;
+        color: #b13232;
+    }
+
     .detail-actions-toolbar {
         display: flex;
         flex-direction: column;
@@ -1676,7 +1980,7 @@ $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
 $isIndeferido = (strtolower($requerimento['status']) === 'indeferido');
 $isBlocked = $isFinalized || $isIndeferido;
 $activeTab = $_GET['tab'] ?? 'informacoes';
-$tabsPermitidas = ['informacoes', 'documentos', 'historico'];
+$tabsPermitidas = ['informacoes', 'documentos', 'historico', 'pendencias'];
 if (!in_array($activeTab, $tabsPermitidas, true)) {
     $activeTab = 'informacoes';
 }
@@ -1774,6 +2078,23 @@ $stmtCoPend = $pdo->prepare("
 ");
 $stmtCoPend->execute([$id, $_adminIdLogado]);
 $_coPendsNesteProcesso = $stmtCoPend->fetchAll(PDO::FETCH_ASSOC);
+
+// Temporário: setor 2 continua podendo gerar/tratar documentos normalmente
+// mesmo em processos já Finalizados/Indeferidos vindos do Setor 1.
+// Além disso, o role dono do setor onde o processo está (analista no Setor 1,
+// secretário no Setor 3) continua vendo a barra de ações — assim quem concluiu
+// o processo diretamente na Triagem ainda consegue enviar o documento final ao
+// cidadão, botão que só aparece na barra ativa.
+$tratarComoAtivoParaSetor2 = $podeEntregarDocFinal || ($nivelAtual === $roleDoSetor);
+$mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
+
+// Banner contextual por setor (dica de próximo passo, exibida na barra de comando)
+$bannerInfo = [
+    'setor1' => ['icon'=>'fa-inbox','color'=>'#3762d9','bg'=>'#e8effd','text'=>'Este processo está na triagem. Gere o documento de abertura, encaminhe para fiscalização quando necessário ou finalize diretamente se não houver pendências.'],
+    'setor2' => ['icon'=>'fa-microscope','color'=>'#14532d','bg'=>'#e3f3e8','text'=>'Este processo está em análise técnica. Gere ou assine o parecer técnico, encaminhe para revisão final ou finalize com o documento definitivo.'],
+    'setor3' => ['icon'=>'fa-shield-halved','color'=>'#7e22ce','bg'=>'#f3e8ff','text'=>'Este processo está em revisão final. Revise os documentos, aprove e assine ou devolva ao Setor 2 com justificativa.'],
+];
+$bi = $bannerInfo[$setorAtual] ?? $bannerInfo['setor1'];
 ?>
 <style>
 /* ---- Stepper de setor ---- */
@@ -1989,8 +2310,9 @@ $estadoCls = match($aguardandoAcao) {
       <form method="post" action="fluxo_setor_handler.php">
         <input type="hidden" name="requerimento_id" value="<?= $id ?>">
         <input type="hidden" name="fluxo_acao" value="concluir_direto">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
         <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por email sobre a conclusão</label>
+        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por e-mail sobre a conclusão</label>
         <div class="fm-btns">
           <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s1')">Cancelar</button>
           <button type="submit" class="fm-btn-confirm"><i class="fas fa-check me-1"></i>Finalizar</button>
@@ -2012,8 +2334,9 @@ $estadoCls = match($aguardandoAcao) {
       <form method="post" action="fluxo_setor_handler.php">
         <input type="hidden" name="requerimento_id" value="<?= $id ?>">
         <input type="hidden" name="fluxo_acao" value="concluir_setor2">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
         <textarea name="motivo" rows="2" placeholder="Observação opcional..."></textarea>
-        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por email sobre a conclusão</label>
+        <label class="fm-check"><input type="checkbox" name="notificar_cidadao" value="1"> Notificar o cidadão por e-mail sobre a conclusão</label>
         <div class="fm-btns">
           <button type="button" class="fm-btn-cancel" onclick="fecharFM('fm-finalizar-s2')">Cancelar</button>
           <button type="submit" class="fm-btn-confirm"><i class="fas fa-check-double me-1"></i>Finalizar</button>
@@ -2131,24 +2454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-.proc-header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 18px; background:#fff; border:1px solid #e3e8e4; border-radius:14px; margin-bottom:12px; }
-.proc-header.finalizado { background:#f8f9fa; border-color:#dee2e6; }
-.proc-header.indeferido { background:#fef2f2; border-color:#fecaca; }
-.proc-back { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid #e3e8e4; border-radius:9px; background:#fff; color:#102117; font-size:.82rem; font-weight:700; text-decoration:none; flex-shrink:0; }
-.proc-back:hover { border-color:#14532d; color:#14532d; }
-.proc-divider { width:1px; height:28px; background:#e3e8e4; flex-shrink:0; }
-.proc-protocol { font-size:1.05rem; font-weight:900; color:#14532d; letter-spacing:.02em; flex-shrink:0; }
-.proc-name { font-size:.95rem; font-weight:700; color:#102117; }
-.proc-meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:.78rem; color:#66756d; }
-.proc-tipo { display:inline-flex; padding:2px 9px; border-radius:999px; background:#e6f2ea; color:#0f4425; font-size:.72rem; font-weight:800; letter-spacing:.04em; }
-.proc-status { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:.75rem; font-weight:700; background:#f1f5f0; color:#374151; }
-.proc-status .dot { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
-.proc-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
-.btn-nao-visto { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid #e3e8e4; border-radius:9px; background:#fff; color:#66756d; font-size:.78rem; font-weight:700; cursor:pointer; transition:all .15s; }
-.btn-nao-visto:hover { border-color:#b7791f; color:#b7791f; background:#fffbf0; }
-@media (max-width:640px) { .proc-divider,.proc-actions { display:none; } .proc-header { gap:8px; } }
-</style>
+<?php /* O vocabulário desta tela mora em includes/processo-ui.css, carregado pelo header.php — ver o cabeçalho daquele arquivo. */ ?>
 
 <div class="container-fluid px-4">
     <!-- CABEÇALHO COMPACTO DO PROCESSO -->
@@ -2262,17 +2568,30 @@ document.addEventListener('DOMContentLoaded', function() {
         </style>
     <?php endif; ?>
 
+    <div class="proc-crumb">
+        <a href="requerimentos.php"><i class="fas fa-arrow-left" style="font-size:.72rem"></i> Requerimentos</a>
+        <span class="proc-crumb-sep">/</span>
+        <span class="proc-crumb-proto">#<?= htmlspecialchars($requerimento['protocolo']) ?></span>
+    </div>
+
+    <?php $diasEmAberto = $isBlocked ? null : (int) floor((time() - strtotime($requerimento['data_envio'])) / 86400); ?>
     <div class="proc-header <?= $procHeaderCls ?>">
-        <a href="requerimentos.php" class="proc-back"><i class="fas fa-arrow-left"></i> Voltar</a>
-        <div class="proc-divider"></div>
-        <div>
-            <div class="proc-protocol">#<?= htmlspecialchars($requerimento['protocolo']) ?></div>
+        <div class="proc-header-main">
+            <div class="proc-protocol-row">
+                <span class="proc-protocol"><?= htmlspecialchars($requerimento['protocolo']) ?></span>
+                <button type="button" class="proc-copy-btn" onclick="copyToClipboard('<?= htmlspecialchars($requerimento['protocolo']) ?>',this)" title="Copiar protocolo"><i class="fas fa-copy"></i></button>
+                <span class="proc-status"><span class="dot" style="color:<?= $procStatusCor ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
+            </div>
             <div class="proc-name"><?= htmlspecialchars($requerimento['requerente_nome']) ?></div>
-        </div>
-        <div class="proc-meta">
-            <span class="proc-tipo"><?= htmlspecialchars($nomeAlvaraProc) ?></span>
-            <span class="proc-status"><span class="dot" style="color:<?= $procStatusCor ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
-            <span><i class="far fa-calendar-alt me-1"></i><?= date('d/m/Y', strtotime($requerimento['data_envio'])) ?></span>
+            <div class="proc-meta">
+                <span class="proc-tipo"><?= htmlspecialchars($nomeAlvaraProc) ?></span>
+                <span>·</span>
+                <span>Aberto em <?= date('d/m/Y', strtotime($requerimento['data_envio'])) ?></span>
+                <?php if ($diasEmAberto !== null && $diasEmAberto > 0): ?>
+                <span>·</span>
+                <span class="proc-dias-aberto"><?= $diasEmAberto ?> dia<?= $diasEmAberto > 1 ? 's' : '' ?> em aberto</span>
+                <?php endif; ?>
+            </div>
         </div>
         <div class="proc-actions">
             <?php if (!$isBlocked): ?>
@@ -2325,21 +2644,178 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
     <?php endif; ?>
 
+    <!-- Barra de comando: ações do processo -->
+    <?php if (!$mostrarPainelEncerrado): ?>
+    <div class="cmd-tip" style="background:<?= $bi['bg'] ?>;border:1px solid <?= $bi['color'] ?>22;">
+        <i class="fas <?= $bi['icon'] ?>" style="color:<?= $bi['color'] ?>;margin-top:2px;flex-shrink:0;"></i>
+        <span style="font-size:.83rem;color:<?= $bi['color'] ?>;line-height:1.5;"><?= $bi['text'] ?></span>
+    </div>
+
+    <div class="cmd-bar">
+        <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>" class="cmd-btn-primary" style="order:1;"><i class="fas fa-file-pen"></i>Gerar Documento</a>
+
+        <?php if ($isSetor3): ?>
+        <a href="visualizar_documento.php?requerimento_id=<?= $id ?>" class="cmd-btn tt" style="order:4;"
+            data-bs-toggle="tooltip" data-bs-placement="top"
+            data-bs-title="Abre os documentos gerados para revisão e assinatura final do Secretário.">
+            <i class="fas fa-file-circle-check cmd-ic"></i>Revisar Documentos
+        </a>
+        <?php endif; ?>
+
+        <?php if (!$isSecretarioPuro): ?>
+        <button type="button" class="cmd-btn" style="order:6;" onclick="document.getElementById('atualizarStatusModal') && new bootstrap.Modal(document.getElementById('atualizarStatusModal')).show()">
+            <i class="fas fa-pen-to-square cmd-ic"></i>Atualizar status
+        </button>
+        <?php endif; ?>
+
+        <div class="dropdown" style="order:5;">
+            <button type="button" class="cmd-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-share-nodes cmd-ic"></i>Encaminhar
+            </button>
+            <ul class="dropdown-menu">
+                <?php if (!$podeAgirNoSetor): ?>
+                <li><span class="dropdown-item-text" style="font-size:.78rem;color:#8fa399;padding:6px 10px;">
+                    <i class="fas fa-lock me-1"></i>Este processo está em <strong><?= htmlspecialchars($labelSetorAtual) ?></strong>. Só a equipe daquele setor pode movimentá-lo.
+                </span></li>
+                <?php else: ?>
+                    <?php if ($setorAtual === 'setor1'): ?>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-setor2')">
+                        <i class="fas fa-helmet-safety" style="color:#0d5433"></i>
+                        <span><span style="display:block">Enviar à Fiscalização de Obras</span><span class="cmd-item-desc">Setor 2 · vistoria técnica</span></span>
+                    </button></li>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-finalizar-s1')">
+                        <i class="fas fa-check" style="color:#475569"></i>
+                        <span><span style="display:block">Marcar como concluído</span><span class="cmd-item-desc">Encerra na Triagem, sem enviar adiante</span></span>
+                    </button></li>
+                    <?php elseif ($setorAtual === 'setor2'): ?>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-setor3')">
+                        <i class="fas fa-shield-halved" style="color:#7e22ce"></i>
+                        <span><span style="display:block">Enviar ao Secretário</span><span class="cmd-item-desc">Setor 3 · revisão e assinatura final</span></span>
+                    </button></li>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-finalizar-s2')">
+                        <i class="fas fa-check" style="color:#475569"></i>
+                        <span><span style="display:block">Marcar como concluído</span><span class="cmd-item-desc">Encerra na Fiscalização</span></span>
+                    </button></li>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-devolver-s1')">
+                        <i class="fas fa-rotate-left" style="color:#b45309"></i>
+                        <span><span style="display:block">Devolver à Triagem</span><span class="cmd-item-desc">Setor 1 · exige motivo</span></span>
+                    </button></li>
+                    <?php elseif ($setorAtual === 'setor3'): ?>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-setor3-retornar')">
+                        <i class="fas fa-arrow-left" style="color:#0d5433"></i>
+                        <span><span style="display:block">Retornar ao Setor 2</span><span class="cmd-item-desc">Só após assinar pelo menos um documento</span></span>
+                    </button></li>
+                    <li><button type="button" class="dropdown-item" onclick="abrirFM('fm-devolver-s2')">
+                        <i class="fas fa-rotate-left" style="color:#b45309"></i>
+                        <span><span style="display:block">Devolver à Fiscalização</span><span class="cmd-item-desc">Setor 2 · exige justificativa</span></span>
+                    </button></li>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </ul>
+        </div>
+
+        <?php if ($podeEntregarDocFinal): ?>
+        <button type="button" class="cmd-btn tt" style="order:3;" data-bs-toggle="modal" data-bs-target="#docFinalModal"
+            data-bs-placement="top" data-bs-title="Envia os documentos assinados ao requerente por link seguro e finaliza o processo.">
+            <i class="fas fa-file-circle-check cmd-ic"></i>Enviar doc. final
+        </button>
+        <?php endif; ?>
+
+        <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
+        <button type="button" class="cmd-btn tt" style="order:2;" data-bs-toggle="tooltip" data-bs-placement="top"
+            data-bs-title="Envia o número do protocolo oficial ao requerente sem finalizar o processo."
+            onclick="abrirFinalizacaoModal()">
+            <i class="fas fa-stamp cmd-ic"></i>Enviar protocolo
+        </button>
+        <?php endif; ?>
+
+        <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
+        <span class="cmd-sep" style="order:7;"></span>
+        <button type="button" class="cmd-btn-danger" style="order:7;" onclick="document.getElementById('indeferirInputModal') && new bootstrap.Modal(document.getElementById('indeferirInputModal')).show()">
+            <i class="fas fa-circle-xmark"></i>Indeferir processo
+        </button>
+        <?php endif; ?>
+
+        <?php if (!$isSecretarioPuro): ?>
+        <div class="dropdown" style="order:8;<?= ($isFiscalPuro || $isSecretarioPuro) ? '' : 'margin-left:auto;' ?>">
+            <button type="button" class="cmd-more-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="<?= ($isFiscalPuro || $isSecretarioPuro) ? 'margin-left:auto;' : '' ?>">
+                <i class="fas fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width:240px;">
+                <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
+                <li><button type="button" class="dropdown-item" onclick="document.getElementById('boletoModal') && new bootstrap.Modal(document.getElementById('boletoModal')).show()">
+                    <i class="fas fa-file-invoice" style="color:#0369a1"></i>Enviar boleto
+                </button></li>
+                <?php endif; ?>
+                <li><button type="button" class="dropdown-item" onclick="document.getElementById('complementacaoModal') && new bootstrap.Modal(document.getElementById('complementacaoModal')).show()">
+                    <i class="fas fa-folder-open" style="color:#b7791f"></i>Solicitar complementação
+                </button></li>
+                <?php if (!$isFiscalPuro): ?>
+                <li><button type="button" class="dropdown-item" onclick="showArquivarModal()">
+                    <i class="fas fa-box-archive" style="color:#66756d"></i>Arquivar processo
+                </button></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Co-assinaturas pendentes para este admin neste processo -->
+    <?php if (!empty($_coPendsNesteProcesso)): ?>
+    <div id="co-pends-card" style="margin-bottom:14px;background:#fef9f0;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:12px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <i class="fas fa-file-signature" style="color:#b45309;font-size:1rem;"></i>
+            <strong style="color:#78350f;font-size:.88rem;">Sua assinatura é aguardada neste processo</strong>
+            <span style="background:#b45309;color:#fff;font-size:.7rem;font-weight:700;border-radius:20px;padding:1px 8px;margin-left:auto;"><?= count($_coPendsNesteProcesso) ?></span>
+        </div>
+        <?php foreach ($_coPendsNesteProcesso as $_cp): ?>
+        <a href="coassinar_documento.php?documento_id=<?= urlencode($_cp['documento_id']) ?>"
+           style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #fcd34d;border-radius:9px;margin-bottom:7px;text-decoration:none;color:inherit;background:#fff;transition:background .12s;"
+           onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='#fff'">
+            <i class="fas fa-pen-nib" style="color:#b45309;font-size:.9rem;flex-shrink:0;"></i>
+            <div style="flex-grow:1;min-width:0;">
+                <div style="font-weight:700;color:#1e293b;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    <?= htmlspecialchars($_cp['documento_id'] ? substr($_cp['documento_id'], 0, 14) . '…' : 'Documento') ?>
+                </div>
+                <div style="font-size:.74rem;color:#78350f;">
+                    Solicitado por <?= htmlspecialchars($_cp['solicitante_nome']) ?>
+                    · <?= date('d/m/Y H:i', strtotime($_cp['criado_em'])) ?>
+                </div>
+            </div>
+            <span style="font-size:.77rem;color:#b45309;font-weight:700;flex-shrink:0;">Assinar <i class="fas fa-chevron-right" style="font-size:.6rem;"></i></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+    <!-- Pareceres já gerados -->
+    <div class="info-card info-card-full mb-3" style="overflow:visible;">
+        <div class="info-card-head"><i class="fas fa-file-signature"></i><span>Pareceres já gerados</span></div>
+        <div id="pareceres-existentes-list" style="padding:4px 0;overflow-x:auto;"></div>
+    </div>
+    <?php endif; ?>
+
     <!-- ABAS DE INFORMAÇÕES -->
     <ul class="nav nav-tabs mb-3" id="requerimentoTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $activeTab === 'informacoes' ? 'active' : '' ?>" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab">
-                <i class="fas fa-circle-info me-1"></i>Informações
+            <button class="nav-link <?= $activeTab === 'informacoes' ? 'active' : '' ?>" id="informacoes-tab" data-bs-toggle="tab" data-bs-target="#informacoes" type="button" role="tab" aria-controls="informacoes" aria-selected="<?= $activeTab === 'informacoes' ? 'true' : 'false' ?>">
+                <i class="fas fa-table-list me-1"></i>Dados do processo
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $activeTab === 'documentos' ? 'active' : '' ?>" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab">
+            <button class="nav-link <?= $activeTab === 'documentos' ? 'active' : '' ?>" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab" aria-controls="documentos" aria-selected="<?= $activeTab === 'documentos' ? 'true' : 'false' ?>">
                 <i class="fas fa-folder-open me-1"></i>Documentos
+                <?php if ($documentos): ?><span class="nav-tab-count"><?= count($documentos) ?></span><?php endif; ?>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $activeTab === 'historico' ? 'active' : '' ?>" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab">
+            <button class="nav-link <?= $activeTab === 'historico' ? 'active' : '' ?>" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab" aria-controls="historico" aria-selected="<?= $activeTab === 'historico' ? 'true' : 'false' ?>">
                 <i class="fas fa-clock-rotate-left me-1"></i>Histórico
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $activeTab === 'pendencias' ? 'active' : '' ?>" id="pendencias-tab" data-bs-toggle="tab" data-bs-target="#pendencias" type="button" role="tab" aria-controls="pendencias" aria-selected="<?= $activeTab === 'pendencias' ? 'true' : 'false' ?>">
+                <i class="fas fa-list-check me-1"></i>Pendências e cobrança
+                <?php if ($acoesAtivasCount > 0): ?><span class="nav-tab-count nav-tab-count-alert"><?= $acoesAtivasCount ?></span><?php endif; ?>
             </button>
         </li>
     </ul>
@@ -2372,26 +2848,25 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="info-grid">
                 <!-- Processo -->
                 <div class="info-card">
-                    <div class="info-card-head"><i class="fas fa-file-alt"></i><span>Processo</span></div>
+                    <div class="info-card-head" style="justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:7px;"><i class="fas fa-file-alt"></i><span>Processo</span></div>
+                        <span class="quick-edit-hint"><i class="fas fa-pen me-1"></i>Passe o mouse em um valor para editar</span>
+                    </div>
+                    <?php if ($temEdicoesProcesso): ?>
+                    <div class="px-3 pt-2"><div style="display:flex;gap:7px;align-items:flex-start;padding:8px 10px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;color:#285b91;font-size:.72rem;line-height:1.4;"><i class="fas fa-clock-rotate-left mt-1"></i><span>Há dados ajustados pela equipe. O valor original permanece disponível no botão <strong>Editar dados</strong>.</span></div></div>
+                    <?php endif; ?>
                     <div class="info-kv">
                         <span class="info-k">Protocolo</span>
-                        <span class="info-v" style="font-weight:800;"><?= htmlspecialchars($requerimento['protocolo']) ?> <button class="copy-btn" onclick="copyToClipboard('<?= $requerimento['protocolo'] ?>',this)" style="margin-left:4px"><i class="fas fa-copy"></i></button></span>
-                        <span class="info-k">Protocolo Oficial</span>
-                        <span class="info-v">
-                            <form method="POST" style="display:flex;gap:6px;align-items:center;" onsubmit="return this.querySelector('input[name=protocolo_oficial_novo]').value.trim() !== '' || confirm('Salvar protocolo oficial vazio?');">
-                                <input type="text" name="protocolo_oficial_novo" value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>" placeholder="Ex: 2025001234-SEMA" style="max-width:180px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:0.3rem 0.5rem;font-size:.8rem;color:#1a2e1e;">
-                                <button type="submit" name="salvar_protocolo_oficial" class="copy-btn" title="Salvar protocolo oficial"><i class="fas fa-save"></i></button>
-                            </form>
-                        </span>
+                        <span class="info-v quick-editable" data-quick-field="protocolo" data-quick-value="<?= htmlspecialchars($requerimento['protocolo'], ENT_QUOTES) ?>" style="font-weight:800;"><span class="quick-value"><?= htmlspecialchars($requerimento['protocolo']) ?></span> <button class="copy-btn" onclick="copyToClipboard('<?= $requerimento['protocolo'] ?>',this)" style="margin-left:4px"><i class="fas fa-copy"></i></button></span>
                         <span class="info-k">Status</span>
                         <span class="info-v"><span class="rounded-circle me-1" style="display:inline-block;width:8px;height:8px;background:<?= getStatusDotColor($requerimento['status']) ?>"></span><?= htmlspecialchars($requerimento['status']) ?></span>
                         <span class="info-k">Tipo</span>
-                        <span class="info-v"><?= htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))) ?></span>
+                        <span class="info-v quick-editable" data-quick-field="tipo_alvara" data-quick-value="<?= htmlspecialchars($requerimento['tipo_alvara'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($tipos_alvara[$requerimento['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $requerimento['tipo_alvara']))) ?></span></span>
                         <span class="info-k">Enviado em</span>
                         <span class="info-v"><?= formataData($requerimento['data_envio']) ?></span>
                         <?php if (!empty($requerimento['endereco_objetivo'])): ?>
                         <span class="info-k">Endereço</span>
-                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['endereco_objetivo'])) ?></span>
+                        <span class="info-v quick-editable" data-quick-field="endereco_objetivo" data-quick-value="<?= htmlspecialchars($requerimento['endereco_objetivo'], ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['endereco_objetivo'])) ?></span></span>
                         <?php endif; ?>
                         <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
                             <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
@@ -2406,19 +2881,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="info-card-head"><i class="fas fa-user"></i><span>Requerente</span></div>
                     <div class="info-kv">
                         <span class="info-k">Nome</span>
-                        <span class="info-v" style="font-weight:700;"><?= htmlspecialchars($requerimento['requerente_nome'] ?? '') ?></span>
+                        <span class="info-v quick-editable" data-quick-field="requerente_nome" data-quick-value="<?= htmlspecialchars($requerimento['requerente_nome'] ?? '', ENT_QUOTES) ?>" style="font-weight:700;"><span class="quick-value"><?= htmlspecialchars($requerimento['requerente_nome'] ?? '') ?></span></span>
                         <span class="info-k">E-mail</span>
-                        <span class="info-v"><a href="mailto:<?= $requerimento['requerente_email'] ?>"><?= htmlspecialchars($requerimento['requerente_email']) ?></a></span>
+                        <span class="info-v quick-editable" data-quick-field="requerente_email" data-quick-value="<?= htmlspecialchars($requerimento['requerente_email'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><a href="mailto:<?= htmlspecialchars($requerimento['requerente_email'] ?? '') ?>"><?= htmlspecialchars($requerimento['requerente_email'] ?? '') ?></a></span></span>
                         <span class="info-k">CPF/CNPJ</span>
-                        <span class="info-v"><?= htmlspecialchars($requerimento['requerente_cpf_cnpj']) ?></span>
+                        <span class="info-v quick-editable" data-quick-field="requerente_cpf_cnpj" data-quick-value="<?= htmlspecialchars($requerimento['requerente_cpf_cnpj'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['requerente_cpf_cnpj'] ?? '') ?></span></span>
                         <span class="info-k">Telefone</span>
-                        <span class="info-v"><a href="tel:<?= $requerimento['requerente_telefone'] ?>"><?= htmlspecialchars($requerimento['requerente_telefone']) ?></a></span>
+                        <span class="info-v quick-editable" data-quick-field="requerente_telefone" data-quick-value="<?= htmlspecialchars($requerimento['requerente_telefone'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><a href="tel:<?= htmlspecialchars($requerimento['requerente_telefone'] ?? '') ?>"><?= htmlspecialchars($requerimento['requerente_telefone'] ?? '') ?></a></span></span>
                         <?php if (!empty($requerimento['proprietario_id'])): ?>
                         <span class="info-k" style="padding-top:10px;border-top:1px solid var(--req-line,#e5e8e6);">Proprietário</span>
-                        <span class="info-v" style="padding-top:10px;border-top:1px solid var(--req-line,#e5e8e6);font-weight:700;"><?= htmlspecialchars($requerimento['proprietario_nome'] ?? '') ?></span>
+                        <span class="info-v quick-editable" data-quick-field="proprietario_nome" data-quick-value="<?= htmlspecialchars($requerimento['proprietario_nome'] ?? '', ENT_QUOTES) ?>" style="padding-top:10px;border-top:1px solid var(--req-line,#e5e8e6);font-weight:700;"><span class="quick-value"><?= htmlspecialchars($requerimento['proprietario_nome'] ?? '') ?></span></span>
                         <?php if (!empty($requerimento['proprietario_cpf_cnpj'])): ?>
                         <span class="info-k">CPF/CNPJ</span>
-                        <span class="info-v"><?= htmlspecialchars($requerimento['proprietario_cpf_cnpj']) ?></span>
+                        <span class="info-v quick-editable" data-quick-field="proprietario_cpf_cnpj" data-quick-value="<?= htmlspecialchars($requerimento['proprietario_cpf_cnpj'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['proprietario_cpf_cnpj'] ?? '') ?></span></span>
                         <?php endif; ?>
                         <?php endif; ?>
                     </div>
@@ -2434,16 +2909,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="info-kv">
                         <?php if ($tipoAtual === 'desmembramento'): ?>
                             <span class="info-k">Área do Lote</span>
-                            <span class="info-v"><?= !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $ni ?></span>
+                            <span class="info-v quick-editable" data-quick-field="area_lote" data-quick-value="<?= htmlspecialchars($requerimento['area_lote'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $ni ?></span></span>
                         <?php elseif ($exibirTecnicos): ?>
                             <span class="info-k">Área Construída</span>
-                            <span class="info-v"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a).' m²' : $ni; ?></span>
+                            <span class="info-v quick-editable" data-quick-field="area_construida" data-quick-value="<?= htmlspecialchars($requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a).' m²' : $ni; ?></span></span>
                             <span class="info-k">Pavimentos</span>
-                            <span class="info-v"><?= !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $ni ?></span>
+                            <span class="info-v quick-editable" data-quick-field="numero_pavimentos" data-quick-value="<?= htmlspecialchars($requerimento['numero_pavimentos'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $ni ?></span></span>
                         <?php endif; ?>
                         <?php if (!empty($requerimento['especificacao'])): ?>
                             <span class="info-k">Composição</span>
-                            <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span>
+                            <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
                         <?php endif; ?>
                         <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
                             <?php
@@ -2461,19 +2936,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php endif; ?>
                         <?php if (!empty($requerimento['ctf_numero'])): ?>
                             <span class="info-k">CTF</span>
-                            <span class="info-v"><?= htmlspecialchars($requerimento['ctf_numero']) ?></span>
+                            <span class="info-v quick-editable" data-quick-field="ctf_numero" data-quick-value="<?= htmlspecialchars($requerimento['ctf_numero'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['ctf_numero']) ?></span></span>
                         <?php endif; ?>
                         <?php if (!empty($requerimento['licenca_anterior_numero'])): ?>
                             <span class="info-k">Lic. anterior</span>
-                            <span class="info-v"><?= htmlspecialchars($requerimento['licenca_anterior_numero']) ?></span>
+                            <span class="info-v quick-editable" data-quick-field="licenca_anterior_numero" data-quick-value="<?= htmlspecialchars($requerimento['licenca_anterior_numero'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['licenca_anterior_numero']) ?></span></span>
                         <?php endif; ?>
                         <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
                             <span class="info-k">Estudo ambiental</span>
-                            <span class="info-v"><?= $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não' ?><?php if(!empty($requerimento['tipo_estudo_ambiental'])): ?> <span class="text-muted">(<?= htmlspecialchars($requerimento['tipo_estudo_ambiental']) ?>)</span><?php endif; ?></span>
+                            <span class="info-v quick-editable" data-quick-field="possui_estudo_ambiental" data-quick-value="<?= htmlspecialchars((string) $requerimento['possui_estudo_ambiental'], ENT_QUOTES) ?>"><span class="quick-value"><?= $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não' ?></span></span>
                         <?php endif; ?>
                         <?php if ($requerimento['notificado_fiscal_obras'] !== null): ?>
                             <span class="info-k">Notificado pelo Fiscal de Obras</span>
-                            <span class="info-v"><?= $requerimento['notificado_fiscal_obras'] ? 'Sim' : 'Não' ?></span>
+                            <span class="info-v quick-editable" data-quick-field="notificado_fiscal_obras" data-quick-value="<?= htmlspecialchars((string) $requerimento['notificado_fiscal_obras'], ENT_QUOTES) ?>"><span class="quick-value"><?= $requerimento['notificado_fiscal_obras'] ? 'Sim' : 'Não' ?></span></span>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -2485,167 +2960,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="info-card-head"><i class="fas fa-hard-hat"></i><span>Responsável Técnico</span></div>
                     <div class="info-kv">
                         <span class="info-k">Nome</span>
-                        <span class="info-v" style="font-weight:700;"><?= htmlspecialchars($requerimento['responsavel_tecnico_nome']) ?></span>
+                        <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_nome" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_nome'] ?? '', ENT_QUOTES) ?>" style="font-weight:700;"><span class="quick-value"><?= htmlspecialchars($requerimento['responsavel_tecnico_nome']) ?></span></span>
                         <span class="info-k">Registro</span>
-                        <span class="info-v"><?= !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $ni ?></span>
+                        <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_registro" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_registro'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $ni ?></span></span>
                         <span class="info-k"><?= htmlspecialchars($requerimento['responsavel_tecnico_tipo_documento'] ?? 'ART/RRT') ?></span>
-                        <span class="info-v"><?= !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $ni ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Complementações solicitadas ao requerente -->
-                <?php if ($pendencias): ?>
-                <div class="info-card info-card-full">
-                    <div class="info-card-head"><i class="fas fa-folder-open"></i><span>Complementações</span></div>
-                    <div style="padding:4px 0;">
-                        <?php foreach ($pendencias as $p): ?>
-                            <?php $anexosP = listarAnexosPendencia($pdo, $id, (int) $p['id']); ?>
-                            <div style="border-left:3px solid <?= $p['status'] === 'respondida' ? '#059669' : '#f59e0b' ?>;padding:8px 0 8px 12px;margin-bottom:14px;">
-                                <div style="font-weight:600;color:#0f172a;font-size:.9rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                    <?= htmlspecialchars($p['titulo']) ?>
-                                    <span style="font-weight:700;font-size:.68rem;padding:2px 8px;border-radius:99px;background:<?= $p['status'] === 'respondida' ? '#ecfdf5' : '#fffbeb' ?>;color:<?= $p['status'] === 'respondida' ? '#059669' : '#b45309' ?>;">
-                                        <?= $p['status'] === 'respondida' ? 'Respondida' : 'Aguardando o requerente' ?>
-                                    </span>
-                                </div>
-                                <div style="font-size:.84rem;color:var(--req-muted);margin:4px 0;">
-                                    <?= nl2br(htmlspecialchars($p['descricao'])) ?>
-                                </div>
-                                <div style="font-size:.75rem;color:var(--req-muted);">
-                                    Solicitado por <?= htmlspecialchars($p['admin_nome'] ?? 'sistema') ?> em <?= formataData($p['criado_em']) ?>
-                                </div>
-
-                                <?php if ($p['status'] === 'aberta'): ?>
-                                    <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
-                                        <input type="text" readonly class="form-control form-control-sm" style="font-size:.75rem;max-width:520px;"
-                                               value="<?= htmlspecialchars(gerarUrlPendencia((int) $p['id'], $requerimento['protocolo'])) ?>"
-                                               onclick="this.select()">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.innerHTML='<i class=\'fas fa-check\'></i>';">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if (!empty($p['resposta'])): ?>
-                                    <div style="background:#f0fdf4;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:.85rem;color:#065f46;">
-                                        <strong>Resposta do requerente:</strong><br>
-                                        <?= nl2br(htmlspecialchars($p['resposta'])) ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if ($anexosP): ?>
-                                    <div style="margin-top:8px;">
-                                        <?php foreach ($anexosP as $anexo): ?>
-                                            <div class="data-row">
-                                                <div class="data-label" style="min-width: 32px;">
-                                                    <i class="fas fa-file-pdf" style="color:#dc2626;font-size:18px;"></i>
-                                                </div>
-                                                <div class="data-value">
-                                                    <div class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($anexo['nome_original']) ?></div>
-                                                    <div class="text-muted small"><?= number_format($anexo['tamanho'] / 1024, 2) ?> KB</div>
-                                                </div>
-                                                <div class="data-actions">
-                                                    <a href="../uploads/<?= ltrim($anexo['caminho'], '/\\') ?>" class="copy-btn" target="_blank" rel="noopener" title="Visualizar arquivo">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if ($p['status'] === 'respondida' && !empty($p['respondido_em'])): ?>
-                                    <div style="font-size:.75rem;color:var(--req-muted);margin-top:4px;">
-                                        Respondido em <?= formataData($p['respondido_em']) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Pagamento — só existe se houver boleto -->
-                <?php if ($pagamento): ?>
-                <div class="info-card">
-                    <div class="info-card-head"><i class="fas fa-receipt"></i><span>Pagamento</span></div>
-                    <div class="info-kv">
-                        <?php if ($pagamento): ?>
-                            <span class="info-k">Situação</span>
-                            <span class="info-v"><?= !empty($documentoComprovanteBoleto) ? '<span style="color:#059669;font-weight:700">Comprovante recebido</span>' : 'Aguardando pagamento' ?></span>
-                            <span class="info-k">Enviado em</span>
-                            <span class="info-v"><?= !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : $ni ?></span>
-                            <?php if ($documentoBoleto): ?>
-                            <span class="info-k">Boleto (PDF)</span>
-                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])) ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
-                            <?php endif; ?>
-                            <?php if ($documentoComprovanteBoleto): ?>
-                            <span class="info-k">Comprovante</span>
-                            <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoComprovanteBoleto['caminho'])) ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
-                            <?php endif; ?>
-                            <?php if (!empty($pagamento['instrucoes'])): ?>
-                            <span class="info-k">Obs.</span>
-                            <span class="info-v"><?= nl2br(htmlspecialchars($pagamento['instrucoes'])) ?></span>
-                            <?php endif; ?>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Publicação / Observações -->
-                <?php if (!empty($requerimento['publicacao_diario_oficial']) || !empty($requerimento['observacoes'])): ?>
-                <div class="info-card info-card-full">
-                    <div class="info-card-head"><i class="fas fa-comment-alt"></i><span>Observações</span></div>
-                    <div class="info-kv">
-                        <?php if (!empty($requerimento['publicacao_diario_oficial'])): ?>
-                        <span class="info-k">Publicação D.O.</span>
-                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['publicacao_diario_oficial'])) ?></span>
-                        <?php endif; ?>
-                        <?php if (!empty($requerimento['observacoes'])): ?>
-                        <span class="info-k">Observações</span>
-                        <span class="info-v"><?= nl2br(htmlspecialchars($requerimento['observacoes'])) ?></span>
-                        <?php endif; ?>
+                        <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_numero" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_numero'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $ni ?></span></span>
                     </div>
                 </div>
                 <?php endif; ?>
             </div>
-
-            <!-- Emails do processo: lista única e compacta, todos os tipos e status -->
-            <?php if (count($emailsProcesso) > 0): ?>
-            <div class="info-card info-card-full mb-3">
-                <div class="info-card-head" style="justify-content:space-between;">
-                    <div style="display:flex;align-items:center;gap:7px;">
-                        <i class="fas fa-envelope"></i><span>Emails do Processo</span>
-                    </div>
-                    <span class="text-muted" style="font-size:.7rem;font-weight:600;"><?= count($emailsProcesso) ?> envio(s)</span>
-                </div>
-                <div>
-                    <?php foreach ($emailsProcesso as $em): $emSucesso = $em['status'] === 'SUCESSO'; ?>
-                        <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid #f2f6f4;font-size:.8rem;">
-                            <span class="rounded-circle" style="flex:none;width:8px;height:8px;background:<?= $emSucesso ? '#22c55e' : '#dc2626' ?>;" title="<?= $emSucesso ? 'Enviado' : 'Falhou' ?>"></span>
-                            <span class="text-muted" style="flex:none;white-space:nowrap;"><?= formataData($em['data_envio']) ?></span>
-                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;<?= $emSucesso ? '' : 'color:#b91c1c;' ?>"
-                                  title="<?= htmlspecialchars($em['assunto']) ?> — para <?= htmlspecialchars($em['email_destino']) ?><?= !$emSucesso && !empty($em['erro']) ? ' — ' . htmlspecialchars($em['erro']) : '' ?>">
-                                <?= htmlspecialchars($em['assunto']) ?>
-                                <span class="text-muted">· <?= htmlspecialchars($em['email_destino']) ?></span>
-                            </span>
-                            <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" style="flex:none;" title="Ver o email">
-                                <i class="fas fa-envelope-open-text"></i>
-                            </a>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-
         </div>
 
         <div class="tab-pane fade <?= $activeTab === 'documentos' ? 'show active' : '' ?>" id="documentos" role="tabpanel">
             <div class="modern-card mb-3">
                 <div class="modern-card-header">
                     <i class="fas fa-folder-open icon"></i>
-                    <h6>Documentos do Processo</h6>
+                    <h6>Enviado pelo requerente</h6>
                 </div>
                 <div class="card-body">
                     <div class="documents-toolbar">
@@ -2731,7 +3061,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="modern-card mb-3" id="secao-docs-assinados" style="display:none">
                 <div class="modern-card-header">
                     <i class="fas fa-file-signature icon"></i>
-                    <h6>Documentos Assinados Digitalmente</h6>
+                    <h6>Gerado pela equipe</h6>
                     <span class="badge ms-auto" id="badge-docs-count"
                           style="background:#f0fdf4;color:#1c4b36;border:1px solid #bbf7d0;font-size:.75rem"></span>
                 </div>
@@ -2831,6 +3161,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
+            <?php if (false): // Histórico de ações e e-mails ficam disponíveis nas telas de auditoria e logs. ?>
             <div class="modern-card mb-3">
                 <div class="modern-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
@@ -2901,26 +3232,263 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
+            <!-- Emails do processo: lista única e compacta, todos os tipos e status -->
+            <?php if (count($emailsProcesso) > 0): ?>
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-envelope"></i><span>E-mails do processo</span>
+                    </div>
+                    <span class="text-muted" style="font-size:.7rem;font-weight:600;"><?= count($emailsProcesso) ?> envio(s)</span>
+                </div>
+                <div>
+                    <?php foreach ($emailsProcesso as $em): $emSucesso = $em['status'] === 'SUCESSO'; ?>
+                        <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid #f2f6f4;font-size:.8rem;">
+                            <span class="rounded-circle" style="flex:none;width:8px;height:8px;background:<?= $emSucesso ? '#22c55e' : '#dc2626' ?>;" title="<?= $emSucesso ? 'Enviado' : 'Falhou' ?>"></span>
+                            <span class="text-muted" style="flex:none;white-space:nowrap;"><?= formataData($em['data_envio']) ?></span>
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;<?= $emSucesso ? '' : 'color:#b91c1c;' ?>"
+                                  title="<?= htmlspecialchars($em['assunto']) ?> — para <?= htmlspecialchars($em['email_destino']) ?><?= !$emSucesso && !empty($em['erro']) ? ' — ' . htmlspecialchars($em['erro']) : '' ?>">
+                                <?= htmlspecialchars($em['assunto']) ?>
+                                <span class="text-muted">· <?= htmlspecialchars($em['email_destino']) ?></span>
+                            </span>
+                            <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="copy-btn" style="flex:none;" title="Ver o email">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+
+        </div>
+
+        <!-- Aba: Pendências e cobrança -->
+        <div class="tab-pane fade <?= $activeTab === 'pendencias' ? 'show active' : '' ?>" id="pendencias" role="tabpanel">
+            <p class="text-muted mb-3" style="font-size:.84rem;max-width:70ch;">
+                Serviços que só entram em ação quando o processo precisa: pedir algo que faltou ou veio errado, cobrar a taxa e registrar notas internas da equipe.
+            </p>
+
+            <!-- Complementações solicitadas ao requerente -->
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-folder-open"></i><span>Complementações</span>
+                    </div>
+                    <?php if (!$isSecretarioPuro): ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#complementacaoModal">
+                        <i class="fas fa-plus me-1"></i>Solicitar
+                    </button>
+                    <?php endif; ?>
+                </div>
+                <?php if (!$pendencias): ?>
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-circle-check d-block mb-2" style="font-size:1.4rem;color:#cfdad3;"></i>
+                        Nada pendente com o requerente.
+                    </div>
+                <?php else: ?>
+                    <div style="padding:4px 0;">
+                        <?php foreach ($pendencias as $p): ?>
+                            <?php
+                            $anexosP = listarAnexosPendencia($pdo, $id, (int) $p['id']);
+                            $pStatusCor = ['aberta' => '#f59e0b', 'respondida' => '#3049a6', 'aceita' => '#059669', 'cancelada' => '#9ca3af'][$p['status']] ?? '#f59e0b';
+                            $pStatusBg  = ['aberta' => '#fffbeb', 'respondida' => '#eef4ff', 'aceita' => '#ecfdf5', 'cancelada' => '#f4f7f5'][$p['status']] ?? '#fffbeb';
+                            $pStatusLabel = ['aberta' => 'Aguardando o requerente', 'respondida' => 'Respondida', 'aceita' => 'Concluída', 'cancelada' => 'Cancelada'][$p['status']] ?? $p['status'];
+                            ?>
+                            <div style="border-left:3px solid <?= $pStatusCor ?>;padding:8px 0 8px 12px;margin-bottom:14px;">
+                                <div style="font-weight:600;color:#0f172a;font-size:.9rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                    <?= htmlspecialchars($p['titulo']) ?>
+                                    <span style="font-weight:700;font-size:.68rem;padding:2px 8px;border-radius:99px;background:<?= $pStatusBg ?>;color:<?= $pStatusCor ?>;">
+                                        <?= $pStatusLabel ?>
+                                    </span>
+                                </div>
+                                <div style="font-size:.84rem;color:var(--req-muted);margin:4px 0;">
+                                    <?= nl2br(htmlspecialchars($p['descricao'])) ?>
+                                </div>
+                                <div style="font-size:.75rem;color:var(--req-muted);">
+                                    <?php if ($p['status'] === 'aceita'): ?>
+                                        Concluída <?= !empty($p['decidido_em']) ? 'em ' . formataData($p['decidido_em']) : '' ?><?= $p['resolvido_manualmente'] ? ' · registro manual' : '' ?>
+                                    <?php else: ?>
+                                        Solicitado por <?= htmlspecialchars($p['admin_nome'] ?? 'sistema') ?> em <?= formataData($p['criado_em']) ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($p['status'] === 'aberta'): ?>
+                                    <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+                                        <input type="text" readonly class="form-control form-control-sm" style="font-size:.75rem;max-width:520px;"
+                                               value="<?= htmlspecialchars(gerarUrlPendencia((int) $p['id'], $requerimento['protocolo'])) ?>"
+                                               onclick="this.select()">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.innerHTML='<i class=\'fas fa-check\'></i>';">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($p['resposta'])): ?>
+                                    <div style="background:#f0fdf4;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:.85rem;color:#065f46;">
+                                        <strong>Resposta do requerente:</strong><br>
+                                        <?= nl2br(htmlspecialchars($p['resposta'])) ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($anexosP): ?>
+                                    <div style="margin-top:8px;">
+                                        <?php foreach ($anexosP as $anexo): ?>
+                                            <div class="data-row">
+                                                <div class="data-label" style="min-width: 32px;">
+                                                    <i class="fas fa-file-pdf" style="color:#dc2626;font-size:18px;"></i>
+                                                </div>
+                                                <div class="data-value">
+                                                    <div class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($anexo['nome_original']) ?></div>
+                                                    <div class="text-muted small"><?= number_format($anexo['tamanho'] / 1024, 2) ?> KB</div>
+                                                </div>
+                                                <div class="data-actions">
+                                                    <a href="../uploads/<?= ltrim($anexo['caminho'], '/\\') ?>" class="copy-btn" target="_blank" rel="noopener" title="Visualizar arquivo">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($p['status'] === 'respondida' && !empty($p['respondido_em'])): ?>
+                                    <div style="font-size:.75rem;color:var(--req-muted);margin-top:4px;">
+                                        Respondido em <?= formataData($p['respondido_em']) ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (in_array($p['status'], ['aberta', 'respondida'], true) && !$isSecretarioPuro): ?>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                                        <?php if ($p['status'] === 'respondida'): ?>
+                                            <form method="post" style="display:inline;">
+                                                <input type="hidden" name="pendencia_id" value="<?= (int) $p['id'] ?>">
+                                                <button type="submit" name="aceitar_pendencia" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-check me-1"></i>Aceitar
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#reabrirPendenciaModal<?= (int) $p['id'] ?>">
+                                            <i class="fas fa-rotate-left me-1"></i>Pedir novamente
+                                        </button>
+                                        <form method="post" style="display:inline;">
+                                            <input type="hidden" name="pendencia_id" value="<?= (int) $p['id'] ?>">
+                                            <button type="submit" name="resolver_pendencia_manual" class="btn btn-sm btn-link text-muted" style="text-decoration:none;">
+                                                Resolver manualmente
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <div class="modal fade" id="reabrirPendenciaModal<?= (int) $p['id'] ?>" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content clean-action-modal">
+                                                <form method="post">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    <div class="modal-header">
+                                                        <h6 class="modal-title mb-0">Pedir novamente: <?= htmlspecialchars($p['titulo']) ?></h6>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="pendencia_id" value="<?= (int) $p['id'] ?>">
+                                                        <label class="form-label" style="font-size:.82rem;">O que ainda falta?</label>
+                                                        <textarea name="descricao_pendencia" class="form-control" rows="3" required placeholder="Descreva o que precisa ser reenviado ou corrigido."></textarea>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" name="reabrir_pendencia" class="btn btn-warning">Enviar novo pedido</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Cobrança da taxa (boleto) -->
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-receipt"></i><span>Cobrança da taxa</span>
+                    </div>
+                    <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#boletoModal">
+                        <i class="fas fa-paper-plane me-1"></i><?= $pagamento ? 'Reenviar' : 'Emitir e enviar' ?>
+                    </button>
+                    <?php endif; ?>
+                </div>
+                <?php if (!$pagamento): ?>
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-file-invoice d-block mb-2" style="font-size:1.4rem;color:#cfdad3;"></i>
+                        Nenhum boleto emitido para este processo.
+                    </div>
+                <?php else: ?>
+                    <div class="info-kv">
+                        <span class="info-k">Situação</span>
+                        <span class="info-v"><?= !empty($documentoComprovanteBoleto) ? '<span style="color:#059669;font-weight:700">Comprovante recebido</span>' : 'Aguardando pagamento' ?></span>
+                        <span class="info-k">Enviado em</span>
+                        <span class="info-v"><?= !empty($pagamento['enviado_em']) ? formataData($pagamento['enviado_em']) : $ni ?></span>
+                        <?php if ($documentoBoleto): ?>
+                        <span class="info-k">Boleto (PDF)</span>
+                        <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoBoleto['caminho'])) ?>" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i><?= htmlspecialchars($documentoBoleto['nome_original']) ?></a></span>
+                        <?php endif; ?>
+                        <?php if ($documentoComprovanteBoleto): ?>
+                        <span class="info-k">Comprovante</span>
+                        <span class="info-v"><a href="<?= htmlspecialchars('../' . urlArquivo($documentoComprovanteBoleto['caminho'])) ?>" target="_blank" rel="noopener" style="color:#059669"><i class="fas fa-file-check me-1"></i><?= htmlspecialchars($documentoComprovanteBoleto['nome_original']) ?></a></span>
+                        <?php endif; ?>
+                        <?php if (!empty($pagamento['instrucoes'])): ?>
+                        <span class="info-k">Obs.</span>
+                        <span class="info-v"><?= nl2br(htmlspecialchars($pagamento['instrucoes'])) ?></span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Observações internas: só a equipe vê -->
+            <div class="info-card info-card-full mb-3">
+                <div class="info-card-head" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-comment-dots"></i><span>Observações internas</span>
+                    </div>
+                    <span class="text-muted" style="font-size:.68rem;">Só a equipe vê — não vai para o requerente</span>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($notaInterna['texto'])): ?>
+                        <p style="margin:0 0 8px;font-size:.86rem;line-height:1.6;color:#21372b;white-space:pre-wrap;"><?= htmlspecialchars($notaInterna['texto']) ?></p>
+                        <div class="text-muted" style="font-size:.74rem;margin-bottom:12px;">
+                            Atualizado por <?= htmlspecialchars($notaInterna['admin_nome'] ?? 'sistema') ?> em <?= formataData($notaInterna['atualizado_em']) ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-muted text-center py-3" style="font-size:.85rem;">
+                            <i class="fas fa-comment-dots d-block mb-2" style="font-size:1.4rem;color:#cfdad3;"></i>
+                            Nenhuma observação registrada.
+                        </div>
+                    <?php endif; ?>
+                    <form method="post">
+                        <textarea name="nota_interna_texto" class="form-control" rows="3" placeholder="Anote o que a equipe precisa saber sobre este processo."><?= htmlspecialchars($notaInterna['texto'] ?? '') ?></textarea>
+                        <div class="d-flex justify-content-end mt-2">
+                            <button type="submit" name="salvar_nota_interna" class="btn btn-sm" style="background:#14532d;color:#fff;">
+                                <i class="fas fa-pen me-1"></i><?= $notaInterna ? 'Salvar' : 'Registrar' ?>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Seção de Ações Administrativas -->
-    <?php
-    // Temporário: setor 2 continua podendo gerar/tratar documentos normalmente
-    // mesmo em processos já Finalizados/Indeferidos vindos do Setor 1.
-    // Além disso, o role dono do setor onde o processo está (analista no Setor 1,
-    // secretário no Setor 3) continua vendo o painel de ações — assim quem concluiu
-    // o processo diretamente na Triagem ainda consegue enviar o documento final ao
-    // cidadão, botão que só aparece no painel ativo.
-    $tratarComoAtivoParaSetor2 = $podeEntregarDocFinal || ($nivelAtual === $roleDoSetor);
-    $mostrarPainelEncerrado = $isBlocked && !$tratarComoAtivoParaSetor2;
-    ?>
+    <!-- Seção de Ações Administrativas: painel informativo de processo encerrado -->
+    <?php if ($mostrarPainelEncerrado): ?>
     <div class="row mt-4">
         <div class="col-12">
-            <div class="modern-card <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-card' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-card' : ''); ?>">
-                <div class="modern-card-header <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-header' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-header' : ''); ?>">
-                    <i class="fas fa-cog icon <?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>"></i>
-                    <h6 class="<?php echo $mostrarPainelEncerrado ? 'text-muted' : ''; ?>">Ações Administrativas</h6>
+            <div class="modern-card <?php echo $isFinalized ? 'finalized-card' : 'indeferido-card'; ?>">
+                <div class="modern-card-header <?php echo $isFinalized ? 'finalized-header' : 'indeferido-header'; ?>">
+                    <i class="fas fa-cog icon text-muted"></i>
+                    <h6 class="text-muted">Ações Administrativas</h6>
                     <?php if ($isFinalized): ?>
                         <div class="ms-auto">
                             <span class="badge bg-secondary">
@@ -2935,8 +3503,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body <?php echo ($isFinalized && $mostrarPainelEncerrado) ? 'finalized-body' : (($isIndeferido && $mostrarPainelEncerrado) ? 'indeferido-body' : ''); ?>">
-                    <?php if ($isFinalized && $mostrarPainelEncerrado): ?>
+                <div class="card-body <?php echo $isFinalized ? 'finalized-body' : 'indeferido-body'; ?>">
+                    <?php if ($isFinalized): ?>
                         <!-- Processo Finalizado — painel informativo -->
                         <?php
                         // Quem finalizou e quando
@@ -3082,7 +3650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <?php endif; ?>
                         </div>
-                    <?php elseif ($isIndeferido && $mostrarPainelEncerrado): ?>
+                    <?php else: ?>
                         <!-- Processo Indeferido — painel compacto -->
                         <?php
                         $ultimaAcaoEnc = '';
@@ -3110,220 +3678,342 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <?php endif; ?>
                             </div>
                         </div>
-                                         <?php else: ?>
-                          <!-- Ações ativas -->
-                          <div class="p-3 p-md-4">
-
-                              <?php
-                              // Banner contextual por setor
-                              $bannerInfo = [
-                                  'setor1' => ['icon'=>'fa-inbox','color'=>'#3762d9','bg'=>'#e8effd','text'=>'Este processo está na triagem. Gere o documento de abertura, encaminhe para fiscalização quando necessário ou finalize diretamente se não houver pendências.'],
-                                  'setor2' => ['icon'=>'fa-microscope','color'=>'#14532d','bg'=>'#e3f3e8','text'=>'Este processo está em análise técnica. Gere ou assine o parecer técnico, encaminhe para revisão final ou finalize com o documento definitivo.'],
-                                  'setor3' => ['icon'=>'fa-shield-halved','color'=>'#7e22ce','bg'=>'#f3e8ff','text'=>'Este processo está em revisão final. Revise os documentos, aprove e assine ou devolva ao Setor 2 com justificativa.'],
-                              ];
-                              $bi = $bannerInfo[$setorAtual] ?? $bannerInfo['setor1'];
-                              ?>
-                              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:10px;background:<?= $bi['bg'] ?>;border:1px solid <?= $bi['color'] ?>22;margin-bottom:20px;">
-                                  <i class="fas <?= $bi['icon'] ?>" style="color:<?= $bi['color'] ?>;margin-top:2px;flex-shrink:0;"></i>
-                                  <span style="font-size:.83rem;color:<?= $bi['color'] ?>;line-height:1.5;"><?= $bi['text'] ?></span>
-                              </div>
-
-                              <?php
-                              // Ação primária e rótulo por setor
-                              ?>
-
-                              <!-- Ações primárias por role -->
-                              <div style="margin-bottom:18px;display:flex;flex-direction:column;gap:10px;">
-                                  <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>" class="act-btn act-gerar">
-                                      <i class="fas fa-file-pen"></i> Gerar Documento
-                                  </a>
-                                  <?php if ($isSetor3): ?>
-                                  <a href="visualizar_documento.php?requerimento_id=<?= $id ?>"
-                                      class="act-btn act-revisar tt"
-                                      data-bs-toggle="tooltip" data-bs-placement="top"
-                                      data-bs-title="Abre os documentos gerados para revisão e assinatura final do Secretário.">
-                                      <i class="fas fa-file-circle-check"></i> Revisar Documentos
-                                      <i class="fas fa-external-link-alt" style="font-size:.72rem;opacity:.8"></i>
-                                  </a>
-                                  <?php endif; ?>
-                              </div>
-
-                              <!-- Encaminhamento de fluxo -->
-                              <div style="margin-bottom:20px;">
-                                  <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Encaminhamento</p>
-                                  <?php if (!$podeAgirNoSetor): ?>
-                                  <div class="aviso-inline" style="width:100%;">
-                                      <i class="fas fa-lock"></i>
-                                      Este processo está em <strong><?= htmlspecialchars($labelSetorAtual) ?></strong>.
-                                      Só a equipe daquele setor pode movimentá-lo.
-                                  </div>
-                                  <?php endif; ?>
-                                  <div style="display:flex;flex-wrap:wrap;gap:8px;<?= $podeAgirNoSetor ? '' : 'margin-top:8px;' ?>">
-                                      <?php if ($podeAgirNoSetor): ?>
-                                      <?php if ($setorAtual === 'setor1'): ?>
-                                          <button type="button" class="act-btn act-go tt"
-                                              onclick="abrirFM('fm-setor2')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Encaminha o processo para o Setor 2 — Fiscalização de Obras realizar a vistoria técnica.">
-                                              <i class="fas fa-arrow-right"></i>Enviar à Fiscalização de Obras
-                                          </button>
-                                          <button type="button" class="act-btn act-neutral tt"
-                                              onclick="abrirFM('fm-finalizar-s1')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Encerra o processo diretamente na Triagem, sem enviar para Fiscalização ou Secretário. Use quando não há pendências técnicas.">
-                                              <i class="fas fa-check"></i>Marcar como Concluído
-                                          </button>
-                                      <?php elseif ($setorAtual === 'setor2'): ?>
-                                          <button type="button" class="act-btn act-go tt"
-                                              onclick="abrirFM('fm-setor3')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Encaminha o processo para o Setor 3 — Revisão do Secretário para aprovação e assinatura final.">
-                                              <i class="fas fa-arrow-right"></i>Enviar ao Secretário
-                                          </button>
-                                          <button type="button" class="act-btn act-neutral tt"
-                                              onclick="abrirFM('fm-finalizar-s2')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Encerra o processo na Fiscalização sem enviar para o Secretário. Use quando o processo já está regularizado.">
-                                              <i class="fas fa-check"></i>Marcar como Concluído
-                                          </button>
-                                          <button type="button" class="act-btn act-back tt"
-                                              onclick="abrirFM('fm-devolver-s1')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Devolve o processo para o Setor 1 — Triagem com um motivo, para correção ou complemento de documentação.">
-                                              <i class="fas fa-arrow-left"></i>Devolver à Triagem
-                                          </button>
-                                      <?php elseif ($setorAtual === 'setor3'): ?>
-                                          <button type="button" class="act-btn act-go tt"
-                                              onclick="abrirFM('fm-setor3-retornar')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Retorna o processo ao Setor 2 após revisão. Use somente após assinar pelo menos um documento.">
-                                              <i class="fas fa-arrow-left"></i>Retornar ao Setor 2
-                                          </button>
-                                          <button type="button" class="act-btn act-back tt"
-                                              onclick="abrirFM('fm-devolver-s2')"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Devolve o processo ao Setor 2 — Fiscalização com uma justificativa obrigatória para revisão ou ajuste.">
-                                              <i class="fas fa-arrow-left"></i>Devolver à Fiscalização
-                                          </button>
-                                      <?php endif; ?>
-                                      <?php endif; // $podeAgirNoSetor ?>
-
-                                      <?php // Entregar documento ao cidadão: Triagem e Fiscalização entregam
-                                            // independente do setor onde o processo parou. Antes era exclusivo do
-                                            // Setor 2, e a Triagem — que conclui a maioria dos processos — só podia
-                                            // mandar o número do protocolo. ?>
-                                      <?php if ($podeEntregarDocFinal): ?>
-                                      <button type="button" class="act-btn act-go2 tt"
-                                          data-bs-toggle="modal" data-bs-target="#docFinalModal"
-                                          data-bs-placement="top"
-                                          data-bs-title="Envia os documentos assinados ao requerente por link seguro e finaliza o processo.">
-                                          <i class="fas fa-file-circle-check"></i>Enviar Doc. Final ao Cidadão
-                                      </button>
-                                      <?php endif; ?>
-                                  </div>
-                              </div>
-
-                              <!-- Outras ações — exibição condicional por setor -->
-                              <?php if (!$isSecretarioPuro): ?>
-                              <div>
-                                  <p style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--req-muted,#888);margin-bottom:8px;">Outras Ações</p>
-                                  <div class="detail-actions-secondary">
-
-                                      <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
-                                      <button type="button" class="act-btn act-info tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Envia um e-mail ao requerente com o link seguro para acessar e baixar o boleto de pagamento."
-                                          onclick="document.getElementById('boletoModal') && new bootstrap.Modal(document.getElementById('boletoModal')).show()">
-                                          <i class="fas fa-file-invoice"></i>Enviar Boleto
-                                      </button>
-                                      <?php endif; ?>
-
-                                      <button type="button" class="act-btn act-warning tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Reabre o formulário para o requerente complementar uma informação ou anexar um documento faltante, sem precisar reenviar tudo."
-                                          onclick="document.getElementById('complementacaoModal') && new bootstrap.Modal(document.getElementById('complementacaoModal')).show()">
-                                          <i class="fas fa-folder-open"></i>Solicitar Complementação
-                                      </button>
-
-                                      <button type="button" class="act-btn act-neutral tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="<?= $isFiscalPuro ? 'Atualiza o status dentro do fluxo de fiscalização.' : 'Altera manualmente o status do processo (ex.: Em análise, Pendente, Aguardando boleto).' ?>"
-                                          onclick="document.getElementById('atualizarStatusModal') && new bootstrap.Modal(document.getElementById('atualizarStatusModal')).show()">
-                                          <i class="fas fa-edit"></i>Atualizar Status
-                                      </button>
-
-                                      <?php if (!$isFiscalPuro && !$isSecretarioPuro): ?>
-                                      <button type="button" class="act-btn act-go tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Envia por e-mail ao requerente o protocolo oficial com o alvará ou documento final do processo."
-                                          onclick="abrirFinalizacaoModal()">
-                                          <i class="fas fa-check-circle"></i>Enviar Protocolo Oficial
-                                      </button>
-
-                                      <button type="button" class="act-btn act-danger tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Indefere o processo e notifica o requerente por e-mail com o motivo do indeferimento."
-                                          onclick="document.getElementById('indeferirInputModal') && new bootstrap.Modal(document.getElementById('indeferirInputModal')).show()">
-                                          <i class="fas fa-times-circle"></i>Indeferir
-                                      </button>
-
-                                      <button type="button" class="act-btn act-neutral tt"
-                                          data-bs-toggle="tooltip" data-bs-placement="top"
-                                          data-bs-title="Move o processo para o acervo. Ele fica oculto da fila principal mas pode ser consultado pelo histórico."
-                                          onclick="showArquivarModal()">
-                                          <i class="fas fa-archive"></i>Arquivar
-                                      </button>
-                                      <?php endif; ?>
-
-                                  </div>
-                              </div>
-                              <?php endif; ?>
-                          </div>
-                          <!-- Co-assinaturas pendentes para este admin neste processo -->
-                          <?php if (!empty($_coPendsNesteProcesso)): ?>
-                          <div id="co-pends-card" style="margin:0 16px 12px;background:#fef9f0;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:12px;padding:14px 16px;">
-                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                                  <i class="fas fa-file-signature" style="color:#b45309;font-size:1rem;"></i>
-                                  <strong style="color:#78350f;font-size:.88rem;">Sua assinatura é aguardada neste processo</strong>
-                                  <span style="background:#b45309;color:#fff;font-size:.7rem;font-weight:700;border-radius:20px;padding:1px 8px;margin-left:auto;"><?= count($_coPendsNesteProcesso) ?></span>
-                              </div>
-                              <?php foreach ($_coPendsNesteProcesso as $_cp): ?>
-                              <a href="coassinar_documento.php?documento_id=<?= urlencode($_cp['documento_id']) ?>"
-                                 style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #fcd34d;border-radius:9px;margin-bottom:7px;text-decoration:none;color:inherit;background:#fff;transition:background .12s;"
-                                 onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='#fff'">
-                                  <i class="fas fa-pen-nib" style="color:#b45309;font-size:.9rem;flex-shrink:0;"></i>
-                                  <div style="flex-grow:1;min-width:0;">
-                                      <div style="font-weight:700;color:#1e293b;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                          <?= htmlspecialchars($_cp['documento_id'] ? substr($_cp['documento_id'], 0, 14) . '…' : 'Documento') ?>
-                                      </div>
-                                      <div style="font-size:.74rem;color:#78350f;">
-                                          Solicitado por <?= htmlspecialchars($_cp['solicitante_nome']) ?>
-                                          · <?= date('d/m/Y H:i', strtotime($_cp['criado_em'])) ?>
-                                      </div>
-                                  </div>
-                                  <span style="font-size:.77rem;color:#b45309;font-weight:700;flex-shrink:0;">Assinar <i class="fas fa-chevron-right" style="font-size:.6rem;"></i></span>
-                              </a>
-                              <?php endforeach; ?>
-                          </div>
-                          <?php endif; ?>
-                          <!-- Pareceres já gerados -->
-                          <div id="pareceres-existentes-list" class="px-4 pb-3"></div>
-                      <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
+
+    <!-- ══════════════════════════════════════════════════
+         RESUMO LATERAL — Comunicação e movimentações
+         Nada de dado novo aqui: são o histórico de e-mails
+         (email_logs) e o de ações (historico_acoes) que já
+         vivem na aba "Histórico", promovidos para o fim da
+         página como resumo, conforme o redesenho. Quem quer
+         a lista inteira continua indo na aba.
+    ══════════════════════════════════════════════════ -->
+    <div class="proc-resumos">
+        <div class="proc-resumo-card">
+            <div class="proc-resumo-head">
+                <span class="proc-resumo-titulo">Comunicação com o cidadão</span>
+                <a href="?id=<?= (int) $id ?>&tab=historico" class="proc-resumo-link">Ver todos</a>
+            </div>
+            <?php if (empty($emailsProcesso)): ?>
+                <div class="proc-resumo-vazio">Nenhum e-mail enviado neste processo.</div>
+            <?php else: ?>
+                <?php foreach (array_slice($emailsProcesso, 0, 3) as $em): $emOk = $em['status'] === 'SUCESSO'; ?>
+                    <a href="preview_email.php?id=<?= (int) $em['id'] ?>" target="_blank" class="proc-resumo-item">
+                        <i class="fas <?= $emOk ? 'fa-envelope-circle-check' : 'fa-envelope-open-text' ?> proc-resumo-ic"
+                           style="color:<?= $emOk ? '#3d7a56' : '#b13232' ?>"></i>
+                        <span class="proc-resumo-corpo">
+                            <span class="proc-resumo-assunto"><?= htmlspecialchars($em['assunto']) ?></span>
+                            <span class="proc-resumo-meta">
+                                <?= formataData($em['data_envio']) ?> · <?= htmlspecialchars($em['email_destino']) ?><?= $emOk ? '' : ' · falhou' ?>
+                            </span>
+                        </span>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <div class="proc-resumo-card">
+            <div class="proc-resumo-head">
+                <span class="proc-resumo-titulo">Últimas movimentações</span>
+                <a href="?id=<?= (int) $id ?>&tab=historico" class="proc-resumo-link">Ver todas</a>
+            </div>
+            <?php if (empty($historico)): ?>
+                <div class="proc-resumo-vazio">Nenhuma movimentação registrada.</div>
+            <?php else: ?>
+                <div class="proc-timeline">
+                    <?php $ultimos = array_slice($historico, 0, 4); $totalUlt = count($ultimos); ?>
+                    <?php foreach ($ultimos as $ti => $h): ?>
+                        <div class="proc-timeline-linha">
+                            <div class="proc-timeline-marca">
+                                <span class="proc-timeline-dot"></span>
+                                <?php if ($ti < $totalUlt - 1): ?><span class="proc-timeline-fio"></span><?php endif; ?>
+                            </div>
+                            <div class="proc-timeline-conteudo">
+                                <span class="proc-resumo-assunto"><?= htmlspecialchars($h['acao']) ?></span>
+                                <span class="proc-resumo-meta">
+                                    <?= htmlspecialchars($h['admin_nome'] ?? 'Sistema') ?> · <?= formataData($h['data_acao']) ?>
+                                </span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.edit-process-modal { border:0; border-radius:16px; overflow:hidden; box-shadow:0 24px 70px rgba(16,33,23,.2); }
+.edit-process-head { display:flex; align-items:flex-start; gap:13px; padding:20px 24px; background:#0a6b34; color:#fff; }
+.edit-process-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none; background:rgba(255,255,255,.15); color:#fff; }
+.edit-process-kicker { color:rgba(255,255,255,.68); font-size:.62rem; font-weight:800; letter-spacing:.1em; margin-bottom:3px; }
+.edit-process-head h5 { margin:0; font-size:1.05rem; color:#fff; }
+.edit-process-head p { margin:4px 0 0; color:rgba(255,255,255,.75); font-size:.77rem; }
+.edit-process-body { padding:20px 24px 8px; max-height:min(70vh,680px); overflow-y:auto; }
+.edit-process-notice { display:flex; gap:9px; padding:11px 13px; margin-bottom:18px; border:1px solid #cfe3d7; border-radius:10px; background:#f5fbf7; color:#285d40; font-size:.76rem; line-height:1.45; }
+.edit-process-notice i { color:#21834e; margin-top:2px; }
+.edit-process-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 16px; }
+.edit-process-field-wide { grid-column:1/-1; }
+.edit-process-field label { display:block; margin-bottom:6px; color:#334155; font-size:.75rem; font-weight:800; }
+.edit-process-field .form-control { min-height:42px; border-color:#dbe5df; border-radius:9px; font-size:.82rem; }
+.edit-process-field textarea.form-control { min-height:82px; resize:vertical; }
+.edit-process-field .form-control:focus { border-color:#0a6b34; box-shadow:0 0 0 3px rgba(10,107,52,.1); }
+.edit-process-original { display:flex; gap:6px; margin-top:6px; color:#7b8794; font-size:.68rem; line-height:1.35; }
+.edit-process-original i { color:#8aa094; margin-top:2px; }
+.edit-process-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 24px 18px; border-top:1px solid #eef1f5; background:#fff; }
+.edit-process-foot .btn { min-height:40px; border-radius:8px; font-size:.8rem; font-weight:700; }
+.edit-process-cancel { color:#64748b; border:0; background:transparent; }
+.edit-process-cancel:hover { background:#f1f5f9; }
+.edit-process-save { color:#fff; background:#0a6b34; border-color:#0a6b34; padding:0 17px; }
+.edit-process-save:hover { color:#fff; background:#08582b; border-color:#08582b; }
+@media(max-width:640px) { .edit-process-grid { grid-template-columns:1fr; } .edit-process-field-wide { grid-column:auto; } .edit-process-body { padding:18px 16px 8px; } .edit-process-foot { padding:12px 16px 16px; } .edit-process-foot .btn { flex:1; } }
+</style>
+
+<!-- Modal: Editar dados do processo -->
+<div class="modal fade" id="editarDadosProcessoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content edit-process-modal">
+            <form method="post" action="">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                <div class="edit-process-head">
+                    <div class="edit-process-icon"><i class="fas fa-pen-to-square"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="edit-process-kicker">DADOS DO PROCESSO</div>
+                        <h5>Editar informações técnicas</h5>
+                        <p>Altere os dados necessários sem perder o registro do preenchimento original.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="edit-process-body">
+                    <div class="edit-process-notice"><i class="fas fa-shield-halved"></i><span>Os valores atuais serão salvos no processo. Quando um campo já tiver sido alterado, o valor original aparecerá logo abaixo dele.</span></div>
+                    <div class="edit-process-grid">
+                        <?php
+                        $camposEdicaoVisual = [
+                            'endereco_objetivo' => ['Endereço do imóvel', 'textarea', 'Rua, número, bairro e município'],
+                            'area_construcao' => ['Área de construção (m²)', 'text', ''],
+                            'area_construida' => ['Área construída (m²)', 'text', ''],
+                            'numero_pavimentos' => ['Número de pavimentos', 'text', ''],
+                            'area_lote' => ['Área do lote (m²)', 'text', ''],
+                            'area_total_terreno' => ['Área total do terreno (m²)', 'text', ''],
+                            'area_remanescente' => ['Área remanescente (m²)', 'text', ''],
+                            'cadastro_imobiliario' => ['Cadastro imobiliário', 'text', ''],
+                            'responsavel_tecnico_nome' => ['Responsável técnico', 'text', 'Nome completo'],
+                            'responsavel_tecnico_registro' => ['Registro profissional', 'text', 'CREA, CAU ou equivalente'],
+                            'responsavel_tecnico_tipo_documento' => ['Tipo do documento técnico', 'text', 'ART/RRT'],
+                            'responsavel_tecnico_numero' => ['Número do documento técnico', 'text', ''],
+                            'especificacao' => ['Especificação', 'textarea', 'Descrição ou observações técnicas'],
+                            'ctf_numero' => ['Cadastro Técnico Federal (CTF)', 'text', ''],
+                            'licenca_anterior_numero' => ['Licença anterior', 'text', ''],
+                            'alvara_construcao_numero' => ['Alvará de construção anterior', 'text', ''],
+                            'inicio_obra' => ['Início da obra', 'date', ''],
+                            'termino_obra' => ['Término ou previsão da obra', 'date', ''],
+                            'eng_fiscal_nome' => ['Engenheiro fiscal', 'text', ''],
+                            'eng_fiscal_registro' => ['Registro do engenheiro fiscal', 'text', ''],
+                            'tipo_estudo_ambiental' => ['Tipo de estudo ambiental', 'text', ''],
+                            'possui_estudo_ambiental' => ['Possui estudo ambiental', 'select', ''],
+                            'notificado_fiscal_obras' => ['Notificado pelo Fiscal de Obras', 'select', ''],
+                            'observacoes' => ['Observações internas do processo', 'textarea', 'Não aparece para o cidadão'],
+                        ];
+                        foreach ($camposEdicaoVisual as $campo => [$rotulo, $tipoCampo, $placeholder]):
+                            $valorAtual = $requerimento[$campo] ?? '';
+                            $temOriginal = array_key_exists($campo, $valoresOriginaisProcesso);
+                            $valorOriginal = $temOriginal ? $valoresOriginaisProcesso[$campo] : '';
+                        ?>
+                        <div class="edit-process-field <?= in_array($tipoCampo, ['textarea'], true) ? 'edit-process-field-wide' : '' ?>">
+                            <label for="editar_<?= htmlspecialchars($campo) ?>"><?= htmlspecialchars($rotulo) ?></label>
+                            <?php if ($tipoCampo === 'textarea'): ?>
+                                <textarea class="form-control" id="editar_<?= htmlspecialchars($campo) ?>" name="<?= htmlspecialchars($campo) ?>" rows="3" placeholder="<?= htmlspecialchars($placeholder) ?>"><?= htmlspecialchars($valorAtual ?? '') ?></textarea>
+                            <?php elseif ($tipoCampo === 'select'): ?>
+                                <select class="form-select form-control" id="editar_<?= htmlspecialchars($campo) ?>" name="<?= htmlspecialchars($campo) ?>">
+                                    <option value="">Não informado</option>
+                                    <option value="1" <?= (string) $valorAtual === '1' ? 'selected' : '' ?>>Sim</option>
+                                    <option value="0" <?= (string) $valorAtual === '0' && $valorAtual !== null && $valorAtual !== '' ? 'selected' : '' ?>>Não</option>
+                                </select>
+                            <?php else: ?>
+                                <input class="form-control" type="<?= htmlspecialchars($tipoCampo) ?>" id="editar_<?= htmlspecialchars($campo) ?>" name="<?= htmlspecialchars($campo) ?>" value="<?= htmlspecialchars($valorAtual ?? '') ?>" placeholder="<?= htmlspecialchars($placeholder) ?>">
+                            <?php endif; ?>
+                            <?php if ($temOriginal): ?><div class="edit-process-original"><i class="fas fa-history"></i><span>Original: <?= nl2br(htmlspecialchars($valorOriginal !== '' ? $valorOriginal : 'Não informado')) ?></span></div><?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="edit-process-foot">
+                    <button type="button" class="btn edit-process-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="salvar_dados_processo" class="btn edit-process-save"><i class="fas fa-save me-2"></i>Salvar alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════
      MODAIS DE AÇÕES ADMINISTRATIVAS
 ══════════════════════════════════════════════════ -->
 
+<style>
+/* Linguagem compartilhada dos modais de ação, alinhada ao modal de entrega final. */
+#complementacaoModal .modal-dialog,
+#boletoModal .modal-dialog,
+#atualizarStatusModal .modal-dialog,
+#indeferirInputModal .modal-dialog,
+#reopenProcessModal .modal-dialog,
+#arquivarModal .modal-dialog { max-width:560px; }
+#complementacaoModal .modal-content,
+#boletoModal .modal-content,
+#atualizarStatusModal .modal-content,
+#indeferirInputModal .modal-content,
+#reopenProcessModal .modal-content,
+#arquivarModal .modal-content {
+    border:0; border-radius:14px; overflow:hidden;
+    box-shadow:0 18px 48px rgba(16,33,23,.16) !important;
+}
+#complementacaoModal .modal-header,
+#boletoModal .modal-header,
+#atualizarStatusModal .modal-header,
+#indeferirInputModal .modal-header,
+#reopenProcessModal .modal-header,
+#arquivarModal .modal-header {
+    background:#0a6b34; color:#fff; border:0; padding:18px 24px 16px;
+}
+#complementacaoModal .modal-header .modal-title,
+#boletoModal .modal-header .modal-title,
+#atualizarStatusModal .modal-header .modal-title,
+#indeferirInputModal .modal-header .modal-title,
+#reopenProcessModal .modal-header .modal-title,
+#arquivarModal .modal-header .modal-title { color:#fff !important; font-size:1.02rem; }
+.action-modal-eyebrow { color:rgba(255,255,255,.68); font-size:.62rem; font-weight:800; letter-spacing:.09em; margin-bottom:3px; }
+.action-modal-sub { color:rgba(255,255,255,.74); font-size:.75rem; margin:3px 0 0; line-height:1.35; }
+#complementacaoModal .modal-header .btn-close,
+#boletoModal .modal-header .btn-close,
+#atualizarStatusModal .modal-header .btn-close,
+#indeferirInputModal .modal-header .btn-close,
+#reopenProcessModal .modal-header .btn-close,
+#arquivarModal .modal-header .btn-close { filter:brightness(0) invert(1); opacity:.78; }
+#complementacaoModal .modal-header > div,
+#boletoModal .modal-header > div { width:100%; }
+#complementacaoModal .modal-header > div > span,
+#boletoModal .modal-header > div > span {
+    width:36px !important; height:36px !important; flex:none;
+    background:rgba(255,255,255,.15) !important; border:1px solid rgba(255,255,255,.2) !important;
+    color:#fff !important;
+}
+#complementacaoModal .modal-body,
+#boletoModal .modal-body,
+#atualizarStatusModal .modal-body,
+#indeferirInputModal .modal-body,
+#reopenProcessModal .modal-body,
+#arquivarModal .modal-body { padding:20px 24px 10px !important; }
+#complementacaoModal .modal-body > p,
+#boletoModal .modal-body > p { color:#64748b !important; font-size:.8rem !important; line-height:1.55; margin-bottom:18px !important; }
+#complementacaoModal .form-label,
+#boletoModal .form-label,
+#atualizarStatusModal .form-label,
+#indeferirInputModal .form-label,
+#reopenProcessModal .form-label,
+#arquivarModal .form-label { color:#334155; font-size:.78rem; font-weight:700 !important; margin-bottom:7px; }
+#complementacaoModal .form-control,
+#boletoModal .form-control,
+#atualizarStatusModal .form-control,
+#atualizarStatusModal .form-select,
+#indeferirInputModal .form-control,
+#reopenProcessModal .form-control,
+#reopenProcessModal .form-select,
+#arquivarModal .form-control,
+#arquivarModal .form-select { border-color:#dfe7e2; border-radius:9px; font-size:.84rem; }
+#complementacaoModal .form-control:focus,
+#boletoModal .form-control:focus,
+#atualizarStatusModal .form-control:focus,
+#atualizarStatusModal .form-select:focus,
+#indeferirInputModal .form-control:focus,
+#reopenProcessModal .form-control:focus,
+#reopenProcessModal .form-select:focus,
+#arquivarModal .form-control:focus,
+#arquivarModal .form-select:focus { border-color:#0a6b34; box-shadow:0 0 0 3px rgba(10,107,52,.1); }
+#complementacaoModal .form-text,
+#boletoModal .form-text { color:#94a3b8; font-size:.7rem; margin-top:6px; }
+#complementacaoModal .modal-footer,
+#boletoModal .modal-footer,
+#atualizarStatusModal .modal-footer,
+#indeferirInputModal .modal-footer,
+#reopenProcessModal .modal-footer,
+#arquivarModal .modal-footer {
+    border-top:1px solid #eef1f5; padding:14px 24px 18px; background:#fff; gap:8px;
+}
+#complementacaoModal .modal-footer .btn,
+#boletoModal .modal-footer .btn,
+#atualizarStatusModal .modal-footer .btn,
+#indeferirInputModal .modal-footer .btn,
+#reopenProcessModal .modal-footer .btn,
+#arquivarModal .modal-footer .btn { min-height:40px; border-radius:8px; font-size:.8rem; font-weight:700; }
+#complementacaoModal .btn-warning { background:#c98212; border-color:#c98212; color:#fff; }
+#complementacaoModal .btn-warning:hover { background:#aa6b0d; border-color:#aa6b0d; }
+#boletoModal .btn-sky { background:#0a6b8a; border-color:#0a6b8a; }
+#boletoModal .btn-sky:hover { background:#075b75; border-color:#075b75; }
+@media (max-width:560px) {
+    #complementacaoModal .modal-body, #boletoModal .modal-body,
+    #atualizarStatusModal .modal-body, #indeferirInputModal .modal-body,
+    #reopenProcessModal .modal-body, #arquivarModal .modal-body { padding:18px 16px 8px !important; }
+    #complementacaoModal .modal-footer, #boletoModal .modal-footer,
+    #atualizarStatusModal .modal-footer, #indeferirInputModal .modal-footer,
+    #reopenProcessModal .modal-footer, #arquivarModal .modal-footer { padding:12px 16px 16px; flex-wrap:wrap; }
+    #complementacaoModal .modal-footer .btn, #boletoModal .modal-footer .btn { flex:1; }
+}
+
+/* Composição final dos modais: uma coluna de conteúdo e um grupo único de ações. */
+#complementacaoModal .clean-action-modal,
+#boletoModal .clean-action-modal,
+#atualizarStatusModal .clean-action-modal,
+#indeferirInputModal .clean-action-modal,
+#reopenProcessModal .clean-action-modal,
+#arquivarModal .clean-action-modal { border-radius:16px; }
+#complementacaoModal .clean-action-modal .modal-header,
+#boletoModal .clean-action-modal .modal-header,
+#atualizarStatusModal .clean-action-modal .modal-header,
+#indeferirInputModal .clean-action-modal .modal-header,
+#reopenProcessModal .clean-action-modal .modal-header,
+#arquivarModal .clean-action-modal .modal-header { display:flex; align-items:flex-start; gap:14px; padding:20px 24px; }
+#complementacaoModal .clean-action-modal .modal-header > .d-flex,
+#boletoModal .clean-action-modal .modal-header > .d-flex { flex:1; min-width:0; }
+.clean-action-heading { min-width:0; }
+.clean-action-heading .modal-title { line-height:1.25; }
+.clean-action-heading .action-modal-sub { max-width:360px; }
+.clean-action-modal .modal-body { min-height:0; }
+.clean-action-description { display:flex; gap:10px; padding:12px 14px; margin:0 0 20px; border:1px solid #dcece1; border-radius:10px; background:#f6fbf7; color:#496052; font-size:.78rem; line-height:1.5; }
+.clean-action-description i { color:#21834e; margin-top:2px; flex:none; }
+.clean-field { margin-bottom:18px; }
+.clean-field:last-child { margin-bottom:4px; }
+.clean-field .form-label { display:block; }
+.clean-field .form-control { min-height:44px; }
+.clean-field textarea.form-control { min-height:96px; }
+.clean-field-note { color:#94a3b8; font-size:.7rem; margin-top:6px; }
+.clean-action-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.clean-action-buttons { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.clean-action-buttons .btn { white-space:nowrap; }
+.clean-btn-cancel { color:#64748b; background:transparent; border-color:transparent; }
+.clean-btn-cancel:hover { background:#f1f5f9; color:#334155; }
+.clean-btn-preview { background:#fff; color:#286143; border:1px solid #c8dbce; }
+.clean-btn-preview:hover { background:#f1faf4; color:#174c2d; border-color:#9fc1aa; }
+.clean-btn-primary { background:#0a6b34; border-color:#0a6b34; color:#fff; }
+.clean-btn-primary:hover { background:#08582b; border-color:#08582b; color:#fff; }
+@media(max-width:560px) {
+    .clean-action-footer { align-items:stretch; flex-direction:column; }
+    .clean-action-buttons { display:grid; grid-template-columns:1fr 1fr; width:100%; }
+    .clean-action-buttons .btn { width:100%; }
+    .clean-action-buttons .clean-btn-primary { grid-column:1 / -1; }
+}
+</style>
+
 <!-- Modal: Solicitar Complementação -->
 <div class="modal fade" id="complementacaoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content clean-action-modal">
             <form method="post" action="">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -3331,59 +4021,107 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span style="width:36px;height:36px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;display:inline-flex;align-items:center;justify-content:center;color:#b45309;">
                             <i class="fas fa-folder-open"></i>
                         </span>
-                        <h5 class="modal-title mb-0">Solicitar Complementação</h5>
+                        <div class="clean-action-heading">
+                            <div class="action-modal-eyebrow">PROTOCOLO #<?= htmlspecialchars($requerimento['protocolo']) ?></div>
+                            <h5 class="modal-title mb-0">Solicitar Complementação</h5>
+                            <p class="action-modal-sub">Peça apenas o que falta para o processo avançar.</p>
+                        </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body px-4 pt-3">
-                    <p class="text-muted" style="font-size:.86rem;">
+                    <div class="clean-action-description"><i class="fas fa-circle-info"></i><span>
                         O requerente receberá por e-mail um link para complementar o processo, sem precisar reenviar o formulário inteiro. O mesmo link também fica disponível aqui na tela, no card "Complementações", caso seja preciso repassá-lo manualmente (WhatsApp, telefone etc.).
-                    </p>
+                    </span></div>
 
-                    <div class="mb-3">
+                    <div class="clean-field">
                         <label for="titulo_pendencia" class="form-label fw-semibold">O que está faltando</label>
                         <input type="text" class="form-control" id="titulo_pendencia" name="titulo_pendencia" maxlength="255" required
                                placeholder="Ex.: Falta a cópia do RG do proprietário">
-                        <div class="form-text">Aparece como título na página do requerente.</div>
+                        <div class="clean-field-note">Aparece como título na página do requerente.</div>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="clean-field">
                         <label for="descricao_pendencia" class="form-label fw-semibold">Detalhamento</label>
                         <textarea class="form-control" id="descricao_pendencia" name="descricao_pendencia" rows="4" required
                                   placeholder="Explique o que o requerente precisa enviar ou corrigir."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 px-4 pb-4">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="solicitar_complementacao" class="btn btn-warning">
+                <div class="modal-footer clean-action-footer">
+                    <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="clean-action-buttons">
+                    <button type="button" class="btn clean-btn-preview" onclick="previewPendenciaEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar e-mail
+                    </button>
+                    <button type="submit" name="solicitar_complementacao" class="btn clean-btn-primary">
                         <i class="fas fa-paper-plane me-2"></i>Enviar solicitação
                     </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<style>
+/* Correções finais de composição para os modais que não possuem cabeçalho composto. */
+#atualizarStatusModal .clean-action-modal .modal-header,
+#indeferirInputModal .clean-action-modal .modal-header,
+#reopenProcessModal .clean-action-modal .modal-header,
+#arquivarModal .clean-action-modal .modal-header,
+#indeferimentoModal .clean-action-modal .modal-header,
+[id^="reabrirPendenciaModal"] .clean-action-modal .modal-header { display:flex !important; align-items:center; gap:12px; padding:18px 24px !important; }
+#atualizarStatusModal .clean-action-modal .modal-header .modal-title,
+#indeferirInputModal .clean-action-modal .modal-header .modal-title,
+#reopenProcessModal .clean-action-modal .modal-header .modal-title,
+#arquivarModal .clean-action-modal .modal-header .modal-title,
+#indeferimentoModal .clean-action-modal .modal-header .modal-title,
+[id^="reabrirPendenciaModal"] .clean-action-modal .modal-header .modal-title { color:#fff !important; font-size:1rem; }
+#atualizarStatusModal .clean-action-modal .modal-body,
+#indeferirInputModal .clean-action-modal .modal-body,
+#reopenProcessModal .clean-action-modal .modal-body,
+#arquivarModal .clean-action-modal .modal-body,
+#indeferimentoModal .clean-action-modal .modal-body,
+[id^="reabrirPendenciaModal"] .clean-action-modal .modal-body { padding:20px 24px 10px !important; }
+#atualizarStatusModal .clean-action-modal .modal-footer,
+#indeferirInputModal .clean-action-modal .modal-footer,
+#reopenProcessModal .clean-action-modal .modal-footer,
+#arquivarModal .clean-action-modal .modal-footer,
+#indeferimentoModal .clean-action-modal .modal-footer,
+[id^="reabrirPendenciaModal"] .clean-action-modal .modal-footer { padding:14px 24px 18px !important; }
+#atualizarStatusModal .clean-action-modal .modal-footer form,
+#indeferirInputModal .clean-action-modal .modal-footer form,
+#reopenProcessModal .clean-action-modal .modal-footer form,
+#arquivarModal .clean-action-modal .modal-footer form,
+#indeferimentoModal .clean-action-modal .modal-footer form,
+[id^="reabrirPendenciaModal"] .clean-action-modal .modal-footer form { display:contents; }
+</style>
+
 <!-- Modal: Enviar Boleto -->
 <div class="modal fade" id="boletoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
                 <div class="d-flex align-items-center gap-2">
                     <span style="width:36px;height:36px;border-radius:10px;background:var(--sky-soft);border:1px solid var(--sky-mid);display:inline-flex;align-items:center;justify-content:center;color:var(--sky-text);">
                         <i class="fas fa-file-invoice"></i>
                     </span>
-                    <h5 class="modal-title fw-bold mb-0" style="color:var(--sky-text);">Enviar Boleto</h5>
+                        <div class="clean-action-heading">
+                        <div class="action-modal-eyebrow">PROTOCOLO #<?= htmlspecialchars($requerimento['protocolo']) ?></div>
+                        <h5 class="modal-title fw-bold mb-0">Enviar Boleto</h5>
+                        <p class="action-modal-sub">Disponibilize a cobrança com instruções claras ao cidadão.</p>
+                    </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 <div class="modal-body px-4 pt-3 pb-2">
-                    <p class="text-muted small mb-4" style="line-height:1.55;">
+                    <div class="clean-action-description"><i class="fas fa-circle-info"></i><span>
                         O requerente receberá um e-mail com um link seguro para acessar a página de pagamento e baixar a versão mais recente do boleto.
-                    </p>
+                    </span></div>
 
-                    <div class="mb-3">
+                    <div class="clean-field">
                         <label for="boleto_pdf" class="form-label fw-semibold" style="font-size:.875rem;">
                             Arquivo PDF do boleto <span class="text-danger">*</span>
                         </label>
@@ -3401,7 +4139,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php endif; ?>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="clean-field">
                         <label for="instrucoes_boleto" class="form-label fw-semibold" style="font-size:.875rem;">
                             Observações <span class="text-muted fw-normal">(opcional)</span>
                         </label>
@@ -3410,11 +4148,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                   placeholder="Prazo de vencimento, orientações complementares..."><?= htmlspecialchars($pagamento['instrucoes'] ?? '') ?></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 px-4 pb-4 pt-2 gap-2">
-                    <button type="button" class="btn btn-slate btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="enviar_boleto_pagamento" class="btn btn-sky px-4">
+                <div class="modal-footer clean-action-footer">
+                    <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="clean-action-buttons">
+                    <button type="button" class="btn clean-btn-preview" onclick="previewBoletoEmail()">
+                        <i class="fas fa-eye me-1"></i>Prévia
+                    </button>
+                    <button type="submit" name="enviar_boleto_pagamento" class="btn clean-btn-primary">
                         <i class="fas fa-paper-plane me-2"></i>Enviar boleto
                     </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -3449,7 +4192,7 @@ foreach ($docsDisponiveis as $docRow) {
 
 // Verificar se já houve entrega anterior (para mostrar aviso de reenvio)
 $stmtEntregaAnterior = $pdo->prepare("
-    SELECT enviado_em, revogado_em,
+    SELECT enviado_em, visualizado_em, revogado_em,
            (SELECT nome FROM administradores WHERE id = df.admin_envio_id LIMIT 1) as enviado_por
     FROM documentos_finais df
     WHERE df.requerimento_id = ?
@@ -3565,6 +4308,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
             <form method="post" action="fluxo_setor_handler.php" id="formDocFinal">
                 <input type="hidden" name="requerimento_id" value="<?= $id ?>">
                 <input type="hidden" name="fluxo_acao" value="doc_final_envio">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 <div class="dfm-body">
 
                     <!-- Destinatário: uma linha basta -->
@@ -3590,6 +4334,14 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                                 O link anterior será revogado após este envio.
                             <?php else: ?>
                                 O link anterior já foi revogado.
+                            <?php endif; ?>
+                            <?php if (!empty($entregaAnterior['visualizado_em'])): ?>
+                                <br><span style="color:#17663a;font-weight:600;">
+                                    <i class="fas fa-circle-check" aria-hidden="true"></i>
+                                    Acesso do cidadão confirmado em <?= date('d/m/Y \à\s H:i', strtotime($entregaAnterior['visualizado_em'])) ?>.
+                                </span>
+                            <?php else: ?>
+                                <br><span style="color:#7c8697;">O link ainda não foi acessado pelo cidadão.</span>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -3656,8 +4408,11 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <button type="button" class="dfm-btn dfm-btn-link" data-bs-dismiss="modal">Cancelar</button>
                     <div class="d-flex gap-2">
                         <button type="button" class="dfm-btn dfm-btn-sec" onclick="previewEmailDocFinal()">Ver prévia do e-mail</button>
-                        <button type="submit" class="dfm-btn dfm-btn-pri" id="btnEnviarDocFinal" <?= empty($docsGrouped) ? 'disabled' : '' ?>>
-                            <span id="btnEnviarDocFinalLabel"><?= $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão' ?></span>
+                        <button type="submit" class="dfm-btn dfm-btn-pri" id="btnEnviarDocFinal" <?= (empty($docsGrouped) || empty($emailDestinatario)) ? 'disabled' : '' ?>>
+                            <span id="btnEnviarDocFinalLabel"><?php
+                                if (empty($emailDestinatario)) echo 'Cadastre o e-mail para enviar';
+                                else echo $jaFoiEntregue ? 'Reenviar ao cidadão' : 'Enviar ao cidadão';
+                            ?></span>
                         </button>
                     </div>
                 </div>
@@ -3669,7 +4424,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <!-- Modal: Atualizar Status -->
 <div class="modal fade" id="atualizarStatusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold">
                     <i class="fas fa-edit text-primary me-2"></i>Atualizar Status
@@ -3677,7 +4432,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="">
-                <div class="modal-body p-4">
+                <div class="modal-body clean-action-body">
                     <div class="mb-3">
                         <small class="text-muted d-block mb-1">Status atual:</small>
                         <span class="badge px-3 py-2 fw-semibold"
@@ -3711,9 +4466,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                             placeholder="Justificativa ou feedback para o requerente..."><?= htmlspecialchars($requerimento['observacoes']??'') ?></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary fw-semibold px-4">
+                <div class="modal-footer clean-action-footer">
+                    <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn clean-btn-primary">
                         <i class="fas fa-save me-2"></i>Salvar
                     </button>
                 </div>
@@ -3725,19 +4480,19 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <!-- Modal: Indeferir (coleta de dados) -->
 <div class="modal fade" id="indeferirInputModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold text-danger">
                     <i class="fas fa-times-circle me-2"></i>Indeferir Processo
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body clean-action-body">
                 <div class="alert alert-warning d-flex gap-2 mb-3">
                     <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
                     <div>
                         O requerente <strong><?= htmlspecialchars($requerimento['requerente_nome']) ?></strong>
-                        será notificado por email sobre o indeferimento do processo
+                        será notificado por e-mail sobre o indeferimento do processo
                         <strong>#<?= $requerimento['protocolo'] ?></strong>.
                     </div>
                 </div>
@@ -3756,11 +4511,11 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         placeholder="Orientações para correção ou reenvio..."></textarea>
                 </div>
             </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-info" onclick="previewIndeferimentoEmail()">
-                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+            <div class="modal-footer clean-action-footer">
+                <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                <div class="clean-action-buttons">
+                    <button type="button" class="btn clean-btn-preview" onclick="previewIndeferimentoEmail()">
+                        <i class="fas fa-eye me-1"></i>Pré-visualizar e-mail
                     </button>
                     <button type="button" class="btn btn-danger fw-semibold" onclick="showIndeferimentoModal()">
                         <i class="fas fa-times me-2"></i>Indeferir
@@ -3771,34 +4526,114 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
     </div>
 </div>
 
+<style>
+.protocol-modal { overflow:hidden; }
+.protocol-dialog { max-width:560px; }
+.protocol-modal { border-radius:20px !important; background:#fff; box-shadow:0 24px 70px rgba(19,54,35,.22) !important; }
+.protocol-modal-header { display:flex; align-items:center; gap:13px; padding:21px 24px; background:linear-gradient(135deg,#153e2c,#26714d); color:#fff; }
+.protocol-modal-header { padding:24px 26px 22px; }
+.protocol-modal-header.compact { padding:18px 24px; }
+.protocol-modal-icon { width:42px; height:42px; flex:none; border-radius:13px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); color:#d9f4e3; }
+.protocol-modal-header > div:nth-child(2) { min-width:0; flex:1; }
+.protocol-modal-kicker { font-size:.62rem; font-weight:800; letter-spacing:.13em; color:#bce4ca; margin-bottom:3px; }
+.protocol-modal-header h5 { margin:0; font-size:1.05rem; color:#fff; }
+.protocol-modal-header h5 { font-size:1.12rem; letter-spacing:-.01em; }
+.protocol-modal-header p { margin:5px 0 0; font-size:.8rem; color:#d8e9dd; }
+.protocol-modal-header .btn-close { filter:brightness(0) invert(1); opacity:.8; align-self:flex-start; }
+.protocol-modal-alert { display:flex; gap:10px; align-items:flex-start; padding:12px 13px; border:1px solid #cfe3d7; border-radius:11px; background:#f5fbf7; color:#285d40; font-size:.8rem; line-height:1.45; }
+.protocol-modal-alert i { color:#2f8a58; margin-top:2px; }
+.protocol-modal-alert strong { color:#174c2d; }
+.protocol-step-label { display:flex; align-items:center; gap:8px; margin:20px 0 8px; color:#14532d; font-size:.76rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.protocol-step-label { margin:22px 0 10px; }
+.protocol-step-label::first-letter { background:#e7f4eb; }
+.protocol-step-label .step-number { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:7px; background:#e5f3e9; color:#21623c; font-size:.72rem; }
+.protocol-field { padding:16px; border:1px solid #e2ebe5; border-radius:14px; background:#fcfefd; }
+.protocol-field label { display:block; margin-bottom:8px; color:#273b2d; font-size:.8rem; font-weight:800; }
+.protocol-step-label:first-letter { display:inline-flex; }
+.protocol-input-wrap { position:relative; }
+.protocol-input-wrap > i { position:absolute; left:13px; top:14px; z-index:2; color:#7b9384; }
+.protocol-input-wrap .form-control { padding-left:36px; border-color:#d6e3da; border-radius:10px; }
+.protocol-input-wrap .form-control:focus { border-color:#26714d; box-shadow:0 0 0 3px rgba(38,113,77,.12); }
+.protocol-input-wrap .form-control { height:48px; background:#fff; font-size:1rem; font-weight:600; letter-spacing:.01em; }
+.protocol-help { margin-top:7px; color:#829188; font-size:.72rem; }
+.protocol-modal-footer { border-top:1px solid #edf2ee; padding:16px 26px 20px; background:#fbfdfb; }
+.protocol-modal-footer .btn { min-height:42px; border-radius:10px; font-size:.82rem; font-weight:700; padding:0 15px; }
+.protocol-action-group { display:flex; align-items:center; gap:9px; }
+.protocol-action-group form { display:contents !important; }
+.protocol-btn-preview { border-color:#c7d9ce; color:#286143; background:#fff; }
+.protocol-btn-preview:hover { border-color:#8fbaa0; color:#174c2d; background:#f2faf4; }
+.protocol-btn-primary { border:0; color:#fff; background:#21834e; box-shadow:0 5px 12px rgba(33,131,78,.2); }
+.protocol-btn-primary:hover { color:#fff; background:#176c3f; }
+.protocol-confirm-card { display:grid; gap:11px; padding:14px; border:1px solid #e0e9e3; border-radius:12px; background:#fbfdfb; }
+.protocol-confirm-card div { display:flex; justify-content:space-between; gap:14px; font-size:.8rem; }
+.protocol-confirm-card span { color:#829188; }
+.protocol-confirm-card strong { color:#1a2e1e; text-align:right; overflow:hidden; text-overflow:ellipsis; }
+
+/* O fluxo de protocolo segue a mesma linguagem do modal de entrega final. */
+#finalizacaoModal .protocol-modal,
+#protocolConfirmModal .protocol-modal { border-radius:14px !important; }
+#finalizacaoModal .protocol-modal-header,
+#protocolConfirmModal .protocol-modal-header { background:#0a6b34; padding:18px 24px 16px; }
+#finalizacaoModal .protocol-modal-icon,
+#protocolConfirmModal .protocol-modal-icon { width:36px; height:36px; border-radius:10px; }
+#finalizacaoModal .protocol-modal-footer,
+#protocolConfirmModal .protocol-modal-footer { padding:14px 24px 18px; background:#fff; }
+#finalizacaoModal .protocol-btn-primary,
+#protocolConfirmModal .protocol-btn-primary { background:#0a6b34; border-radius:8px; }
+#finalizacaoModal .protocol-btn-primary:hover,
+#protocolConfirmModal .protocol-btn-primary:hover { background:#08582b; }
+@media(max-width:560px) {
+    .protocol-modal-header { padding:18px; }
+    .protocol-modal-footer { flex-direction:column; align-items:stretch !important; gap:8px; }
+    .protocol-modal-footer > div { display:flex; flex-direction:column; gap:8px; }
+    .protocol-confirm-card div { display:block; }
+    .protocol-confirm-card strong { display:block; text-align:left; margin-top:2px; }
+    .protocol-modal-footer { padding:14px 18px 18px; }
+    .protocol-action-group { width:100%; flex-direction:column-reverse; align-items:stretch; }
+    .protocol-action-group .btn { width:100%; }
+}
+</style>
+
 <!-- Modal: Finalização (protocolo oficial) -->
 <div class="modal fade" id="finalizacaoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold text-success">
-                    <i class="fas fa-check-circle me-2"></i>Enviar Protocolo Oficial
-                </h5>
+    <div class="modal-dialog modal-dialog-centered protocol-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 protocol-modal">
+            <div class="protocol-modal-header">
+                <div class="protocol-modal-icon"><i class="fas fa-paper-plane"></i></div>
+                <div>
+                    <div class="protocol-modal-kicker">FINALIZAR PROCESSO</div>
+                    <h5 class="modal-title fw-bold">Enviar protocolo oficial</h5>
+                    <p>Informe o número que será enviado ao cidadão por e-mail.</p>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="alert alert-info d-flex gap-2 mb-3">
-                    <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
-                    <small>Ao enviar o email, o status será alterado automaticamente para <strong>Finalizado</strong>.</small>
+            <div class="modal-body p-4 px-md-4">
+                <div class="protocol-modal-alert">
+                    <i class="fas fa-circle-check"></i>
+                    <span>Depois do envio, o processo será marcado automaticamente como <strong>Finalizado</strong>.</span>
                 </div>
-                <label for="protocolo_oficial" class="form-label fw-semibold">Protocolo Oficial da Prefeitura</label>
-                <input type="text" class="form-control form-control-lg" id="protocolo_oficial"
-                    value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>"
-                    placeholder="Ex: 2025001234-SEMA">
+                <div class="protocol-step-label"><span class="step-number">1</span><span>Identificação do protocolo</span></div>
+                <div class="protocol-field">
+                    <label for="protocolo_oficial">Protocolo Oficial da Prefeitura</label>
+                    <div class="protocol-input-wrap">
+                        <i class="fas fa-hashtag"></i>
+                        <input type="text" class="form-control form-control-lg" id="protocolo_oficial"
+                            value="<?= htmlspecialchars($requerimento['protocolo_oficial'] ?? '') ?>"
+                            placeholder="Ex.: 2025001234-SEMA" autocomplete="off">
+                    </div>
+                    <div class="protocol-help"><i class="fas fa-lock me-1"></i>Este número só será gravado quando o e-mail for enviado.</div>
+                </div>
             </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-info" onclick="previewProtocolEmail()">
-                        <i class="fas fa-eye me-1"></i>Pré-visualizar Email
+            <div class="modal-footer protocol-modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <div class="protocol-action-group">
+                    <button type="button" class="btn protocol-btn-preview" onclick="previewProtocolEmail()">
+                        <i class="fas fa-eye me-1"></i>Ver prévia
                     </button>
-                    <button type="button" class="btn btn-success fw-semibold" onclick="showProtocolConfirmModal()">
-                        <i class="fas fa-paper-plane me-2"></i>Confirmar Envio
+                    <button type="button" class="btn protocol-btn-primary" onclick="showProtocolConfirmModal()">
+                        Continuar <i class="fas fa-arrow-right ms-2"></i>
                     </button>
                 </div>
             </div>
@@ -3809,7 +4644,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <!-- Modal para Indeferimento de Processo -->
 <div class="modal fade" id="indeferimentoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-times-circle text-danger me-2"></i>
@@ -3820,14 +4655,14 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
             <div class="modal-body">
                 <div class="alert alert-warning">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Atenção:</strong> O requerente será notificado por email sobre o indeferimento do processo.
+                    <strong>Atenção:</strong> O requerente será notificado por e-mail sobre o indeferimento do processo.
                 </div>
 
                 <div class="mb-3">
                     <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
-                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>
+                    <strong>E-mail:</strong> <?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>
                 </div>
                 <div class="mb-3">
                     <strong>Protocolo:</strong> #<?php echo $requerimento['protocolo']; ?>
@@ -3844,15 +4679,16 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <strong>Orientações Adicionais:</strong> <span id="orientacoes-display"></span>
                 </div>
             </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <div class="modal-footer clean-action-footer">
+                <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">
                     Cancelar
                 </button>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-info" onclick="previewIndeferimentoEmail()">
-                        Pré-visualizar Email
+                <div class="clean-action-buttons">
+                    <button type="button" class="btn clean-btn-preview" onclick="previewIndeferimentoEmail()">
+                        Pré-visualizar e-mail
                     </button>
                     <form method="post" action="" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" id="hidden_motivo_indeferimento" name="motivo_indeferimento">
                         <input type="hidden" id="hidden_orientacoes_adicionais" name="orientacoes_adicionais">
                         <button type="submit" name="indeferir_processo" class="btn btn-danger">
@@ -3869,7 +4705,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <!-- Modal para Reabertura de Processo -->
 <div class="modal fade" id="reopenProcessModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-unlock text-warning me-2"></i>
@@ -3878,7 +4714,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <form method="post" action="">
-                <div class="modal-body">
+                <div class="modal-body clean-action-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         <strong>Atenção:</strong> Esta ação irá reabrir o processo finalizado, permitindo novas alterações.
@@ -3907,9 +4743,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         <strong>Requerente:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancelar
+                <div class="modal-footer clean-action-footer">
+                    <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">
+                        Cancelar
                     </button>
                     <button type="submit" name="reabrir_processo" class="btn btn-warning">
                         <i class="fas fa-unlock me-2"></i>Confirmar Reabertura
@@ -3922,42 +4758,38 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 
 <!-- Modal de Confirmação para Protocolo Oficial -->
 <div class="modal fade" id="protocolConfirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-paper-plane text-success me-2"></i>
-                    Enviar Protocolo Oficial
-                </h5>
+    <div class="modal-dialog modal-dialog-centered protocol-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 protocol-modal">
+            <div class="protocol-modal-header compact">
+                <div class="protocol-modal-icon"><i class="fas fa-paper-plane"></i></div>
+                <div>
+                    <div class="protocol-modal-kicker">ÚLTIMA CONFIRMAÇÃO</div>
+                    <h5 class="modal-title">Enviar protocolo oficial</h5>
+                    <p>Confira os dados antes de notificar o cidadão.</p>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <strong>Destinatário:</strong> <?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?>
+            <div class="modal-body p-4">
+                <div class="protocol-confirm-card">
+                    <div><span>Destinatário</span><strong><?php echo htmlspecialchars($requerimento['requerente_nome'] ?? ''); ?></strong></div>
+                    <div><span>E-mail</span><strong><?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?></strong></div>
+                    <div><span>Protocolo oficial</span><strong id="protocol-display">Aguardando preenchimento</strong></div>
                 </div>
-                <div class="mb-3">
-                    <strong>Email:</strong> <?php echo htmlspecialchars($requerimento['requerente_email'] ?? ''); ?>
-                </div>
-                <div class="mb-3">
-                    <strong>Protocolo:</strong> <span id="protocol-display"></span>
-                </div>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    O requerente receberá um email com o protocolo oficial da prefeitura.
-                </div>
+                <div class="protocol-modal-alert mt-3"><i class="fas fa-circle-info"></i><span>O protocolo será enviado agora. A etapa atual do processo não será alterada.</span></div>
             </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    Cancelar
+            <div class="modal-footer protocol-modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-light border" onclick="voltarParaFinalizacaoModal()">
+                    Voltar
                 </button>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-info" onclick="previewProtocolEmail()">
-                        Pré-visualizar Email
+                <div class="protocol-action-group">
+                    <button type="button" class="btn protocol-btn-preview" onclick="previewProtocolEmail()">
+                        <i class="fas fa-eye me-1"></i>Ver prévia
                     </button>
                     <form method="post" action="" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" id="hidden_protocolo_oficial" name="protocolo_oficial">
-                        <button type="submit" name="enviar_email_protocolo" class="btn btn-success">
-                            Confirmar Envio
+                        <button type="submit" name="enviar_email_protocolo" class="btn protocol-btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i><?= strtolower((string) $requerimento['status']) === 'finalizado' ? 'Reenviar protocolo' : 'Enviar protocolo' ?>
                         </button>
                     </form>
                 </div>
@@ -3969,7 +4801,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
 <!-- Modal para Arquivamento de Processo -->
 <div class="modal fade" id="arquivarModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content clean-action-modal">
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-archive text-warning me-2"></i>
@@ -3978,7 +4810,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <form method="post" action="">
-                <div class="modal-body">
+                <div class="modal-body clean-action-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         <strong>Atenção:</strong> O processo será movido para o arquivo e ficará oculto da lista principal.
@@ -4005,59 +4837,15 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         <strong>Informação:</strong> O processo não será deletado permanentemente e pode ser recuperado posteriormente se necessário.
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancelar
+                <div class="modal-footer clean-action-footer">
+                    <button type="button" class="btn clean-btn-cancel" data-bs-dismiss="modal">
+                        Cancelar
                     </button>
                     <button type="submit" name="arquivar_processo" class="btn btn-warning">
                         <i class="fas fa-archive me-2"></i>Confirmar Arquivamento
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Pré-visualização de Email -->
-<div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title">
-                    <i class="fas fa-eye text-primary me-2"></i>
-                    Pré-visualização do Email
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="border-bottom bg-light p-3">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <small class="text-muted d-block">Para:</small>
-                            <strong id="preview-destinatario"></strong>
-                        </div>
-                        <div class="col-md-6">
-                            <small class="text-muted d-block">Email:</small>
-                            <strong id="preview-email"></strong>
-                        </div>
-                        <div class="col-12">
-                            <small class="text-muted d-block">Assunto:</small>
-                            <strong id="preview-assunto"></strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-3" style="max-height: 500px; overflow-y: auto;">
-                    <div id="email-preview-content" style="font-family: Arial, sans-serif; line-height: 1.6;"></div>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    Fechar Pré-visualização
-                </button>
-                <button type="button" class="btn btn-primary" onclick="copyEmailContent()">
-                    Copiar Conteúdo
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -4187,6 +4975,48 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         modal.show();
     }
 
+    // Todas as prévias passam pelo renderer real dos templates, em uma nova
+    // aba com a mesma moldura Gmail da prévia do documento final.
+    function abrirPreviewEmailTemplate(tipo, campos) {
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = 'preview_email_template.php';
+        form.target = '_blank';
+        const adicionar = (nome, valor) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = nome;
+            input.value = valor == null ? '' : valor;
+            form.appendChild(input);
+        };
+        adicionar('tipo', tipo);
+        adicionar('requerimento_id', <?= (int) $id ?>);
+        Object.keys(campos || {}).forEach(nome => adicionar(nome, campos[nome]));
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(() => form.remove(), 1000);
+    }
+
+    function previewPendenciaEmail() {
+        const titulo = document.getElementById('titulo_pendencia')?.value.trim() || '';
+        const descricao = document.getElementById('descricao_pendencia')?.value.trim() || '';
+        if (!titulo || !descricao) {
+            alert('Preencha o que está faltando e o detalhamento antes de visualizar.');
+            return;
+        }
+        abrirPreviewEmailTemplate('pendencia', {
+            pendencias: titulo + '\n\n' + descricao,
+            link_complementacao: 'O link seguro será incluído no envio real.'
+        });
+    }
+
+    function previewBoletoEmail() {
+        abrirPreviewEmailTemplate('boleto', {
+            instrucoes: document.getElementById('instrucoes_boleto')?.value || '',
+            url_pagamento: '<?= htmlspecialchars(gerarUrlPagamento($id, $requerimento['protocolo']), ENT_QUOTES, 'UTF-8') ?>'
+        });
+    }
+
     // Função para pré-visualizar email de protocolo oficial
     function previewProtocolEmail() {
         const protocolInput = document.getElementById('protocolo_oficial');
@@ -4197,6 +5027,9 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
             protocolInput.focus();
             return;
         }
+
+        abrirPreviewEmailTemplate('protocolo_oficial', { protocolo_oficial: protocolValue });
+        return;
 
         // Dados para o template
         const dados = {
@@ -4250,6 +5083,12 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
             alert('Dados do indeferimento não encontrados.');
             return;
         }
+
+        abrirPreviewEmailTemplate('indeferimento', {
+            motivo_indeferimento: motivoValue,
+            orientacoes_adicionais: orientacoesValue
+        });
+        return;
 
         // Dados para o template
         const dados = {
@@ -4346,8 +5185,34 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         document.getElementById('protocol-display').textContent = protocolValue;
         document.getElementById('hidden_protocolo_oficial').value = protocolValue;
 
-        const modal = new bootstrap.Modal(document.getElementById('protocolConfirmModal'));
-        modal.show();
+        const primeiraEtapa = document.getElementById('finalizacaoModal');
+        const segundaEtapa = document.getElementById('protocolConfirmModal');
+        const abrirConfirmacao = function () {
+            const modal = bootstrap.Modal.getOrCreateInstance(segundaEtapa);
+            modal.show();
+        };
+        const primeiraInstancia = bootstrap.Modal.getInstance(primeiraEtapa);
+        if (primeiraInstancia) {
+            primeiraEtapa.addEventListener('hidden.bs.modal', abrirConfirmacao, { once: true });
+            primeiraInstancia.hide();
+        } else {
+            abrirConfirmacao();
+        }
+    }
+
+    function voltarParaFinalizacaoModal() {
+        const segundaEtapa = document.getElementById('protocolConfirmModal');
+        const primeiraEtapa = document.getElementById('finalizacaoModal');
+        const segundaInstancia = bootstrap.Modal.getInstance(segundaEtapa);
+        const abrirPrimeira = function () {
+            bootstrap.Modal.getOrCreateInstance(primeiraEtapa).show();
+        };
+        if (segundaInstancia) {
+            segundaEtapa.addEventListener('hidden.bs.modal', abrirPrimeira, { once: true });
+            segundaInstancia.hide();
+        } else {
+            abrirPrimeira();
+        }
     }
 
      const _adminIdLogado = <?= $_adminIdLogado ?>;
@@ -4878,6 +5743,18 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el, { trigger: 'hover', delay: { show: 200, hide: 80 } });
     });
+
+    // Mantém a aba escolhida na URL: recarregar, copiar o link ou voltar do
+    // editor preserva exatamente o contexto em que o operador estava.
+    document.querySelectorAll('#requerimentoTabs [data-bs-toggle="tab"]').forEach(function (tab) {
+        tab.addEventListener('shown.bs.tab', function (event) {
+            var target = event.target.getAttribute('data-bs-target');
+            if (!target) return;
+            var url = new URL(window.location.href);
+            url.searchParams.set('tab', target.replace('#', ''));
+            window.history.replaceState({}, '', url.toString());
+        });
+    });
 });
 </script>
 
@@ -4961,7 +5838,7 @@ function previewEmailDocFinal() {
             // Mesma barra lateral do aviso de reenvio; só a cor muda com o estado.
             resumoBox.style.borderLeftColor = semSec > 0 ? '#d99b16' : '#0a6b34';
             resumoBox.style.color = semSec > 0 ? '#6b5320' : '#245c3a';
-            btnEnviar.disabled = false;
+            btnEnviar.disabled = !emailDest;
         }
 
         // Sincronizar "selecionar todos"
@@ -4989,6 +5866,11 @@ function previewEmailDocFinal() {
 
     // Validação + confirmação antes de enviar
     form.addEventListener('submit', function(e) {
+        if (!emailDest) {
+            e.preventDefault();
+            alert('Cadastre um e-mail válido para o cidadão antes de finalizar o processo.');
+            return;
+        }
         var checked = form.querySelectorAll('.doc-final-cb:checked');
         if (checked.length === 0) {
             e.preventDefault();
@@ -5025,6 +5907,149 @@ function previewEmailDocFinal() {
         d.textContent = text;
         return d.innerHTML;
     }
+})();
+</script>
+<style>
+.quick-editable { position:relative; cursor:text; transition:background .15s; border-radius:4px; }
+.quick-editable:hover, .quick-editable:focus-within { background:#f8fbf9; }
+.quick-edit-btn, .quick-original-btn { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-left:3px; padding:0; border:0; border-radius:4px; background:transparent; color:#809087; font-size:.62rem; vertical-align:middle; opacity:0; transition:opacity .15s, color .15s, background .15s; }
+.quick-editable:hover .quick-edit-btn, .quick-editable:focus-within .quick-edit-btn, .quick-editable.is-edited .quick-original-btn { opacity:1; }
+.quick-edit-btn:hover, .quick-original-btn:hover { background:#eef5f0; color:#286143; }
+.quick-original-btn { color:#7c8991; }
+.quick-original-value { display:none; margin-top:5px; padding:5px 7px; border-left:2px solid #9aaab5; color:#64748b; font-size:.68rem; font-weight:400; line-height:1.35; }
+.quick-editable.show-original .quick-original-value { display:block; }
+.quick-edit-hint { color:#8a9b91; font-size:.68rem; font-weight:600; white-space:nowrap; }
+.quick-edit-hint i { color:#5a8a6a; }
+.quick-inline-input { display:inline-block; width:min(100%,260px); min-height:30px; padding:4px 7px; border:1px solid #a9c5b2; border-radius:5px; background:#fff; color:#1a2e1e; font:inherit; font-weight:500; outline:0; vertical-align:middle; }
+textarea.quick-inline-input { min-height:54px; resize:vertical; vertical-align:top; }
+.quick-inline-input:focus { border-color:#378257; box-shadow:0 0 0 2px rgba(55,130,87,.12); }
+.quick-inline-actions { display:inline-flex; gap:2px; margin-left:4px; vertical-align:middle; }
+.quick-inline-actions button { width:22px; height:22px; padding:0; border:0; border-radius:4px; background:#eef7f0; color:#257044; font-size:.65rem; }
+.quick-inline-actions .quick-inline-cancel { background:#f3f5f4; color:#78857e; }
+.quick-inline-actions.is-saving { opacity:.5; pointer-events:none; }
+.quick-inline-error { display:block; margin-top:4px; color:#b42318; font-size:.68rem; font-weight:500; }
+@media(max-width:640px) { .quick-edit-hint { display:none; } .quick-edit-btn { opacity:.45; } }
+</style>
+<script>
+(function () {
+    const csrf = <?= json_encode($_SESSION['csrf_token'], JSON_UNESCAPED_UNICODE) ?>;
+    const originais = <?= json_encode($valoresOriginaisProcesso, JSON_UNESCAPED_UNICODE) ?>;
+    const campos = document.querySelectorAll('.quick-editable[data-quick-field]');
+
+    function escapeHtml(value) {
+        const el = document.createElement('span');
+        el.textContent = value == null || value === '' ? 'Não informado' : value;
+        return el.innerHTML;
+    }
+
+    function renderValue(element, value) {
+        const valueNode = element.querySelector('.quick-value') || element;
+        if (element.dataset.quickField === 'requerente_email') {
+            valueNode.innerHTML = '<a href="mailto:' + escapeHtml(value) + '">' + escapeHtml(value) + '</a>';
+        } else if (element.dataset.quickField === 'requerente_telefone') {
+            valueNode.innerHTML = '<a href="tel:' + escapeHtml(value) + '">' + escapeHtml(value) + '</a>';
+        } else {
+            valueNode.textContent = value || 'Não informado';
+        }
+    }
+
+    function showOriginal(element, original) {
+        let box = element.querySelector('.quick-original-value');
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'quick-original-value';
+            element.appendChild(box);
+        }
+        box.innerHTML = '<i class="fas fa-history me-1"></i>Original: ' + escapeHtml(original);
+        element.classList.add('is-edited');
+        let button = element.querySelector('.quick-original-btn');
+        if (!button) {
+            button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'quick-original-btn';
+            button.title = 'Mostrar/ocultar valor original';
+            button.innerHTML = '<i class="fas fa-clock-rotate-left"></i>';
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                element.classList.toggle('show-original');
+            });
+            element.appendChild(button);
+        }
+    }
+
+    function editar(element) {
+        if (element.classList.contains('is-editing')) return;
+        const campo = element.dataset.quickField;
+        const atual = element.dataset.quickValue || '';
+        element.classList.add('is-editing');
+        const valueNode = element.querySelector('.quick-value');
+        const editor = document.createElement(['endereco_objetivo','especificacao'].includes(campo) ? 'textarea' : 'input');
+        editor.className = 'quick-inline-input';
+        editor.value = atual;
+        editor.rows = 2;
+        if (campo === 'requerente_email') {
+            editor.type = 'email';
+            editor.inputMode = 'email';
+            editor.maxLength = 191;
+        }
+        editor.setAttribute('aria-label', 'Editar ' + campo);
+        const actions = document.createElement('span');
+        actions.className = 'quick-inline-actions';
+        actions.innerHTML = '<button type="button" class="quick-inline-save" title="Salvar"><i class="fas fa-check"></i></button><button type="button" class="quick-inline-cancel" title="Cancelar"><i class="fas fa-xmark"></i></button>';
+        valueNode.style.display = 'none';
+        element.insertBefore(editor, valueNode);
+        element.insertBefore(actions, valueNode);
+        editor.focus();
+        editor.select();
+
+        const fechar = () => { editor.remove(); actions.remove(); valueNode.style.display = ''; element.classList.remove('is-editing'); };
+        actions.querySelector('.quick-inline-cancel').addEventListener('click', function (event) { event.stopPropagation(); fechar(); });
+        actions.querySelector('.quick-inline-save').addEventListener('click', function (event) {
+            event.stopPropagation();
+            const valor = editor.value.trim();
+            if (valor === atual.trim()) { fechar(); return; }
+            const form = new FormData();
+            form.append('editar_campo_processo', '1');
+            form.append('csrf_token', csrf);
+            form.append('campo', campo);
+            form.append('valor', valor);
+            actions.classList.add('is-saving');
+            fetch(window.location.href, { method:'POST', body:form, headers:{'X-Requested-With':'XMLHttpRequest'} })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.ok) throw new Error(data.erro || 'Não foi possível salvar.');
+                    const original = Object.prototype.hasOwnProperty.call(originais, campo) ? originais[campo] : atual;
+                    fechar();
+                    renderValue(element, data.valor);
+                    element.dataset.quickValue = data.valor;
+                    originais[campo] = original;
+                    showOriginal(element, original);
+                    if (typeof showToast === 'function') showToast('Campo atualizado.', 'success');
+                })
+                .catch(error => {
+                    let message = element.querySelector('.quick-inline-error');
+                    if (!message) { message = document.createElement('small'); message.className = 'quick-inline-error'; element.appendChild(message); }
+                    message.textContent = error.message;
+                    actions.classList.remove('is-saving');
+                });
+        });
+        editor.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') fechar();
+            if (event.key === 'Enter' && !event.shiftKey && editor.tagName !== 'TEXTAREA') actions.querySelector('.quick-inline-save').click();
+        });
+    }
+
+    campos.forEach(function (element) {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'quick-edit-btn';
+        edit.title = 'Editar rapidamente';
+        edit.innerHTML = '<i class="fas fa-pencil"></i>';
+        edit.addEventListener('click', function (event) { event.stopPropagation(); editar(element); });
+        element.appendChild(edit);
+        const campo = element.dataset.quickField;
+        if (Object.prototype.hasOwnProperty.call(originais, campo)) showOriginal(element, originais[campo]);
+    });
 })();
 </script>
 <?php include 'footer.php'; ?>

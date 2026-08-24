@@ -23,6 +23,15 @@ if (!$id || !$acao) {
     exit;
 }
 
+if (in_array($acao, ['concluir_direto', 'concluir_setor2', 'doc_final_envio'], true)) {
+    $csrf = (string) ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrf)) {
+        $_SESSION['fluxo_erro_msg'] = 'Sessão expirada. Recarregue a página e tente novamente.';
+        header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo");
+        exit;
+    }
+}
+
 $stmt = $pdo->prepare("SELECT id, status, setor_atual, aguardando_acao, protocolo, requerente_id FROM requerimentos WHERE id = ?");
 $stmt->execute([$id]);
 $req = $stmt->fetch();
@@ -44,7 +53,7 @@ function atualizaSetor(PDO $pdo, int $id, string $setor, string $acao): void
         ->execute([$setor, $acao, $id]);
 }
 
-function notificarCidadaoConclusao(PDO $pdo, int $id): void
+function notificarCidadaoConclusao(PDO $pdo, int $id): bool
 {
     global $tipos_alvara;
     $stmt = $pdo->prepare("
@@ -54,9 +63,9 @@ function notificarCidadaoConclusao(PDO $pdo, int $id): void
     ");
     $stmt->execute([$id]);
     $row = $stmt->fetch();
-    if (!$row || empty($row['email'])) return;
+    if (!$row || !emailDestinoValido((string) ($row['email'] ?? ''))) return false;
     $tipoNome = $tipos_alvara[$row['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $row['tipo_alvara']));
-    (new EmailService())->enviarEmailAprovado($row['email'], $row['nome'], $row['protocolo'], $tipoNome, $id);
+    return (new EmailService())->enviarEmailAprovado($row['email'], $row['nome'], $row['protocolo'], $tipoNome, $id);
 }
 
 $adminId = $_SESSION['admin_id'];
@@ -98,7 +107,6 @@ if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$aca
 }
 
 $notificarConclusao = ($_POST['notificar_cidadao'] ?? '') === '1';
-$avisoEmailFalhou   = false;
 
 try {
     $pdo->beginTransaction();
@@ -138,14 +146,14 @@ try {
             atualizaSetor($pdo, $id, 'setor1', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));
+            registraHistorico($pdo, $adminId, $id, "Concluiu processo diretamente no Setor 1" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por e-mail)' : ''));
             break;
 
         case 'concluir_setor2':
             atualizaSetor($pdo, $id, 'setor2', 'concluido');
             $pdo->prepare("UPDATE requerimentos SET status='Finalizado', data_atualizacao=NOW() WHERE id=?")
                 ->execute([$id]);
-            registraHistorico($pdo, $adminId, $id, "Concluiu e finalizou processo no Setor 2" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por email)' : ''));
+            registraHistorico($pdo, $adminId, $id, "Concluiu e finalizou processo no Setor 2" . ($motivo ? ": $motivo" : '') . ($notificarConclusao ? ' (cidadão notificado por e-mail)' : ''));
             break;
 
         case 'setor3_aprovado':
@@ -255,10 +263,6 @@ try {
                 throw new RuntimeException('Nenhum dos documentos selecionados pertence a este processo.');
             }
 
-            // O processo é concluído no setor em que está, não sempre no Setor 2.
-            atualizaSetor($pdo, $id, $req['setor_atual'], 'concluido');
-            $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
-
             $stmtReq = $pdo->prepare("
                 SELECT r.tipo_alvara, re.nome AS requerente_nome, re.email AS requerente_email
                 FROM requerimentos r
@@ -271,16 +275,10 @@ try {
             $emailCidadao = trim($reqData['requerente_email'] ?? '');
             $totalDocs    = count($docsEmail);
 
-            // Envia a notificação e registra o resultado no histórico: o "por quem" já vem
-            // do admin_id da ação; aqui acrescentamos para qual e-mail, quantos documentos
-            // e se o e-mail chegou a sair. O documento continua acessível pelo link mesmo
-            // quando o e-mail falha, então a distinção importa para o suporte e para decidir
-            // se é preciso reenviar. Mantém a palavra "Finaliz" no texto porque o painel de
-            // processo encerrado detecta a finalização por ela.
+            // A entrega final depende de um endereço válido e da aceitação da mensagem pelo
+            // provedor. Se o envio falhar, a transação volta e o processo permanece aberto.
             if ($emailCidadao === '') {
-                registraHistorico($pdo, $adminId, $id,
-                    "Finalizou o processo e disponibilizou {$totalDocs} documento(s) final(is), "
-                    . "mas o cidadão não tem e-mail cadastrado — acesso somente pelo link seguro.");
+                throw new RuntimeException('O processo não pode ser finalizado porque o cidadão não possui e-mail cadastrado. Atualize o endereço antes de entregar os documentos.');
             } else {
                 $tipoNome = $tipos_alvara[$reqData['tipo_alvara']]['nome'] ?? ucwords(str_replace('_', ' ', $reqData['tipo_alvara']));
 
@@ -298,14 +296,15 @@ try {
                 );
 
                 if ($emailEnviado) {
+                    // A conclusão só acontece depois que o provedor aceita a mensagem
+                    // que contém o link dos documentos finais.
+                    atualizaSetor($pdo, $id, $req['setor_atual'], 'concluido');
+                    $pdo->prepare("UPDATE requerimentos SET status = 'Finalizado', data_atualizacao = NOW() WHERE id = ?")->execute([$id]);
                     registraHistorico($pdo, $adminId, $id,
                         "Finalizou o processo e enviou {$totalDocs} documento(s) final(is) ao cidadão, "
                         . "notificando por e-mail: {$emailCidadao}.");
                 } else {
-                    registraHistorico($pdo, $adminId, $id,
-                        "Finalizou o processo com {$totalDocs} documento(s) final(is), mas FALHOU o envio do "
-                        . "e-mail para {$emailCidadao} — documento disponível pelo link; reenvie para notificar o cidadão.");
-                    $avisoEmailFalhou = true;
+                    throw new RuntimeException('O provedor não aceitou o e-mail com os documentos finais. O processo não foi finalizado. Confira o endereço do cidadão e tente novamente.');
                 }
             }
             break;
@@ -316,23 +315,19 @@ try {
             exit;
     }
 
-    $pdo->commit();
-
-    // Notificação opcional ao cidadão nas conclusões sem documento final (após commit: falha de email não desfaz o fluxo)
     if ($notificarConclusao && in_array($acao, ['concluir_direto', 'concluir_setor2'], true)) {
-        try {
-            notificarCidadaoConclusao($pdo, $id);
-        } catch (Throwable $eMail) {
-            error_log('[fluxo_setor] Falha ao notificar cidadão da conclusão #' . $id . ': ' . $eMail->getMessage());
+        if (!notificarCidadaoConclusao($pdo, $id)) {
+            throw new RuntimeException('O e-mail de conclusão não foi aceito pelo provedor. O processo permaneceu aberto. Confira o endereço do cidadão e tente novamente.');
         }
     }
 
-    $sufixoAviso = $avisoEmailFalhou ? '&aviso=email_falhou' : '';
+    $pdo->commit();
+
     $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
     if ($fromDocViewer) {
-        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado$sufixoAviso");
+        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado");
     } else {
-        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado$sufixoAviso");
+        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
     }
     exit;
 

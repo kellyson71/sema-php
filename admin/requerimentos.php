@@ -524,24 +524,23 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                     <i class="fas fa-eye"></i> Ver todos
                 </a>
             <?php endif; ?>
+            <?php /* Encerrados na mesma linha dos outros filtros: sozinho numa faixa
+                     com borda no topo, custava ~50px de altura para um único link. */ ?>
+            <?php if (!$setorFiltro): ?>
+                <?php if (!$mostrarEncerrados): ?>
+                    <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
+                       class="toolbar-button toolbar-button-ghost"
+                       title="Exibir processos finalizados, indeferidos e arquivados">
+                        <i class="fas fa-eye-slash fa-xs"></i>Encerrados <span style="opacity:.7">(<?= $totalEncerrados ?>)</span>
+                    </a>
+                <?php else: ?>
+                    <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '', 'pagina' => 1])) ?>"
+                       class="toolbar-button toolbar-button-ghost is-on">
+                        <i class="fas fa-eye fa-xs"></i>Ocultar encerrados
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
         </form>
-        <!-- Toggle encerrados: não se aplica à visão travada por setor (fiscal/secretário já veem tudo do próprio setor) -->
-        <?php if (!$setorFiltro): ?>
-        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--req-line,#e5e8e6);">
-        <?php if (!$mostrarEncerrados): ?>
-            <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '1', 'pagina' => 1])) ?>"
-               style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px dashed var(--req-line-strong,#ccc);border-radius:8px;font-size:.77rem;font-weight:600;color:var(--req-muted,#888);text-decoration:none;white-space:nowrap;"
-               title="Exibir processos finalizados, indeferidos e arquivados">
-                <i class="fas fa-eye-slash fa-xs"></i>Mostrar encerrados <span style="opacity:.7">(<?= $totalEncerrados ?>)</span>
-            </a>
-        <?php else: ?>
-            <a href="<?= htmlspecialchars(buildReqUrl(['encerrados' => '', 'pagina' => 1])) ?>"
-               style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #dde8e2;border-radius:8px;font-size:.77rem;font-weight:600;color:#5a8a6a;text-decoration:none;white-space:nowrap;">
-                <i class="fas fa-eye fa-xs"></i>Ocultar encerrados
-            </a>
-        <?php endif; ?>
-        </div>
-        <?php endif; ?>
         <?php if ($filtroNaoVisualizados): ?>
             <div class="active-filter-row">
                 <span class="active-filter-chip">

@@ -85,6 +85,7 @@ $totalRegistros = $stmtCount->fetch()['total'];
 $totalPaginas = ceil($totalRegistros / $itensPorPagina);
 
 include 'header.php';
+include __DIR__ . '/includes/acervo_tabs.php';
 ?>
 
 <div class="container-fluid px-4">
