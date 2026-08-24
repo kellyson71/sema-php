@@ -9,6 +9,15 @@ verificaLogin();
 
 header('Content-Type: application/json');
 
+function validarCsrfDocumento(array $input): void
+{
+    $enviado = (string)($input['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_token']) || $enviado === ''
+        || !hash_equals($_SESSION['csrf_token'], $enviado)) {
+        throw new Exception('Sessão de segurança expirada. Recarregue a página.');
+    }
+}
+
 try {
     // Aceita JSON no body, URLSearchParams no body ($_POST) ou query string ($_GET)
     $rawInput = file_get_contents('php://input');
@@ -409,7 +418,65 @@ try {
             ]);
             break;
 
-        // Ação removed: salvar_rascunho (agora é automático ao assinar)
+        case 'salvar_rascunho':
+            // Autosave: cada administrador só pode gravar seus próprios
+            // rascunhos no requerimento informado.
+            $csrfEnviado = (string)($input['csrf_token'] ?? '');
+            if (empty($_SESSION['csrf_token']) || !$csrfEnviado
+                || !hash_equals($_SESSION['csrf_token'], $csrfEnviado)) {
+                throw new Exception('Sessão de segurança expirada. Recarregue a página.');
+            }
+            $requerimentoId = (int)($input['requerimento_id'] ?? 0);
+            $rascunhoId     = (int)($input['rascunho_id'] ?? 0);
+            $nome           = trim((string)($input['nome'] ?? 'Documento em edição'));
+            $conteudoHtml   = (string)($input['conteudo_html'] ?? '');
+            $dadosJson      = $input['dados_json'] ?? null;
+
+            if ($requerimentoId <= 0 || $conteudoHtml === '') {
+                throw new Exception('Não há conteúdo suficiente para salvar o rascunho.');
+            }
+            if (mb_strlen($nome) > 255) $nome = mb_substr($nome, 0, 255);
+            if ($dadosJson !== null && !is_string($dadosJson)) {
+                $dadosJson = json_encode($dadosJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
+            // O processo precisa existir e o rascunho, quando informado,
+            // precisa pertencer ao usuário atual.
+            $stmtReq = $pdo->prepare('SELECT id FROM requerimentos WHERE id = ? LIMIT 1');
+            $stmtReq->execute([$requerimentoId]);
+            if (!$stmtReq->fetchColumn()) throw new Exception('Requerimento não encontrado.');
+
+            $rascunhoAtualExiste = false;
+            if ($rascunhoId > 0) {
+                $stmtExiste = $pdo->prepare('SELECT id FROM parecer_rascunhos
+                    WHERE id = ? AND usuario_id = ? AND requerimento_id = ? LIMIT 1');
+                $stmtExiste->execute([$rascunhoId, (int)$_SESSION['admin_id'], $requerimentoId]);
+                $rascunhoAtualExiste = (bool)$stmtExiste->fetchColumn();
+            }
+
+            if ($rascunhoAtualExiste) {
+                $stmt = $pdo->prepare('UPDATE parecer_rascunhos
+                    SET nome = ?, conteudo_html = ?, dados_json = ?, data_atualizacao = NOW()
+                    WHERE id = ? AND usuario_id = ? AND requerimento_id = ?');
+                $stmt->execute([$nome, $conteudoHtml, $dadosJson, $rascunhoId,
+                    (int)$_SESSION['admin_id'], $requerimentoId]);
+            }
+
+            if (!$rascunhoAtualExiste) {
+                $stmt = $pdo->prepare('INSERT INTO parecer_rascunhos
+                    (usuario_id, requerimento_id, nome, conteudo_html, dados_json)
+                    VALUES (?, ?, ?, ?, ?)');
+                $stmt->execute([(int)$_SESSION['admin_id'], $requerimentoId, $nome,
+                    $conteudoHtml, $dadosJson]);
+                $rascunhoId = (int)$pdo->lastInsertId();
+            }
+
+            echo json_encode([
+                'success' => true,
+                'rascunho_id' => $rascunhoId,
+                'salvo_em' => date('d/m/Y H:i:s')
+            ]);
+            break;
 
         case 'carregar_template':
             $template = $input['template'] ?? '';
@@ -772,6 +839,7 @@ try {
             break;
 
         case 'salvar_template_usuario':
+            validarCsrfDocumento($input);
             $utNome      = trim($input['nome'] ?? '');
             $utDesc      = trim($input['descricao'] ?? '');
             $utBase      = trim($input['template_base'] ?? '');
@@ -784,6 +852,31 @@ try {
             $utHtmlTemplate = ParecerService::converterSpansParaVariaveis($utHtmlBruto);
 
             if ($utIdUpdate > 0) {
+                // Guarda a versão anterior antes de substituir o conteúdo.
+                // O try/catch mantém compatibilidade durante a implantação da
+                // migration em instalações que ainda não possuem a tabela.
+                try {
+                    $stmtAnterior = $pdo->prepare("SELECT nome, descricao, icone, template_base, conteudo_html
+                        FROM user_templates WHERE id = ? AND usuario_id = ? LIMIT 1");
+                    $stmtAnterior->execute([$utIdUpdate, $_SESSION['admin_id']]);
+                    $anterior = $stmtAnterior->fetch(PDO::FETCH_ASSOC);
+                    if ($anterior) {
+                        $stmtVersao = $pdo->prepare("SELECT COALESCE(MAX(numero_versao), 0) + 1
+                            FROM user_template_versions WHERE template_id = ? AND usuario_id = ?");
+                        $stmtVersao->execute([$utIdUpdate, $_SESSION['admin_id']]);
+                        $numeroVersao = (int)$stmtVersao->fetchColumn();
+                        $pdo->prepare("INSERT INTO user_template_versions
+                            (template_id, usuario_id, numero_versao, nome, descricao, icone,
+                             template_base, conteudo_html)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)")->execute([
+                                $utIdUpdate, $_SESSION['admin_id'], $numeroVersao,
+                                $anterior['nome'], $anterior['descricao'], $anterior['icone'],
+                                $anterior['template_base'], $anterior['conteudo_html']
+                            ]);
+                    }
+                } catch (PDOException $versaoError) {
+                    error_log('[modelos] histórico de versão indisponível: ' . $versaoError->getMessage());
+                }
                 $stmtSave = $pdo->prepare("
                     UPDATE user_templates SET conteudo_html = ?, template_base = ?, icone = ?, data_atualizacao = NOW()
                     WHERE id = ? AND usuario_id = ?
@@ -803,6 +896,7 @@ try {
             break;
 
         case 'excluir_template_usuario':
+            validarCsrfDocumento($input);
             $utIdDel = (int)($input['id'] ?? 0);
             if ($utIdDel <= 0) throw new Exception('ID inválido');
             $stmtDel = $pdo->prepare("DELETE FROM user_templates WHERE id = ? AND usuario_id = ?");
@@ -810,7 +904,84 @@ try {
             echo json_encode(['success' => $stmtDel->rowCount() > 0]);
             break;
 
+        case 'duplicar_template_usuario':
+            validarCsrfDocumento($input);
+            $utIdOrigem = (int)($input['id'] ?? 0);
+            if ($utIdOrigem <= 0) throw new Exception('ID inválido');
+            $stmtOrigem = $pdo->prepare("SELECT nome, descricao, icone, template_base, conteudo_html
+                FROM user_templates WHERE id = ? AND usuario_id = ? LIMIT 1");
+            $stmtOrigem->execute([$utIdOrigem, $_SESSION['admin_id']]);
+            $origem = $stmtOrigem->fetch(PDO::FETCH_ASSOC);
+            if (!$origem) throw new Exception('Template não encontrado ou sem permissão');
+
+            $nomeCopia = mb_substr($origem['nome'] . ' (cópia)', 0, 255);
+            $stmtCopia = $pdo->prepare("INSERT INTO user_templates
+                (usuario_id, nome, descricao, icone, template_base, conteudo_html)
+                VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtCopia->execute([$_SESSION['admin_id'], $nomeCopia, $origem['descricao'],
+                $origem['icone'], $origem['template_base'], $origem['conteudo_html']]);
+            $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao)
+                VALUES (?, NULL, ?)")->execute([$_SESSION['admin_id'], "Duplicou o modelo: {$origem['nome']} → {$nomeCopia}"]);
+            echo json_encode(['success' => true, 'id' => (int)$pdo->lastInsertId(), 'nome' => $nomeCopia]);
+            break;
+
+        case 'listar_versoes_template':
+            $templateId = (int)($input['id'] ?? 0);
+            if ($templateId <= 0) throw new Exception('ID inválido');
+            $stmtVersoes = $pdo->prepare("SELECT v.id, v.numero_versao, v.nome,
+                    v.criado_em, a.nome AS autor_nome
+                FROM user_template_versions v
+                LEFT JOIN administradores a ON a.id = v.usuario_id
+                WHERE v.template_id = ? AND v.usuario_id = ?
+                ORDER BY v.numero_versao DESC");
+            $stmtVersoes->execute([$templateId, $_SESSION['admin_id']]);
+            echo json_encode(['success' => true, 'versoes' => $stmtVersoes->fetchAll(PDO::FETCH_ASSOC)]);
+            break;
+
+        case 'restaurar_versao_template':
+            validarCsrfDocumento($input);
+            $templateId = (int)($input['template_id'] ?? 0);
+            $versaoId   = (int)($input['versao_id'] ?? 0);
+            if ($templateId <= 0 || $versaoId <= 0) throw new Exception('Versão inválida');
+
+            $stmtVersao = $pdo->prepare("SELECT v.conteudo_html, v.template_base, v.icone
+                FROM user_template_versions v
+                WHERE v.id = ? AND v.template_id = ? AND v.usuario_id = ? LIMIT 1");
+            $stmtVersao->execute([$versaoId, $templateId, $_SESSION['admin_id']]);
+            $versao = $stmtVersao->fetch(PDO::FETCH_ASSOC);
+            if (!$versao) throw new Exception('Versão não encontrada ou sem permissão');
+
+            // Preserva o estado atual antes de restaurar o histórico.
+            $stmtAtual = $pdo->prepare("SELECT nome, descricao, icone, template_base, conteudo_html
+                FROM user_templates WHERE id = ? AND usuario_id = ? LIMIT 1");
+            $stmtAtual->execute([$templateId, $_SESSION['admin_id']]);
+            $atual = $stmtAtual->fetch(PDO::FETCH_ASSOC);
+            if (!$atual) throw new Exception('Template não encontrado');
+            $stmtProxima = $pdo->prepare("SELECT COALESCE(MAX(numero_versao), 0) + 1
+                FROM user_template_versions WHERE template_id = ? AND usuario_id = ?");
+            $stmtProxima->execute([$templateId, $_SESSION['admin_id']]);
+            $proximaVersao = (int)$stmtProxima->fetchColumn();
+            $pdo->prepare("INSERT INTO user_template_versions
+                (template_id, usuario_id, numero_versao, nome, descricao, icone, template_base, conteudo_html)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)")->execute([
+                    $templateId, $_SESSION['admin_id'], $proximaVersao,
+                    $atual['nome'], $atual['descricao'], $atual['icone'],
+                    $atual['template_base'], $atual['conteudo_html']
+                ]);
+
+            $stmtRest = $pdo->prepare("UPDATE user_templates
+                SET conteudo_html = ?, template_base = ?, icone = ?, data_atualizacao = NOW()
+                WHERE id = ? AND usuario_id = ?");
+            $stmtRest->execute([$versao['conteudo_html'], $versao['template_base'], $versao['icone'],
+                $templateId, $_SESSION['admin_id']]);
+            if ($stmtRest->rowCount() === 0) throw new Exception('Template não encontrado');
+            $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao)
+                VALUES (?, NULL, ?)")->execute([$_SESSION['admin_id'], "Restaurou uma versão do modelo ID {$templateId}"]);
+            echo json_encode(['success' => true]);
+            break;
+
         case 'favoritar_template':
+            validarCsrfDocumento($input);
             $tplNome = trim($input['template_nome'] ?? '');
             if (empty($tplNome)) throw new Exception('template_nome obrigatório');
 
