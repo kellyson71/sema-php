@@ -109,7 +109,7 @@
     <div class="container">
         <div class="header">
             <h1>Secretaria Municipal de Meio Ambiente</h1>
-            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros - RN</p>
+            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros · RN</p>
         </div>
 
         <p>Prezado(a) <strong><?= htmlspecialchars($nome_destinatario) ?></strong>,</p>
@@ -151,8 +151,8 @@
         <p>Em caso de dúvidas, entre em contato conosco:</p>
         <p>
             <strong>WhatsApp:</strong> (84) 99668-6413<br>
-            <strong>Email:</strong> fiscalizacaosemapdf@gmail.com<br>
-            <strong>Horário de Atendimento:</strong> Segunda a Sexta, 7h às 13h
+            <strong>E-mail:</strong> fiscalizacaosemapdf@gmail.com<br>
+            <strong>Horário de atendimento:</strong> segunda a sexta, das 7h às 13h
         </p>
 
         <div class="signature">
@@ -163,8 +163,8 @@
         </div>
 
         <p style="text-align:center; font-size:11px; color:#aaa; margin-top:20px;">
-            Este é um email automático, não responda a esta mensagem.<br>
-            © <?= date('Y') ?> — SEMA - Secretaria Municipal de Meio Ambiente - Prefeitura de Pau dos Ferros/RN
+            Este é um e-mail automático. Não responda a esta mensagem.<br>
+            © <?= date('Y') ?> · SEMA · Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
         </p>
     </div>
 </body>

@@ -1,8 +1,8 @@
 <?php
 /**
- * Script de Reenvio de Emails
+ * Script de reenvio de e-mails
  * 
- * Este script permite reenviar emails que foram enviados em modo de teste.
+ * Este script permite reenviar e-mails que foram processados em modo de teste.
  * Apenas administradores autenticados podem acessar esta página.
  */
 
@@ -18,6 +18,9 @@ if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit;
 }
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 $db = new Database();
 $emailService = new EmailService();
@@ -27,6 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // Limpar qualquer output anterior
     ob_clean();
     header('Content-Type: application/json');
+    $csrf = (string) ($_POST['csrf_token'] ?? '');
+    if (!hash_equals($_SESSION['csrf_token'], $csrf)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Sessão expirada. Recarregue a página.']);
+        exit;
+    }
     
     if ($_POST['action'] === 'get_test_emails') {
         try {
@@ -83,68 +92,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $email_data = $result->fetch(PDO::FETCH_ASSOC);
             
             if (!$email_data) {
-                echo json_encode(['success' => false, 'message' => 'Email não encontrado']);
+                echo json_encode(['success' => false, 'message' => 'E-mail não encontrado']);
+                exit;
+            }
+
+            if (!emailRegistradoPodeSerReenviado((string) ($email_data['mensagem'] ?? ''))) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'A mensagem contém um link transacional. Repita a ação dentro do processo para gerar um link válido.'
+                ]);
                 exit;
             }
             
-            // Verificar se o assunto contém informações sobre protocolo oficial ou confirmação
-            $is_protocol_official = strpos($email_data['assunto'], 'Protocolo Oficial') !== false;
-            $is_confirmation = strpos($email_data['assunto'], 'Confirmação de Requerimento') !== false;
-            
-            $success = false;
-            $error_message = '';
-            
-            // Desabilitar error_log temporariamente para evitar output
-            $old_error_handler = set_error_handler(function($errno, $errstr, $errfile, $errline) {
-                // Silenciar erros durante o envio
-                return true;
-            });
-            
-            if ($is_confirmation) {
-                // Reenviar email de confirmação de protocolo
-                $dados_requerimento = [
-                    'id' => $email_data['requerimento_id'],
-                    'data_envio' => $email_data['requerimento_data'],
-                    'endereco_objetivo' => $email_data['endereco_objetivo']
-                ];
-                
-                $success = $emailService->enviarEmailProtocolo(
-                    $email_data['email_destino'],
-                    $email_data['requerente_nome'],
-                    $email_data['protocolo'],
-                    $email_data['tipo_alvara'],
-                    $dados_requerimento
-                );
-            } elseif ($is_protocol_official) {
-                // Extrair protocolo oficial do assunto
-                preg_match('/#(.+)$/', $email_data['assunto'], $matches);
-                $protocolo_oficial = $matches[1] ?? 'N/A';
-                
-                $success = $emailService->enviarEmailProtocoloOficial(
-                    $email_data['email_destino'],
-                    $email_data['requerente_nome'],
-                    $protocolo_oficial,
-                    $email_data['requerimento_id']
-                );
-            } else {
-                // Tipo de email não reconhecido
-                $error_message = 'Tipo de email não suportado para reenvio automático';
-            }
-            
-            // Restaurar error handler
-            if ($old_error_handler) {
-                set_error_handler($old_error_handler);
-            }
+            // Reproduz exatamente o conteúdo auditado. Isso funciona para qualquer
+            // tipo de mensagem, sem depender de palavras específicas no assunto.
+            $assunto = preg_replace('/^\[TESTE\]\s*/u', '', (string) $email_data['assunto']);
+            $success = sendMail(
+                $email_data['email_destino'],
+                $email_data['requerente_nome'] ?? '',
+                $assunto,
+                $email_data['mensagem'] ?? '',
+                $email_data['requerimento_id'] ? (int) $email_data['requerimento_id'] : null
+            );
             
             if ($success) {
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Email reenviado com sucesso!'
+                    'message' => 'E-mail reenviado com sucesso.'
                 ]);
             } else {
                 echo json_encode([
                     'success' => false,
-                    'message' => $error_message ?: 'Falha ao reenviar email. Verifique os logs do servidor.'
+                    'message' => 'Falha ao reenviar o e-mail. Verifique o histórico de envios.'
                 ]);
             }
         } catch (Exception $e) {
@@ -163,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reenvio de Emails - SEMA</title>
+    <title>Reenvio de e-mails · SEMA</title>
     <style>
         * {
             margin: 0;
@@ -409,14 +388,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 <body>
     <div class="container">
         <div class="header">
-            <h1>📧 Reenvio de Emails de Teste</h1>
-            <p>Secretaria Municipal de Meio Ambiente - Sistema de Recuperação de Emails</p>
+            <h1>📧 Reenvio de e-mails de teste</h1>
+            <p>Secretaria Municipal de Meio Ambiente · recuperação de mensagens simuladas</p>
         </div>
 
         <div class="warning-box">
             <span style="font-size: 24px;">⚠️</span>
             <div>
-                <strong>Atenção:</strong> Esta ferramenta reenvia emails que foram enviados em modo de teste. 
+                <strong>Atenção:</strong> Esta ferramenta reenvia e-mails processados em modo de teste.
                 Certifique-se de que o modo de teste está desativado em produção (<code>EMAIL_TEST_MODE = false</code>).
             </div>
         </div>
@@ -424,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="stats">
             <div class="stat-card">
                 <div class="number" id="total-emails">0</div>
-                <div class="label">Emails de Teste</div>
+                <div class="label">E-mails de teste</div>
             </div>
             <div class="stat-card">
                 <div class="number" id="selected-count">0</div>
@@ -439,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="content-grid">
             <div class="emails-panel">
                 <div class="panel-header">
-                    <h2>Emails Marcados como Teste</h2>
+                    <h2>E-mails marcados como teste</h2>
                     <button class="btn btn-primary" id="resend-selected" disabled>
                         Reenviar Selecionados
                     </button>
@@ -448,7 +427,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <div id="emails-container">
                     <div class="loading">
                         <div class="spinner"></div>
-                        <p>Carregando emails...</p>
+                        <p>Carregando e-mails...</p>
                     </div>
                 </div>
             </div>
@@ -471,6 +450,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         let emails = [];
         let selectedEmails = new Set();
         let sentCount = 0;
+        const csrfToken = <?= json_encode($_SESSION['csrf_token'], JSON_UNESCAPED_UNICODE) ?>;
+
+        function escapeHtml(value) {
+            const span = document.createElement('span');
+            span.textContent = value == null ? '' : String(value);
+            return span.innerHTML;
+        }
 
         // Carregar emails ao iniciar
         document.addEventListener('DOMContentLoaded', function() {
@@ -483,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'action=get_test_emails'
+                body: 'action=get_test_emails&csrf_token=' + encodeURIComponent(csrfToken)
             })
             .then(response => response.json())
             .then(data => {
@@ -491,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     emails = data.emails;
                     renderEmails();
                     updateStats();
-                    addLog('success', `${emails.length} emails de teste carregados`);
+                    addLog('success', `${emails.length} e-mails de teste carregados`);
                 }
             })
             .catch(error => {
@@ -503,7 +489,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             const container = document.getElementById('emails-container');
             
             if (emails.length === 0) {
-                container.innerHTML = '<div class="loading"><p>Nenhum email de teste encontrado.</p></div>';
+                container.innerHTML = '<div class="loading"><p>Nenhum e-mail de teste encontrado.</p></div>';
                 return;
             }
 
@@ -529,9 +515,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 html += `
                     <tr>
                         <td><input type="checkbox" class="email-checkbox" data-id="${email.id}"></td>
-                        <td>${email.email_destino}</td>
-                        <td>${subject}</td>
-                        <td>${email.protocolo || 'N/A'}</td>
+                        <td>${escapeHtml(email.email_destino)}</td>
+                        <td>${escapeHtml(subject)}</td>
+                        <td>${escapeHtml(email.protocolo || 'N/A')}</td>
                         <td>${date}</td>
                         <td><button class="btn btn-success" onclick="resendSingle(${email.id})">Reenviar</button></td>
                     </tr>
@@ -599,14 +585,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (selectedEmails.size === 0) return;
             
             this.disabled = true;
-            addLog('info', `Iniciando reenvio de ${selectedEmails.size} emails...`);
+            addLog('info', `Iniciando reenvio de ${selectedEmails.size} e-mails...`);
             
             const emailIds = Array.from(selectedEmails);
             let index = 0;
             
             function sendNext() {
                 if (index >= emailIds.length) {
-                    addLog('success', `Processo concluído! ${sentCount} emails reenviados.`);
+                    addLog('success', `Processo concluído. ${sentCount} e-mails reenviados.`);
                     document.getElementById('resend-selected').disabled = false;
                     return;
                 }
@@ -628,14 +614,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `action=resend_email&email_id=${emailId}`
+                body: `action=resend_email&email_id=${emailId}&csrf_token=${encodeURIComponent(csrfToken)}`
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     sentCount++;
                     updateStats();
-                    addLog('success', `✓ Email reenviado para ${email.email_destino}`);
+                    addLog('success', `✓ E-mail reenviado para ${email.email_destino}`);
                 } else {
                     addLog('error', `✗ Falha ao reenviar para ${email.email_destino}: ${data.message}`);
                 }

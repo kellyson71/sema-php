@@ -112,7 +112,7 @@
         <div class="header">
             <img src="<?= BASE_URL ?>/assets/SEMA/PNG/Azul/Logo%20SEMA%20Vertical.png" alt="SEMA" class="logo">
             <h1>Secretaria Municipal de Meio Ambiente</h1>
-            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros - RN</p>
+            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros · RN</p>
         </div>
 
         <p>Prezado(a) <strong><?= htmlspecialchars($nome_destinatario) ?></strong>,</p>
@@ -171,7 +171,7 @@
                 <strong>Como resolver:</strong>
                 <ul>
                     <li>Providencie os documentos listados acima.</li>
-                    <li>Entre em contato com nossa equipe pelo WhatsApp ou email informados abaixo.</li>
+                    <li>Entre em contato com nossa equipe pelo WhatsApp ou e-mail informados abaixo.</li>
                     <li>Após regularizar a situação, seu processo continuará a análise normalmente.</li>
                 </ul>
             </div>
@@ -180,8 +180,8 @@
         <p>Em caso de dúvidas, entre em contato conosco:</p>
         <p>
             <strong>WhatsApp:</strong> (84) 99668-6413<br>
-            <strong>Email:</strong> fiscalizacaosemapdf@gmail.com<br>
-            <strong>Horário de Atendimento:</strong> Segunda a Sexta, 7h às 13h
+            <strong>E-mail:</strong> fiscalizacaosemapdf@gmail.com<br>
+            <strong>Horário de atendimento:</strong> segunda a sexta, das 7h às 13h
         </p>
 
         <div class="signature">
@@ -192,8 +192,8 @@
         </div>
 
         <p style="text-align:center; font-size:11px; color:#aaa; margin-top:20px;">
-            Este é um email automático, não responda a esta mensagem.<br>
-            © <?= date('Y') ?> — SEMA - Secretaria Municipal de Meio Ambiente - Prefeitura de Pau dos Ferros/RN
+            Este é um e-mail automático. Não responda a esta mensagem.<br>
+            © <?= date('Y') ?> · SEMA · Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
         </p>
     </div>
 </body>

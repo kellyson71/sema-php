@@ -144,7 +144,7 @@
     <div class="container">
         <div class="header">
             <h1 class="titulo">Secretaria Municipal de Meio Ambiente</h1>
-            <p style="margin: 5px 0; color: #666;">Prefeitura de Pau dos Ferros - RN</p>
+            <p style="margin: 5px 0; color: #666;">Prefeitura de Pau dos Ferros · RN</p>
         </div>
 
         <p><strong>Olá, <?php echo htmlspecialchars($nome); ?>!</strong></p>
@@ -179,15 +179,15 @@
 
         <div class="aviso-importante">
             <p><strong>⚠️ IMPORTANTE:</strong></p>
-            <p>Este número é apenas um <strong>registro de entrada interno</strong> do sistema (também chamado de protocolo interno em alguns setores). <strong>O número de protocolo oficial para acompanhamento no portal da prefeitura será enviado posteriormente via email quando seu requerimento for processado pela nossa equipe.</strong></p>
+            <p>Este número é um <strong>registro de entrada interno</strong>. Guarde-o até receber por e-mail o protocolo oficial para acompanhamento.</p>
         </div>
 
         <div class="info-box">
             <div class="info-title">📋 Próximos Passos:</div>
             <ul>
                 <li>Seu requerimento será analisado pela nossa equipe técnica</li>
-                <li>Se houver cobrança, o <strong>boleto será enviado para este email</strong> com um link seguro para pagamento e envio do comprovante</li>
-                <li>Você receberá um email com o <strong>protocolo oficial da prefeitura</strong> após o processamento</li>
+                <li>Se houver cobrança, o <strong>boleto será enviado para este e-mail</strong> com um link seguro para pagamento e envio do comprovante</li>
+                <li>Você receberá um e-mail com o <strong>protocolo oficial da Prefeitura</strong> após o processamento</li>
                 <li>Com o protocolo oficial, você poderá acompanhar o status no portal da prefeitura: <a href="https://www.paudosferros.rn.gov.br/" style="color: #009851;">www.paudosferros.rn.gov.br</a></li>
                 <li>Em caso de documentação complementar, entraremos em contato</li>
             </ul>
@@ -196,8 +196,8 @@
         <div class="contato">
             <h4>📞 Contato</h4>
             <p><strong>WhatsApp:</strong> (84) 99668-6413</p>
-            <p><strong>Email:</strong> fiscalizacaosemapdf@gmail.com</p>
-            <p><strong>Horário de Atendimento:</strong> Segunda a Sexta, 7h às 13h</p>
+            <p><strong>E-mail:</strong> fiscalizacaosemapdf@gmail.com</p>
+            <p><strong>Horário de atendimento:</strong> segunda a sexta, das 7h às 13h</p>
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
@@ -205,7 +205,7 @@
         </div>
 
         <div class="footer">
-            <p>Este é um email automático, não responda a esta mensagem.</p>
+            <p>Este é um e-mail automático. Não responda a esta mensagem.</p>
             <p>© <?php echo date('Y'); ?> - Secretaria Municipal de Meio Ambiente - Prefeitura de Pau dos Ferros/RN</p>
             <p>Desenvolvido pela equipe de TI da Prefeitura</p>
         </div>

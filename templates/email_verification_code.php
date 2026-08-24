@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Código de Verificação de Segurança</title>
+    <title>Código de acesso administrativo</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -103,14 +103,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="logo-text">Verificação de Segurança</h1>
+            <h1 class="logo-text">Código de acesso</h1>
         </div>
         
         <div class="content">
             <p class="greeting">Olá, <strong><?= htmlspecialchars($nome_destinatario) ?></strong></p>
 
             <p class="description">
-                Para autorizar sua assinatura digital, confirme sua identidade utilizando o código abaixo.
+                Confirme sua identidade para continuar no painel administrativo da SEMA.
             </p>
 
             <div class="code-box">
@@ -118,7 +118,7 @@
             </div>
 
             <p class="expiry-text">
-                Este código expira em 15 minutos. Após validar, sua sessão fica ativa por 8 horas.
+                Este código expira em 15 minutos e só pode ser usado uma vez.
             </p>
 
             <div class="warning-box">
@@ -128,7 +128,7 @@
         </div>
 
         <div class="footer">
-            <p>Este é um email automático de segurança.<br>
+            <p>Este é um e-mail automático de segurança.<br>
             Se você não solicitou este código, por favor entre em contato com a administração imediatamente.</p>
         </div>
     </div>

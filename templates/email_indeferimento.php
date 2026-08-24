@@ -86,18 +86,21 @@
                 <p><?= nl2br(htmlspecialchars($orientacoes_adicionais)) ?></p>
             <?php endif; ?>
 
-            <p><strong>Para dar continuidade ao processo:</strong></p>
+            <p><strong>O que fazer agora:</strong></p>
             <ul>
-                <li>Envie um novo requerimento através do nosso sistema online</li>
-                <li>Corrija todos os pontos indicados acima</li>
-                <li>Apresente toda a documentação novamente, conforme as exigências atuais</li>
+                <li>Leia o motivo e as orientações informadas acima.</li>
+                <li>Em caso de dúvida, confirme com a equipe se é necessário corrigir o processo ou abrir um novo requerimento.</li>
+                <li>Guarde o protocolo para referência no atendimento.</li>
             </ul>
+
+            <p><strong>Contato:</strong> WhatsApp (84) 99668-6413 · E-mail fiscalizacaosemapdf@gmail.com</p>
 
             <div class="signature">
                 <p>Atenciosamente,<br>
                     <strong>Secretaria Municipal de Meio Ambiente</strong>
                 </p>
             </div>
+            <p style="font-size:12px;color:#6b7280;">Mensagem automática. Não responda a este e-mail.</p>
         </div>
     </div>
 </body>

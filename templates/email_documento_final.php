@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <meta name="supported-color-schemes" content="light dark">
-    <title>Documento disponível — SEMA</title>
+    <title>Documento disponível · SEMA</title>
 </head>
 <?php
 // Nome do tipo em Title Case ("ALVARÁ DE HABITE-SE" -> "Alvará de Habite-se").
@@ -17,7 +17,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
 
 <!-- Preheader: prévia mostrada ao lado do assunto na caixa de entrada. -->
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;height:0;width:0;">
-    Comunicado oficial da SEMA — o documento do processo #<?php echo htmlspecialchars($protocolo); ?> já está disponível para download.
+    Comunicado oficial da SEMA. O documento do processo #<?php echo htmlspecialchars($protocolo); ?> já está disponível para download.
     <?php echo str_repeat('&zwnj;&nbsp;', 30); ?>
 </div>
 
@@ -32,7 +32,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
                 <tr>
                     <td style="background-color:#0a6b34;padding:24px 36px;">
                         <img src="https://sema.protocolosead.com/assets/img/logo_sema_email.png"
-                             alt="SEMA — Secretaria Municipal do Meio Ambiente — Prefeitura de Pau dos Ferros/RN"
+                             alt="SEMA · Secretaria Municipal do Meio Ambiente · Prefeitura de Pau dos Ferros/RN"
                              width="176" style="display:block;border:0;outline:none;text-decoration:none;width:176px;max-width:58%;height:auto;">
                     </td>
                 </tr>
@@ -55,7 +55,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
                             Comunicado oficial
                         </p>
                         <h1 style="margin:0 0 22px;color:#101828;font-size:21px;font-weight:700;line-height:1.3;">
-                            <?php echo htmlspecialchars($tipoLegivel); ?> &mdash; documento disponível
+                            <?php echo htmlspecialchars($tipoLegivel); ?> · documento disponível
                         </h1>
 
                         <p style="margin:0 0 14px;font-size:15px;color:#3f4a56;line-height:1.65;">
@@ -176,7 +176,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
                                     <?php if (!empty($validade_dias)): ?>
                                     <p style="margin:0;font-size:12px;color:#64748b;line-height:1.65;">
                                         <strong style="color:#475569;">Acesso.</strong>
-                                        Este link é pessoal — não repasse este e-mail. Permanece disponível por
+                                        Este link é pessoal. Não repasse este e-mail. Permanece disponível por
                                         <strong><?php echo (int) $validade_dias; ?> dias</strong>; recomendamos baixar e guardar os arquivos.
                                     </p>
                                     <?php endif; ?>
@@ -194,7 +194,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
                             Secretaria Municipal do Meio Ambiente
                         </p>
                         <p style="margin:0 0 12px;color:#8a94a2;font-size:12px;">
-                            Prefeitura Municipal de Pau dos Ferros — RN
+                            Prefeitura Municipal de Pau dos Ferros · RN
                         </p>
                         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                             <tr>
@@ -218,7 +218,7 @@ $tipoLegivel = tituloAmigavel(str_replace('_', ' ', $tipo_alvara));
                 <tr>
                     <td style="background:#0f2740;padding:16px 36px;">
                         <p style="margin:0;color:rgba(255,255,255,0.55);font-size:11px;line-height:1.7;">
-                            Mensagem automática — não é necessário responder este e-mail.<br>
+                            Mensagem automática. Não é necessário responder este e-mail.<br>
                             &copy; <?php echo date('Y'); ?> Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
                         </p>
                     </td>

@@ -58,12 +58,43 @@ function logEmail($requerimento_id, $email_destino, $assunto, $mensagem, $status
     }
 }
 
+function emailDestinoValido(string $email): bool
+{
+    $email = trim($email);
+    return $email !== ''
+        && strlen($email) <= 191
+        && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+function emailRegistradoPodeSerReenviado(string $mensagem): bool
+{
+    // Links transacionais são vinculados ao estado criado pela própria ação.
+    // Se ela falhou e voltou, o token antigo não deve ser reaproveitado.
+    foreach (['pagamento.php?token=', 'pendencia.php?token=', 'documento_final.php?token='] as $rotaSegura) {
+        if (stripos($mensagem, $rotaSegura) !== false) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /**
  * Função principal para envio de emails
  */
 function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
 {
+    $email = trim((string) $email);
+    $nome = trim((string) $nome);
     error_log("Função sendMail chamada para: $email");
+
+    if (!emailDestinoValido($email)) {
+        $erro = "Email inválido: " . ($email !== '' ? $email : '(não informado)');
+        error_log($erro);
+        if ($requerimento_id && $email !== '') {
+            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
+        }
+        return false;
+    }
 
     if (EMAIL_TEST_MODE) {
         error_log("=== EMAIL EM MODO DE TESTE ===");
@@ -78,16 +109,6 @@ function sendMail($email, $nome, $assunto, $mensagem, $requerimento_id = null)
             logEmail($requerimento_id, $email, "[TESTE] " . $assunto, $mensagem, 'SUCESSO', 'Enviado em modo de teste - não foi enviado realmente', true);
         }
         return true;
-    }
-
-    // Validações básicas antes de tentar enviar
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $erro = "Email inválido: " . $email;
-        error_log($erro);
-        if ($requerimento_id) {
-            logEmail($requerimento_id, $email, $assunto, $mensagem, 'ERRO', $erro);
-        }
-        return false;
     }
 
     if (empty(MAIL_API_TOKEN) || empty(MAIL_API_MAILBOX_ID)) {
@@ -164,7 +185,7 @@ class EmailService
     public function enviarEmailProtocolo($to_email, $to_name, $protocolo_interno, $tipo_alvara, $dados_requerimento = [])
     {
         try {
-            $subject = "Confirmação de Requerimento - Protocolo #{$protocolo_interno}";
+            $subject = "[SEMA] Requerimento recebido · protocolo #{$protocolo_interno}";
 
             // Carregar o template de email
             $body = $this->carregarTemplateProtocolo($to_name, $protocolo_interno, $tipo_alvara, $dados_requerimento);
@@ -194,7 +215,7 @@ class EmailService
     public function enviarEmailProtocoloOficial($to_email, $to_name, $protocolo_oficial, $requerimento_id = null)
     {
         try {
-            $subject = "Protocolo Oficial da Prefeitura - #{$protocolo_oficial}";
+            $subject = "[SEMA] Protocolo oficial · #{$protocolo_oficial}";
 
             $body = $this->carregarTemplateProtocoloOficial($to_name, $protocolo_oficial);
 
@@ -220,7 +241,7 @@ class EmailService
     public function enviarEmailIndeferimento($to_email, $to_name, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais = '', $requerimento_id = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Indeferido";
+            $subject = "[SEMA] Processo indeferido · protocolo #{$protocolo}";
 
             $body = $this->carregarTemplateIndeferimento($to_name, $protocolo, $tipo_alvara, $motivo_indeferimento, $orientacoes_adicionais);
 
@@ -274,13 +295,13 @@ class EmailService
     public function enviarEmailAprovado($to_email, $to_name, $protocolo, $tipo_alvara, $requerimento_id = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Aprovado";
+            $subject = "[SEMA] Processo aprovado · protocolo #{$protocolo}";
 
             $nome_destinatario = $to_name;
             $body = $this->carregarTemplateAprovado($nome_destinatario, $protocolo, $tipo_alvara);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de aprovação: " . $e->getMessage());
             return false;
         }
@@ -300,13 +321,13 @@ class EmailService
     public function enviarEmailPendencia($to_email, $to_name, $protocolo, $tipo_alvara, $pendencias, $requerimento_id = null, $link_complementacao = '')
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Documentação Pendente";
+            $subject = "[SEMA] Complementação necessária · protocolo #{$protocolo}";
 
             $nome_destinatario = $to_name;
             $body = $this->carregarTemplatePendencia($nome_destinatario, $protocolo, $tipo_alvara, $pendencias, $link_complementacao);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de pendência: " . $e->getMessage());
             return false;
         }
@@ -326,13 +347,13 @@ class EmailService
     public function enviarEmailReenvio($to_email, $to_name, $protocolo, $tipo_alvara, $motivo_reenvio, $requerimento_id = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Processo Devolvido para Correção";
+            $subject = "[SEMA] Correção necessária · protocolo #{$protocolo}";
 
             $nome_destinatario = $to_name;
             $body = $this->carregarTemplateReenvio($nome_destinatario, $protocolo, $tipo_alvara, $motivo_reenvio);
 
             return sendMail($to_email, $to_name, $subject, $body, $requerimento_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log("Erro ao enviar email de reenvio: " . $e->getMessage());
             return false;
         }
@@ -353,7 +374,7 @@ class EmailService
     public function enviarEmailBoleto($to_email, $to_name, $protocolo, $tipo_alvara, $url_pagamento, $instrucoes = '', $requerimento_id = null)
     {
         try {
-            $subject = "[SEMA] Protocolo #{$protocolo} - Boleto disponível para pagamento";
+            $subject = "[SEMA] Boleto disponível · protocolo #{$protocolo}";
 
             $nome_destinatario = $to_name;
             $body = $this->carregarTemplateBoleto($nome_destinatario, $protocolo, $tipo_alvara, $url_pagamento, $instrucoes);
@@ -411,7 +432,7 @@ class EmailService
             // O tipo vai no assunto: "documento final" é jargão interno, o cidadão
             // procura pelo nome do que pediu ("Alvará de Construção").
             $tipoCurto = tituloAmigavel($tipo_alvara);
-            $subject = "[SEMA] {$tipoCurto} pronto — protocolo #{$protocolo}";
+            $subject = "[SEMA] {$tipoCurto} pronto · protocolo #{$protocolo}";
             $nome_destinatario = $to_name;
             ob_start();
             include __DIR__ . '/../templates/email_documento_final.php';
@@ -424,7 +445,7 @@ class EmailService
     }
 
     /**
-     * Enviar email com código de verificação para assinatura
+     * Enviar e-mail com código de verificação administrativa
      * 
      * @param string $to_email Email do destinatário
      * @param string $to_name Nome do destinatário
@@ -434,58 +455,11 @@ class EmailService
     public function enviarEmailCodigoVerificacao($to_email, $to_name, $codigo)
     {
         try {
-            $subject = "Código de Verificação para Assinatura Digital - SEMA";
-
-            $body = "
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset='UTF-8'>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #2D8661, #134E5E); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .code-box { background: white; border: 2px dashed #2D8661; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
-                    .code { font-size: 32px; font-weight: bold; color: #2D8661; letter-spacing: 8px; }
-                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-                    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-                </style>
-            </head>
-            <body>
-                <div class='container'>
-                    <div class='header'>
-                        <h1>🔐 Código de Verificação</h1>
-                    </div>
-                    <div class='content'>
-                        <p>Olá, <strong>{$to_name}</strong>!</p>
-                        <p>Você solicitou um código de verificação para assinar digitalmente um documento no sistema SEMA.</p>
-                        
-                        <div class='code-box'>
-                            <p style='margin: 0; font-size: 14px; color: #666;'>Seu código de verificação é:</p>
-                            <div class='code'>{$codigo}</div>
-                        </div>
-
-                        <div class='warning'>
-                            <strong>⚠️ Importante:</strong>
-                            <ul style='margin: 10px 0; padding-left: 20px;'>
-                                <li>Este código é válido por <strong>15 minutos</strong></li>
-                                <li>Não compartilhe este código com ninguém</li>
-                                <li>Se você não solicitou este código, ignore este email</li>
-                            </ul>
-                        </div>
-
-                        <p>Após validar o código, você terá <strong>8 horas</strong> para assinar documentos sem precisar validar novamente.</p>
-                        
-                        <div class='footer'>
-                            <p>Este é um email automático, por favor não responda.</p>
-                            <p>© " . date('Y') . " SEMA - Secretaria Municipal de Meio Ambiente</p>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            ";
+            $subject = "[SEMA] Código de acesso administrativo";
+            $nome_destinatario = $to_name;
+            ob_start();
+            include __DIR__ . '/../templates/email_verification_code.php';
+            $body = ob_get_clean();
 
             // Não passa requerimento_id pois é um email de verificação do sistema
             return sendMail($to_email, $to_name, $subject, $body, null);

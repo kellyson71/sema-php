@@ -27,7 +27,7 @@
                                         Boleto disponível para pagamento
                                     </h1>
                                     <p style="margin:6px 0 0;color:rgba(255,255,255,0.72);font-size:13px;">
-                                        Prefeitura de Pau dos Ferros &mdash; RN
+                                        Prefeitura de Pau dos Ferros · RN
                                     </p>
                                 </td>
                                 <!-- Ícone decorativo -->
@@ -129,7 +129,7 @@
                                         </tr>
                                         <tr>
                                             <td colspan="2" style="padding-top:4px;color:#94a3b8;font-size:12px;">
-                                                Atendimento: Segunda a Sexta, 7h às 13h
+                                                Atendimento: segunda a sexta, das 7h às 13h
                                             </td>
                                         </tr>
                                     </table>
@@ -144,8 +144,8 @@
                 <tr>
                     <td style="background:#013d86;padding:18px 32px;text-align:center;">
                         <p style="margin:0;color:rgba(255,255,255,0.55);font-size:12px;line-height:1.6;">
-                            Este é um e-mail automático &mdash; não responda a esta mensagem.<br>
-                            &copy; <?php echo date('Y'); ?> &mdash; Secretaria Municipal de Meio Ambiente &mdash; Prefeitura de Pau dos Ferros/RN
+                            Este é um e-mail automático. Não responda a esta mensagem.<br>
+                            &copy; <?php echo date('Y'); ?> · Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
                         </p>
                     </td>
                 </tr>

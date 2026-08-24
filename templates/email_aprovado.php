@@ -101,7 +101,7 @@
     <div class="container">
         <div class="header">
             <h1>Secretaria Municipal de Meio Ambiente</h1>
-            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros - RN</p>
+            <p style="margin: 5px 0; color: #666; font-size: 14px;">Prefeitura de Pau dos Ferros · RN</p>
         </div>
 
         <p>Prezado(a) <strong><?= htmlspecialchars($nome_destinatario) ?></strong>,</p>
@@ -123,20 +123,20 @@
             <strong>Próximos passos:</strong>
             <ul>
                 <li>Seu processo seguirá para assinatura do(a) Secretário(a) Municipal.</li>
-                <li>Após a assinatura, você receberá um novo email com o <strong>número de protocolo oficial da Prefeitura</strong>.</li>
-                <li>Com o protocolo oficial, o alvará poderá ser retirado presencialmente após o pagamento da taxa de tributação.</li>
+                <li>Se houver taxa, o boleto será enviado por e-mail em um link seguro.</li>
+                <li>Após a assinatura, os documentos emitidos serão enviados ao mesmo endereço de e-mail.</li>
             </ul>
         </div>
 
         <div class="highlight">
-            <strong>⏳ Aguarde:</strong> Você receberá um email de confirmação assim que o alvará for emitido pelo Secretário Municipal de Meio Ambiente.
+            <strong>Acompanhe seu e-mail:</strong> enviaremos uma nova mensagem quando o documento estiver disponível.
         </div>
 
         <p>Em caso de dúvidas, entre em contato conosco:</p>
         <p>
             <strong>WhatsApp:</strong> (84) 99668-6413<br>
-            <strong>Email:</strong> fiscalizacaosemapdf@gmail.com<br>
-            <strong>Horário de Atendimento:</strong> Segunda a Sexta, 7h às 13h
+            <strong>E-mail:</strong> fiscalizacaosemapdf@gmail.com<br>
+            <strong>Horário de atendimento:</strong> segunda a sexta, das 7h às 13h
         </p>
 
         <div class="signature">
@@ -147,8 +147,8 @@
         </div>
 
         <p style="text-align:center; font-size:11px; color:#aaa; margin-top:20px;">
-            Este é um email automático, não responda a esta mensagem.<br>
-            © <?= date('Y') ?> — SEMA - Secretaria Municipal de Meio Ambiente - Prefeitura de Pau dos Ferros/RN
+            Este é um e-mail automático. Não responda a esta mensagem.<br>
+            © <?= date('Y') ?> · SEMA · Secretaria Municipal de Meio Ambiente · Prefeitura de Pau dos Ferros/RN
         </p>
     </div>
 </body>
