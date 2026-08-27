@@ -1200,22 +1200,29 @@ button[type="submit"]:hover {
 .public-cookie-notice {
   position: fixed;
   z-index: 9300;
-  right: 18px;
-  bottom: 18px;
-  width: min(520px, calc(100vw - 36px));
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--public-line);
-  border-radius: 12px;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  padding: 16px 24px;
+  border: 0;
+  border-top: 1px solid var(--public-line);
+  border-radius: 0;
   background: #fff;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, .18);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, .12);
   color: var(--public-ink);
 }
 
 .public-cookie-notice[hidden] {
   display: none !important;
+}
+
+.public-cookie-notice .public-cookie-text {
+  max-width: 720px;
 }
 
 .public-cookie-notice strong {
@@ -1790,6 +1797,7 @@ button[type="submit"]:hover {
   .public-cookie-notice {
     align-items: stretch;
     flex-direction: column;
+    gap: 12px;
   }
 
   .dc-busca,

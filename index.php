@@ -776,11 +776,10 @@ $locationTemplates = [
     </div>
 
     <div class="public-cookie-notice" id="public-cookie-notice" hidden>
-        <div>
+        <div class="public-cookie-text">
             <strong>Uso de cookies</strong>
-            <p>Usamos cookies necessários à segurança e ao funcionamento do serviço, além de medição estatística para melhorar o atendimento digital.</p>
+            <p>Usamos cookies necessários à segurança e ao funcionamento do serviço, além de medição estatística para melhorar o atendimento digital. <a href="./termos_uso.php">Saiba mais</a></p>
         </div>
-        <a href="./termos_uso.php">Saiba mais</a>
         <button type="button" id="public-cookie-accept">Entendi</button>
     </div>
 
