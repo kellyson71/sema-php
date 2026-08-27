@@ -256,7 +256,7 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 </div>
                 <?php elseif ($emailDestino): ?>
                 <div class="aviso" style="background:#eef8f2;border-left-color:#0a6b34;color:#14532d;padding:16px 18px;">
-                    <i class="fas fa-envelope-circle-check" style="color:#0a6b34;font-size:1.1rem;"></i>
+                    <i class="fas fa-envelope" style="color:#0a6b34;font-size:1.1rem;"></i>
                     <span>A confirmação foi enviada para <strong><?= htmlspecialchars($emailDestino) ?></strong>. Confira também as pastas de spam e lixo eletrônico.</span>
                 </div>
                 <?php endif; ?>
@@ -267,7 +267,7 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 </div>
 
                 <div class="aviso" style="background:#fffbeb;border-left-color:#b45309;color:#78350f;padding:16px 18px;">
-                    <i class="fas fa-shield-halved" style="color:#b45309;font-size:1.1rem;"></i>
+                    <i class="fas fa-shield-alt" style="color:#b45309;font-size:1.1rem;"></i>
                     <span>
                         <strong>Guarde nosso endereço para não cair em golpe.</strong>
                         Só enviamos mensagens de <strong><?= htmlspecialchars(EMAIL_FROM) ?></strong>.

@@ -718,9 +718,8 @@ $locationTemplates = [
                          alt="SEMA — Secretaria Municipal de Meio Ambiente">
                     <p>Canal oficial de protocolo eletrônico de alvarás, licenças, autorizações e denúncias ambientais de Pau dos Ferros/RN.</p>
                     <p class="public-footer-remetente">
-                        <strong>Só enviamos avisos por este e-mail:</strong>
-                        <a href="mailto:<?= htmlspecialchars(EMAIL_FROM) ?>"><?= htmlspecialchars(EMAIL_FROM) ?></a>
-                        Mensagens de qualquer outro remetente pedindo pagamento ou dados não são nossas.
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>Avisos oficiais partem só de <a href="mailto:<?= htmlspecialchars(EMAIL_FROM) ?>"><?= htmlspecialchars(EMAIL_FROM) ?></a>.
+                        <a href="./termos_uso.php">Como identificar golpes</a>
                     </p>
                 </div>
 

@@ -167,37 +167,44 @@ header .user-options button[aria-pressed="true"] {
   line-height: 1.6;
 }
 
-/* Remetente oficial em destaque: é o que permite ao cidadão reconhecer
-   uma mensagem falsa pedindo pagamento ou dados. */
+/* Remetente oficial: o cidadão precisa reconhecer uma mensagem falsa.
+   Uma linha só — a orientação completa está nos termos de uso. */
 .public-footer-remetente {
-  margin-top: 14px !important;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  border-left: 3px solid #4ade80;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, .04);
-  font-size: .8rem !important;
+  margin-top: 12px !important;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .14);
+  font-size: .78rem !important;
 }
 
-.public-footer-remetente strong {
-  display: block;
-  color: rgba(255, 255, 255, .75);
-  font-weight: 600;
+.public-footer-remetente i {
+  margin-right: 5px;
+  color: rgba(255, 255, 255, .4);
 }
 
 .public-footer-remetente a {
-  display: inline-block;
-  margin: 2px 0 4px;
   color: #4ade80;
   font-weight: 600;
   text-decoration: none;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .public-footer-remetente a:hover,
 .public-footer-remetente a:focus-visible {
   text-decoration: underline;
   outline: none;
+}
+
+.public-footer-remetente a:last-child {
+  display: inline-block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, .55);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.public-footer-remetente a:last-child:hover,
+.public-footer-remetente a:last-child:focus-visible {
+  color: #fff;
 }
 
 .public-footer-col h3 {
