@@ -688,12 +688,7 @@ $locationTemplates = [
 
     <footer style="background:#0a1a2e; padding:48px 24px 32px; text-align:center;">
         <!-- wrapper único para isolar do CSS legado footer > div:nth-child -->
-        <section style="max-width:900px; margin:0 auto;">
-
-            <!-- Logo SEMA branca -->
-            <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
-                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
-                 style="max-width:240px; height:auto; margin-bottom:32px; opacity:0.95; display:block; margin-left:auto; margin-right:auto;">
+        <section style="max-width:1180px; margin:0 auto;">
 
             <!-- Botões de ação -->
             <section class="public-footer-actions" aria-label="Atalhos principais">
@@ -716,47 +711,46 @@ $locationTemplates = [
             </section>
 
 
-            <!-- Bloco institucional: onde a secretaria fica e como falar com ela -->
-            <section class="public-footer-institucional" aria-label="Endereço e contatos da SEMA">
-                <div class="public-footer-dados">
-                    <h2 class="public-footer-titulo">Secretaria Municipal do Meio Ambiente</h2>
+            <!-- Bloco institucional: quem somos, onde ficamos, como falar -->
+            <section class="public-footer-grid" aria-label="Endereço e contatos da SEMA">
+                <div class="public-footer-marca">
+                    <img src="./assets/SEMA/PNG/Branca/Logo SEMA Horizontal 3.png"
+                         alt="SEMA — Secretaria Municipal de Meio Ambiente">
+                    <p>Canal oficial de protocolo eletrônico de alvarás, licenças, autorizações e denúncias ambientais de Pau dos Ferros/RN.</p>
+                </div>
 
-                    <dl class="public-footer-lista">
-                        <div class="public-footer-linha">
-                            <dt>Endereço</dt>
-                            <dd>
-                                Rua Lafaiete Diógenes, nº 314 — São Judas Tadeu<br>
-                                Pau dos Ferros/RN · CEP 59.900-000
-                                <span class="public-footer-nota"><a href="https://maps.app.goo.gl/yr3RqUGGJLgzQtt39" target="_blank" rel="noopener">Ver rota no Google Maps</a></span>
-                            </dd>
-                        </div>
-                        <div class="public-footer-linha">
-                            <dt>Atendimento</dt>
-                            <dd>
-                                Segunda a sexta, das 7h às 17h
-                                <span class="public-footer-nota">Alguns canais e plantões atendem das 7h às 13h.</span>
-                            </dd>
-                        </div>
-                        <div class="public-footer-linha">
-                            <dt>Telefone e WhatsApp</dt>
-                            <dd>
-                                <a href="https://wa.me/5584996686413" target="_blank" rel="noopener">(84) 99668-6413</a>
-                                <span class="public-footer-nota">Canal de denúncias e fiscalização.</span>
-                            </dd>
-                        </div>
-                        <div class="public-footer-linha">
-                            <dt>E-mail</dt>
-                            <dd>
-                                <a href="mailto:sema@paudosferros.rn.gov.br">sema@paudosferros.rn.gov.br</a>
-                                <span class="public-footer-nota">Fiscalização: <a href="mailto:fiscalizacaosemapdf@gmail.com">fiscalizacaosemapdf@gmail.com</a></span>
-                            </dd>
-                        </div>
-                        <div class="public-footer-linha">
-                            <dt>Site oficial</dt>
-                            <dd>
-                                <a href="https://paudosferros.rn.gov.br" target="_blank" rel="noopener">paudosferros.rn.gov.br</a>
-                            </dd>
-                        </div>
+                <div class="public-footer-col">
+                    <h3>Onde nos encontrar</h3>
+                    <dl>
+                        <dt>Endereço</dt>
+                        <dd>
+                            Rua Lafaiete Diógenes, nº 314 — São Judas Tadeu<br>
+                            Pau dos Ferros/RN · CEP 59.900-000
+                            <span class="public-footer-nota"><a href="https://maps.app.goo.gl/yr3RqUGGJLgzQtt39" target="_blank" rel="noopener">Ver rota no Google Maps</a></span>
+                        </dd>
+                        <dt>Atendimento</dt>
+                        <dd>
+                            Segunda a sexta, das 7h às 17h
+                            <span class="public-footer-nota">Alguns canais e plantões atendem das 7h às 13h.</span>
+                        </dd>
+                    </dl>
+                </div>
+
+                <div class="public-footer-col">
+                    <h3>Fale com a SEMA</h3>
+                    <dl>
+                        <dt>Telefone e WhatsApp</dt>
+                        <dd>
+                            <a href="https://wa.me/5584996686413" target="_blank" rel="noopener">(84) 99668-6413</a>
+                            <span class="public-footer-nota">Denúncias e fiscalização.</span>
+                        </dd>
+                        <dt>E-mail</dt>
+                        <dd>
+                            <a href="mailto:sema@paudosferros.rn.gov.br">sema@paudosferros.rn.gov.br</a>
+                            <span class="public-footer-nota">Fiscalização: <a href="mailto:fiscalizacaosemapdf@gmail.com">fiscalizacaosemapdf@gmail.com</a></span>
+                        </dd>
+                        <dt>Site oficial</dt>
+                        <dd><a href="https://paudosferros.rn.gov.br" target="_blank" rel="noopener">paudosferros.rn.gov.br</a></dd>
                     </dl>
                 </div>
 
