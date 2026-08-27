@@ -715,88 +715,73 @@ $locationTemplates = [
                 </button>
             </section>
 
-            <!-- Links legais -->
-            <nav aria-label="Links legais e institucionais"
-                 style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px 18px; margin-bottom:28px; font-size:0.88rem;">
-                <a href="./acessibilidade.php"
-                   style="color:rgba(255,255,255,0.78); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.35);">Acessibilidade</a>
-                <a href="./termos_uso.php"
-                   style="color:rgba(255,255,255,0.78); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.35);">Termos de uso</a>
-                <button type="button" onclick="document.getElementById('modal-privacidade').style.display='flex'"
-                        style="border:0; background:transparent; padding:0; color:rgba(255,255,255,0.78); font:inherit; cursor:pointer; border-bottom:1px dotted rgba(255,255,255,0.35);">Avisos legais e privacidade</button>
-            </nav>
 
-            <!-- Endereço, atendimento e contatos -->
-            <section class="public-footer-contatos" aria-label="Endereço e contatos da SEMA">
-                <div class="public-footer-contato">
-                    <span class="public-footer-contato-icone" style="background:rgba(96,165,250,0.15);">
-                        <i class="fas fa-location-dot" style="color:#60a5fa;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">Endereço</span>
-                        <span class="public-footer-contato-valor">Rua Lafaiete Diógenes, nº 314 — São Judas Tadeu<br>Pau dos Ferros/RN — CEP 59.900-000</span>
-                    </span>
+            <!-- Bloco institucional: onde a secretaria fica e como falar com ela -->
+            <section class="public-footer-institucional" aria-label="Endereço e contatos da SEMA">
+                <div class="public-footer-dados">
+                    <h2 class="public-footer-titulo">Secretaria Municipal do Meio Ambiente</h2>
+
+                    <dl class="public-footer-lista">
+                        <div class="public-footer-linha">
+                            <dt>Endereço</dt>
+                            <dd>
+                                Rua Lafaiete Diógenes, nº 314 — São Judas Tadeu<br>
+                                Pau dos Ferros/RN · CEP 59.900-000
+                                <span class="public-footer-nota"><a href="https://maps.app.goo.gl/yr3RqUGGJLgzQtt39" target="_blank" rel="noopener">Ver rota no Google Maps</a></span>
+                            </dd>
+                        </div>
+                        <div class="public-footer-linha">
+                            <dt>Atendimento</dt>
+                            <dd>
+                                Segunda a sexta, das 7h às 17h
+                                <span class="public-footer-nota">Alguns canais e plantões atendem das 7h às 13h.</span>
+                            </dd>
+                        </div>
+                        <div class="public-footer-linha">
+                            <dt>Telefone e WhatsApp</dt>
+                            <dd>
+                                <a href="https://wa.me/5584996686413" target="_blank" rel="noopener">(84) 99668-6413</a>
+                                <span class="public-footer-nota">Canal de denúncias e fiscalização.</span>
+                            </dd>
+                        </div>
+                        <div class="public-footer-linha">
+                            <dt>E-mail</dt>
+                            <dd>
+                                <a href="mailto:sema@paudosferros.rn.gov.br">sema@paudosferros.rn.gov.br</a>
+                                <span class="public-footer-nota">Fiscalização: <a href="mailto:fiscalizacaosemapdf@gmail.com">fiscalizacaosemapdf@gmail.com</a></span>
+                            </dd>
+                        </div>
+                        <div class="public-footer-linha">
+                            <dt>Site oficial</dt>
+                            <dd>
+                                <a href="https://paudosferros.rn.gov.br" target="_blank" rel="noopener">paudosferros.rn.gov.br</a>
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
 
-                <div class="public-footer-contato">
-                    <span class="public-footer-contato-icone" style="background:rgba(251,191,36,0.15);">
-                        <i class="fas fa-clock" style="color:#fbbf24;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">Horário de atendimento</span>
-                        <span class="public-footer-contato-valor">Segunda a sexta, das 7h às 17h<br><small style="color:rgba(255,255,255,0.5);">Alguns canais e plantões atendem das 7h às 13h.</small></span>
-                    </span>
+                <div class="public-footer-mapa">
+                    <iframe
+                        title="Mapa com a localização da Secretaria Municipal do Meio Ambiente, na Rua Lafaiete Diógenes, 314, Pau dos Ferros/RN"
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3967.133482028977!2d-38.2072109!3d-6.1127256!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7bb333ee501f2a9%3A0x9d96138646b305a4!2sSecretaria%20Municipal%20do%20Meio%20Ambiente!5e0!3m2!1spt-BR!2sbr!4v1787855999922!5m2!1spt-BR!2sbr"
+                        loading="lazy"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen></iframe>
                 </div>
-
-                <a class="public-footer-contato" href="https://wa.me/5584996686413" target="_blank" rel="noopener">
-                    <span class="public-footer-contato-icone" style="background:rgba(74,222,128,0.15);">
-                        <i class="fab fa-whatsapp" style="color:#4ade80;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">Telefone / WhatsApp</span>
-                        <span class="public-footer-contato-valor">(84) 99668-6413<br><small style="color:rgba(255,255,255,0.5);">Denúncias e fiscalização.</small></span>
-                    </span>
-                </a>
-
-                <a class="public-footer-contato" href="mailto:sema@paudosferros.rn.gov.br">
-                    <span class="public-footer-contato-icone" style="background:rgba(249,168,212,0.15);">
-                        <i class="fas fa-envelope" style="color:#f9a8d4;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">E-mail</span>
-                        <span class="public-footer-contato-valor">sema@paudosferros.rn.gov.br</span>
-                    </span>
-                </a>
-
-                <a class="public-footer-contato" href="mailto:fiscalizacaosemapdf@gmail.com">
-                    <span class="public-footer-contato-icone" style="background:rgba(249,168,212,0.15);">
-                        <i class="fas fa-envelope-open-text" style="color:#f9a8d4;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">E-mail da fiscalização</span>
-                        <span class="public-footer-contato-valor">fiscalizacaosemapdf@gmail.com</span>
-                    </span>
-                </a>
-
-                <a class="public-footer-contato" href="https://paudosferros.rn.gov.br" target="_blank" rel="noopener">
-                    <span class="public-footer-contato-icone" style="background:rgba(34,211,238,0.15);">
-                        <i class="fas fa-globe" style="color:#22d3ee;"></i>
-                    </span>
-                    <span>
-                        <span class="public-footer-contato-rotulo">Site oficial</span>
-                        <span class="public-footer-contato-valor">Prefeitura de Pau dos Ferros</span>
-                    </span>
-                </a>
             </section>
 
-            <!-- Divisor sutil -->
-            <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:0 auto 28px; max-width:600px;">
-
-            <!-- Copyright -->
-            <p style="font-size:0.95rem; color:rgba(255,255,255,0.85); margin:0; line-height:1.6; letter-spacing:0.3px;">
-                &copy; <?= date('Y') ?> <strong style="color:#fff; font-weight:700;">Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
-                <span style="font-size:0.8rem; color:rgba(255,255,255,0.5); display:block; margin-top:8px;">Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.65); text-decoration:none; border-bottom:1px dotted rgba(255,255,255,0.4);">Kellyson Raphael</a></span>
-            </p>
+            <!-- Barra inferior: links legais e assinatura -->
+            <div class="public-footer-base">
+                <nav class="public-footer-legal" aria-label="Links legais e institucionais">
+                    <a href="./acessibilidade.php">Acessibilidade</a>
+                    <a href="./termos_uso.php">Termos de uso</a>
+                    <button type="button" onclick="document.getElementById('modal-privacidade').style.display='flex'">Avisos legais e privacidade</button>
+                </nav>
+                <p class="public-footer-copy">
+                    &copy; <?= date('Y') ?> <strong>Prefeitura Municipal de Pau dos Ferros</strong> — Todos os direitos reservados.
+                    <span>Desenvolvido por <a href="https://github.com/kellyson71" target="_blank" rel="noopener">Kellyson Raphael</a></span>
+                </p>
+            </div>
 
         </section>
     </footer>
