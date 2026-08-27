@@ -219,13 +219,26 @@ form .form-header {
   margin-bottom: 0;
   padding: 26px max(24px, calc((100vw - 1000px) / 2));
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 22px;
-  text-align: left;
+  gap: 14px;
+  text-align: center;
   background: #fff;
   border-bottom: 1px solid #ececec;
   position: relative;
+}
+
+.public-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 form .form-header::after {
@@ -238,30 +251,28 @@ form .form-header::after {
   background: linear-gradient(90deg, #f8e400 0 25%, #cafe2b 25% 50%, #12d2d5 50% 75%, var(--public-green) 75%);
 }
 
+form .form-header picture {
+  display: block;
+  line-height: 0;
+}
+
+/* Logo horizontal no desktop: ela já carrega o nome da secretaria.
+   O max-width vem de index.css e precisa ser zerado aqui. */
 form .form-header img {
-  width: min(220px, 32vw);
+  width: min(520px, 72vw);
+  max-width: none;
   height: auto;
   margin: 0;
   flex: none;
 }
 
-form .form-header h1 {
-  margin: 3px 0 0;
-  color: var(--public-ink);
-  font-family: Raleway, "Segoe UI", sans-serif;
-  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
-  font-weight: 700;
-  line-height: 1.25 !important;
-  letter-spacing: 0;
-  text-align: left;
-}
-
 form .form-header p {
-  margin: 5px 0 0;
+  margin: 0;
   color: var(--public-green);
   font-size: .95rem;
   font-weight: 600;
-  text-align: left;
+  letter-spacing: .02em;
+  text-align: center;
 }
 
 .public-info-banner {
@@ -1758,6 +1769,11 @@ button[type="submit"]:hover {
     padding: 24px 4%;
   }
 
+  /* Abaixo de 861px o <picture> volta para a logo vertical. */
+  form .form-header img {
+    width: min(220px, 52vw);
+  }
+
   .tipo-alvara-content,
   .form-part-2,
   .public-confrontacoes-grid {
@@ -1802,19 +1818,12 @@ button[type="submit"]:hover {
   }
 
   form .form-header {
-    align-items: flex-start;
-    flex-direction: column;
     gap: 10px;
   }
 
   form .form-header img {
-    width: min(180px, 70vw);
+    width: min(180px, 62vw);
     height: auto;
-  }
-
-  form .form-header h1,
-  form .form-header p {
-    text-align: left;
   }
 
   .form-section,

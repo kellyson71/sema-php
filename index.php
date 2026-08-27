@@ -215,8 +215,13 @@ $locationTemplates = [
                     <input type="text" id="site_empresa" name="site_empresa" tabindex="-1" autocomplete="off">
                 </div>
                 <div class="form-header">
-                    <img src="./assets/img/logo-sema-vertical-redesign.png" alt="Secretaria Municipal de Meio Ambiente">
-                    <h1>SECRETARIA MUNICIPAL DE MEIO AMBIENTE</h1>
+                    <!-- A logo já traz o nome da secretaria; o h1 fica só para
+                         leitores de tela e busca, sem repetir na tela. -->
+                    <h1 class="public-visually-hidden">Secretaria Municipal de Meio Ambiente de Pau dos Ferros</h1>
+                    <picture>
+                        <source media="(min-width: 861px)" srcset="./assets/img/logo-prefeitura-sema-horizontal.png">
+                        <img src="./assets/img/logo-sema-vertical-redesign.png" alt="Prefeitura de Pau dos Ferros — Secretaria Municipal do Meio Ambiente">
+                    </picture>
                     <p>PROTOCOLO ELETRÔNICO · ALVARÁS · DENÚNCIAS · AUTORIZAÇÕES</p>
                 </div>
 
