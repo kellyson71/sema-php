@@ -726,28 +726,65 @@ $locationTemplates = [
                         style="border:0; background:transparent; padding:0; color:rgba(255,255,255,0.78); font:inherit; cursor:pointer; border-bottom:1px dotted rgba(255,255,255,0.35);">Avisos legais e privacidade</button>
             </nav>
 
-            <!-- Contatos como texto -->
-            <section style="display:flex; flex-wrap:wrap; justify-content:center; gap:28px; margin-bottom:36px;">
-                <a href="https://wa.me/5584996686413" target="_blank" rel="noopener"
-                   style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
-                   onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
-                    <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(74,222,128,0.15); flex-shrink:0;">
-                        <i class="fab fa-whatsapp" style="color:#4ade80; font-size:1.1rem;"></i>
+            <!-- Endereço, atendimento e contatos -->
+            <section class="public-footer-contatos" aria-label="Endereço e contatos da SEMA">
+                <div class="public-footer-contato">
+                    <span class="public-footer-contato-icone" style="background:rgba(96,165,250,0.15);">
+                        <i class="fas fa-location-dot" style="color:#60a5fa;"></i>
                     </span>
                     <span>
-                        <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">WhatsApp</span>
-                        <span style="font-weight:500;">(84) 99668-6413</span>
+                        <span class="public-footer-contato-rotulo">Endereço</span>
+                        <span class="public-footer-contato-valor">Rua Lafaiete Diógenes, nº 314 — São Judas Tadeu<br>Pau dos Ferros/RN — CEP 59.900-000</span>
+                    </span>
+                </div>
+
+                <div class="public-footer-contato">
+                    <span class="public-footer-contato-icone" style="background:rgba(251,191,36,0.15);">
+                        <i class="fas fa-clock" style="color:#fbbf24;"></i>
+                    </span>
+                    <span>
+                        <span class="public-footer-contato-rotulo">Horário de atendimento</span>
+                        <span class="public-footer-contato-valor">Segunda a sexta, das 7h às 17h<br><small style="color:rgba(255,255,255,0.5);">Alguns canais e plantões atendem das 7h às 13h.</small></span>
+                    </span>
+                </div>
+
+                <a class="public-footer-contato" href="https://wa.me/5584996686413" target="_blank" rel="noopener">
+                    <span class="public-footer-contato-icone" style="background:rgba(74,222,128,0.15);">
+                        <i class="fab fa-whatsapp" style="color:#4ade80;"></i>
+                    </span>
+                    <span>
+                        <span class="public-footer-contato-rotulo">Telefone / WhatsApp</span>
+                        <span class="public-footer-contato-valor">(84) 99668-6413<br><small style="color:rgba(255,255,255,0.5);">Denúncias e fiscalização.</small></span>
                     </span>
                 </a>
-                <a href="mailto:fiscalizacaosemapdf@gmail.com"
-                   style="display:inline-flex; align-items:center; gap:10px; color:rgba(255,255,255,0.75); text-decoration:none; font-size:1rem; transition:color 0.2s;"
-                   onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">
-                    <span style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:rgba(249,168,212,0.15); flex-shrink:0;">
-                        <i class="fas fa-envelope" style="color:#f9a8d4; font-size:1rem;"></i>
+
+                <a class="public-footer-contato" href="mailto:sema@paudosferros.rn.gov.br">
+                    <span class="public-footer-contato-icone" style="background:rgba(249,168,212,0.15);">
+                        <i class="fas fa-envelope" style="color:#f9a8d4;"></i>
                     </span>
                     <span>
-                        <span style="display:block; font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:1px;">E-mail</span>
-                        <span style="font-weight:500;">fiscalizacaosemapdf@gmail.com</span>
+                        <span class="public-footer-contato-rotulo">E-mail</span>
+                        <span class="public-footer-contato-valor">sema@paudosferros.rn.gov.br</span>
+                    </span>
+                </a>
+
+                <a class="public-footer-contato" href="mailto:fiscalizacaosemapdf@gmail.com">
+                    <span class="public-footer-contato-icone" style="background:rgba(249,168,212,0.15);">
+                        <i class="fas fa-envelope-open-text" style="color:#f9a8d4;"></i>
+                    </span>
+                    <span>
+                        <span class="public-footer-contato-rotulo">E-mail da fiscalização</span>
+                        <span class="public-footer-contato-valor">fiscalizacaosemapdf@gmail.com</span>
+                    </span>
+                </a>
+
+                <a class="public-footer-contato" href="https://paudosferros.rn.gov.br" target="_blank" rel="noopener">
+                    <span class="public-footer-contato-icone" style="background:rgba(34,211,238,0.15);">
+                        <i class="fas fa-globe" style="color:#22d3ee;"></i>
+                    </span>
+                    <span>
+                        <span class="public-footer-contato-rotulo">Site oficial</span>
+                        <span class="public-footer-contato-valor">Prefeitura de Pau dos Ferros</span>
                     </span>
                 </a>
             </section>

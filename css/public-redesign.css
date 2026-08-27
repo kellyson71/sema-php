@@ -137,6 +137,57 @@ header .user-options button[aria-pressed="true"] {
   margin-bottom: 30px;
 }
 
+/* Endereço, atendimento e contatos institucionais no rodapé. */
+.public-footer-contatos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 28px;
+  margin-bottom: 36px;
+  text-align: left;
+}
+
+.public-footer-contato {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: rgba(255, 255, 255, .75);
+  font-size: .95rem;
+  text-decoration: none;
+  transition: color .18s ease;
+}
+
+a.public-footer-contato:hover,
+a.public-footer-contato:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.public-footer-contato-icone {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1rem;
+}
+
+.public-footer-contato-rotulo {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(255, 255, 255, .4);
+  font-size: .7rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.public-footer-contato-valor {
+  display: block;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .public-action-card {
   position: relative;
   display: flex;
