@@ -228,21 +228,17 @@
 
         <div class="public-choice-intro">
           <strong>Como você quer registrar?</strong>
-          <p>Acompanhar permite receber o protocolo e visualizar medidas tomadas. Denúncia anônima não solicita identificação e não permite retorno individual.</p>
+          <p>A identificação informada na etapa 1 só é usada se você escolher acompanhar.</p>
         </div>
         <div class="form-grid-2">
           <label class="form-toggle public-choice-card">
             <span><input type="radio" name="anonimo" value="0" checked> Quero acompanhar</span>
+            <small>Você recebe um protocolo para acompanhar a denúncia e ver as medidas tomadas. A equipe usa seus dados para retorno.</small>
           </label>
           <label class="form-toggle public-choice-card">
             <span><input type="radio" name="anonimo" id="chk_anonimo" value="1"> Denúncia anônima</span>
+            <small>Seus dados não são registrados. Não há protocolo de acompanhamento nem retorno sobre a denúncia.</small>
           </label>
-        </div>
-        <div id="bloco_denunciante">
-          <div class="form-grid-2">
-            <input id="denunciante_nome" name="denunciante_nome" placeholder="Seu nome completo *">
-            <input id="denunciante_cpf" name="denunciante_cpf" placeholder="CPF para acompanhamento">
-          </div>
         </div>
 
         <div class="form-section-label" style="margin-top:18px;">Qual equipe deve analisar? <span style="color:#f87171">*</span></div>
@@ -578,6 +574,9 @@
   function setupWizard(form) {
     const tipoSection = form.querySelector('.form-section-alvara');
     const cadastroSections = Array.from(form.querySelectorAll('.secao-alvara:not(.public-rt-section)'));
+    // Identificação é pedida em todos os serviços, então não entra no rodízio
+    // por tipo: fica visível na etapa 1 mesmo antes de escolher a solicitação.
+    const comumSection = form.querySelector('.public-secao-comum');
     const responsavelComum = form.querySelector('#responsavel-tecnico-comum');
     const denunciaLocationSection = form.querySelector('.public-denuncia-location-section');
     const camposDinamicosSection = form.querySelector('.public-dynamic-section');
@@ -596,6 +595,7 @@
     let unlockedStep = 1;
 
     tipoSection.parentNode.insertBefore(tipoSection, cadastroSections[0] || tipoSection);
+    if (comumSection) tipoSection.insertAdjacentElement('afterend', comumSection);
     const previewNotice = document.createElement('div');
     previewNotice.className = 'public-step-preview-notice';
     previewNotice.hidden = true;
@@ -614,6 +614,10 @@
 
     function hasService() {
       return getTipo() !== '';
+    }
+
+    function isAnonima() {
+      return isDenuncia() && !!form.querySelector('input[name="anonimo"][value="1"]:checked');
     }
 
     function syncResponsibleBlock() {
@@ -675,7 +679,7 @@
     function setPreviewMode(step, preview) {
       form.dataset.publicPreviewStep = preview ? String(step) : '';
       previewNotice.hidden = !preview;
-      [tipoSection, ...cadastroSections, denunciaLocationSection, camposDinamicosSection, camposDinamicos, documentosSection, documentos, declaration, captcha]
+      [tipoSection, comumSection, ...cadastroSections, denunciaLocationSection, camposDinamicosSection, camposDinamicos, documentosSection, documentos, declaration, captcha]
         .forEach((section) => setReadonlyIn(section, preview && !section?.hidden));
       steps.forEach((button) => button.classList.toggle('is-preview', preview && Number(button.dataset.publicStep) === step));
       if (next) next.disabled = preview;
@@ -689,7 +693,9 @@
       form.dataset.publicTipo = isDenuncia() ? 'denuncia' : 'alvara';
 
       const denuncia = isDenuncia();
+      const anonima = isAnonima();
       updateHidden(tipoSection, step !== 1);
+      updateHidden(comumSection, step !== 1);
       cadastroSections.forEach((section) => updateHidden(section, !hasService() || denuncia || step !== 1));
       updateHidden(denunciaLocationSection, !hasService() || !denuncia || step !== 1);
       updateHidden(camposDinamicosSection, step !== 2);
@@ -717,6 +723,22 @@
           field.required = !denuncia && hasService() && step === 1;
         });
       });
+      if (comumSection) {
+        // Na denúncia anônima os dados continuam na tela, mas deixam de ser
+        // exigidos porque não serão registrados.
+        comumSection.querySelectorAll('[data-required]').forEach((field) => {
+          field.required = step === 1 && !anonima;
+        });
+        comumSection.classList.toggle('is-descartado', anonima);
+        updateHidden(comumSection.querySelector('[data-identificacao-anonimo]'), !anonima);
+        const nota = comumSection.querySelector('[data-identificacao-nota]');
+        updateHidden(nota, anonima);
+        if (nota) {
+          nota.textContent = denuncia
+            ? 'Use um e-mail e telefone que você acessa. É por eles que a equipe entra em contato sobre a denúncia.'
+            : 'Use um e-mail que você acessa. A confirmação, o boleto e os documentos finais serão enviados para esse endereço.';
+        }
+      }
       setRequiredIn(responsavelComum, step === 1 && !denuncia);
       if (denunciaLocationSection) {
         denunciaLocationSection.querySelectorAll('[data-required]').forEach((field) => {
@@ -738,7 +760,11 @@
       }
     }
 
-    window.SEMA_PUBLIC_FORM = { showStep };
+    function refresh() {
+      showStep(Number(form.dataset.publicCurrentStep || 1), { silent: true });
+    }
+
+    window.SEMA_PUBLIC_FORM = { showStep, refresh };
 
     steps.forEach((button) => button.addEventListener('click', () => {
       const target = Number(button.dataset.publicStep);
@@ -836,11 +862,9 @@
     const anonimoRadios = root.querySelectorAll('input[name="anonimo"]');
     if (anonimoRadios.length) {
       const syncAnonimo = () => {
-        const anonimo = root.querySelector('input[name="anonimo"][value="1"]')?.checked;
-        const bloco = document.getElementById('bloco_denunciante');
-        const nomeInput = document.getElementById('denunciante_nome');
-        if (bloco) bloco.style.display = anonimo ? 'none' : '';
-        if (nomeInput) nomeInput.required = !anonimo;
+        // A identificação mora na etapa 1 (bloco comum a todos os serviços);
+        // aqui só reavaliamos se ela ainda é exigida.
+        window.SEMA_PUBLIC_FORM?.refresh?.();
       };
       anonimoRadios.forEach((radio) => radio.addEventListener('change', syncAnonimo));
       syncAnonimo();
@@ -1078,12 +1102,27 @@
         return false;
       }
 
+      function validarEmailRequerente() {
+        const email = document.querySelector('input[name="requerente[email]"]');
+        const emailConfirmacao = document.querySelector('input[name="requerente[email_confirmacao]"]');
+        if (email?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) markInvalid(email, 'Informe um e-mail válido.');
+        if (email?.value.trim().toLowerCase() !== emailConfirmacao?.value.trim().toLowerCase()) {
+          markInvalid(emailConfirmacao, 'Os e-mails informados não coincidem.');
+        }
+      }
+
       if (!tipoAlvara) markInvalid(document.getElementById('tipo_alvara'), 'Selecione o tipo de solicitação.');
 
       if (tipoAlvara === 'denuncia') {
         const anonimo = document.querySelector('input[name="anonimo"][value="1"]')?.checked;
         requireValue('input[name="proprietario_endereco"]', 'Informe o local da ocorrência.');
-        if (!anonimo) requireValue('input[name="denunciante_nome"]', 'Informe seu nome ou marque denúncia anônima.');
+        if (!anonimo) {
+          requireValue('input[name="requerente[nome]"]', 'Informe seu nome ou escolha denúncia anônima na etapa 2.');
+          requireValue('input[name="requerente[email]"]', 'Informe o e-mail para receber o protocolo da denúncia.');
+          requireValue('input[name="requerente[telefone]"]', 'Informe o telefone para contato.');
+          requireValue('input[name="requerente[email_confirmacao]"]', 'Confirme o e-mail.');
+          validarEmailRequerente();
+        }
         requireValue('textarea[name="observacoes"]', 'Descreva a ocorrência denunciada.');
         requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
         requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
@@ -1099,12 +1138,7 @@
         requireValue('input[name="endereco_objetivo"]', 'Informe a localização da obra ou objetivo.');
         requireChecked('input[name="notificado_fiscal_obras"]:checked', 'input[name="notificado_fiscal_obras"]', 'Informe se houve notificação pelo fiscal de obras.');
 
-        const email = document.querySelector('input[name="requerente[email]"]');
-        const emailConfirmacao = document.querySelector('input[name="requerente[email_confirmacao]"]');
-        if (email?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) markInvalid(email, 'Informe um e-mail válido.');
-        if (email?.value.trim().toLowerCase() !== emailConfirmacao?.value.trim().toLowerCase()) {
-          markInvalid(emailConfirmacao, 'Os e-mails informados não coincidem.');
-        }
+        validarEmailRequerente();
 
         const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]');
         const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
@@ -1126,7 +1160,7 @@
 
       if (firstInvalid) {
         e.preventDefault();
-        if (firstInvalid.closest('.public-denuncia-location-section') || firstInvalid.closest('.secao-alvara') || firstInvalid.closest('.form-section-alvara')) window.SEMA_PUBLIC_FORM?.showStep(1);
+        if (firstInvalid.closest('.public-denuncia-location-section') || firstInvalid.closest('.secao-alvara') || firstInvalid.closest('.public-secao-comum') || firstInvalid.closest('.form-section-alvara')) window.SEMA_PUBLIC_FORM?.showStep(1);
         else if (firstInvalid.closest('#campos_dinamicos') || firstInvalid.closest('.public-dynamic-section')) window.SEMA_PUBLIC_FORM?.showStep(2);
         else if (firstInvalid.closest('.documentos-container')) window.SEMA_PUBLIC_FORM?.showStep(3);
         firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });

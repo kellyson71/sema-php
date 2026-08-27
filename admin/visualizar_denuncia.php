@@ -196,6 +196,33 @@ include 'header.php';
                             <span class="block text-sm text-gray-500 mb-1">Endereço da Ocorrência:</span>
                             <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['infrator_endereco'] ?: 'Não informado'); ?></span>
                         </div>
+                        <div class="pt-4 border-t border-gray-100">
+                            <span class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-user-shield text-gray-400 mr-1"></i> Denunciante</span>
+                            <?php if (!empty($denuncia['anonimo'])): ?>
+                                <span class="inline-flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-600">
+                                    <i class="fas fa-user-secret"></i> Denúncia anônima — sem dados de identificação
+                                </span>
+                            <?php else: ?>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="block text-sm text-gray-500 mb-1">Nome:</span>
+                                        <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['denunciante_nome'] ?: 'Não informado'); ?></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-sm text-gray-500 mb-1">CPF/CNPJ:</span>
+                                        <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['denunciante_cpf'] ?? '' ?: 'Não informado'); ?></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-sm text-gray-500 mb-1">E-mail:</span>
+                                        <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['denunciante_email'] ?? '' ?: 'Não informado'); ?></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-sm text-gray-500 mb-1">Telefone:</span>
+                                        <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['denunciante_telefone'] ?? '' ?: 'Não informado'); ?></span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <!-- Modo edição -->
                     <div id="editInfos" class="hidden space-y-4">

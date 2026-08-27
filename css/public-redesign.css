@@ -463,6 +463,31 @@ form > .form-section-alvara {
   line-height: 1.45;
 }
 
+.public-field-note[hidden],
+.public-anonimo-aviso[hidden] {
+  display: none !important;
+}
+
+.public-anonimo-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: -4px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #fcd34d;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
+/* Denúncia anônima: os campos seguem na tela, mas sinalizados como não usados. */
+.public-secao-comum.is-descartado .form-part-2 {
+  opacity: .55;
+}
+
 .public-location-composer {
   width: 100%;
 }
@@ -1097,6 +1122,14 @@ form textarea:focus {
 #campos_dinamicos small,
 #campos_dinamicos p {
   color: var(--public-muted) !important;
+}
+
+#campos_dinamicos .public-choice-card small {
+  display: block;
+  margin-top: 6px;
+  padding-left: 24px;
+  font-size: .78rem;
+  line-height: 1.4;
 }
 
 #campos_dinamicos label:has(input:checked),

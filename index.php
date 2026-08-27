@@ -289,14 +289,18 @@ $locationTemplates = [
                     </div>
                 </div>
 
-                <!-- Seção 2: Dados do Requerente (oculta em modo denúncia) -->
-                <div class="form-section secao-alvara">
-                    <div class="form-section-label">Dados do Requerente</div>
-                    <p class="public-field-note">Use um e-mail que você acessa. A confirmação, o boleto e os documentos finais serão enviados para esse endereço.</p>
+                <!-- Seção 2: Identificação — comum a todos os serviços, sempre visível -->
+                <div class="form-section public-secao-comum" id="secao-identificacao">
+                    <div class="form-section-label">Seus dados</div>
+                    <p class="public-field-note" data-identificacao-nota>Use um e-mail que você acessa. A confirmação, o boleto e os documentos finais serão enviados para esse endereço.</p>
+                    <div class="public-anonimo-aviso" data-identificacao-anonimo hidden>
+                        <i class="fas fa-user-secret" aria-hidden="true"></i>
+                        <span>Você escolheu denúncia anônima na etapa 2. Estes dados não serão registrados nem enviados.</span>
+                    </div>
                     <div class="form-part-2">
-                        <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo do Requerente *" autocomplete="name">
+                        <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
                         <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF ou CNPJ do Requerente" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                            placeholder="CPF ou CNPJ" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
                         <input data-required="true" type="email" id="requerente_email" name="requerente[email]" placeholder="E-mail para receber as comunicações *" autocomplete="email" inputmode="email" maxlength="191">
                         <input data-required="true" type="email" id="requerente_email_confirmacao" name="requerente[email_confirmacao]" placeholder="Confirme o e-mail *" autocomplete="email" inputmode="email" maxlength="191">
                         <input class="public-field-wide" type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"

@@ -34,7 +34,13 @@ if ($formLoadedAt > 0 && time() - $formLoadedAt < 3) {
 // ── Coletar e validar dados ────────────────────────────────────────────────
 
 $anonimo           = isset($_POST['anonimo']) && $_POST['anonimo'] === '1';
-$denuncianteNome   = trim($_POST['denunciante_nome'] ?? '');
+// A identificação vem do bloco comum a todos os serviços (etapa 1). Os nomes
+// antigos continuam aceitos para não quebrar formulários em cache.
+$requerente        = (array) ($_POST['requerente'] ?? []);
+$denuncianteNome   = trim($requerente['nome'] ?? '') ?: trim($_POST['denunciante_nome'] ?? '');
+$denuncianteCpf    = trim($requerente['cpf_cnpj'] ?? '') ?: trim($_POST['denunciante_cpf'] ?? '');
+$denuncianteEmail  = trim($requerente['email'] ?? '');
+$denuncianteFone   = trim($requerente['telefone'] ?? '');
 $denuncianteEnd    = trim($_POST['denunciante_endereco'] ?? '');
 $propNome          = trim($_POST['proprietario_nome'] ?? '');
 $propEndereco      = trim($_POST['proprietario_endereco'] ?? '');
@@ -48,6 +54,12 @@ $erros = [];
 
 if (!$anonimo && empty($denuncianteNome)) {
     $erros[] = 'Informe seu nome ou marque a opção de denúncia anônima.';
+}
+if (!$anonimo && empty($denuncianteEmail)) {
+    $erros[] = 'Informe o e-mail para receber o protocolo ou marque a opção de denúncia anônima.';
+}
+if (!$anonimo && $denuncianteEmail !== '' && !filter_var($denuncianteEmail, FILTER_VALIDATE_EMAIL)) {
+    $erros[] = 'Informe um e-mail válido.';
 }
 if (empty($propEndereco)) {
     $erros[] = 'Informe o local da ocorrência.';
@@ -158,16 +170,20 @@ try {
         INSERT INTO denuncias
             (infrator_nome, infrator_endereco, observacoes,
              admin_id, origem,
-             denunciante_nome, denunciante_endereco, anonimo,
+             denunciante_nome, denunciante_cpf, denunciante_email,
+             denunciante_telefone, denunciante_endereco, anonimo,
              proprietario_nome, proprietario_endereco, proprietario_contato,
              tipo_denuncia, setor, protocolo_publico)
-        VALUES (?, ?, ?, NULL, 'publico', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, NULL, 'publico', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $propNome ?: 'Não informado',
         $propEndereco ?: null,
         $observacoes ?: null,
         $anonimo ? null : $denuncianteNome,
+        $anonimo ? null : ($denuncianteCpf ?: null),
+        $anonimo ? null : ($denuncianteEmail ?: null),
+        $anonimo ? null : ($denuncianteFone ?: null),
         $anonimo ? null : $denuncianteEnd,
         $anonimo ? 1 : 0,
         $propNome ?: null,
