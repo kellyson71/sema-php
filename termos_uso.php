@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/config.php';
 $titulo = 'Termos de Uso - SEMA Pau dos Ferros';
 ?>
 <!DOCTYPE html>
@@ -31,6 +32,15 @@ $titulo = 'Termos de Uso - SEMA Pau dos Ferros';
             <p>O sistema utiliza cookies e tecnologias similares necessários ao funcionamento, segurança, manutenção de sessão, acessibilidade, prevenção de abuso e medição estatística de uso. Também podem ser usados registros técnicos, como data, horário, navegador e endereço IP, para auditoria, proteção e melhoria do serviço.</p>
             <h2>Comunicação</h2>
             <p>As comunicações podem ocorrer por e-mail, telefone, WhatsApp ou canais oficiais informados no processo.</p>
+            <h2>Remetente oficial e prevenção a golpes</h2>
+            <p>Todos os avisos automáticos deste sistema — confirmação de protocolo, pedido de documento complementar, aviso de taxa e envio de documentos finais — partem de um único endereço:</p>
+            <p><strong><?= htmlspecialchars(EMAIL_FROM) ?></strong> (exibido como &ldquo;<?= htmlspecialchars(EMAIL_FROM_NAME) ?>&rdquo;).</p>
+            <p>Mensagens vindas de qualquer outro endereço não são da SEMA, ainda que usem o nome, o brasão ou o número de protocolo corretos. Observe também que:</p>
+            <ul>
+                <li>A SEMA não solicita senha, código de acesso, dado de cartão nem transferência por Pix ou depósito em conta de pessoa física.</li>
+                <li>Quando há taxa, o pagamento é feito por boleto emitido no portal do contribuinte da prefeitura — nunca por link de pagamento enviado por terceiros.</li>
+                <li>Na dúvida sobre a autenticidade de uma mensagem, não clique em links nem abra anexos: confirme pelo WhatsApp (84) 99668-6413 ou consulte o andamento pelo número do protocolo neste site.</li>
+            </ul>
             <h2>Contato</h2>
             <p>Dúvidas podem ser encaminhadas ao WhatsApp (84) 99668-6413 ou ao e-mail fiscalizacaosemapdf@gmail.com.</p>
         </article>

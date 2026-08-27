@@ -167,6 +167,39 @@ header .user-options button[aria-pressed="true"] {
   line-height: 1.6;
 }
 
+/* Remetente oficial em destaque: é o que permite ao cidadão reconhecer
+   uma mensagem falsa pedindo pagamento ou dados. */
+.public-footer-remetente {
+  margin-top: 14px !important;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-left: 3px solid #4ade80;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .04);
+  font-size: .8rem !important;
+}
+
+.public-footer-remetente strong {
+  display: block;
+  color: rgba(255, 255, 255, .75);
+  font-weight: 600;
+}
+
+.public-footer-remetente a {
+  display: inline-block;
+  margin: 2px 0 4px;
+  color: #4ade80;
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.public-footer-remetente a:hover,
+.public-footer-remetente a:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 .public-footer-col h3 {
   margin: 0 0 12px;
   padding-bottom: 10px;

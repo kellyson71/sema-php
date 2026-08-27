@@ -1,7 +1,11 @@
 <?php
 require_once 'includes/config.php';
 
-session_start();
+// O config.php já abre a sessão; chamar de novo emite notice e, com
+// display_errors ligado, o output quebra o redirect abaixo.
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 if (!isset($_SESSION['protocolo'])) {
     header('Location: index.php');
@@ -260,6 +264,17 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 <div class="aviso">
                     <i class="fas fa-exclamation-triangle"></i>
                     <span>Este é um <strong>registro de entrada interno</strong>. Guarde-o até receber o protocolo oficial por e-mail, em até <strong>7 dias úteis</strong>.</span>
+                </div>
+
+                <div class="aviso" style="background:#fffbeb;border-left-color:#b45309;color:#78350f;padding:16px 18px;">
+                    <i class="fas fa-shield-halved" style="color:#b45309;font-size:1.1rem;"></i>
+                    <span>
+                        <strong>Guarde nosso endereço para não cair em golpe.</strong>
+                        Só enviamos mensagens de <strong><?= htmlspecialchars(EMAIL_FROM) ?></strong>.
+                        Qualquer outro remetente pedindo pagamento, Pix, senha ou dados de cartão não é a SEMA —
+                        a taxa, quando houver, é paga por boleto no portal do contribuinte.
+                        Na dúvida, confirme pelo WhatsApp (84) 99668-6413.
+                    </span>
                 </div>
 
                 <ul class="passos">
