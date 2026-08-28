@@ -87,6 +87,7 @@ $locationTemplates = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Requerimento de Alvará - Secretaria Municipal de Meio Ambiente</title>
     <link rel="icon" href="./assets/img/favicon.ico" type="image/x-icon">
@@ -210,10 +211,6 @@ $locationTemplates = [
             <form id="form" enctype="multipart/form-data" method="post" action="processar_formulario.php">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="form_loaded_at" value="<?= time() ?>">
-                <div class="hp-field" aria-hidden="true">
-                    <label for="site_empresa">Site</label>
-                    <input type="text" id="site_empresa" name="site_empresa" tabindex="-1" autocomplete="off">
-                </div>
                 <div class="form-header">
                     <!-- A logo já traz o nome da secretaria; o h1 fica só para
                          leitores de tela e busca, sem repetir na tela. -->
@@ -335,7 +332,6 @@ $locationTemplates = [
 
                 <div class="form-section public-denuncia-location-section" hidden>
                     <?= renderLocationComposer('proprietario_endereco', 'Local da ocorrência', true, $formData['proprietario_endereco'] ?? '') ?>
-                    <p class="public-field-note">Informe onde a situação denunciada está acontecendo. O município será sempre Pau dos Ferros/RN.</p>
                 </div>
 
                 <!-- Seção 4: Tipo de Solicitação -->
@@ -390,6 +386,34 @@ $locationTemplates = [
                     </div>
                 </div>
 
+                <section class="form-section public-denuncia-mode-section" hidden aria-labelledby="denuncia-identificacao-titulo">
+                    <div class="form-section-label" id="denuncia-identificacao-titulo">Deseja se identificar?</div>
+                    <div class="public-denuncia-identity-grid">
+                        <label class="public-denuncia-identity-card">
+                            <input type="radio" name="anonimo" value="0" required>
+                            <span class="public-denuncia-identity-icon" aria-hidden="true"><i class="fas fa-user-check"></i></span>
+                            <span class="public-denuncia-identity-copy">
+                                <strong>Quero me identificar</strong>
+                                <small>A equipe poderá entrar em contato.</small>
+                            </span>
+                            <i class="fas fa-circle-check public-denuncia-selected-icon" aria-hidden="true"></i>
+                        </label>
+                        <label class="public-denuncia-identity-card">
+                            <input type="radio" name="anonimo" id="chk_anonimo" value="1" required>
+                            <span class="public-denuncia-identity-icon" aria-hidden="true"><i class="fas fa-user-secret"></i></span>
+                            <span class="public-denuncia-identity-copy">
+                                <strong>Quero ficar anônimo</strong>
+                                <small>Nenhum dado pessoal será registrado.</small>
+                            </span>
+                            <i class="fas fa-circle-check public-denuncia-selected-icon" aria-hidden="true"></i>
+                        </label>
+                    </div>
+                    <div class="public-denuncia-anonimo-warning" data-anonimo-warning hidden role="alert" aria-live="polite">
+                        <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                        <span><strong>Atenção:</strong> a denúncia anônima não permite acompanhamento nem contato posterior. Após o envio, você não poderá consultar o andamento.</span>
+                    </div>
+                </section>
+
                 <div class="form-section public-dynamic-section" hidden>
                     <div class="form-section-label" id="public-dynamic-title">Dados da solicitação</div>
                     <div id="campos_dinamicos">
@@ -435,6 +459,8 @@ $locationTemplates = [
                 window.SEMA_TIPOS_ALVARA = <?= json_encode($tiposAlvaraPublicos, JSON_UNESCAPED_UNICODE) ?>;
                 window.SEMA_FORM_CONFIG = {
                     csrfToken: <?= json_encode($_SESSION['csrf_token']) ?>,
+                    maxUploadTotalBytes: <?= MAX_POST_SIZE - (6 * 1024 * 1024) ?>,
+                    maxUploadTotalLabel: '250MB',
                     tipoRules: <?= json_encode($tipoRules, JSON_UNESCAPED_UNICODE) ?>,
                     formData: <?= json_encode($formData, JSON_UNESCAPED_UNICODE) ?>,
                     hasServerFormData: <?= json_encode(!empty($formData)) ?>,

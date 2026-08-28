@@ -40,7 +40,8 @@ function renderLocationComposer(string $name, string $label, bool $required = tr
         <input{$requiredAttr} data-location-field="bairro" placeholder="{$bairroPlaceholder}">
         <input data-location-field="lote" placeholder="Lote">
         <input data-location-field="quadra" placeholder="Quadra">
-        <input data-location-field="numero" placeholder="Número (deixe vazio para SN)">
+        <input data-location-field="numero" placeholder="Número (deixe vazio para SN)" inputmode="numeric"
+            maxlength="10" title="Informe somente o número, como 123 ou 123A; deixe vazio para SN.">
     </div>
     <div class="public-location-preview">
         <span>Como ficará:</span>

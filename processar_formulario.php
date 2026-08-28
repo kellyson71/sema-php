@@ -4,11 +4,6 @@ require_once 'includes/config.php';
 // Incluir arquivo com os tipos de alvará
 include_once 'tipos_alvara.php';
 
-// Iniciar sessão para mensagens flash
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 // Inclusão de arquivos necessários
 require_once 'includes/functions.php';
 require_once 'includes/models.php';
@@ -22,11 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
         $_SESSION['form_data'] = $_POST;
         setMensagem('erro', 'Sessão expirada. Recarregue a página e tente novamente.');
-        redirect('index.php');
-    }
-
-    if (!empty($_POST['site_empresa'] ?? '')) {
-        setMensagem('erro', 'Não foi possível validar o envio.');
         redirect('index.php');
     }
 

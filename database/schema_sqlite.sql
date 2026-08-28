@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS requerimentos (
     requerente_id INTEGER NOT NULL,
     proprietario_id INTEGER,
     endereco_objetivo TEXT NOT NULL,
+    enquadramento_atividade VARCHAR(255),
+    localizacao_google_maps VARCHAR(500),
     ctf_numero VARCHAR(50),
     licenca_anterior_numero VARCHAR(50),
     publicacao_diario_oficial VARCHAR(255),

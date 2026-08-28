@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS requerimentos (
     requerente_id INT NOT NULL,
     proprietario_id INT,
     endereco_objetivo TEXT NOT NULL,
+    enquadramento_atividade VARCHAR(255) NULL COMMENT 'Slug da atividade selecionada na tabela CONEMA 04/2009',
+    localizacao_google_maps VARCHAR(500) NULL COMMENT 'Link do Google Maps do empreendimento',
     ctf_numero VARCHAR(50) NULL COMMENT 'Cadastro Técnico Federal',
     licenca_anterior_numero VARCHAR(50) NULL COMMENT 'Número da licença anterior',
     publicacao_diario_oficial VARCHAR(255) NULL COMMENT 'Dados da publicação em Diário Oficial',

@@ -708,6 +708,129 @@ form > .form-section-alvara {
   line-height: 1.45;
 }
 
+.public-denuncia-mode-section {
+  border-color: #b7dfc8;
+  background: linear-gradient(145deg, #fff 0%, #f5fbf7 100%);
+}
+
+.public-denuncia-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.public-denuncia-identity-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  min-height: 96px;
+  padding: 18px;
+  border: 2px solid var(--public-line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--public-ink);
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.public-denuncia-identity-card:hover {
+  border-color: #86cba4;
+  transform: translateY(-1px);
+}
+
+.public-denuncia-identity-card:has(input:checked) {
+  border-color: var(--public-green);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(0, 150, 64, .1);
+}
+
+.public-denuncia-identity-card > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.public-denuncia-identity-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e9f7ef;
+  color: var(--public-green-dark);
+  font-size: 1.2rem;
+}
+
+.public-denuncia-identity-copy strong,
+.public-denuncia-identity-copy small {
+  display: block;
+}
+
+.public-denuncia-identity-copy strong {
+  margin-bottom: 6px;
+  color: var(--public-ink);
+  font-size: 1rem;
+}
+
+.public-denuncia-identity-copy small {
+  color: var(--public-muted);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+
+.public-denuncia-selected-icon {
+  color: var(--public-green);
+  opacity: 0;
+}
+
+.public-denuncia-identity-card:has(input:checked) .public-denuncia-selected-icon {
+  opacity: 1;
+}
+
+.public-denuncia-anonimo-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #f4c56a;
+  border-left: 4px solid #d97706;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
+.public-denuncia-anonimo-warning i {
+  margin-top: 2px;
+  color: #d97706;
+}
+
+form[data-public-tipo="denuncia"] .public-denuncia-location-section .public-location-preview {
+  display: none;
+}
+
+form[data-public-tipo="denuncia"] .public-denuncia-evidencias {
+  margin-bottom: 0;
+}
+
+.file-input-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  color: var(--public-green-dark);
+  font-size: .8rem;
+}
+
+.file-input-container.tem-arquivo .file-input-status {
+  display: flex;
+}
+
 /* Denúncia anônima: os campos seguem na tela, mas sinalizados como não usados. */
 .public-secao-comum.is-descartado .form-part-2 {
   opacity: .55;
@@ -1355,6 +1478,46 @@ form textarea:focus {
   padding-left: 24px;
   font-size: .78rem;
   line-height: 1.4;
+}
+
+#campos_dinamicos .public-choice-card {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--public-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--public-ink) !important;
+  font-size: .88rem;
+  font-weight: 650;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+#campos_dinamicos .public-choice-card > input[type="radio"],
+#campos_dinamicos .public-choice-card > input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px !important;
+  min-width: 18px;
+  height: 18px !important;
+  margin: 0;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+  accent-color: var(--public-green);
+}
+
+#campos_dinamicos .public-choice-card > input[type="checkbox"] {
+  border-radius: 4px !important;
+}
+
+#campos_dinamicos .public-choice-card > i {
+  color: var(--public-green);
 }
 
 #campos_dinamicos label:has(input:checked),
@@ -2068,6 +2231,15 @@ button[type="submit"]:hover {
   .form-section,
   .form-part-4 {
     padding: 16px;
+  }
+
+  .public-denuncia-identity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-denuncia-identity-card {
+    min-height: 104px;
+    padding: 14px;
   }
 
   .public-step-counter {

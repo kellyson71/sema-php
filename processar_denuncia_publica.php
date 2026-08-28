@@ -4,8 +4,6 @@ require_once 'includes/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/public_form_components.php';
 
-session_start();
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
     exit;
@@ -14,12 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
     $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Sessão expirada. Recarregue a página e tente novamente.'];
-    header('Location: index.php');
-    exit;
-}
-
-if (!empty($_POST['site_empresa'] ?? '')) {
-    $_SESSION['mensagem'] = ['tipo' => 'erro', 'texto' => 'Não foi possível validar o envio.'];
     header('Location: index.php');
     exit;
 }
@@ -191,7 +183,7 @@ try {
         $propContato ?: null,
         $tipoDenunciaJson,
         $setor,
-        $protocolo,
+        $anonimo ? null : $protocolo,
     ]);
 
     $denunciaId = (int) $pdo->lastInsertId();
@@ -237,7 +229,12 @@ try {
 
 // ── Página de sucesso ──────────────────────────────────────────────────────
 
-$_SESSION['denuncia_protocolo'] = $protocolo;
-$_SESSION['denuncia_anonimo']   = $anonimo;
+$_SESSION['denuncia_enviada'] = true;
+$_SESSION['denuncia_anonimo'] = $anonimo;
+if ($anonimo) {
+    unset($_SESSION['denuncia_protocolo']);
+} else {
+    $_SESSION['denuncia_protocolo'] = $protocolo;
+}
 header('Location: sucesso_denuncia.php');
 exit;

@@ -316,6 +316,8 @@ CREATE TABLE `requerimentos` (
   `responsavel_tecnico_tipo_documento` varchar(10) DEFAULT NULL,
   `responsavel_tecnico_numero` varchar(100) DEFAULT NULL,
   `especificacao` text DEFAULT NULL,
+  `enquadramento_atividade` varchar(255) DEFAULT NULL COMMENT 'Slug da atividade selecionada na tabela CONEMA 04/2009',
+  `localizacao_google_maps` varchar(500) DEFAULT NULL COMMENT 'Link do Google Maps do empreendimento',
   `cadastro_imobiliario` varchar(50) DEFAULT NULL COMMENT 'Nº do cadastro imobiliário / sequencial',
   `inicio_obra` date DEFAULT NULL COMMENT 'Início da obra (construção/habite-se)',
   `termino_obra` date DEFAULT NULL COMMENT 'Término/previsão de término da obra',
