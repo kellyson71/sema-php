@@ -232,6 +232,10 @@ if ($isAnalista) {
             margin: 0 auto;
         }
 
+        .sidebar-logo-collapsed {
+            display: none;
+        }
+
         .sidebar-brand-copy {
             display: flex;
             flex-direction: column;
@@ -1215,6 +1219,19 @@ if ($isAnalista) {
             display: none !important;
         }
 
+        body.sidebar-collapsed .sidebar-logo {
+            display: none;
+        }
+
+        body.sidebar-collapsed .sidebar-logo-collapsed {
+            display: block;
+            width: 42px;
+            height: 42px;
+            max-width: none;
+            object-fit: contain;
+            margin: 0 auto;
+        }
+
         body.sidebar-collapsed .sidebar-link,
         body.sidebar-collapsed .sidebar-menu .nav-link,
         body.sidebar-collapsed .sidebar-brand {
@@ -1478,6 +1495,7 @@ if ($isAnalista) {
         <div class="sidebar-header">
             <a href="<?= $adminBase ?>index.php" class="sidebar-brand" title="SEMA — Painel Administrativo">
                 <img src="<?= $adminBase ?>../assets/img/Logo_sema.png" alt="SEMA" class="sidebar-logo">
+                <img src="<?= $adminBase ?>../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png" alt="SEMA" class="sidebar-logo-collapsed">
             </a>
         </div>
 

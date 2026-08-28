@@ -23,7 +23,7 @@ services:
       - sema_db_data:/var/lib/mysql
       - ./database/u492577848_SEMA.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "3307:3306"
+      - "3319:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-u", "root", "-proot", "--silent"]
       interval: 5s
@@ -37,7 +37,7 @@ services:
       PMA_USER: root
       PMA_PASSWORD: root
     ports:
-      - "8091:80"
+      - "8099:80"
     depends_on:
       db:
         condition: service_healthy
