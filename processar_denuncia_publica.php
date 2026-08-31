@@ -47,8 +47,14 @@ $erros = [];
 if (!$anonimo && empty($denuncianteNome)) {
     $erros[] = 'Informe seu nome ou marque a opção de denúncia anônima.';
 }
+if (!$anonimo) {
+    $denuncianteCpf = preg_replace('/\D/', '', $denuncianteCpf);
+    if (strlen($denuncianteCpf) !== 11) {
+        $erros[] = 'Informe um CPF válido com 11 dígitos ou marque a opção de denúncia anônima.';
+    }
+}
 if (!$anonimo && empty($denuncianteEmail)) {
-    $erros[] = 'Informe o e-mail para receber o protocolo ou marque a opção de denúncia anônima.';
+    $erros[] = 'Informe seu e-mail ou marque a opção de denúncia anônima.';
 }
 if (!$anonimo && $denuncianteEmail !== '' && !filter_var($denuncianteEmail, FILTER_VALIDATE_EMAIL)) {
     $erros[] = 'Informe um e-mail válido.';

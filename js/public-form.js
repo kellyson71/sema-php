@@ -805,7 +805,14 @@
           requireValue('input[name="proprietario_endereco"]', 'Informe o local da ocorrência.');
           if (identificacaoEscolhida && !anonimo) {
             requireValue('input[name="requerente[nome]"]', 'Informe seu nome ou escolha fazer uma denúncia anônima.');
-            if (requireValue('input[name="requerente[email]"]', 'Informe o e-mail para receber o protocolo da denúncia.')) {
+            const cpfDenunciante = form.querySelector('input[name="requerente[cpf_cnpj]"]');
+            if (requireValue(cpfDenunciante, 'Informe seu CPF ou escolha fazer uma denúncia anônima.')) {
+              const cpfNumeros = cpfDenunciante.value.replace(/\D/g, '');
+              if (cpfNumeros.length !== 11) {
+                markInvalid(cpfDenunciante, 'Informe um CPF válido com 11 dígitos.');
+              }
+            }
+            if (requireValue('input[name="requerente[email]"]', 'Informe seu e-mail ou escolha fazer uma denúncia anônima.')) {
               const email = form.querySelector('input[name="requerente[email]"]');
               if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
                 markInvalid(email, 'Informe um e-mail válido.');
@@ -1147,12 +1154,21 @@
           field.required = denuncia ? (identificacaoEscolhida && !anonima) : step === 1;
         });
         const cpfRequerente = comumSection.querySelector('input[name="requerente[cpf_cnpj]"]');
+        const emailRequerente = comumSection.querySelector('input[name="requerente[email]"]');
         const confirmacaoEmail = comumSection.querySelector('input[name="requerente[email_confirmacao]"]');
         const telefoneRequerente = comumSection.querySelector('input[name="requerente[telefone]"]');
-        updateHidden(cpfRequerente, denuncia);
+        const identificacaoObrigatoria = denuncia && identificacaoEscolhida && !anonima;
+        updateHidden(cpfRequerente, denuncia && !identificacaoObrigatoria);
         updateHidden(confirmacaoEmail, denuncia);
-        if (cpfRequerente) cpfRequerente.required = denuncia ? false : step === 1;
+        if (cpfRequerente) {
+          cpfRequerente.required = denuncia ? identificacaoObrigatoria : step === 1;
+          cpfRequerente.placeholder = denuncia ? 'CPF *' : 'CPF ou CNPJ';
+          cpfRequerente.maxLength = denuncia ? 14 : 18;
+        }
         if (confirmacaoEmail) confirmacaoEmail.required = denuncia ? false : step === 1;
+        if (emailRequerente) {
+          emailRequerente.placeholder = denuncia ? 'E-mail *' : 'E-mail para receber as comunicações *';
+        }
         if (telefoneRequerente) {
           telefoneRequerente.required = denuncia ? false : step === 1;
           telefoneRequerente.placeholder = denuncia ? 'Telefone para contato (opcional)' : 'Digite seu Telefone *';
@@ -1163,7 +1179,7 @@
         updateHidden(nota, anonima);
         if (nota) {
           nota.textContent = denuncia
-            ? 'Seus dados ficam protegidos e serão usados somente se a equipe precisar entrar em contato sobre a denúncia.'
+            ? 'Informe seus dados para registrar a denúncia de forma identificada.'
             : 'Use um e-mail que você acessa. A confirmação, o boleto e os documentos finais serão enviados para esse endereço.';
         }
       }

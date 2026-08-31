@@ -8,6 +8,7 @@ if (empty($_SESSION['denuncia_enviada'])) {
 
 $protocolo = (string) ($_SESSION['denuncia_protocolo'] ?? '');
 $anonimo   = !empty($_SESSION['denuncia_anonimo']);
+$consultaUrl = rtrim(BASE_URL, '/') . '/consultar_denuncia.php';
 
 unset($_SESSION['denuncia_enviada'], $_SESSION['denuncia_protocolo'], $_SESSION['denuncia_anonimo']);
 ?>
@@ -100,7 +101,7 @@ unset($_SESSION['denuncia_enviada'], $_SESSION['denuncia_protocolo'], $_SESSION[
             <?php if ($anonimo): ?>
                 <div class="ds-detail">
                     <i class="fas fa-user-secret" aria-hidden="true"></i>
-                    <span>A denúncia foi enviada de forma <strong>anônima</strong>. Nenhum dado pessoal foi armazenado e não será possível acompanhar o andamento ou receber contato da equipe.</span>
+                    <span>A denúncia foi enviada de forma <strong>anônima</strong>. Nenhum dado pessoal foi armazenado e não será possível acompanhar o andamento.</span>
                 </div>
             <?php else: ?>
                 <div class="ds-protocol">
@@ -109,7 +110,7 @@ unset($_SESSION['denuncia_enviada'], $_SESSION['denuncia_protocolo'], $_SESSION[
                 </div>
                 <div class="ds-detail">
                     <i class="fas fa-circle-info" aria-hidden="true"></i>
-                    <span>Guarde o protocolo para consultar o andamento e as providências registradas pela equipe.</span>
+                    <span>Guarde o protocolo. Consulte o andamento em <a href="<?= htmlspecialchars($consultaUrl) ?>"><strong><?= htmlspecialchars($consultaUrl) ?></strong></a>.</span>
                 </div>
             <?php endif; ?>
 

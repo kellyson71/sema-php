@@ -80,6 +80,10 @@ $locationTemplates = [
     'localizacao_area' => renderLocationComposer('localizacao_area', 'Localização da área'),
     'endereco_imovel' => renderLocationComposer('endereco_imovel', 'Endereço do imóvel'),
 ];
+
+// Configurações antigas de ambientes remotos podem ainda não declarar este
+// limite. O fallback mantém a página funcional até o config local ser atualizado.
+$maxPostSize = defined('MAX_POST_SIZE') ? MAX_POST_SIZE : 256 * 1024 * 1024;
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -374,7 +378,7 @@ $locationTemplates = [
                             <span class="public-denuncia-identity-icon" aria-hidden="true"><i class="fas fa-user-check"></i></span>
                             <span class="public-denuncia-identity-copy">
                                 <strong>Quero me identificar</strong>
-                                <small>A equipe poderá entrar em contato.</small>
+                                <small>Seus dados serão vinculados ao registro.</small>
                             </span>
                             <i class="fas fa-circle-check public-denuncia-selected-icon" aria-hidden="true"></i>
                         </label>
@@ -390,7 +394,7 @@ $locationTemplates = [
                     </div>
                     <div class="public-denuncia-anonimo-warning" data-anonimo-warning hidden role="alert" aria-live="polite">
                         <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                        <span><strong>Atenção:</strong> a denúncia anônima não permite acompanhamento nem contato posterior. Após o envio, você não poderá consultar o andamento.</span>
+                        <span><strong>Atenção:</strong> na denúncia anônima, nenhum dado pessoal será vinculado ao registro.</span>
                     </div>
                 </section>
 
@@ -439,7 +443,7 @@ $locationTemplates = [
                 window.SEMA_TIPOS_ALVARA = <?= json_encode($tiposAlvaraPublicos, JSON_UNESCAPED_UNICODE) ?>;
                 window.SEMA_FORM_CONFIG = {
                     csrfToken: <?= json_encode($_SESSION['csrf_token']) ?>,
-                    maxUploadTotalBytes: <?= MAX_POST_SIZE - (6 * 1024 * 1024) ?>,
+                    maxUploadTotalBytes: <?= $maxPostSize - (6 * 1024 * 1024) ?>,
                     maxUploadTotalLabel: '250MB',
                     tipoRules: <?= json_encode($tipoRules, JSON_UNESCAPED_UNICODE) ?>,
                     formData: <?= json_encode($formData, JSON_UNESCAPED_UNICODE) ?>,

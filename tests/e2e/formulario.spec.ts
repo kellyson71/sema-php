@@ -120,8 +120,9 @@ test.describe('Formulário Principal - Campos Dinâmicos', () => {
   });
 
   test('selecionar "licença prévia ambiental" exibe campos ambientais', async ({ page }) => {
-    await selecionarTipoAlvara(page, 'licenca_previa_ambiental');
+    await selecionarTipoAlvara(page, 'licenca_previa_instalacao');
     await page.waitForTimeout(800);
+    await page.evaluate(() => (window as any).SEMA_PUBLIC_FORM?.showStep?.(2, { preview: true }));
 
     // Deve aparecer campo de publicação no Diário Oficial ou estudo ambiental
     const camposAmbientais = page.locator(
@@ -130,9 +131,33 @@ test.describe('Formulário Principal - Campos Dinâmicos', () => {
     await expect(camposAmbientais.first()).toBeVisible();
   });
 
+  test('seletor visual permite escolher uma solicitação', async ({ page }) => {
+    await page.locator('[data-categoria="obras"]').click();
+
+    const opcao = page.locator('#tipo_alvara_lista [role="option"][data-slug="construcao"]');
+    await expect(opcao).toBeVisible();
+    await opcao.click();
+
+    await expect(page.locator('#tipo_alvara')).toHaveValue('construcao');
+    await expect(page.locator('#tipo_alvara_busca')).toHaveValue(/ALVARÁ DE CONSTRUÇÃO/i);
+  });
+
+  test('denúncia identificada solicita CPF sem prometer comunicações', async ({ page }) => {
+    await selecionarTipoAlvara(page, 'denuncia');
+    await page.locator('input[name="anonimo"][value="0"]').check();
+
+    const cpf = page.locator('input[name="requerente[cpf_cnpj]"]');
+    await expect(cpf).toBeVisible();
+    await expect(cpf).toHaveAttribute('required', '');
+    await expect(cpf).toHaveAttribute('placeholder', 'CPF *');
+    await expect(page.locator('[data-identificacao-nota]')).toHaveText('Informe seus dados para registrar a denúncia de forma identificada.');
+    await expect(page.locator('.public-denuncia-mode-section')).not.toContainText(/receber|comunicaç/i);
+  });
+
   test('selecionar "licença de operação" exibe campo CTF', async ({ page }) => {
     await selecionarTipoAlvara(page, 'licenca_operacao');
     await page.waitForTimeout(800);
+    await page.evaluate(() => (window as any).SEMA_PUBLIC_FORM?.showStep?.(2, { preview: true }));
 
     const ctf = page.locator('[name="ctf_numero"], #ctf_numero');
     if (await ctf.count() > 0) {
