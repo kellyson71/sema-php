@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS administradores (
     data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS admin_preferencias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER NOT NULL,
+    pagina_chave VARCHAR(80) NOT NULL,
+    filtros_json TEXT NOT NULL,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(admin_id, pagina_chave),
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS admin_notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tipo VARCHAR(50) NOT NULL,

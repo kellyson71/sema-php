@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/documento_regras.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/database.php';
 
@@ -99,14 +100,18 @@ class ParecerService
         return 'docx';
     }
 
-    public function preencherDados($requerimento, $adminData = null)
+    public function preencherDados($requerimento, $adminData = null, ?string $templateNome = null, ?PDO $pdo = null)
     {
         // Lógica para definir a área construída/do lote
         $area = '';
-        if (!empty($requerimento['area_construida'])) {
+        if ($templateNome === 'alvara_de_construcao' && !empty($requerimento['area_construcao'])) {
+            $area = $requerimento['area_construcao'];
+        } elseif (!empty($requerimento['area_construida'])) {
             $area = $requerimento['area_construida'];
         } elseif (!empty($requerimento['area_construcao'])) {
             $area = $requerimento['area_construcao'];
+        } elseif (!empty($requerimento['area_empreendimento'])) {
+            $area = $requerimento['area_empreendimento'];
         } elseif (!empty($requerimento['area_lote'])) {
             $area = $requerimento['area_lote'];
         }
@@ -114,7 +119,13 @@ class ParecerService
         $artNumero = $requerimento['responsavel_tecnico_numero'] ?? $requerimento['responsavel_tecnico_registro'] ?? '';
         $artNumero = trim($artNumero) !== '' ? $artNumero : 'a ser informado';
 
+        $enderecoDocumento = DocumentoRegras::formatarEndereco($requerimento);
         $especificacao = $requerimento['especificacao'] ?? '';
+        if ($templateNome === 'alvara_de_construcao') {
+            $especificacao = DocumentoRegras::especificacaoConstrucao($requerimento);
+        } elseif ($templateNome === 'carta_habite_se') {
+            $especificacao = DocumentoRegras::caracteristicasHabite($requerimento);
+        }
         $especificacao = trim($especificacao) !== '' ? $especificacao : 'a ser informada';
 
         // Formata datas (armazenadas como AAAA-MM-DD) para dd/mm/AAAA
@@ -128,7 +139,30 @@ class ParecerService
         };
         $inicioObra  = $fmtData($requerimento['inicio_obra'] ?? '');
         $terminoObra = $fmtData($requerimento['termino_obra'] ?? '');
+        $desmJson = json_decode((string) ($requerimento['desmembramento_lotes_json'] ?? ''), true);
+        if (!is_array($desmJson)) {
+            $desmJson = [];
+        }
+
+        $areaTotalTerreno = $requerimento['area_total_terreno'] ?? ($desmJson['area_total_terreno'] ?? '');
+        $areaRemanescente = $requerimento['area_remanescente'] ?? ($desmJson['area_remanescente'] ?? '');
+
+        if ($areaTotalTerreno !== '') {
+            $areaTotalTerreno = DocumentoRegras::formatarArea($areaTotalTerreno);
+        }
+        if ($areaRemanescente !== '') {
+            $areaRemanescente = DocumentoRegras::formatarArea($areaRemanescente);
+        }
+
         $cadastroImobiliario = trim((string) ($requerimento['cadastro_imobiliario'] ?? ''));
+        if ($cadastroImobiliario === '' && !empty($desmJson['lotes'][0]['cadastro_imobiliario'])) {
+            $cadastroImobiliario = trim((string) $desmJson['lotes'][0]['cadastro_imobiliario']);
+        }
+
+        $protocoloOficial = trim((string) ($requerimento['protocolo_oficial'] ?? ''));
+        if ($protocoloOficial === '') {
+            $protocoloOficial = trim((string) ($requerimento['protocolo'] ?? ''));
+        }
 
         $nomeInteressado = $requerimento['proprietario_nome'] ?? $requerimento['requerente_nome'] ?? '';
         $cpfInteressado = $requerimento['proprietario_cpf_cnpj'] ?? $requerimento['requerente_cpf_cnpj'] ?? '';
@@ -143,7 +177,7 @@ class ParecerService
             'cpf_cnpj_requerente' => $requerimento['requerente_cpf_cnpj'] ?? '',
             'email_requerente' => $requerimento['requerente_email'] ?? '',
             'telefone_requerente' => $requerimento['requerente_telefone'] ?? '',
-            'endereco_objetivo' => $requerimento['endereco_objetivo'] ?? '',
+            'endereco_objetivo' => $enderecoDocumento,
             'tipo_alvara' => (function() use ($requerimento) {
                 $slug = $requerimento['tipo_alvara'] ?? '';
                 static $tipos = null;
@@ -164,26 +198,37 @@ class ParecerService
             'responsavel_tecnico_registro' => $requerimento['responsavel_tecnico_registro'] ?? '',
             'responsavel_tecnico_numero' => $requerimento['responsavel_tecnico_numero'] ?? '',
             'responsavel_tecnico_tipo_documento' => $requerimento['responsavel_tecnico_tipo_documento'] ?? '',
+            'responsavel_tecnico_conselho' => DocumentoRegras::conselhoResponsavel($requerimento),
+            'responsavel_tecnico_rotulo' => DocumentoRegras::rotuloDocumentoTecnico($requerimento),
             'especificacao' => $especificacao,
             'art_numero' => $artNumero,
-            'area_construida' => $area !== '' ? $area : 'a ser informada',
-            'area' => $area !== '' ? $area : 'a ser informada',
+            'area_construida' => $area !== '' ? DocumentoRegras::formatarArea($area) : 'a ser informada',
+            'area' => $area !== '' ? DocumentoRegras::formatarArea($area) : 'a ser informada',
             'detalhes_imovel' => $especificacao,
-            'area_lote' => $requerimento['area_lote'] ?? '',
+            'area_lote' => $requerimento['area_lote'] !== null && $requerimento['area_lote'] !== '' ? DocumentoRegras::formatarArea($requerimento['area_lote']) : '',
             // Campos dos modelos de construção / habite-se / desmembramento
             'cadastro_imobiliario' => $cadastroImobiliario,
+            'matricula_imovel' => trim((string) ($requerimento['matricula_imovel'] ?? '')),
+            'desmembramento_matricula_texto' => trim((string) ($requerimento['matricula_imovel'] ?? '')) !== '' ? ', COM MATRÍCULA Nº ' . trim((string) ($requerimento['matricula_imovel'] ?? '')) . ' DO REGISTRO GERAL DE IMÓVEIS (RGI)' : '',
             'inicio_obra' => $inicioObra,
             'termino_obra' => $terminoObra,
-            'area_total_terreno' => $requerimento['area_total_terreno'] ?? '',
-            'area_remanescente' => $requerimento['area_remanescente'] ?? '',
+            'area_total_terreno' => $areaTotalTerreno,
+            'area_remanescente' => $areaRemanescente,
+            'desmembramento_lotes_numeros' => DocumentoRegras::numerosLotesDesmembramento($requerimento),
+            'desmembramento_area_lotes' => DocumentoRegras::somaLotesDesmembramento($requerimento),
+            'desmembramento_lotes_html' => DocumentoRegras::lotesDesmembramentoHtml($requerimento),
             'alvara_construcao_numero' => $requerimento['alvara_construcao_numero'] ?? '',
-            'eng_fiscal_nome' => $requerimento['eng_fiscal_nome'] ?? '',
-            'eng_fiscal_registro' => $requerimento['eng_fiscal_registro'] ?? '',
+            'eng_fiscal_nome' => $templateNome === 'carta_habite_se' && $pdo
+                ? DocumentoRegras::configuracao($pdo, 'habite_eng_fiscal_nome', 'ISABELY KEYVA FERNANDES COSTA')
+                : ($requerimento['eng_fiscal_nome'] ?? ''),
+            'eng_fiscal_registro' => $templateNome === 'carta_habite_se' && $pdo
+                ? DocumentoRegras::configuracao($pdo, 'habite_eng_fiscal_registro', '2118668139')
+                : ($requerimento['eng_fiscal_registro'] ?? ''),
             'nome_interessado' => $nomeInteressado,
             'cpf_interessado' => $cpfInteressado,
             'atividade' => $atividade,
             'cnae_descricao' => $cnaeDescricao,
-            'protocolo_oficial' => $requerimento['protocolo_oficial'] ?? '',
+            'protocolo_oficial' => $protocoloOficial,
         ];
 
         if ($adminData !== null) {
@@ -199,21 +244,11 @@ class ParecerService
             }
         }
 
-        // Calcular número sequencial do documento no ano
-        try {
-            $db = new Database();
-            $anoAtual = date('Y');
-            // Conta documentos assinados neste ano para gerar sequencial
-            $sql = "SELECT COUNT(*) as total FROM assinaturas_digitais WHERE YEAR(timestamp_assinatura) = :ano";
-            $resultado = $db->query($sql, ['ano' => $anoAtual])->fetch();
-            $proximoNumero = ($resultado['total'] ?? 0) + 1;
-            
-            $dados['numero_documento_ano'] = $proximoNumero;
-            $dados['ano_atual'] = $anoAtual;
-        } catch (Exception $e) {
-            $dados['numero_documento_ano'] = '??';
-            $dados['ano_atual'] = date('Y');
-        }
+        $anoAtual = (int) date('Y');
+        $dados['numero_documento_ano'] = ($pdo && $templateNome)
+            ? DocumentoRegras::proximoNumero($pdo, $templateNome, $anoAtual)
+            : '1/' . $anoAtual;
+        $dados['ano_atual'] = (string) $anoAtual;
 
         return $dados;
     }
@@ -862,6 +897,10 @@ class ParecerService
     public static function aplicarHighlights(string $html, array $dados): string
     {
         foreach ($dados as $variavel => $valor) {
+            if (substr($variavel, -5) === '_html') {
+                $html = str_replace('{{' . $variavel . '}}', (string) $valor, $html);
+                continue;
+            }
             $valorSeguro = htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
             $varSegura   = htmlspecialchars($variavel, ENT_QUOTES, 'UTF-8');
             $html = str_replace(
@@ -880,7 +919,7 @@ class ParecerService
     public static function converterSpansParaVariaveis(string $html): string
     {
         return preg_replace(
-            '/<span[^>]+class=["\']var-field["\'][^>]+data-var=["\']([^"\']+)["\'][^>]*>(?:(?!<\/span>)[\s\S])*<\/span>/U',
+            '/<span[^>]+class=["\'][^"\']*\bvar-field\b[^"\']*["\'][^>]+data-var=["\']([^"\']+)["\'][^>]*>(?:(?!<\/span>)[\s\S])*<\/span>/U',
             '{{$1}}',
             $html
         );

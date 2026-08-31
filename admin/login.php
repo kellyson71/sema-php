@@ -369,37 +369,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Tipografia contemporânea e legível para a área administrativa. -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Mesma tipografia usada no protocolo eletrônico público. -->
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <?php if (!MODO_HOMOLOG && !DOCKER_ENV): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo RECAPTCHA_SITE_KEY; ?>"></script>
     <?php endif; ?>
     <style>
         :root {
-            --primary: #0f3d23;
-            --primary-600: #14532d;
-            --primary-700: #0a2617;
-            --primary-50: #f1f4f1;
-            --primary-100: #e4f0e9;
-            --ink: #102117;
-            --ink-2: #4a5750;
-            --ink-3: #8b9991;
-            --line: #eef2ef;
-            --line-2: #dde4df;
-            --bg: #f4f6f3;
+            --primary: #009640;
+            --primary-600: #007a33;
+            --primary-700: #00652a;
+            --primary-50: #f0fdf4;
+            --primary-100: #dcfce7;
+            --ink: #333333;
+            --ink-2: #59636f;
+            --ink-3: #8a949f;
+            --line: #e3e7e4;
+            --line-2: #d9dedb;
+            --bg: #f8f8f8;
             --card:  #ffffff;
-            --danger: #8d2727;
-            --danger-bg: #fdf3f3;
-            --success: #1f7a4d;
-            --success-bg: #eef8f2;
-            --radius:    999px;
-            --radius-lg: 28px;
-            --shadow-card: 0 1px 2px rgba(16,33,23,.03), 0 30px 60px -34px rgba(16,33,23,.22);
+            --navy: #0a1a2e;
+            --danger: #a72c2c;
+            --danger-bg: #fff5f5;
+            --success: #007a33;
+            --success-bg: #f0fdf4;
+            --radius:    9px;
+            --radius-lg: 14px;
+            --shadow-card: 0 12px 34px rgba(10, 26, 46, .08);
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; }
         body {
-            font-family: Manrope, "Segoe UI", sans-serif;
+            font-family: Raleway, "Segoe UI", sans-serif;
             color: var(--ink);
             background: var(--bg);
             -webkit-font-smoothing: antialiased;
@@ -407,12 +408,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             flex-direction: column;
             min-height: 100vh;
         }
-        .display { font-family: Manrope, "Segoe UI", sans-serif; letter-spacing: -0.02em; }
-        .mono    { font-family: Manrope, "Segoe UI", sans-serif; }
+        .display { font-family: Raleway, "Segoe UI", sans-serif; letter-spacing: -0.015em; }
+        .mono    { font-family: Raleway, "Segoe UI", sans-serif; }
         .step-meta {
-            font-family: Manrope, "Segoe UI", sans-serif;
-            font-weight: 600;
-            letter-spacing: .06em;
+            font-family: Raleway, "Segoe UI", sans-serif;
+            font-weight: 700;
+            letter-spacing: .08em;
         }
         .login-heading {
             display: grid;
@@ -427,10 +428,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid #cfe3d7;
-            border-radius: 12px;
-            background: #eef8f2;
-            color: #087a3e;
+            border: 1px solid #bde7cd;
+            border-radius: 10px;
+            background: var(--primary-50);
+            color: var(--primary);
         }
         .login-heading h2 { font-size: 1.55rem; line-height: 1.15; font-weight: 800; }
         .login-heading p {
@@ -447,49 +448,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         .layout {
             flex: 1;
             display: grid;
-            grid-template-columns: minmax(380px, 1.1fr) 1fr;
+            grid-template-columns: minmax(420px, 1.08fr) 1fr;
+            min-height: 0;
+        }
+
+        /* Barra verde do portal público */
+        .public-login-bar {
+            min-height: 46px;
+            padding: 7px clamp(20px, 4vw, 58px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            background: var(--primary);
+            color: #fff;
+            font-size: .76rem;
+            font-weight: 700;
+            letter-spacing: .035em;
+            text-transform: uppercase;
+        }
+        .public-login-bar a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            padding: 6px 11px;
+            border: 1px solid rgba(255,255,255,.42);
+            border-radius: 3px;
+            color: #fff;
+            text-decoration: none;
+            transition: background .16s ease, border-color .16s ease;
+        }
+        .public-login-bar a:hover,
+        .public-login-bar a:focus-visible {
+            background: rgba(255,255,255,.1);
+            border-color: rgba(255,255,255,.72);
+            outline: none;
         }
 
         /* ── Brand Panel ── */
         .brand-panel {
             position: relative;
-            background: var(--primary);
-            color: #fff;
+            background: #fff;
+            color: var(--ink);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 44px 48px;
+            padding: clamp(42px, 6vw, 78px);
             overflow: hidden;
+            border-right: 1px solid var(--line);
+        }
+        .brand-panel::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #f8e400 0 25%, #cafe2b 25% 50%, #12d2d5 50% 75%, var(--primary) 75%);
         }
         .brand-glow {
-            position: absolute; right: -190px; top: -150px;
-            width: 520px; height: 520px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(143,224,176,.30), transparent 68%);
-            filter: blur(20px);
+            position: absolute; right: -180px; bottom: -210px;
+            width: 560px; height: 560px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,150,64,.11), transparent 68%);
         }
         .brand-top { position: relative; z-index: 1; }
         .brand-logo {
-            width: 180px; display: block;
-            filter: drop-shadow(0 2px 8px rgba(0,0,0,.20));
+            width: min(520px, 82%); display: block;
         }
         .brand-middle { position: relative; z-index: 1; margin-top: 32px; }
+        .brand-kicker {
+            display: block;
+            margin-bottom: 11px;
+            color: var(--primary);
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
         .brand-middle h1 {
-            font-size: 40px; font-weight: 700; line-height: 1.07;
-            letter-spacing: -.025em; margin-bottom: 14px;
+            font-size: clamp(32px, 3.4vw, 48px); font-weight: 800; line-height: 1.08;
+            letter-spacing: -.025em; margin-bottom: 15px; color: var(--ink);
         }
         .brand-middle p {
             font-size: 15px; line-height: 1.6; max-width: 460px;
-            color: rgba(255,255,255,.82);
+            color: var(--ink-2);
         }
 
         /* ── Form Panel ── */
         .form-panel {
             display: flex; align-items: center; justify-content: center;
-            padding: 60px 32px; background: var(--bg);
+            flex-direction: column;
+            padding: 54px 32px; background: var(--bg);
         }
+        .mobile-login-brand { display: none; }
         .login-card {
             width: 100%; max-width: 452px;
-            padding: 38px 36px 32px;
+            padding: 36px 34px 32px;
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: var(--radius-lg);
@@ -499,7 +554,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         /* ── Form fields ── */
         .field { margin-bottom: 16px; }
         .field-label {
-            display: block; font-size: 11.5px; font-weight: 600;
+            display: block; font-size: 11.5px; font-weight: 700;
             letter-spacing: .05em; color: var(--ink-2);
             text-transform: uppercase; margin-bottom: 7px;
         }
@@ -532,7 +587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Buttons ── */
         .btn-primary {
-            width: 100%; height: 52px; border: none; border-radius: var(--radius);
+            width: 100%; height: 50px; border: none; border-radius: var(--radius);
             background: var(--primary); color: #fff;
             padding: 0 16px; font-size: .95rem; font-weight: 600;
             display: inline-flex; gap: 8px; align-items: center; justify-content: center;
@@ -562,7 +617,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Alerts ── */
         .alert {
-            padding: 12px 15px; border-radius: 18px;
+            padding: 12px 15px; border-radius: 9px;
             display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px;
         }
         .alert-icon { flex-shrink: 0; margin-top: 1px; }
@@ -586,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         /* ── Method cards ── */
         .method-card {
-            border: none; border-radius: 20px; padding: 15px 18px;
+            border: 1px solid #dce7df; border-radius: 10px; padding: 15px 18px;
             cursor: pointer; background: var(--primary-50); transition: all .18s;
             display: flex; gap: 14px; align-items: flex-start; width: 100%;
             text-align: left; margin-bottom: 10px;
@@ -596,7 +651,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             box-shadow: 0 0 0 2px var(--primary);
         }
         .method-icon {
-            width: 44px; height: 44px; border-radius: 50%;
+            width: 44px; height: 44px; border-radius: 10px;
             background: var(--primary-100); color: var(--primary);
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
@@ -621,8 +676,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         /* ── Remember device ── */
         .remember-wrap {
             display: flex; align-items: flex-start; gap: 11px; cursor: pointer;
-            padding: 13px 14px; border-radius: 20px;
-            background: var(--primary-50); border: none; margin-bottom: 4px;
+            padding: 13px 14px; border-radius: 10px;
+            background: var(--primary-50); border: 1px solid #dcefe3; margin-bottom: 4px;
         }
         .custom-check {
             width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
@@ -655,11 +710,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         .login-footer {
             padding: 16px 28px; border-top: 1px solid var(--line);
             display: flex; align-items: center; justify-content: space-between;
-            gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3);
-            background: var(--bg);
+            gap: 16px; flex-wrap: wrap; font-size: 12px; color: rgba(255,255,255,.58);
+            background: var(--navy);
         }
         .footer-links { display: flex; gap: 20px; }
-        .footer-links a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 12px; }
+        .footer-links a { color: rgba(255,255,255,.74); text-decoration: none; font-weight: 500; font-size: 12px; }
         .footer-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
         /* ── Homolog banner ── */
@@ -675,9 +730,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             .layout { grid-template-columns: 1fr; }
             .brand-panel { display: none; }
             .form-panel { padding: 40px 20px; }
+            .public-login-bar > span { display: none; }
+            .mobile-login-brand {
+                display: block;
+                width: min(390px, 82vw);
+                height: auto;
+                margin: 0 auto 26px;
+            }
         }
         @media (max-width: 480px) {
             .login-card { padding: 24px 18px; }
+            .public-login-bar { justify-content: center; }
+            .login-footer { justify-content: center; text-align: center; }
+            .footer-links { width: 100%; justify-content: center; }
         }
 
         .hidden { display: none !important; }
@@ -692,6 +757,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 </div>
 <?php endif; ?>
 
+<div class="public-login-bar">
+    <span>Prefeitura Municipal de Pau dos Ferros · SEMA</span>
+    <a href="../index.php" aria-label="Voltar ao protocolo eletrônico">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
+        Voltar ao protocolo eletrônico
+    </a>
+</div>
+
 <div class="layout">
 
     <!-- ══ Brand Panel ══ -->
@@ -699,19 +772,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="brand-glow"></div>
 
         <div class="brand-top">
-            <img src="../assets/SEMA/PNG/Branca/Logo SEMA Vertical 3.png"
-                 alt="SEMA — Secretaria Municipal de Meio Ambiente"
+            <img src="../assets/img/logo-prefeitura-sema-horizontal.png"
+                 alt="Prefeitura de Pau dos Ferros — Secretaria Municipal do Meio Ambiente"
                  class="brand-logo">
         </div>
 
         <div class="brand-middle">
-            <h1 class="display">Secretaria Municipal<br>de Meio Ambiente</h1>
+            <span class="brand-kicker">Acesso institucional</span>
+            <h1 class="display">Painel administrativo</h1>
             <p>Painel de gestão de alvarás, pareceres técnicos e licenciamento ambiental do município de Pau dos Ferros/RN.</p>
         </div>
     </aside>
 
     <!-- ══ Form Panel ══ -->
     <section class="form-panel">
+        <img src="../assets/img/logo-prefeitura-sema-horizontal.png"
+             alt="Prefeitura de Pau dos Ferros — Secretaria Municipal do Meio Ambiente"
+             class="mobile-login-brand">
         <div class="login-card">
 
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">

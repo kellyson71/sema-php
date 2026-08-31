@@ -1,278 +1,288 @@
 <?php
 require_once 'conexao.php';
+require_once 'helpers.php';
+require_once __DIR__ . '/../includes/denuncia_filters.php';
 verificaLogin();
 
-// Configurações e Paginação
-$itensPorPagina = 25;
-$paginaAtual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+$adminId = (int) ($_SESSION['admin_id'] ?? 0);
+$setorAdmin = setorAdministrador($pdo, $adminId);
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_preferencia') {
+    $csrf = (string) ($_POST['csrf_token'] ?? '');
+    if ($csrf === '' || !hash_equals((string) $_SESSION['csrf_token'], $csrf)) {
+        header('Location: denuncias.php?error=csrf');
+        exit;
+    }
+    try {
+        salvarPreferenciaDenuncia($pdo, $adminId, $_POST);
+        header('Location: denuncias.php?success=padrao_salvo');
+    } catch (InvalidArgumentException $e) {
+        header('Location: denuncias.php?error=filtros_invalidos');
+    } catch (Throwable $e) {
+        error_log('[denuncias] Falha ao salvar preferência: ' . $e->getMessage());
+        header('Location: denuncias.php?error=preferencia');
+    }
+    exit;
+}
+
+$preferenciaSalva = carregarPreferenciaDenuncia($pdo, $adminId);
+$filtros = resolverFiltrosDenuncia($_GET, $preferenciaSalva, $setorAdmin);
+$filtroBusca = trim((string) ($_GET['busca'] ?? ''));
+$paginaAtual = max(1, (int) ($_GET['pagina'] ?? 1));
+$itensPorPagina = 20;
+
+if ($filtros['status'] === 'concluida') {
+    $filtros['concluidas'] = '1';
+}
+
+$where = ['1=1'];
+$params = [];
+if ($filtroBusca !== '') {
+    $where[] = '(d.protocolo_publico LIKE ? OR d.infrator_nome LIKE ? OR d.infrator_cpf_cnpj LIKE ? OR d.infrator_endereco LIKE ? OR d.observacoes LIKE ?)';
+    $term = '%' . $filtroBusca . '%';
+    array_push($params, $term, $term, $term, $term, $term);
+}
+if ($filtros['setor'] !== '') {
+    $where[] = 'd.setor = ?';
+    $params[] = $filtros['setor'];
+}
+if ($filtros['origem'] === 'publico') {
+    $where[] = "d.origem = 'publico'";
+} elseif ($filtros['origem'] === 'interno') {
+    $where[] = "d.origem = 'admin'";
+} elseif ($filtros['origem'] === 'minhas') {
+    $where[] = "d.origem = 'admin' AND d.admin_id = ?";
+    $params[] = $adminId;
+}
+if ($filtros['anonimo'] !== '') {
+    $where[] = 'd.anonimo = ?';
+    $params[] = (int) $filtros['anonimo'];
+}
+
+$statusSql = [
+    'pendente' => "LOWER(TRIM(d.status)) = 'pendente'",
+    'em_analise' => "LOWER(TRIM(d.status)) IN ('em análise', 'em analise', 'em_analise')",
+    'concluida' => "LOWER(TRIM(d.status)) IN ('concluída', 'concluida', 'concluído', 'concluido', 'finalizado', 'finalizada')",
+];
+if ($filtros['status'] !== '') {
+    $where[] = $statusSql[$filtros['status']];
+} elseif ($filtros['concluidas'] !== '1') {
+    $where[] = 'NOT ' . $statusSql['concluida'];
+}
+
+$whereSql = implode(' AND ', $where);
+$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM denuncias d WHERE {$whereSql}");
+$stmtCount->execute($params);
+$totalDenuncias = (int) $stmtCount->fetchColumn();
+$totalPaginas = max(1, (int) ceil($totalDenuncias / $itensPorPagina));
+$paginaAtual = min($paginaAtual, $totalPaginas);
 $offset = ($paginaAtual - 1) * $itensPorPagina;
 
-// Preparar filtros (Busca por nome infrator)
-$filtroBusca = isset($_GET['busca']) ? $_GET['busca'] : '';
-$filtroStatus = isset($_GET['status']) ? $_GET['status'] : '';
-$filtroSetor = isset($_GET['setor']) ? $_GET['setor'] : '';
-
-// Mensagens
-$mensagem = '';
-if (isset($_GET['success'])) {
-    if ($_GET['success'] == 'registrada') $mensagem = "✅ Denúncia registrada com sucesso!";
-    if ($_GET['success'] == 'atualizada') $mensagem = "✅ Denúncia atualizada com sucesso!";
-    if ($_GET['success'] == 'excluida') $mensagem = "✅ Denúncia removida corretamente.";
-}
-
-$mensagemErro = '';
-if (isset($_GET['error'])) {
-    if ($_GET['error'] == 'criacao') $mensagemErro = "❌ Erro ao registrar denúncia.";
-    if ($_GET['error'] == 'nao_encontrado') $mensagemErro = "❌ Denúncia não encontrada.";
-}
-
-// Query de Denúncias
-$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.status, d.origem, d.setor, d.protocolo_publico, a.nome as responsavel
+$sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.infrator_cpf_cnpj,
+               d.infrator_endereco, d.observacoes, d.status, d.origem, d.setor,
+               d.protocolo_publico, d.anonimo, d.tipo_denuncia, d.admin_id,
+               a.nome AS responsavel
         FROM denuncias d
         LEFT JOIN administradores a ON d.admin_id = a.id
-        WHERE 1=1";
-
-$sqlCount = "SELECT COUNT(*) as total FROM denuncias d WHERE 1=1";
-
-$params = [];
-
-if (!empty($filtroBusca)) {
-    $sql .= " AND (d.infrator_nome LIKE ? OR d.infrator_cpf_cnpj LIKE ?)";
-    $sqlCount .= " AND (d.infrator_nome LIKE ? OR d.infrator_cpf_cnpj LIKE ?)";
-    $termoBusca = "%$filtroBusca%";
-    $params[] = $termoBusca;
-    $params[] = $termoBusca;
-}
-
-if (!empty($filtroStatus)) {
-    $sql .= " AND d.status = ?";
-    $sqlCount .= " AND d.status = ?";
-    $params[] = $filtroStatus;
-}
-
-if (!empty($filtroSetor)) {
-    $sql .= " AND d.setor = ?";
-    $sqlCount .= " AND d.setor = ?";
-    $params[] = $filtroSetor;
-}
-
-$sql .= " ORDER BY d.data_registro DESC LIMIT $offset, $itensPorPagina";
-
+        WHERE {$whereSql}
+        ORDER BY d.data_registro DESC, d.id DESC
+        LIMIT {$itensPorPagina} OFFSET {$offset}";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $denuncias = $stmt->fetchAll();
 
-$stmtCount = $pdo->prepare($sqlCount);
-$stmtCount->execute($params);
-$totalDenuncias = $stmtCount->fetch()['total'];
+$stats = $pdo->query("SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN LOWER(TRIM(status)) = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
+    SUM(CASE WHEN LOWER(TRIM(status)) IN ('em análise','em analise','em_analise') THEN 1 ELSE 0 END) AS em_analise,
+    SUM(CASE WHEN anonimo = 1 THEN 1 ELSE 0 END) AS anonimas
+    FROM denuncias")->fetch() ?: [];
+
+$mensagem = match ($_GET['success'] ?? '') {
+    'registrada' => 'Denúncia registrada com sucesso.',
+    'atualizada' => 'Denúncia atualizada com sucesso.',
+    'excluida' => 'Denúncia removida corretamente.',
+    'padrao_salvo' => 'Os filtros atuais foram salvos como seu padrão.',
+    default => '',
+};
+$mensagemErro = match ($_GET['error'] ?? '') {
+    'criacao' => 'Não foi possível registrar a denúncia.',
+    'nao_encontrado' => 'Denúncia não encontrada.',
+    'csrf' => 'A sessão expirou. Atualize a página e tente novamente.',
+    'filtros_invalidos' => 'Um dos filtros enviados não é permitido.',
+    'preferencia' => 'Não foi possível salvar a preferência. Verifique se a migration foi aplicada.',
+    default => '',
+};
+
+function buildDenunciaUrl(array $overrides = []): string
+{
+    global $filtros, $filtroBusca;
+    $params = array_merge($filtros, ['busca' => $filtroBusca], $overrides);
+    unset($params['limpar']);
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null || ($key === 'pagina' && (int) $value === 1) || ($key === 'concluidas' && $value === '0')) {
+            unset($params[$key]);
+        }
+    }
+    return 'denuncias.php' . ($params ? '?' . http_build_query($params) : '');
+}
+
+function denunciaStatusClass(string $status): string
+{
+    return match (normalizarStatusProcesso($status)) {
+        'em_analise' => 'status-em-analise',
+        'concluida' => 'status-finalizado',
+        default => 'status-pendente',
+    };
+}
 
 include 'header.php';
 ?>
+<link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
+<style>
+.den-list{display:grid;gap:12px}.den-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:18px 20px;background:#fff;border:1px solid var(--line);border-left:4px solid #538867;border-radius:16px;box-shadow:var(--card-shadow);color:inherit;text-decoration:none;transition:.16s ease}.den-card.obras{border-left-color:#c98b2e}.den-card:hover{color:inherit;transform:translateY(-1px);border-color:#b9cbc0;box-shadow:0 12px 28px rgba(24,54,37,.09)}.den-card-top,.den-card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.den-card-title{margin:9px 0 5px;color:var(--ink);font-size:1.02rem;font-weight:800}.den-card-subtitle{color:var(--muted);font-size:.84rem;line-height:1.45}.den-card-side{min-width:150px;text-align:right}.den-card-date{margin-bottom:10px;color:var(--muted);font-size:.78rem}.den-type-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#f6e9e8;color:#913f39;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.den-anon-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#302b36;color:#fff;font-size:.7rem;font-weight:800}.den-origin,.den-sector{color:var(--muted);font-size:.76rem;font-weight:650}.den-open{display:inline-flex;align-items:center;gap:7px;color:var(--primary);font-size:.82rem;font-weight:800}.den-filter-grid{display:grid;grid-template-columns:minmax(220px,2fr) repeat(4,minmax(135px,1fr));gap:12px;align-items:end}.den-filter-field label{display:block;margin-bottom:6px;color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.den-filter-field input,.den-filter-field select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:#fff;color:var(--ink)}.den-filter-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}.den-summary .summary-chip{min-width:145px}.den-toggle{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.82rem;font-weight:650}.den-empty{padding:50px 20px;background:#fff;border:1px dashed #cbd8cf;border-radius:18px;text-align:center;color:var(--muted)}.den-empty i{display:block;margin-bottom:12px;font-size:2rem;color:#a9baae}@media(max-width:1100px){.den-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.den-filter-search{grid-column:1/-1}}@media(max-width:680px){.den-filter-grid{grid-template-columns:1fr}.den-filter-search{grid-column:auto}.den-card{grid-template-columns:1fr;gap:12px}.den-card-side{display:flex;align-items:center;justify-content:space-between;text-align:left;min-width:0}.den-card-date{margin:0}}
+.den-search-wrap{position:relative}.den-search-wrap>i{position:absolute;z-index:2;left:12px;top:50%;transform:translateY(-50%);color:#8fa399;font-size:.8rem}.den-search-wrap input{padding-left:34px}.den-suggestions{display:none;position:absolute;z-index:50;top:calc(100% + 7px);left:0;right:0;overflow:hidden;padding:6px;background:#fff;border:1px solid #d9e3dc;border-radius:13px;box-shadow:0 18px 42px rgba(16,33,23,.16)}.den-suggestions.active{display:block}.den-suggestion{display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;color:inherit;text-decoration:none}.den-suggestion:hover{background:#f3f7f4;color:inherit}.den-suggestion-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:9px;background:#f6e9e8;color:#913f39}.den-suggestion-copy{min-width:0;flex:1}.den-suggestion-top{display:flex;align-items:center;gap:8px;min-width:0}.den-suggestion-protocol{font-family:ui-monospace,monospace;color:#52635a;font-size:.72rem}.den-suggestion-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102117;font-size:.84rem;font-weight:750}.den-suggestion-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:#7a8a81;font-size:.72rem}.den-suggestion-empty{padding:14px;text-align:center;color:#7a8a81;font-size:.78rem}
+</style>
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Interno - Denúncias SEMA</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .table-responsive::-webkit-scrollbar { height: 8px; }
-        .table-responsive::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        .table-responsive::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        .table-responsive::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-        
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .status-pendente { background-color: #FEF3C7; color: #92400E; }
-        .status-em-analise { background-color: #DBEAFE; color: #1E40AF; }
-        .status-concluida { background-color: #D1FAE5; color: #065F46; }
-    </style>
-</head>
+<div class="admin-page-shell denuncias-page">
+    <section class="page-hero page-hero-compact">
+        <div class="page-hero-copy"><h1 class="page-title">Denúncias</h1><p class="page-subtitle">Acompanhe ocorrências encaminhadas pelos cidadãos e pela fiscalização.</p></div>
+        <div class="page-toolbar"><a href="nova_denuncia.php" class="toolbar-button toolbar-button-primary"><i class="fas fa-plus"></i> Registrar denúncia</a></div>
+    </section>
+    <?php if ($mensagem): ?><div class="alert alert-success" role="status"><?= htmlspecialchars($mensagem) ?></div><?php endif; ?>
+    <?php if ($mensagemErro): ?><div class="alert alert-danger" role="alert"><?= htmlspecialchars($mensagemErro) ?></div><?php endif; ?>
 
-<body class="bg-gray-50 min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-bullhorn text-red-600 mr-3"></i>
-                    Denúncias
-                </h1>
-                <p class="text-gray-600 mt-1">Gerenciamento de autuações e infrações ambientais.</p>
+    <section class="req-summary-strip den-summary" aria-label="Indicadores de denúncias">
+        <span class="summary-chip active"><span><i class="fas fa-layer-group"></i>Total</span><strong><?= (int) ($stats['total'] ?? 0) ?></strong></span>
+        <a href="<?= htmlspecialchars(buildDenunciaUrl(['status' => 'pendente', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['status'] === 'pendente' ? 'active' : '' ?>"><span><i class="fas fa-clock"></i>Pendentes</span><strong><?= (int) ($stats['pendentes'] ?? 0) ?></strong></a>
+        <a href="<?= htmlspecialchars(buildDenunciaUrl(['status' => 'em_analise', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['status'] === 'em_analise' ? 'active' : '' ?>"><span><i class="fas fa-magnifying-glass"></i>Em análise</span><strong><?= (int) ($stats['em_analise'] ?? 0) ?></strong></a>
+        <a href="<?= htmlspecialchars(buildDenunciaUrl(['anonimo' => '1', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['anonimo'] === '1' ? 'active' : '' ?>"><span><i class="fas fa-user-secret"></i>Anônimas</span><strong><?= (int) ($stats['anonimas'] ?? 0) ?></strong></a>
+    </section>
+
+    <section class="req-filter-bar">
+        <form method="GET">
+            <div class="den-filter-grid">
+                <div class="den-filter-field den-filter-search"><label for="busca">Busca</label><div class="den-search-wrap"><i class="fas fa-magnifying-glass"></i><input id="busca" name="busca" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="denunciaSuggestions" aria-expanded="false" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Protocolo, infrator ou CPF/CNPJ"><div id="denunciaSuggestions" class="den-suggestions" role="listbox"></div></div></div>
+                <div class="den-filter-field"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option><option value="pendente" <?= $filtros['status'] === 'pendente' ? 'selected' : '' ?>>Pendente</option><option value="em_analise" <?= $filtros['status'] === 'em_analise' ? 'selected' : '' ?>>Em análise</option><option value="concluida" <?= $filtros['status'] === 'concluida' ? 'selected' : '' ?>>Concluída</option></select></div>
+                <div class="den-filter-field"><label for="setor">Setor</label><select id="setor" name="setor"><option value="">Todos</option><option value="meio_ambiente" <?= $filtros['setor'] === 'meio_ambiente' ? 'selected' : '' ?>>Meio Ambiente</option><option value="obras_urbanismo" <?= $filtros['setor'] === 'obras_urbanismo' ? 'selected' : '' ?>>Obras e Urbanismo</option></select></div>
+                <div class="den-filter-field"><label for="origem">Origem</label><select id="origem" name="origem"><option value="">Todas</option><option value="publico" <?= $filtros['origem'] === 'publico' ? 'selected' : '' ?>>Cidadão</option><option value="interno" <?= $filtros['origem'] === 'interno' ? 'selected' : '' ?>>Internas</option><option value="minhas" <?= $filtros['origem'] === 'minhas' ? 'selected' : '' ?>>Criadas por mim</option></select></div>
+                <div class="den-filter-field"><label for="anonimo">Anonimato</label><select id="anonimo" name="anonimo"><option value="">Todos</option><option value="1" <?= $filtros['anonimo'] === '1' ? 'selected' : '' ?>>Anônimas</option><option value="0" <?= $filtros['anonimo'] === '0' ? 'selected' : '' ?>>Identificadas</option></select></div>
             </div>
-            <div>
-                <a href="nova_denuncia.php" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors font-medium">
-                    <i class="fas fa-plus mr-2"></i> Registrar Denúncia
+            <div class="den-filter-actions">
+                <input type="hidden" name="concluidas" value="0"><label class="den-toggle"><input type="checkbox" name="concluidas" value="1" <?= $filtros['concluidas'] === '1' ? 'checked' : '' ?>> Incluir concluídas</label>
+                <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar filtros</button>
+                <a href="denuncias.php?limpar=1" class="toolbar-button">Limpar filtros</a>
+                <a href="denuncias.php" class="toolbar-button toolbar-button-ghost"><i class="fas fa-rotate-left"></i> Restaurar padrão</a>
+            </div>
+        </form>
+        <form method="POST" class="den-filter-actions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
+            <input type="hidden" name="acao" value="salvar_preferencia"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+            <?php foreach ($filtros as $key => $value): ?><input type="hidden" name="<?= htmlspecialchars($key) ?>" value="<?= htmlspecialchars($value) ?>"><?php endforeach; ?>
+            <button type="submit" class="toolbar-button"><i class="fas fa-bookmark"></i> Salvar como padrão</button>
+        </form>
+    </section>
+
+    <?php if ($denuncias): ?>
+        <section class="den-list" aria-label="Lista de denúncias">
+            <?php foreach ($denuncias as $denuncia):
+                $tipos = tiposDenuncia($denuncia);
+                $subtitulo = implode(' · ', $tipos);
+                if ($subtitulo === '') $subtitulo = trim((string) ($denuncia['infrator_endereco'] ?? ''));
+                if ($subtitulo === '') $subtitulo = mb_strimwidth(trim((string) $denuncia['observacoes']), 0, 130, '…', 'UTF-8');
+                $protocolo = $denuncia['protocolo_publico'] ?: 'DEN-' . str_pad((string) $denuncia['id'], 6, '0', STR_PAD_LEFT);
+                $ehObras = ($denuncia['setor'] ?? '') === 'obras_urbanismo';
+            ?>
+                <a class="den-card <?= $ehObras ? 'obras' : '' ?>" href="visualizar_denuncia.php?id=<?= (int) $denuncia['id'] ?>">
+                    <div><div class="den-card-top"><span class="den-type-pill"><i class="fas fa-bullhorn"></i> Denúncia</span><span class="req-protocol">#<?= htmlspecialchars($protocolo) ?></span><span class="badge badge-status <?= htmlspecialchars(denunciaStatusClass((string) $denuncia['status'])) ?>"><?= htmlspecialchars($denuncia['status']) ?></span><?php if (!empty($denuncia['anonimo'])): ?><span class="den-anon-pill"><i class="fas fa-user-secret"></i> Anônima</span><?php endif; ?></div>
+                        <div class="den-card-title"><?= htmlspecialchars(tituloDenuncia($denuncia)) ?></div><div class="den-card-subtitle"><?= htmlspecialchars($subtitulo ?: 'Ocorrência sem local ou tipo informado') ?></div>
+                        <div class="den-card-meta" style="margin-top:9px;"><span class="den-sector"><i class="fas <?= $ehObras ? 'fa-hard-hat' : 'fa-leaf' ?>"></i> <?= $ehObras ? 'Obras e Urbanismo' : 'Meio Ambiente' ?></span><span class="den-origin"><i class="fas <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'fa-earth-americas' : 'fa-user-shield' ?>"></i> <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'Cidadão' : 'Interna' ?></span><?php if (($denuncia['origem'] ?? 'admin') === 'admin' && $denuncia['responsavel']): ?><span class="den-origin">Criada por <?= htmlspecialchars($denuncia['responsavel']) ?></span><?php endif; ?></div>
+                    </div>
+                    <div class="den-card-side"><div class="den-card-date"><?= date('d/m/Y \à\s H:i', strtotime($denuncia['data_registro'])) ?></div><span class="den-open">Abrir <i class="fas fa-arrow-right"></i></span></div>
                 </a>
-            </div>
-        </div>
+            <?php endforeach; ?>
+        </section>
+        <section class="req-pagination"><div class="req-pagination-copy">Página <?= $paginaAtual ?> de <?= $totalPaginas ?> · <?= $totalDenuncias ?> denúncia(s)</div><div class="req-pagination-links">
+            <?php if ($paginaAtual > 1): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => 1])) ?>" class="req-page-link">«</a><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $paginaAtual - 1])) ?>" class="req-page-link">‹</a><?php endif; ?>
+            <?php for ($i = max(1, $paginaAtual - 2); $i <= min($totalPaginas, $paginaAtual + 2); $i++): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $i])) ?>" class="req-page-link <?= $i === $paginaAtual ? 'active' : '' ?>"><?= $i ?></a><?php endfor; ?>
+            <?php if ($paginaAtual < $totalPaginas): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $paginaAtual + 1])) ?>" class="req-page-link">›</a><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $totalPaginas])) ?>" class="req-page-link">»</a><?php endif; ?>
+        </div></section>
+    <?php else: ?><div class="den-empty"><i class="fas fa-inbox"></i><strong>Nenhuma denúncia encontrada.</strong><p class="mb-0 mt-1">Ajuste os filtros ou registre uma nova ocorrência.</p></div><?php endif; ?>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('busca');
+    const box = document.getElementById('denunciaSuggestions');
+    if (!input || !box) return;
 
-        <?php if ($mensagem): ?>
-            <div class="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 flex items-center">
-                <?php echo $mensagem; ?>
-            </div>
-        <?php endif; ?>
-        
-        <?php if ($mensagemErro): ?>
-            <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center">
-                <?php echo $mensagemErro; ?>
-            </div>
-        <?php endif; ?>
+    const filtros = <?= json_encode($filtros, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let timer = null;
+    let controller = null;
 
-        <!-- Filtros -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-            <form method="GET" class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
-                        <input type="text" name="busca" value="<?php echo htmlspecialchars($filtroBusca); ?>" placeholder="Nome do infrator ou CPF/CNPJ..." class="pl-10 w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                    </div>
-                </div>
-                <div class="w-full md:w-auto">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Equipe</label>
-                    <div class="flex gap-2">
-                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-gray-800 has-[:checked]:border-gray-800 has-[:checked]:text-white transition-colors">
-                            <input type="radio" name="setor" value="" class="hidden" <?php echo $filtroSetor == '' ? 'checked' : ''; ?> onchange="this.form.submit()">
-                            <i class="fas fa-list"></i> Todas
-                        </label>
-                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-green-600 has-[:checked]:border-green-600 has-[:checked]:text-white transition-colors">
-                            <input type="radio" name="setor" value="meio_ambiente" class="hidden" <?php echo $filtroSetor == 'meio_ambiente' ? 'checked' : ''; ?> onchange="this.form.submit()">
-                            <i class="fas fa-leaf"></i> Meio Ambiente
-                        </label>
-                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 cursor-pointer text-sm font-medium text-gray-600 has-[:checked]:bg-amber-500 has-[:checked]:border-amber-500 has-[:checked]:text-white transition-colors">
-                            <input type="radio" name="setor" value="obras_urbanismo" class="hidden" <?php echo $filtroSetor == 'obras_urbanismo' ? 'checked' : ''; ?> onchange="this.form.submit()">
-                            <i class="fas fa-hard-hat"></i> Obras
-                        </label>
-                    </div>
-                </div>
-                <div class="w-full md:w-64">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select name="status" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
-                        <option value="">Todos os status</option>
-                        <option value="Pendente" <?php echo $filtroStatus == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                        <option value="Em Análise" <?php echo $filtroStatus == 'Em Análise' ? 'selected' : ''; ?>>Em Análise</option>
-                        <option value="Concluída" <?php echo $filtroStatus == 'Concluída' ? 'selected' : ''; ?>>Concluída</option>
-                    </select>
-                </div>
-                <div class="flex items-end gap-2">
-                    <button type="submit" class="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition-colors">
-                        Filtrar
-                    </button>
-                    <?php if (!empty($filtroBusca) || !empty($filtroStatus) || !empty($filtroSetor)): ?>
-                        <a href="denuncias.php" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
-                            Limpar
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </form>
-        </div>
-
-        <!-- Tabela -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="table-responsive">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Infrator / Ocorrência</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipe</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <?php if (count($denuncias) > 0): ?>
-                            <?php foreach ($denuncias as $denuncia): ?>
-                                <?php $ehObras = ($denuncia['setor'] ?? 'meio_ambiente') === 'obras_urbanismo'; ?>
-                                <tr class="hover:bg-blue-50 transition-colors cursor-pointer border-l-4 <?php echo $ehObras ? 'border-l-amber-400' : 'border-l-green-400'; ?>"
-                                    onclick="window.location='visualizar_denuncia.php?id=<?php echo $denuncia['id']; ?>'">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo date('d/m/Y H:i', strtotime($denuncia['data_registro'])); ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($denuncia['infrator_nome']); ?></div>
-                                        <?php if (!empty($denuncia['protocolo_publico'])): ?>
-                                        <div class="text-xs text-gray-400 mt-0.5 font-mono"><?php echo htmlspecialchars($denuncia['protocolo_publico']); ?></div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <?php if ($ehObras): ?>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                <i class="fas fa-hard-hat mr-1"></i> Obras
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <i class="fas fa-leaf mr-1"></i> Meio Ambiente
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <?php if (($denuncia['origem'] ?? 'admin') === 'publico'): ?>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                                <i class="fas fa-globe mr-1"></i> Cidadão
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                <i class="fas fa-user-shield mr-1"></i> Interno
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <?php
-                                            $classeBadge = 'status-pendente';
-                                            if ($denuncia['status'] == 'Em Análise') $classeBadge = 'status-em-analise';
-                                            if ($denuncia['status'] == 'Concluída') $classeBadge = 'status-concluida';
-                                        ?>
-                                        <span class="status-badge <?php echo $classeBadge; ?>">
-                                            <?php echo htmlspecialchars($denuncia['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <span class="text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-flex items-center gap-1">
-                                            <i class="fas fa-arrow-right fa-xs"></i> Abrir
-                                        </span>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                                    <i class="fas fa-info-circle text-4xl text-gray-300 mb-3 block"></i>
-                                    <p class="text-lg">Nenhuma denúncia encontrada.</p>
-                                    <p class="text-sm">Clique em "Registrar Denúncia" para adicionar o primeiro caso interno.</p>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-            
-            <?php if ($totalDenuncias > $itensPorPagina): ?>
-            <!-- Paginação simples -->
-            <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                            Mostrando <span class="font-medium"><?php echo $offset + 1; ?></span> a <span class="font-medium"><?php echo min($offset + $itensPorPagina, $totalDenuncias); ?></span> de <span class="font-medium"><?php echo $totalDenuncias; ?></span> resultados
-                        </p>
-                    </div>
-                    <!-- (Lógica de botões de prve/next iria aqui num cenário mais extenso) -->
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</body>
-</html>
+    function escapeHtml(value) {
+        const node = document.createElement('div');
+        node.textContent = String(value == null ? '' : value);
+        return node.innerHTML;
+    }
+    function closeSuggestions() {
+        box.classList.remove('active');
+        input.setAttribute('aria-expanded', 'false');
+    }
+    function renderSuggestions(data) {
+        const items = data && Array.isArray(data.resultados) ? data.resultados : [];
+        if (!items.length) {
+            box.innerHTML = '<div class="den-suggestion-empty">Nenhuma sugestão encontrada</div>';
+        } else {
+            box.innerHTML = items.map(function (item) {
+                const meta = [item.documento, item.tipo, item.status, item.setor].filter(Boolean).join(' · ');
+                return '<a class="den-suggestion" role="option" href="' + escapeHtml(item.url) + '">' +
+                    '<span class="den-suggestion-icon"><i class="fas ' + (item.anonimo ? 'fa-user-secret' : 'fa-bullhorn') + '"></i></span>' +
+                    '<span class="den-suggestion-copy"><span class="den-suggestion-top"><span class="den-suggestion-title">' + escapeHtml(item.titulo) + '</span><span class="den-suggestion-protocol">#' + escapeHtml(item.protocolo) + '</span></span>' +
+                    '<span class="den-suggestion-meta">' + escapeHtml(meta) + '</span></span></a>';
+            }).join('');
+        }
+        box.classList.add('active');
+        input.setAttribute('aria-expanded', 'true');
+    }
+    function searchSuggestions() {
+        const termo = input.value.trim();
+        if (termo.length < 2) {
+            if (controller) controller.abort();
+            closeSuggestions();
+            return;
+        }
+        if (controller) controller.abort();
+        controller = new AbortController();
+        const params = new URLSearchParams(filtros);
+        params.set('q', termo);
+        fetch('ajax/busca_denuncias.php?' + params.toString(), {
+            signal: controller.signal,
+            headers: {'X-Requested-With': 'fetch'}
+        }).then(function (response) {
+            return response.ok ? response.json() : null;
+        }).then(function (data) {
+            if (!data || data.termo !== input.value.trim()) return;
+            renderSuggestions(data);
+        }).catch(function (error) {
+            if (error.name !== 'AbortError') closeSuggestions();
+        });
+    }
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(searchSuggestions, 220);
+    });
+    input.addEventListener('focus', function () {
+        if (input.value.trim().length >= 2) searchSuggestions();
+    });
+    input.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeSuggestions();
+        // Enter não seleciona uma sugestão: o submit normal executa a busca completa.
+    });
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.den-search-wrap')) closeSuggestions();
+    });
+});
+</script>
 <?php include 'footer.php'; ?>

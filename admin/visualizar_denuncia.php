@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/denuncia_filters.php';
 verificaLogin();
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -37,6 +38,16 @@ if (isset($_GET['success'])) {
 $erroEdicao = '';
 if (isset($_GET['error']) && $_GET['error'] == 'vazio') $erroEdicao = "⚠️ Nome e relato são obrigatórios.";
 
+$protocoloDenuncia = $denuncia['protocolo_publico'] ?: 'DEN-' . str_pad((string) $denuncia['id'], 6, '0', STR_PAD_LEFT);
+$origemCidadao = ($denuncia['origem'] ?? 'admin') === 'publico';
+$ehAnonima = !empty($denuncia['anonimo']);
+$tiposOcorrenciaDetalhe = tiposDenuncia($denuncia);
+$statusCorDenuncia = match (normalizarStatusProcesso((string) $denuncia['status'])) {
+    'em_analise' => '#3762d9',
+    'concluida' => '#14532d',
+    default => '#b7791f',
+};
+
 include 'header.php';
 ?>
 
@@ -60,55 +71,53 @@ include 'header.php';
             background-color: #3b82f6; 
             border: 2px solid white;
         }
+        .den-proc-tag { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid #dce6df; background:#f7f9f7; color:#3d5c46; font-size:.74rem; font-weight:700; }
+        .den-proc-tag.obras { background:#fff8e8; border-color:#f1d8a7; color:#8a5b13; }
+        .den-proc-tag.anonima { background:#302b36; border-color:#302b36; color:#fff; }
+        .den-anonymous-note { display:flex; align-items:center; gap:9px; padding:11px 13px; border:1px solid #dce3df; border-radius:10px; background:#f7f9f7; color:#3f4d45; font-size:.84rem; font-weight:650; }
     </style>
 </head>
 
 <body class="bg-gray-50 min-h-screen">
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        
-        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <a href="denuncias.php" class="text-blue-600 hover:text-blue-800 flex items-center mb-2 transition-colors w-max">
-                    <i class="fas fa-arrow-left mr-2"></i> Voltar à Lista
-                </a>
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3 flex-wrap">
-                    Detalhes da Denúncia #<?php echo str_pad($denuncia['id'], 6, '0', STR_PAD_LEFT); ?>
+    <div class="container-fluid px-4 py-4" style="max-width:1240px;">
+        <div class="proc-crumb">
+            <a href="denuncias.php"><i class="fas fa-arrow-left"></i> Denúncias</a>
+            <span class="proc-crumb-sep">/</span>
+            <span class="proc-crumb-proto">#<?= htmlspecialchars($protocoloDenuncia) ?></span>
+        </div>
+
+        <div class="proc-header <?= normalizarStatusProcesso((string) $denuncia['status']) === 'concluida' ? 'finalizado' : '' ?>">
+            <div class="proc-header-main">
+                <div class="proc-protocol-row">
+                    <span class="proc-protocol"><?= htmlspecialchars($protocoloDenuncia) ?></span>
+                    <button type="button" class="proc-copy-btn" onclick="copyDenProtocol(this)" title="Copiar protocolo"><i class="fas fa-copy"></i></button>
+                    <span class="proc-status"><span class="dot" style="color:<?= $statusCorDenuncia ?>"></span><?= htmlspecialchars($denuncia['status']) ?></span>
+                </div>
+                <div class="proc-name"><?= htmlspecialchars(tituloDenuncia($denuncia)) ?></div>
+                <div class="proc-meta">
+                    <span class="den-proc-tag"><i class="fas <?= $origemCidadao ? 'fa-earth-americas' : 'fa-user-shield' ?>"></i><?= $origemCidadao ? 'Cidadão' : 'Interna' ?></span>
                     <?php if (($denuncia['setor'] ?? 'meio_ambiente') === 'obras_urbanismo'): ?>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                            <i class="fas fa-hard-hat"></i> Obras e Serviços Urbanos
-                        </span>
+                        <span class="den-proc-tag obras"><i class="fas fa-hard-hat"></i>Obras e Serviços Urbanos</span>
                     <?php else: ?>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
-                            <i class="fas fa-leaf"></i> Meio Ambiente
-                        </span>
+                        <span class="den-proc-tag"><i class="fas fa-leaf"></i>Meio Ambiente</span>
                     <?php endif; ?>
-                </h1>
+                    <?php if ($ehAnonima): ?><span class="den-proc-tag anonima"><i class="fas fa-user-secret"></i>Anônima</span><?php endif; ?>
+                    <span>Registrada em <?= date('d/m/Y', strtotime($denuncia['data_registro'])) ?></span>
+                </div>
             </div>
-            
-            <div class="flex items-center gap-3">
-                <a href="exportar_denuncia.php?id=<?php echo $denuncia['id']; ?>" target="_blank"
-                   class="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-                    <i class="fas fa-file-export mr-2"></i> Exportar Denúncia
-                </a>
-                <a href="documentos/selecionar_denuncia.php?denuncia_id=<?php echo $denuncia['id']; ?>"
-                   class="bg-white border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-                    <i class="fas fa-file-signature mr-2"></i> Gerar Documento
-                </a>
-                <button type="button" onclick="toggleEdicao()" id="btnEditar"
-                        class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-                    <i class="fas fa-edit mr-2"></i> Editar
-                </button>
-                <form action="processar_denuncia.php" method="POST" class="d-inline" onsubmit="return confirm('ATENÇÃO: Esta ação é irreversível e excluirá todos os dados e arquivos anexados desta denúncia. Deseja continuar?')">
-                    <input type="hidden" name="acao" value="excluir">
-                    <input type="hidden" name="id" value="<?php echo $denuncia['id']; ?>">
-                    <button type="submit" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors mr-2">
-                        <i class="fas fa-trash-alt mr-2"></i> Excluir
-                    </button>
-                </form>
-                <a href="#andamento"
-                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-                    <i class="fas fa-clipboard-check mr-2"></i> Registrar andamento
-                </a>
+        </div>
+
+        <div class="cmd-bar">
+            <a href="#andamento" class="cmd-btn-primary"><i class="fas fa-clipboard-check"></i>Registrar andamento</a>
+            <a href="exportar_denuncia.php?id=<?= (int) $denuncia['id'] ?>" target="_blank" class="cmd-btn"><i class="fas fa-file-export cmd-ic"></i>Exportar</a>
+            <a href="documentos/selecionar_denuncia.php?denuncia_id=<?= (int) $denuncia['id'] ?>" class="cmd-btn"><i class="fas fa-file-signature cmd-ic"></i>Gerar documento</a>
+            <button type="button" onclick="toggleEdicao()" id="btnEditar" class="cmd-btn"><i class="fas fa-edit cmd-ic"></i>Editar</button>
+            <span class="cmd-sep"></span>
+            <div class="dropdown">
+                <button type="button" class="cmd-more-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Mais ações"><i class="fas fa-ellipsis"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><form action="processar_denuncia.php" method="POST" onsubmit="return confirm('ATENÇÃO: Esta ação é irreversível e excluirá todos os dados e arquivos anexados desta denúncia. Deseja continuar?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="<?= (int) $denuncia['id'] ?>"><button type="submit" class="dropdown-item" style="color:#b13232;"><i class="fas fa-trash-alt"></i>Excluir denúncia</button></form></li>
+                </ul>
             </div>
         </div>
 
@@ -185,7 +194,7 @@ include 'header.php';
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <span class="block text-sm text-gray-500 mb-1">Nome/Razão Social:</span>
-                                <span class="text-base font-medium text-gray-900"><?php echo htmlspecialchars($denuncia['infrator_nome']); ?></span>
+                                <span class="text-base font-medium text-gray-900"><?php echo htmlspecialchars(tituloDenuncia($denuncia)); ?></span>
                             </div>
                             <div>
                                 <span class="block text-sm text-gray-500 mb-1">CPF/CNPJ:</span>
@@ -196,12 +205,16 @@ include 'header.php';
                             <span class="block text-sm text-gray-500 mb-1">Endereço da Ocorrência:</span>
                             <span class="text-base text-gray-800"><?php echo htmlspecialchars($denuncia['infrator_endereco'] ?: 'Não informado'); ?></span>
                         </div>
+                        <?php if ($tiposOcorrenciaDetalhe): ?>
+                        <div>
+                            <span class="block text-sm text-gray-500 mb-1">Tipo da ocorrência:</span>
+                            <div class="flex flex-wrap gap-2"><?php foreach ($tiposOcorrenciaDetalhe as $tipoOcorrencia): ?><span class="px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-100 text-sm font-medium"><?= htmlspecialchars($tipoOcorrencia) ?></span><?php endforeach; ?></div>
+                        </div>
+                        <?php endif; ?>
                         <div class="pt-4 border-t border-gray-100">
                             <span class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-user-shield text-gray-400 mr-1"></i> Denunciante</span>
                             <?php if (!empty($denuncia['anonimo'])): ?>
-                                <span class="inline-flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-600">
-                                    <i class="fas fa-user-secret"></i> Denúncia anônima — sem dados de identificação
-                                </span>
+                                <div class="den-anonymous-note"><i class="fas fa-user-secret"></i><span>Denúncia anônima</span></div>
                             <?php else: ?>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -368,7 +381,7 @@ include 'header.php';
                         </li>
                         <li class="flex justify-between items-center">
                             <span class="text-sm text-gray-500">Por:</span>
-                            <span class="text-sm font-medium text-gray-800"><?php echo htmlspecialchars($denuncia['responsavel']); ?></span>
+                            <span class="text-sm font-medium text-gray-800"><?php echo htmlspecialchars($denuncia['responsavel'] ?: ($origemCidadao ? 'Canal do cidadão' : 'Sistema')); ?></span>
                         </li>
                     </ul>
                 </div>
@@ -517,6 +530,13 @@ include 'header.php';
 
     </div>
     <script>
+        function copyDenProtocol(button) {
+            navigator.clipboard.writeText(<?= json_encode($protocoloDenuncia, JSON_UNESCAPED_UNICODE) ?>).then(function () {
+                const icon = button.querySelector('i');
+                icon.className = 'fas fa-check';
+                setTimeout(function () { icon.className = 'fas fa-copy'; }, 1200);
+            });
+        }
         function toggleEdicao() {
             const editando = document.getElementById('editInfos').classList.contains('hidden');
 
@@ -528,15 +548,9 @@ include 'header.php';
 
             const btn = document.getElementById('btnEditar');
             if (editando) {
-                btn.innerHTML = '<i class="fas fa-times mr-2"></i> Cancelar';
-                btn.classList.replace('border-blue-200', 'border-gray-200');
-                btn.classList.replace('text-blue-600', 'text-gray-600');
-                btn.classList.replace('hover:bg-blue-50', 'hover:bg-gray-50');
+                btn.innerHTML = '<i class="fas fa-times cmd-ic"></i>Cancelar';
             } else {
-                btn.innerHTML = '<i class="fas fa-edit mr-2"></i> Editar';
-                btn.classList.replace('border-gray-200', 'border-blue-200');
-                btn.classList.replace('text-gray-600', 'text-blue-600');
-                btn.classList.replace('hover:bg-gray-50', 'hover:bg-blue-50');
+                btn.innerHTML = '<i class="fas fa-edit cmd-ic"></i>Editar';
             }
         }
     </script>

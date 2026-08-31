@@ -63,16 +63,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validação dos dados do requerente
     if (empty($requerente['nome']) || empty($requerente['email']) || empty($requerente['cpf_cnpj']) || empty($requerente['telefone'])) {
         $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 1;
         setMensagem('erro', 'Todos os campos do requerente são obrigatórios.');
         redirect('index.php');
     }
     if (!emailRequerenteValido($requerente['email'])) {
         $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 1;
         setMensagem('erro', 'Informe um endereço de e-mail válido.');
         redirect('index.php');
     }
     if (!emailsRequerenteCoincidem($requerente['email'], $emailConfirmacao)) {
         $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 1;
         setMensagem('erro', 'A confirmação do e-mail não coincide com o endereço informado.');
         redirect('index.php');
     }
@@ -104,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($proprietario['nome']) || !empty($proprietario['cpf_cnpj'])) {
             if (empty($proprietario['nome']) || empty($proprietario['cpf_cnpj'])) {
                 $_SESSION['form_data'] = $_POST;
+                $_SESSION['form_step'] = 1;
                 setMensagem('erro', 'Se informar dados do proprietário, preencha nome E CPF/CNPJ.');
                 redirect('index.php');
             }
@@ -143,6 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $area_construcao = trim($_POST['area_construcao'] ?? '');
     $numero_pavimentos = trim($_POST['numero_pavimentos'] ?? '');
     $area_construida = trim($_POST['area_construida'] ?? '');
+    if ($area_construida === '' && $area_construcao !== '') {
+        $area_construida = $area_construcao;
+    } elseif ($area_construcao === '' && $area_construida !== '') {
+        $area_construcao = $area_construida;
+    }
     $area_lote = trim($_POST['area_lote'] ?? '');
     $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
     $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
@@ -150,26 +159,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // O nome oficial persistido é responsavel_tecnico_numero; o alias antigo
     // continua aceito para preservar rascunhos e integrações anteriores.
     $responsavel_tecnico_art = trim($_POST['responsavel_tecnico_numero'] ?? $_POST['responsavel_tecnico_art'] ?? '');
+    $responsavel_tecnico_email = trim($_POST['responsavel_tecnico_email'] ?? '');
+    $responsavel_tecnico_telefone = trim($_POST['responsavel_tecnico_telefone'] ?? '');
     $descricao_atividade = trim($_POST['especificacao'] ?? $_POST['descricao_atividade'] ?? '');
+    $tipo_edificacao = trim($_POST['tipo_edificacao'] ?? '');
+
+    $obra_logradouro = trim($_POST['obra_logradouro'] ?? '');
+    $obra_lote = trim($_POST['obra_lote'] ?? '');
+    $obra_quadra = trim($_POST['obra_quadra'] ?? '');
+    $obra_numero = trim($_POST['obra_numero'] ?? '');
+    $obra_bairro = trim($_POST['obra_bairro'] ?? '');
+    $obra_sem_numero = isset($_POST['obra_sem_numero']) ? 1 : 0;
+    $obra_sem_lote_quadra = isset($_POST['obra_sem_lote_quadra']) ? 1 : 0;
 
     // A exigência acompanha a lista oficial de documentos do serviço.
     $documentosObrigatoriosTipo = array_values(array_filter((array) ($tipoInfo['documentos'] ?? []), 'is_string'));
     $exigeResponsavelTecnico = (bool) preg_match('/\bART(?:s)?\b|\bRRT(?:s)?\b|respons[aá]vel t[eé]cnico/i', implode(' ', $documentosObrigatoriosTipo));
     if ($exigeResponsavelTecnico && ($responsavel_tecnico_nome === '' || $responsavel_tecnico_tipo_documento === '' || $responsavel_tecnico_registro === '' || $responsavel_tecnico_art === '')) {
         $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 1;
         setMensagem('erro', 'Informe todos os dados obrigatórios do responsável técnico, incluindo conselho, registro e ART/RRT.');
+        redirect('index.php');
+    }
+    if ($responsavel_tecnico_tipo_documento !== '' && !in_array(strtoupper($responsavel_tecnico_tipo_documento), ['CREA', 'CAU'], true)) {
+        $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 1;
+        setMensagem('erro', 'Selecione CREA ou CAU como conselho do responsável técnico.');
         redirect('index.php');
     }
 
     // Campos adicionais dos modelos (construção / habite-se / desmembramento)
     $cadastro_imobiliario     = trim($_POST['cadastro_imobiliario'] ?? '');
+    $matricula_imovel         = trim($_POST['matricula_imovel'] ?? '');
     $inicio_obra              = trim($_POST['inicio_obra'] ?? '');
     $termino_obra             = trim($_POST['termino_obra'] ?? '');
     $area_total_terreno       = trim($_POST['area_total_terreno'] ?? '');
     $area_remanescente        = trim($_POST['area_remanescente'] ?? '');
     $alvara_construcao_numero = trim($_POST['alvara_construcao_numero'] ?? '');
-    $eng_fiscal_nome          = trim($_POST['eng_fiscal_nome'] ?? '');
-    $eng_fiscal_registro      = trim($_POST['eng_fiscal_registro'] ?? '');
+    // O parecer técnico do Habite-se é parâmetro institucional, não campo do cidadão.
+    $eng_fiscal_nome          = 'ISABELY KEYVA FERNANDES COSTA';
+    $eng_fiscal_registro      = '2118668139';
+    $habiteCampos = [];
+    foreach (['uso', 'pavimento', 'tipo_construcao', 'padrao', 'estrutura', 'portas', 'janelas', 'piso', 'paredes', 'forro', 'cobertura'] as $campo) {
+        $val = trim($_POST['habite_' . $campo] ?? '');
+        if (strcasecmp($val, 'Outro') === 0 || $val === '__outro__') {
+            $outro = trim($_POST['habite_' . $campo . '_outro'] ?? '');
+            if ($outro !== '') {
+                $val = $outro;
+            }
+        }
+        $habiteCampos['habite_' . $campo] = $val;
+    }
+    $habiteAmbientes = json_decode((string) ($_POST['habite_ambientes_json'] ?? ''), true);
+    $habiteAmbientes = is_array($habiteAmbientes) ? $habiteAmbientes : [];
+
+    $quartos = max(0, (int) ($habiteAmbientes['quartos'] ?? $_POST['quartos'] ?? 0));
+    $suites = max(0, (int) ($habiteAmbientes['suites'] ?? $_POST['suites'] ?? 0));
+    $banheirosSociais = max(0, (int) ($habiteAmbientes['banheiros_sociais'] ?? $_POST['banheiros_sociais'] ?? $_POST['banheiros'] ?? 0));
+    $salas = max(0, (int) ($habiteAmbientes['salas'] ?? $_POST['salas'] ?? 0));
+    $cozinhas = max(0, (int) ($habiteAmbientes['cozinhas'] ?? $_POST['cozinhas'] ?? 0));
+
+    $totalDormitorios = $quartos + $suites;
+    $totalBanheiros = $banheirosSociais + $suites;
+
+    $habiteAmbientes['quartos'] = $quartos;
+    $habiteAmbientes['suites'] = $suites;
+    $habiteAmbientes['banheiros_sociais'] = $banheirosSociais;
+    $habiteAmbientes['banheiros'] = $banheirosSociais; // compatibilidade com código legado
+    $habiteAmbientes['salas'] = $salas;
+    $habiteAmbientes['cozinhas'] = $cozinhas;
+    $habiteAmbientes['total_dormitorios'] = $totalDormitorios;
+    $habiteAmbientes['total_banheiros'] = $totalBanheiros;
+
+    $habiteAmbientesJson = json_encode($habiteAmbientes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if (in_array($tipoAlvara, ['construcao', 'construcao_obras_publicas'], true)
+        && ($tipo_edificacao === '' || (int) $numero_pavimentos < 1 || $area_construcao === '' || $cadastro_imobiliario === '')) {
+        $_SESSION['form_data'] = $_POST;
+        $_SESSION['form_step'] = 2;
+        setMensagem('erro', 'Informe o tipo da edificação, a quantidade de pavimentos, a área a construir e o cadastro imobiliário.');
+        redirect('index.php');
+    }
+    if (in_array($tipoAlvara, ['habite_se', 'habite_se_simples', 'habite_se_obras_publicas'], true)) {
+        $camposHabiteObrigatorios = array_merge(array_values($habiteCampos), [
+            $area_construida, $cadastro_imobiliario, $alvara_construcao_numero, $inicio_obra, $termino_obra,
+        ]);
+        if (in_array('', $camposHabiteObrigatorios, true)) {
+            $_SESSION['form_data'] = $_POST;
+            $_SESSION['form_step'] = 2;
+            setMensagem('erro', 'Preencha todos os dados e características obrigatórias da Carta de Habite-se.');
+            redirect('index.php');
+        }
+    }
 
     $observacoes = '';
     $desmembramentoLotesJson = null;
@@ -178,6 +259,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $toArea = static function ($value): float {
             $value = trim((string) $value);
             if ($value === '') return 0.0;
+            // Aceita somente número positivo em formato simples (12.50) ou
+            // brasileiro (1.250,50). Letras e unidades como "500m" são
+            // rejeitadas; a unidade é responsabilidade da apresentação.
+            $formatoSimples = preg_match('/^\d+(?:\.\d+)?$/', $value);
+            $formatoBrasileiro = preg_match('/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?$/', $value);
+            if (!$formatoSimples && !$formatoBrasileiro) return 0.0;
             if (strpos($value, ',') !== false) {
                 $value = str_replace(',', '.', str_replace('.', '', $value));
             }
@@ -201,6 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lotes[] = [
             'ordem' => 1,
             'area' => $areaPrimeiroLote,
+            'cadastro_imobiliario' => trim((string) ($_POST['cadastro_imobiliario'] ?? '')),
             'confrontacoes' => $confrontacoes(),
         ];
         foreach ((array) ($_POST['lotes'] ?? []) as $index => $lotePost) {
@@ -216,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lotes[] = [
                 'ordem' => count($lotes) + 1,
                 'area' => $toArea($lotePost['area'] ?? ''),
+                'cadastro_imobiliario' => trim((string) ($lotePost['cadastro_imobiliario'] ?? '')),
                 'confrontacoes' => $lados,
             ];
         }
@@ -226,16 +315,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($lotes as $lote) {
             if ($lote['area'] <= 0) {
                 $_SESSION['form_data'] = $_POST;
+                $_SESSION['form_step'] = 2;
                 setMensagem('erro', 'Informe uma área válida para cada lote do desmembramento.');
+                redirect('index.php');
+            }
+            if ($lote['cadastro_imobiliario'] === '') {
+                $_SESSION['form_data'] = $_POST;
+                $_SESSION['form_step'] = 2;
+                setMensagem('erro', 'Informe o cadastro imobiliário de cada lote do desmembramento.');
                 redirect('index.php');
             }
             foreach ($lote['confrontacoes'] as $lado) {
                 if ($lado['metragem'] <= 0 || $lado['descricao'] === '') {
                     $_SESSION['form_data'] = $_POST;
+                    $_SESSION['form_step'] = 2;
                     setMensagem('erro', 'Informe a metragem e o confrontante de cada lado de todos os lotes.');
                     redirect('index.php');
                 }
             }
+        }
+        if ($matricula_imovel === '') {
+            $_SESSION['form_data'] = $_POST;
+            $_SESSION['form_step'] = 2;
+            setMensagem('erro', 'Informe o número da matrícula do imóvel no Cartório de Registro de Imóveis (RGI).');
+            redirect('index.php');
+        }
+        if ($totalTerreno <= 0) {
+            $_SESSION['form_data'] = $_POST;
+            $_SESSION['form_step'] = 2;
+            setMensagem('erro', 'Informe uma área válida para a porção maior do terreno.');
+            redirect('index.php');
+        }
+        if ($inconsistencia) {
+            $_SESSION['form_data'] = $_POST;
+            $_SESSION['form_step'] = 2;
+            setMensagem('erro', 'A soma das áreas dos lotes não pode ser maior que a área da porção maior.');
+            redirect('index.php');
         }
         $area_remanescente = number_format(max(0, $totalTerreno - $somaLotes), 2, ',', '.');
         $desmembramentoLotesJson = json_encode([
@@ -253,6 +368,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'requerente_id' => $requerente_id,
         'proprietario_id' => $proprietario_id,
         'endereco_objetivo' => $_POST['endereco_objetivo'] ?? '',
+        'obra_logradouro' => $obra_logradouro ?: null,
+        'obra_lote' => (!$obra_sem_lote_quadra && $obra_lote !== '') ? $obra_lote : null,
+        'obra_quadra' => (!$obra_sem_lote_quadra && $obra_lote !== '') ? ($obra_quadra ?: null) : null,
+        'obra_numero' => $obra_sem_numero ? null : ($obra_numero ?: null),
+        'obra_sem_numero' => $obra_sem_numero,
+        'obra_sem_lote_quadra' => $obra_sem_lote_quadra,
+        'obra_bairro' => $obra_bairro ?: null,
         'ctf_numero' => $ctf_numero ?: null,
         'licenca_anterior_numero' => $licenca_anterior_numero ?: null,
         'publicacao_diario_oficial' => $publicacao_diario_oficial ?: null,
@@ -262,14 +384,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Novos campos mapeados
         'area_construcao' => $area_construcao ?: null,
         'numero_pavimentos' => $numero_pavimentos ?: null,
+        'tipo_edificacao' => $tipo_edificacao ?: null,
         'area_construida' => $area_construida ?: null,
         'area_lote' => $area_lote ?: null,
         'responsavel_tecnico_nome' => $responsavel_tecnico_nome ?: null,
         'responsavel_tecnico_registro' => $responsavel_tecnico_registro ?: null,
         'responsavel_tecnico_tipo_documento' => $responsavel_tecnico_tipo_documento ?: null,
         'responsavel_tecnico_numero' => $responsavel_tecnico_art ?: null,
+        'responsavel_tecnico_email' => $responsavel_tecnico_email ?: null,
+        'responsavel_tecnico_telefone' => $responsavel_tecnico_telefone ?: null,
         'especificacao' => $descricao_atividade ?: null,
         'cadastro_imobiliario' => $cadastro_imobiliario ?: null,
+        'matricula_imovel' => $matricula_imovel ?: null,
         'inicio_obra' => $inicio_obra ?: null,
         'termino_obra' => $termino_obra ?: null,
         'area_total_terreno' => $area_total_terreno ?: null,
@@ -278,6 +404,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'alvara_construcao_numero' => $alvara_construcao_numero ?: null,
         'eng_fiscal_nome' => $eng_fiscal_nome ?: null,
         'eng_fiscal_registro' => $eng_fiscal_registro ?: null,
+        'habite_uso' => $habiteCampos['habite_uso'] ?: null,
+        'habite_pavimento' => $habiteCampos['habite_pavimento'] ?: null,
+        'habite_tipo_construcao' => $habiteCampos['habite_tipo_construcao'] ?: null,
+        'habite_padrao' => $habiteCampos['habite_padrao'] ?: null,
+        'habite_estrutura' => $habiteCampos['habite_estrutura'] ?: null,
+        'habite_portas' => $habiteCampos['habite_portas'] ?: null,
+        'habite_janelas' => $habiteCampos['habite_janelas'] ?: null,
+        'habite_piso' => $habiteCampos['habite_piso'] ?: null,
+        'habite_paredes' => $habiteCampos['habite_paredes'] ?: null,
+        'habite_forro' => $habiteCampos['habite_forro'] ?: null,
+        'habite_cobertura' => $habiteCampos['habite_cobertura'] ?: null,
+        'habite_ambientes_json' => $habiteAmbientesJson,
         'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
         'enquadramento_atividade' => $enquadramento_atividade ?: null,
         'localizacao_google_maps' => $localizacao_google_maps ?: null,
@@ -412,6 +550,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Salvar requerimento
     $requerimento_id = $requerimentoModel->criar($requerimento);
+    if ($responsavel_tecnico_registro !== '' && $responsavel_tecnico_nome !== '') {
+        $conselho = strtoupper($responsavel_tecnico_tipo_documento);
+        $conselho = in_array($conselho, ['CAU', 'RRT'], true) ? 'CAU' : 'CREA';
+        $pdo->prepare("INSERT INTO responsaveis_tecnicos (conselho, registro, nome, email, telefone)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE conselho = VALUES(conselho), nome = VALUES(nome),
+                email = VALUES(email), telefone = VALUES(telefone)")
+            ->execute([$conselho, $responsavel_tecnico_registro, $responsavel_tecnico_nome,
+                $responsavel_tecnico_email ?: null, $responsavel_tecnico_telefone ?: null]);
+        $responsavelId = (int) $pdo->lastInsertId();
+        if ($responsavelId === 0) {
+            $stmtResponsavel = $pdo->prepare('SELECT id FROM responsaveis_tecnicos WHERE registro = ?');
+            $stmtResponsavel->execute([$responsavel_tecnico_registro]);
+            $responsavelId = (int) $stmtResponsavel->fetchColumn();
+        }
+        if ($responsavelId > 0) {
+            $pdo->prepare('INSERT IGNORE INTO responsavel_tecnico_obras (responsavel_tecnico_id, requerimento_id) VALUES (?, ?)')
+                ->execute([$responsavelId, $requerimento_id]);
+        }
+    }
     createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'novo_protocolo');
 
     // Diretório para upload dos arquivos

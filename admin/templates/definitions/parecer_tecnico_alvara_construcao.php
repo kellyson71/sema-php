@@ -19,7 +19,7 @@ return [
         [
             'tipo'   => 'paragrafos',
             'textos' => [
-                'Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong> de uma edificação residencial unifamiliar de pavimento térreo e de <strong>{{area_construida}} m²</strong> de área que será construída, localizada na <strong>{{endereco_objetivo}}</strong> (Lote:, quadra:) bairro:, Pau dos Ferros/RN. Pertencente ao(à) <strong>{{nome_proprietario}}</strong> <strong>CPF/CNPJ ({{cpf_cnpj_proprietario}})</strong>, conforme <strong>{{responsavel_tecnico_tipo_documento}} Nº {{responsavel_tecnico_numero}}</strong>.',
+                'Trata o presente parecer técnico sobre o <strong>REQUERIMENTO DE ALVARÁ DE CONSTRUÇÃO</strong>, referente à <strong>{{especificacao}}</strong>, no imóvel situado em <strong>{{endereco_objetivo}}</strong>, pertencente ao(à) <strong>{{nome_proprietario}}</strong>, CPF/CNPJ <strong>{{cpf_cnpj_proprietario}}</strong>, com responsabilidade técnica conforme <strong>{{responsavel_tecnico_rotulo}} Nº {{responsavel_tecnico_numero}}</strong>.',
                 'O projeto para construção da edificação supracitada foi submetido à apreciação desta Assessoria Técnica para análise e emissão do PARECER acerca das diretrizes que orientam e que regulamentam as edificações no Município de Pau dos Ferros – RN.',
                 'Após a análise de praxe, pude constatar que a referida edificação, encontra-se em conformidade com a legislação vigente no MUNICÍPIO DE PAU DOS FERROS – RN.',
                 'De acordo com a NBR 12721 – Avaliação de custos de construção para incorporação imobiliária e outras disposições para condomínios edilícios, o projeto em análise se assemelha ao tipo Padrão Residencial – Baixo.',

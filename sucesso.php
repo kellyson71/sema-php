@@ -87,11 +87,6 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
                 </div>
             <?php endif; ?>
 
-            <div class="ds-detail ds-detail-warning">
-                <i class="fas fa-circle-info" aria-hidden="true"></i>
-                <span>Este é o registro de entrada interno. Guarde-o até receber o protocolo oficial por e-mail, em até <strong>7 dias úteis</strong>.</span>
-            </div>
-
             <ol class="ds-steps" aria-label="Próximas etapas">
                 <li><span class="ds-step-number">1</span>A equipe fará a análise inicial do requerimento.</li>
                 <li><span class="ds-step-number">2</span>Se houver taxa, você receberá o acesso seguro ao boleto.</li>

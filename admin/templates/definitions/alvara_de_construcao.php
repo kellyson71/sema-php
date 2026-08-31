@@ -32,7 +32,8 @@ return [
             'tipo'     => 'texto',
             'conteudo' => '<strong>RESPONSÁVEL TÉCNICO:</strong><br>'
                 . '{{responsavel_tecnico_nome}}<br>'
-                . '<strong>REGISTRO:</strong> N° {{responsavel_tecnico_registro}}',
+                . '<strong>{{responsavel_tecnico_conselho}}:</strong> N° {{responsavel_tecnico_registro}}<br>'
+                . '<strong>{{responsavel_tecnico_rotulo}}:</strong> N° {{responsavel_tecnico_numero}}',
         ],
 
         [
@@ -52,10 +53,10 @@ return [
         [
             'tipo'  => 'dados_inline',
             'dados' => [
-                ['PROTOCOLO', '{{protocolo}}'],
+                ['PROTOCOLO OFICIAL', '{{protocolo_oficial}}'],
                 ['ÁREA CONSTRUÍDA', '{{area_construida}} m²'],
                 ['CADASTRO IMOBILIÁRIO', '{{cadastro_imobiliario}}'],
-                ['ART', '{{responsavel_tecnico_numero}}'],
+                ['{{responsavel_tecnico_rotulo}}', '{{responsavel_tecnico_numero}}'],
                 ['PREVISÃO DA OBRA', 'Início {{inicio_obra}}, Término {{termino_obra}}'],
             ],
         ],

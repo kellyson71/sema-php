@@ -28,7 +28,7 @@ return [
         [
             'tipo'   => 'paragrafos',
             'textos' => [
-                'O presente parecer tem como objetivo a análise técnica ambiental para emissão de Alvará de Construção, de uma edificação residencial unifamiliar de pavimento térreo com <strong>{{area_construida}}</strong> m² de área a ser construída, de acordo com <strong>ART. Nº {{art_numero}}</strong>.',
+                'O presente parecer tem como objetivo a análise técnica ambiental para emissão de Alvará de Construção, referente à <strong>{{especificacao}}</strong>, a ser executada no imóvel situado em <strong>{{endereco_objetivo}}</strong>, de acordo com <strong>{{responsavel_tecnico_rotulo}} Nº {{responsavel_tecnico_numero}}</strong>.',
                 'Trata-se de projeto de edificação a ser implantado em zona urbana consolidada do Município de Pau dos Ferros/RN, cujas documentações e informações técnicas foram devidamente protocoladas junto à Prefeitura.',
                 'A análise visa aferir a conformidade ambiental da obra pretendida com base na legislação federal, estadual e municipal vigente, em especial no que diz respeito ao uso e ocupação do solo, regularidade ambiental e ausência de impacto significativo ao meio ambiente.',
             ],

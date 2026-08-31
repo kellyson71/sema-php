@@ -20,7 +20,7 @@ return [
         ],
         [
             'tipo'  => 'subtitulo',
-            'texto' => '{{protocolo}}',
+            'texto' => 'PROCESSO: {{protocolo_oficial}}',
         ],
 
         [
@@ -38,20 +38,20 @@ return [
                 ],
                 [
                     'RESPONSÁVEL TÉCNICO:',
-                    '{{responsavel_tecnico_nome}}<br><strong>REGISTRO:</strong> N° {{responsavel_tecnico_registro}}',
+                    '{{responsavel_tecnico_nome}}<br><strong>{{responsavel_tecnico_conselho}}:</strong> N° {{responsavel_tecnico_registro}}',
                     ['colspan' => true],
                 ],
                 [
                     'ALVARÁ:',
                     '{{alvara_construcao_numero}}'
                         . '<br><strong>CADASTRO IMOBILIÁRIO (SEQUENCIAL):</strong> {{cadastro_imobiliario}}'
-                        . '<br><strong>ART:</strong> N° {{responsavel_tecnico_numero}}'
+                        . '<br><strong>{{responsavel_tecnico_rotulo}}:</strong> N° {{responsavel_tecnico_numero}}'
                         . '<br><strong>PERÍODO DA OBRA:</strong> INÍCIO {{inicio_obra}}, TÉRMINO {{termino_obra}}',
                     ['colspan' => true],
                 ],
                 [
                     'ESPECIFICAÇÃO / LAUDO DO ENGENHEIRO TÉCNICO E FISCAL DE OBRAS:',
-                    '<br><strong>PARECER TÉCNICO DADO PELO:</strong> ENG.º CIVIL: {{eng_fiscal_nome}}. CREA: {{eng_fiscal_registro}}.'
+                    '<br><strong>PARECER TÉCNICO DADO PELA:</strong> ENG.ª CIVIL: {{eng_fiscal_nome}}. CREA: {{eng_fiscal_registro}}.'
                         . '<br><br><strong><em>CARACTERÍSTICAS:</em></strong>'
                         . '<br><em>{{especificacao}}</em>',
                     ['colspan' => true],

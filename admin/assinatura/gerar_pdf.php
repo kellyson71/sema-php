@@ -417,15 +417,15 @@ function _renderLinhaAssinaturaManual(SEMA_PDF $pdf, array $assinante, float $bX
     $pdf->SetLineWidth(0.35);
     $pdf->Line($bX, $bY + 7, $bX + $bW, $bY + 7);
 
-    $pdf->SetFont('helvetica', 'B', 5.5);
+    $pdf->SetFont('helvetica', 'B', 9);
     $pdf->SetTextColor(0, 0, 0);
     $pdf->SetXY($bX, $bY + 8);
     $pdf->Cell($bW, 3, $nome, 0, 0, 'C');
 
     if ($cargo) {
-        $pdf->SetFont('helvetica', '', 5);
-        $pdf->SetXY($bX, $bY + 11);
-        $pdf->Cell($bW, 2.5, $cargo, 0, 0, 'C');
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->SetXY($bX, $bY + 11.5);
+        $pdf->Cell($bW, 3, $cargo, 0, 0, 'C');
     }
 }
 

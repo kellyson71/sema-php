@@ -7,6 +7,7 @@ require_once '../includes/pendencia_helpers.php';
 require_once '../includes/notas_internas_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../includes/coassinatura_helper.php';
+require_once '../includes/documento_regras.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
 
@@ -86,13 +87,14 @@ if ($flash) {
 // Editar os dados técnicos do processo mantendo o valor original para consulta.
 $camposEditaveisProcesso = [
     'endereco_objetivo', 'area_construcao', 'numero_pavimentos', 'area_construida',
-    'area_lote', 'area_total_terreno', 'area_remanescente', 'responsavel_tecnico_nome',
-    'responsavel_tecnico_registro', 'responsavel_tecnico_tipo_documento',
-    'responsavel_tecnico_numero', 'especificacao', 'cadastro_imobiliario',
-    'inicio_obra', 'termino_obra', 'alvara_construcao_numero', 'eng_fiscal_nome',
-    'eng_fiscal_registro', 'ctf_numero', 'licenca_anterior_numero',
-    'publicacao_diario_oficial', 'tipo_estudo_ambiental', 'possui_estudo_ambiental',
-    'notificado_fiscal_obras', 'observacoes'
+    'area_lote', 'area_total_terreno', 'area_remanescente', 'tipo_edificacao',
+    'responsavel_tecnico_nome', 'responsavel_tecnico_registro', 'responsavel_tecnico_tipo_documento',
+    'responsavel_tecnico_numero', 'responsavel_tecnico_email', 'responsavel_tecnico_telefone',
+    'especificacao', 'cadastro_imobiliario', 'matricula_imovel',
+    'inicio_obra', 'termino_obra', 'alvara_construcao_numero', 'habite_uso', 'habite_pavimento',
+    'habite_tipo_construcao', 'habite_padrao', 'eng_fiscal_nome', 'eng_fiscal_registro',
+    'ctf_numero', 'licenca_anterior_numero', 'publicacao_diario_oficial',
+    'tipo_estudo_ambiental', 'possui_estudo_ambiental', 'notificado_fiscal_obras', 'observacoes'
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_processo'])) {
@@ -147,9 +149,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_processo
                 'endereco_objetivo' => 'endereço', 'area_construcao' => 'área de construção',
                 'numero_pavimentos' => 'pavimentos', 'area_construida' => 'área construída',
                 'area_lote' => 'área do lote', 'area_total_terreno' => 'área total do terreno',
-                'area_remanescente' => 'área remanescente', 'responsavel_tecnico_nome' => 'responsável técnico',
+                'area_remanescente' => 'área remanescente', 'tipo_edificacao' => 'tipo de edificação',
+                'responsavel_tecnico_nome' => 'responsável técnico', 'responsavel_tecnico_registro' => 'registro profissional',
+                'responsavel_tecnico_tipo_documento' => 'tipo de documento técnico', 'responsavel_tecnico_numero' => 'número do documento técnico',
+                'responsavel_tecnico_email' => 'e-mail do responsável técnico', 'responsavel_tecnico_telefone' => 'telefone do responsável técnico',
                 'especificacao' => 'especificação', 'cadastro_imobiliario' => 'cadastro imobiliário',
+                'matricula_imovel' => 'matrícula do imóvel (RGI)', 'alvara_construcao_numero' => 'alvará de construção anterior',
+                'habite_uso' => 'uso do imóvel (habite-se)', 'habite_pavimento' => 'pavimentos (habite-se)',
+                'habite_tipo_construcao' => 'tipo de construção (habite-se)', 'habite_padrao' => 'padrão construtivo (habite-se)',
                 'inicio_obra' => 'início da obra', 'termino_obra' => 'término da obra',
+                'ctf_numero' => 'CTF', 'licenca_anterior_numero' => 'licença anterior',
+                'publicacao_diario_oficial' => 'publicação em diário oficial',
+                'tipo_estudo_ambiental' => 'tipo de estudo ambiental', 'possui_estudo_ambiental' => 'possui estudo ambiental',
+                'notificado_fiscal_obras' => 'notificado pelo fiscal de obras',
                 'observacoes' => 'observações'
             ];
             $nomes = array_map(static fn ($campo) => $rotulosEdicao[$campo] ?? str_replace('_', ' ', $campo), array_keys($alteracoes));
@@ -185,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_campo_processo
         'requerente_telefone' => ['requerentes', 'telefone', 'requerente_id'],
         'proprietario_nome' => ['proprietarios', 'nome', 'proprietario_id'],
         'proprietario_cpf_cnpj' => ['proprietarios', 'cpf_cnpj', 'proprietario_id'],
+        'tipo_edificacao' => ['requerimentos', 'tipo_edificacao', 'id'],
         'area_construcao' => ['requerimentos', 'area_construcao', 'id'],
         'area_construida' => ['requerimentos', 'area_construida', 'id'],
         'numero_pavimentos' => ['requerimentos', 'numero_pavimentos', 'id'],
@@ -193,12 +206,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_campo_processo
         'area_remanescente' => ['requerimentos', 'area_remanescente', 'id'],
         'especificacao' => ['requerimentos', 'especificacao', 'id'],
         'cadastro_imobiliario' => ['requerimentos', 'cadastro_imobiliario', 'id'],
+        'matricula_imovel' => ['requerimentos', 'matricula_imovel', 'id'],
+        'alvara_construcao_numero' => ['requerimentos', 'alvara_construcao_numero', 'id'],
+        'habite_uso' => ['requerimentos', 'habite_uso', 'id'],
+        'habite_pavimento' => ['requerimentos', 'habite_pavimento', 'id'],
+        'habite_tipo_construcao' => ['requerimentos', 'habite_tipo_construcao', 'id'],
+        'habite_padrao' => ['requerimentos', 'habite_padrao', 'id'],
+        'inicio_obra' => ['requerimentos', 'inicio_obra', 'id'],
+        'termino_obra' => ['requerimentos', 'termino_obra', 'id'],
         'responsavel_tecnico_nome' => ['requerimentos', 'responsavel_tecnico_nome', 'id'],
         'responsavel_tecnico_registro' => ['requerimentos', 'responsavel_tecnico_registro', 'id'],
         'responsavel_tecnico_tipo_documento' => ['requerimentos', 'responsavel_tecnico_tipo_documento', 'id'],
         'responsavel_tecnico_numero' => ['requerimentos', 'responsavel_tecnico_numero', 'id'],
+        'responsavel_tecnico_email' => ['requerimentos', 'responsavel_tecnico_email', 'id'],
+        'responsavel_tecnico_telefone' => ['requerimentos', 'responsavel_tecnico_telefone', 'id'],
         'ctf_numero' => ['requerimentos', 'ctf_numero', 'id'],
         'licenca_anterior_numero' => ['requerimentos', 'licenca_anterior_numero', 'id'],
+        'publicacao_diario_oficial' => ['requerimentos', 'publicacao_diario_oficial', 'id'],
         'localizacao_google_maps' => ['requerimentos', 'localizacao_google_maps', 'id'],
         'enquadramento_atividade' => ['requerimentos', 'enquadramento_atividade', 'id'],
         'tipo_estudo_ambiental' => ['requerimentos', 'tipo_estudo_ambiental', 'id'],
@@ -512,16 +536,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reabrir_pendencia']))
     }
 }
 
-// Salvar (ou atualizar) a observação interna do processo — só a equipe vê
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_nota_interna'])) {
+// Adicionar observação interna do processo (chat / anotações da equipe — só a equipe vê)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['adicionar_nota_interna']) || isset($_POST['salvar_nota_interna']))) {
     $notaTexto = trim($_POST['nota_interna_texto'] ?? '');
-    if ($notaTexto === '') {
-        $mensagem = "Escreva algo antes de salvar a observação.";
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif ($notaTexto === '') {
+        $mensagem = "Escreva algo antes de enviar a observação.";
         $mensagemTipo = "danger";
     } else {
-        salvarNotaInterna($pdo, $id, $notaTexto, (int) $_SESSION['admin_id']);
-        $mensagem = "Observação interna salva.";
+        adicionarNotaInterna($pdo, $id, $notaTexto, (int) $_SESSION['admin_id']);
+        $mensagem = "Observação interna adicionada com sucesso.";
         $mensagemTipo = "success";
+        setMensagem($mensagemTipo, $mensagem);
+        header("Location: visualizar_requerimento.php?id={$id}&tab=pendencias#card-observacoes-internas");
+        exit;
+    }
+}
+
+// Excluir observação interna
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_nota_interna'])) {
+    $notaId = (int) ($_POST['nota_id'] ?? 0);
+    $isAdminGeral = in_array($_SESSION['admin_nivel'] ?? '', ['admin', 'admin_geral'], true);
+    if (!adminPostCsrfValido()) {
+        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagemTipo = "danger";
+    } elseif ($notaId <= 0) {
+        $mensagem = "Observação inválida para exclusão.";
+        $mensagemTipo = "danger";
+    } else {
+        $ok = excluirNotaInterna($pdo, $notaId, $id, (int) $_SESSION['admin_id'], $isAdminGeral);
+        if ($ok) {
+            $mensagem = "Observação interna removida.";
+            $mensagemTipo = "success";
+        } else {
+            $mensagem = "Você não tem permissão para remover esta observação.";
+            $mensagemTipo = "danger";
+        }
+        setMensagem($mensagemTipo, $mensagem);
+        header("Location: visualizar_requerimento.php?id={$id}&tab=pendencias#card-observacoes-internas");
+        exit;
     }
 }
 
@@ -834,7 +889,8 @@ $documentoBoleto = buscarDocumentoPorCampo($pdo, $id, 'boleto_pagamento_admin');
 $documentoComprovanteBoleto = buscarDocumentoPorCampo($pdo, $id, 'comprovante_pagamento_boleto');
 
 $pendencias = listarPendenciasRequerimento($pdo, $id);
-$notaInterna = buscarNotaInterna($pdo, $id);
+$notasInternas = buscarNotasInternas($pdo, $id);
+$notaInterna = !empty($notasInternas) ? end($notasInternas) : null;
 
 $valoresOriginaisProcesso = [];
 $stmtEdicoesProcesso = $pdo->prepare('SELECT campo, valor_original FROM requerimento_edicoes WHERE requerimento_id = ? ORDER BY id ASC');
@@ -2865,8 +2921,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="info-k">Enviado em</span>
                         <span class="info-v"><?= formataData($requerimento['data_envio']) ?></span>
                         <?php if (!empty($requerimento['endereco_objetivo'])): ?>
+                            <?php
+                            $endFormatado = preg_replace('/,\s*(?:,\s*)+/', ', ', (string) $requerimento['endereco_objetivo']);
+                            $endFormatado = trim($endFormatado, ', ');
+                            ?>
                         <span class="info-k">Endereço</span>
-                        <span class="info-v quick-editable" data-quick-field="endereco_objetivo" data-quick-value="<?= htmlspecialchars($requerimento['endereco_objetivo'], ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['endereco_objetivo'])) ?></span></span>
+                        <span class="info-v quick-editable" data-quick-field="endereco_objetivo" data-quick-value="<?= htmlspecialchars($requerimento['endereco_objetivo'], ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($endFormatado)) ?></span></span>
                         <?php endif; ?>
                         <?php if (!empty($requerimento['localizacao_google_maps'])): ?>
                             <?php $mapsVal = $requerimento['localizacao_google_maps']; $mapsIsUrl = filter_var($mapsVal, FILTER_VALIDATE_URL) !== false; ?>
@@ -2901,33 +2961,186 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <!-- Imóvel / Objeto -->
                 <?php
-                $temImovel = $exibirTecnicos || !empty($requerimento['especificacao']) || !empty($requerimento['enquadramento_atividade']) || !empty($requerimento['ctf_numero']) || !empty($requerimento['licenca_anterior_numero']) || $requerimento['possui_estudo_ambiental'] !== null || $requerimento['notificado_fiscal_obras'] !== null;
-                if ($temImovel):
+                $isDesmembramento = ($tipoAtual === 'desmembramento');
+                $isConstrucao = in_array($tipoAtual, ['construcao', 'construcao_obras_publicas'], true);
+                $isHabiteSe = in_array($tipoAtual, ['habite_se', 'habite_se_simples', 'habite_se_obras_publicas'], true);
                 ?>
                 <div class="info-card">
                     <div class="info-card-head"><i class="fas fa-building"></i><span>Imóvel / Objeto</span></div>
                     <div class="info-kv">
-                        <?php if ($tipoAtual === 'desmembramento'): ?>
-                            <span class="info-k">Área do Lote</span>
-                            <span class="info-v quick-editable" data-quick-field="area_lote" data-quick-value="<?= htmlspecialchars($requerimento['area_lote'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['area_lote']) ? htmlspecialchars($requerimento['area_lote']) . ' m²' : $ni ?></span></span>
-                        <?php elseif ($exibirTecnicos): ?>
-                            <span class="info-k">Área Construída</span>
-                            <span class="info-v quick-editable" data-quick-field="area_construida" data-quick-value="<?= htmlspecialchars($requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars($a).' m²' : $ni; ?></span></span>
+                        <?php if ($isDesmembramento): ?>
+                            <?php if (!empty($requerimento['matricula_imovel'])): ?>
+                                <span class="info-k">Matrícula (RGI)</span>
+                                <span class="info-v quick-editable" data-quick-field="matricula_imovel" data-quick-value="<?= htmlspecialchars($requerimento['matricula_imovel'] ?? '', ENT_QUOTES) ?>"><span class="quick-value" style="font-weight:700;color:#14532d;"><?= htmlspecialchars($requerimento['matricula_imovel']) ?></span></span>
+                            <?php endif; ?>
+                            <span class="info-k">Área Total do Terreno</span>
+                            <span class="info-v quick-editable" data-quick-field="area_total_terreno" data-quick-value="<?= htmlspecialchars($requerimento['area_total_terreno'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['area_total_terreno']) ? htmlspecialchars(DocumentoRegras::formatarArea($requerimento['area_total_terreno'])) . ' m²' : $ni ?></span></span>
+                            <span class="info-k">Área Desmembrada</span>
+                            <span class="info-v"><span class="quick-value" style="font-weight:700;"><?= htmlspecialchars(DocumentoRegras::somaLotesDesmembramento($requerimento)) ?> m²</span></span>
+                            <span class="info-k">Área Remanescente</span>
+                            <span class="info-v quick-editable" data-quick-field="area_remanescente" data-quick-value="<?= htmlspecialchars($requerimento['area_remanescente'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['area_remanescente']) ? htmlspecialchars(DocumentoRegras::formatarArea($requerimento['area_remanescente'])) . ' m²' : $ni ?></span></span>
+                            <?php if (!empty($requerimento['cadastro_imobiliario'])): ?>
+                                <span class="info-k">Cadastro Imobiliário</span>
+                                <span class="info-v quick-editable" data-quick-field="cadastro_imobiliario" data-quick-value="<?= htmlspecialchars($requerimento['cadastro_imobiliario'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['cadastro_imobiliario']) ?></span></span>
+                            <?php endif; ?>
+
+                            <?php
+                            $desmJson = json_decode((string) ($requerimento['desmembramento_lotes_json'] ?? ''), true);
+                            $lotesLista = is_array($desmJson['lotes'] ?? null) ? $desmJson['lotes'] : [];
+                            ?>
+                            <?php if (!empty($lotesLista)): ?>
+                                <span class="info-k" style="grid-column:1/-1;background:#f4f8f5;padding:6px 10px;margin-top:6px;border-radius:6px;font-weight:700;color:#1e3d29;display:flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-layer-group"></i> Lotes do Desmembramento (<?= count($lotesLista) ?>)
+                                </span>
+                                <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:6px;padding:4px 0 8px 0;">
+                                    <?php foreach ($lotesLista as $idx => $lote): ?>
+                                        <div style="background:#fdfefe;border:1px solid #e0ece5;border-radius:6px;padding:8px 10px;font-size:.78rem;line-height:1.45;">
+                                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                                <strong style="color:#14532d;font-size:.82rem;">Lote <?= htmlspecialchars((string) ($lote['ordem'] ?? ($idx + 1))) ?>: <?= htmlspecialchars(DocumentoRegras::formatarArea($lote['area'] ?? '')) ?> m²</strong>
+                                                <?php if (!empty($lote['cadastro_imobiliario'])): ?>
+                                                    <span class="badge bg-light text-dark border">Cad.: <?= htmlspecialchars((string) $lote['cadastro_imobiliario']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($lote['confrontacoes'])): ?>
+                                                <div style="font-size:.74rem;color:#496154;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px 8px;">
+                                                    <?php foreach (['norte'=>'Norte','oeste'=>'Oeste','leste'=>'Leste','sul'=>'Sul'] as $rKey => $rLabel): ?>
+                                                        <?php if (!empty($lote['confrontacoes'][$rKey]['metragem']) || !empty($lote['confrontacoes'][$rKey]['descricao'])): ?>
+                                                            <div><strong><?= $rLabel ?>:</strong> <?= htmlspecialchars((string) ($lote['confrontacoes'][$rKey]['metragem'] ?? '—')) ?> m c/ <?= htmlspecialchars((string) ($lote['confrontacoes'][$rKey]['descricao'] ?? '—')) ?></div>
+                                                        <?php endif; ?>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php elseif (!empty($requerimento['especificacao'])): ?>
+                                <span class="info-k">Composição</span>
+                                <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
+                            <?php endif; ?>
+
+                        <?php elseif ($isConstrucao): ?>
+                            <?php if (!empty($requerimento['tipo_edificacao'])): ?>
+                                <span class="info-k">Tipo de Edificação</span>
+                                <span class="info-v quick-editable" data-quick-field="tipo_edificacao" data-quick-value="<?= htmlspecialchars($requerimento['tipo_edificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['tipo_edificacao']) ?></span></span>
+                            <?php endif; ?>
+                            <span class="info-k">Área a Construir</span>
+                            <span class="info-v quick-editable" data-quick-field="area_construcao" data-quick-value="<?= htmlspecialchars($requerimento['area_construcao'] ?? $requerimento['area_construida'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?php $a = $requerimento['area_construcao'] ?? $requerimento['area_construida'] ?? ''; echo !empty($a) ? htmlspecialchars(DocumentoRegras::formatarArea($a)).' m²' : $ni; ?></span></span>
                             <span class="info-k">Pavimentos</span>
                             <span class="info-v quick-editable" data-quick-field="numero_pavimentos" data-quick-value="<?= htmlspecialchars($requerimento['numero_pavimentos'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['numero_pavimentos']) ? htmlspecialchars($requerimento['numero_pavimentos']) : $ni ?></span></span>
+                            <?php if (!empty($requerimento['cadastro_imobiliario'])): ?>
+                                <span class="info-k">Cadastro Imobiliário</span>
+                                <span class="info-v quick-editable" data-quick-field="cadastro_imobiliario" data-quick-value="<?= htmlspecialchars($requerimento['cadastro_imobiliario'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['cadastro_imobiliario']) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['inicio_obra'])): ?>
+                                <span class="info-k">Início Previsto</span>
+                                <span class="info-v quick-editable" data-quick-field="inicio_obra" data-quick-value="<?= htmlspecialchars($requerimento['inicio_obra'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= date('d/m/Y', strtotime($requerimento['inicio_obra'])) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['termino_obra'])): ?>
+                                <span class="info-k">Previsão Término</span>
+                                <span class="info-v quick-editable" data-quick-field="termino_obra" data-quick-value="<?= htmlspecialchars($requerimento['termino_obra'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= date('d/m/Y', strtotime($requerimento['termino_obra'])) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['especificacao'])): ?>
+                                <span class="info-k">Especificação</span>
+                                <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
+                            <?php endif; ?>
+
+                        <?php elseif ($isHabiteSe): ?>
+                            <?php if (!empty($requerimento['alvara_construcao_numero'])): ?>
+                                <span class="info-k">Alvará Anterior Nº</span>
+                                <span class="info-v quick-editable" data-quick-field="alvara_construcao_numero" data-quick-value="<?= htmlspecialchars($requerimento['alvara_construcao_numero'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['alvara_construcao_numero']) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['cadastro_imobiliario'])): ?>
+                                <span class="info-k">Cadastro Imobiliário</span>
+                                <span class="info-v quick-editable" data-quick-field="cadastro_imobiliario" data-quick-value="<?= htmlspecialchars($requerimento['cadastro_imobiliario'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['cadastro_imobiliario']) ?></span></span>
+                            <?php endif; ?>
+                            <span class="info-k">Área Construída</span>
+                            <span class="info-v quick-editable" data-quick-field="area_construida" data-quick-value="<?= htmlspecialchars($requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars(DocumentoRegras::formatarArea($a)).' m²' : $ni; ?></span></span>
+                            <?php if (!empty($requerimento['habite_uso']) || !empty($requerimento['habite_pavimento'])): ?>
+                                <span class="info-k">Uso / Pavimento</span>
+                                <span class="info-v"><?= htmlspecialchars((string) ($requerimento['habite_uso'] ?? '—')) ?> / <?= htmlspecialchars((string) ($requerimento['habite_pavimento'] ?? '—')) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['habite_padrao']) || !empty($requerimento['habite_tipo_construcao'])): ?>
+                                <span class="info-k">Padrão / Tipo</span>
+                                <span class="info-v"><?= htmlspecialchars((string) ($requerimento['habite_padrao'] ?? '—')) ?> / <?= htmlspecialchars((string) ($requerimento['habite_tipo_construcao'] ?? '—')) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['inicio_obra']) || !empty($requerimento['termino_obra'])): ?>
+                                <span class="info-k">Período da Obra</span>
+                                <span class="info-v"><?= (!empty($requerimento['inicio_obra']) ? date('d/m/Y', strtotime($requerimento['inicio_obra'])) : '—') . ' a ' . (!empty($requerimento['termino_obra']) ? date('d/m/Y', strtotime($requerimento['termino_obra'])) : '—') ?></span>
+                            <?php endif; ?>
+                            <?php
+                            $materiaisHabite = array_filter([
+                                'Estrutura' => $requerimento['habite_estrutura'] ?? null,
+                                'Paredes' => $requerimento['habite_paredes'] ?? null,
+                                'Cobertura' => $requerimento['habite_cobertura'] ?? null,
+                                'Forro' => $requerimento['habite_forro'] ?? null,
+                                'Piso' => $requerimento['habite_piso'] ?? null,
+                                'Portas' => $requerimento['habite_portas'] ?? null,
+                                'Janelas' => $requerimento['habite_janelas'] ?? null,
+                            ]);
+                            ?>
+                            <?php if (!empty($materiaisHabite)): ?>
+                                <span class="info-k">Materiais</span>
+                                <span class="info-v" style="font-size:.78rem;">
+                                    <?= implode(' • ', array_map(fn($k, $v) => "<strong>{$k}:</strong> " . htmlspecialchars($v), array_keys($materiaisHabite), $materiaisHabite)) ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php
+                            $ambientesJson = json_decode((string) ($requerimento['habite_ambientes_json'] ?? ''), true);
+                            ?>
+                            <?php if (!empty($ambientesJson) && is_array($ambientesJson)): ?>
+                                <?php
+                                $resumoAmbientes = [];
+                                if (!empty($ambientesJson['total_dormitorios'])) {
+                                    $txtDorm = $ambientesJson['total_dormitorios'] . ' quarto(s)';
+                                    if (!empty($ambientesJson['suites'])) $txtDorm .= ' (' . $ambientesJson['suites'] . ' suíte(s))';
+                                    $resumoAmbientes[] = $txtDorm;
+                                }
+                                if (!empty($ambientesJson['banheiros_sociais'])) $resumoAmbientes[] = $ambientesJson['banheiros_sociais'] . ' banheiro(s) social(is)';
+                                if (!empty($ambientesJson['salas'])) $resumoAmbientes[] = $ambientesJson['salas'] . ' sala(s)';
+                                if (!empty($ambientesJson['cozinhas'])) $resumoAmbientes[] = $ambientesJson['cozinhas'] . ' cozinha(s)';
+                                if (!empty($ambientesJson['extras']) && is_array($ambientesJson['extras'])) {
+                                    foreach ($ambientesJson['extras'] as $ex) {
+                                        if (!empty($ex['quantidade']) && !empty($ex['nome'])) {
+                                            $resumoAmbientes[] = $ex['quantidade'] . ' ' . htmlspecialchars($ex['nome']);
+                                        }
+                                    }
+                                }
+                                ?>
+                                <?php if (!empty($resumoAmbientes)): ?>
+                                    <span class="info-k">Ambientes</span>
+                                    <span class="info-v" style="font-size:.78rem;"><?= implode(', ', $resumoAmbientes) ?></span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['especificacao'])): ?>
+                                <span class="info-k">Características</span>
+                                <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
+                            <?php endif; ?>
+
+                        <?php else: ?>
+                            <?php if (!empty($requerimento['area_construida']) || !empty($requerimento['area_construcao'])): ?>
+                                <span class="info-k">Área</span>
+                                <span class="info-v quick-editable" data-quick-field="area_construida" data-quick-value="<?= htmlspecialchars($requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?php $a = $requerimento['area_construida'] ?? $requerimento['area_construcao'] ?? ''; echo !empty($a) ? htmlspecialchars(DocumentoRegras::formatarArea($a)).' m²' : $ni; ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['numero_pavimentos'])): ?>
+                                <span class="info-k">Pavimentos</span>
+                                <span class="info-v quick-editable" data-quick-field="numero_pavimentos" data-quick-value="<?= htmlspecialchars($requerimento['numero_pavimentos'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['numero_pavimentos']) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['especificacao'])): ?>
+                                <span class="info-k">Atividade / Objeto</span>
+                                <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
+                            <?php endif; ?>
                         <?php endif; ?>
-                        <?php if (!empty($requerimento['especificacao'])): ?>
-                            <span class="info-k">Composição</span>
-                            <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
-                        <?php endif; ?>
+
                         <?php if (!empty($requerimento['enquadramento_atividade'])): ?>
                             <?php
                             include_once __DIR__ . '/../enquadramento_conema.php';
                             $nomeAtividade = $requerimento['enquadramento_atividade'];
-                            foreach ($enquadramento_conema as $cat) {
-                                if (isset($cat['atividades'][$nomeAtividade])) {
-                                    $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome'] . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
-                                    break;
+                            if (isset($enquadramento_conema)) {
+                                foreach ($enquadramento_conema as $cat) {
+                                    if (isset($cat['atividades'][$nomeAtividade])) {
+                                        $nomeAtividade = $cat['atividades'][$nomeAtividade]['nome'] . ' (' . $cat['atividades'][$nomeAtividade]['potencial'] . ')';
+                                        break;
+                                    }
                                 }
                             }
                             ?>
@@ -2942,9 +3155,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="info-k">Lic. anterior</span>
                             <span class="info-v quick-editable" data-quick-field="licenca_anterior_numero" data-quick-value="<?= htmlspecialchars($requerimento['licenca_anterior_numero'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['licenca_anterior_numero']) ?></span></span>
                         <?php endif; ?>
+                        <?php if (!empty($requerimento['publicacao_diario_oficial'])): ?>
+                            <span class="info-k">Diário Oficial</span>
+                            <span class="info-v quick-editable" data-quick-field="publicacao_diario_oficial" data-quick-value="<?= htmlspecialchars($requerimento['publicacao_diario_oficial'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['publicacao_diario_oficial']) ?></span></span>
+                        <?php endif; ?>
                         <?php if ($requerimento['possui_estudo_ambiental'] !== null): ?>
                             <span class="info-k">Estudo ambiental</span>
                             <span class="info-v quick-editable" data-quick-field="possui_estudo_ambiental" data-quick-value="<?= htmlspecialchars((string) $requerimento['possui_estudo_ambiental'], ENT_QUOTES) ?>"><span class="quick-value"><?= $requerimento['possui_estudo_ambiental'] ? 'Sim' : 'Não' ?></span></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['tipo_estudo_ambiental'])): ?>
+                            <span class="info-k">Tipo de Estudo</span>
+                            <span class="info-v quick-editable" data-quick-field="tipo_estudo_ambiental" data-quick-value="<?= htmlspecialchars($requerimento['tipo_estudo_ambiental'], ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['tipo_estudo_ambiental']) ?></span></span>
                         <?php endif; ?>
                         <?php if ($requerimento['notificado_fiscal_obras'] !== null): ?>
                             <span class="info-k">Notificado pelo Fiscal de Obras</span>
@@ -2952,10 +3173,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php endif; ?>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <!-- Responsável Técnico -->
-                <?php if ($exibirTecnicos && !empty($requerimento['responsavel_tecnico_nome'])): ?>
+                <?php if (!empty($requerimento['responsavel_tecnico_nome'])): ?>
                 <div class="info-card">
                     <div class="info-card-head"><i class="fas fa-hard-hat"></i><span>Responsável Técnico</span></div>
                     <div class="info-kv">
@@ -2965,6 +3185,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_registro" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_registro'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['responsavel_tecnico_registro']) ? htmlspecialchars($requerimento['responsavel_tecnico_registro']) : $ni ?></span></span>
                         <span class="info-k"><?= htmlspecialchars($requerimento['responsavel_tecnico_tipo_documento'] ?? 'ART/RRT') ?></span>
                         <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_numero" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_numero'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['responsavel_tecnico_numero']) ? htmlspecialchars($requerimento['responsavel_tecnico_numero']) : $ni ?></span></span>
+                        <?php if (!empty($requerimento['responsavel_tecnico_email'])): ?>
+                            <span class="info-k">E-mail</span>
+                            <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_email" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_email'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><a href="mailto:<?= htmlspecialchars($requerimento['responsavel_tecnico_email']) ?>"><?= htmlspecialchars($requerimento['responsavel_tecnico_email']) ?></a></span></span>
+                        <?php endif; ?>
+                        <?php if (!empty($requerimento['responsavel_tecnico_telefone'])): ?>
+                            <span class="info-k">Telefone</span>
+                            <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_telefone" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_telefone'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><a href="tel:<?= htmlspecialchars($requerimento['responsavel_tecnico_telefone']) ?>"><?= htmlspecialchars($requerimento['responsavel_tecnico_telefone']) ?></a></span></span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -3448,36 +3676,142 @@ document.addEventListener('DOMContentLoaded', function() {
                 <?php endif; ?>
             </div>
 
-            <!-- Observações internas: só a equipe vê -->
-            <div class="info-card info-card-full mb-3">
+            <!-- Observações internas: só a equipe vê (feed/chat colaborativo) -->
+            <div class="info-card info-card-full mb-3" id="card-observacoes-internas">
                 <div class="info-card-head" style="justify-content:space-between;">
-                    <div style="display:flex;align-items:center;gap:7px;">
-                        <i class="fas fa-comment-dots"></i><span>Observações internas</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-comments" style="color:#059669;font-size:.85rem;"></i>
+                        <span>Observações internas</span>
+                        <?php if (!empty($notasInternas)): ?>
+                            <span class="badge rounded-pill bg-light text-secondary border" style="font-size:0.68rem; font-weight:600;"><?= count($notasInternas) ?></span>
+                        <?php endif; ?>
                     </div>
-                    <span class="text-muted" style="font-size:.68rem;">Só a equipe vê — não vai para o requerente</span>
+                    <span class="text-muted d-flex align-items-center gap-1" style="font-size:.7rem;">
+                        <i class="fas fa-lock" style="font-size:.65rem;color:#059669;"></i> Só a equipe vê — não vai para o requerente
+                    </span>
                 </div>
-                <div class="card-body">
-                    <?php if (!empty($notaInterna['texto'])): ?>
-                        <p style="margin:0 0 8px;font-size:.86rem;line-height:1.6;color:#21372b;white-space:pre-wrap;"><?= htmlspecialchars($notaInterna['texto']) ?></p>
-                        <div class="text-muted" style="font-size:.74rem;margin-bottom:12px;">
-                            Atualizado por <?= htmlspecialchars($notaInterna['admin_nome'] ?? 'sistema') ?> em <?= formataData($notaInterna['atualizado_em']) ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-3" style="font-size:.85rem;">
-                            <i class="fas fa-comment-dots d-block mb-2" style="font-size:1.4rem;color:#cfdad3;"></i>
-                            Nenhuma observação registrada.
-                        </div>
-                    <?php endif; ?>
-                    <form method="post">
-                        <textarea name="nota_interna_texto" class="form-control" rows="3" placeholder="Anote o que a equipe precisa saber sobre este processo."><?= htmlspecialchars($notaInterna['texto'] ?? '') ?></textarea>
-                        <div class="d-flex justify-content-end mt-2">
-                            <button type="submit" name="salvar_nota_interna" class="btn btn-sm" style="background:#14532d;color:#fff;">
-                                <i class="fas fa-pen me-1"></i><?= $notaInterna ? 'Salvar' : 'Registrar' ?>
-                            </button>
-                        </div>
-                    </form>
+
+                <div class="card-body p-0">
+                    <!-- Stream de mensagens estilo chat -->
+                    <div id="notasInternasFeed" style="max-height: 380px; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; background: #fbfcfb; border-bottom: 1px solid #eef2f0;">
+                        <?php if (empty($notasInternas)): ?>
+                            <div class="text-center py-4 text-muted" id="emptyNotasMsg">
+                                <div style="width:40px;height:40px;border-radius:50%;background:#ecfdf5;color:#059669;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:8px;">
+                                    <i class="fas fa-comment-dots"></i>
+                                </div>
+                                <div style="font-size:.85rem;font-weight:600;color:#374151;">Nenhuma observação interna ainda</div>
+                                <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">Adicione anotações ou orientações para a equipe sobre este processo.</div>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($notasInternas as $nota):
+                                $ehMeu = ((int)$nota['admin_id'] === (int)($_SESSION['admin_id'] ?? 0));
+                                $isAdminGeral = in_array($_SESSION['admin_nivel'] ?? '', ['admin', 'admin_geral'], true);
+                                $podeExcluir = ($ehMeu || $isAdminGeral);
+
+                                $nomeAutor = trim($nota['admin_nome'] ?? 'Equipe');
+                                $partesNome = preg_split('/\s+/', $nomeAutor);
+                                $iniciais = strtoupper(mb_substr($partesNome[0] ?? 'E', 0, 1) . mb_substr($partesNome[1] ?? '', 0, 1));
+                                if ($iniciais === '') { $iniciais = 'EQ'; }
+                                $cargoNivel = trim($nota['admin_cargo'] ?? '') ?: ucfirst($nota['admin_nivel'] ?? 'Equipe');
+                            ?>
+                                <div class="nota-chat-item" style="display:flex; gap:10px; align-items:flex-start;">
+                                    <!-- Avatar com Iniciais -->
+                                    <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.74rem; font-weight:700; background:<?= $ehMeu ? '#059669' : '#475569' ?>; color:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.06);" title="<?= htmlspecialchars($nomeAutor) ?>">
+                                        <?= htmlspecialchars($iniciais) ?>
+                                    </div>
+
+                                    <!-- Conteúdo da Mensagem -->
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                                            <span style="font-size:.8rem; font-weight:700; color:#1f2937;">
+                                                <?= htmlspecialchars($nomeAutor) ?>
+                                            </span>
+                                            <?php if ($ehMeu): ?>
+                                                <span class="badge" style="font-size:.62rem; padding:1px 5px; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:600;">Você</span>
+                                            <?php endif; ?>
+                                            <span style="font-size:.72rem; color:#6b7280;">· <?= htmlspecialchars($cargoNivel) ?></span>
+                                            <span class="ms-auto" style="font-size:.7rem; color:#9ca3af;" title="<?= formataData($nota['criado_em']) ?>">
+                                                <?= formataData($nota['criado_em']) ?>
+                                            </span>
+                                            <?php if ($podeExcluir): ?>
+                                                <form method="post" class="d-inline ms-1" onsubmit="return confirm('Deseja remover esta observação interna?');">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
+                                                    <input type="hidden" name="nota_id" value="<?= (int)$nota['id'] ?>">
+                                                    <button type="submit" name="excluir_nota_interna" class="btn btn-link p-0 text-muted" style="font-size:.72rem; line-height:1; border:none; background:transparent;" title="Excluir anotação">
+                                                        <i class="fas fa-trash-alt text-danger-hover" style="font-size:.75rem;"></i>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div style="background:<?= $ehMeu ? '#f0fdf4' : '#ffffff' ?>; border:1px solid <?= $ehMeu ? '#bbf7d0' : '#e5e7eb' ?>; border-radius:8px; padding:9px 13px; font-size:.84rem; line-height:1.5; color:#1f2937; white-space:pre-wrap; word-break:break-word; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                                            <?= nl2br(htmlspecialchars($nota['texto'])) ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Composer / Caixa de envio -->
+                    <div style="padding:12px 16px; background:#ffffff;">
+                        <form method="post" id="formNovaNotaInterna">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
+                            <input type="hidden" name="adicionar_nota_interna" value="1">
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <textarea name="nota_interna_texto" id="notaInternaTexto" class="form-control" rows="2"
+                                          style="font-size:.84rem; resize:vertical; border-radius:8px; border-color:#d1d5db;"
+                                          placeholder="Escreva uma anotação interna para a equipe... (Enter envia, Shift+Enter pula linha)" required></textarea>
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                                    <span style="font-size:.72rem; color:#6b7280;">
+                                        <i class="fas fa-info-circle text-success me-1"></i>Pressione <strong>Enter</strong> para enviar ou clique no botão
+                                    </span>
+                                    <button type="submit" id="btnEnviarNotaInterna" name="adicionar_nota_interna" class="btn btn-sm" style="background:#14532d; color:#fff; font-weight:600; border-radius:6px; padding:6px 16px;">
+                                        <i class="fas fa-paper-plane me-1"></i>Adicionar observação
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
+
+            <script>
+            (function() {
+                const feed = document.getElementById('notasInternasFeed');
+                const scrollFeedToBottom = function() {
+                    if (feed) {
+                        feed.scrollTop = feed.scrollHeight;
+                    }
+                };
+                scrollFeedToBottom();
+
+                // Caso a aba de pendências seja aberta após o carregamento inicial
+                document.getElementById('pendencias-tab')?.addEventListener('shown.bs.tab', function() {
+                    setTimeout(scrollFeedToBottom, 50);
+                });
+
+                const textarea = document.getElementById('notaInternaTexto');
+                const form = document.getElementById('formNovaNotaInterna');
+                const btn = document.getElementById('btnEnviarNotaInterna');
+                if (textarea && form) {
+                    textarea.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (textarea.value.trim() !== '') {
+                                if (btn) {
+                                    btn.click();
+                                } else if (typeof form.requestSubmit === 'function') {
+                                    form.requestSubmit();
+                                } else {
+                                    form.submit();
+                                }
+                            }
+                        }
+                    });
+                }
+            })();
+            </script>
         </div>
     </div>
 
@@ -3797,6 +4131,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php
                         $camposEdicaoVisual = [
                             'endereco_objetivo' => ['Endereço do imóvel', 'textarea', 'Rua, número, bairro e município'],
+                            'tipo_edificacao' => ['Tipo de edificação', 'text', 'Ex.: Residencial Unifamiliar, Comercial'],
                             'area_construcao' => ['Área de construção (m²)', 'text', ''],
                             'area_construida' => ['Área construída (m²)', 'text', ''],
                             'numero_pavimentos' => ['Número de pavimentos', 'text', ''],
@@ -3804,16 +4139,24 @@ document.addEventListener('DOMContentLoaded', function() {
                             'area_total_terreno' => ['Área total do terreno (m²)', 'text', ''],
                             'area_remanescente' => ['Área remanescente (m²)', 'text', ''],
                             'cadastro_imobiliario' => ['Cadastro imobiliário', 'text', ''],
+                            'matricula_imovel' => ['Nº da Matrícula no Cartório (RGI)', 'text', 'Ex.: 12.345 - Livro 2'],
+                            'alvara_construcao_numero' => ['Alvará de construção anterior', 'text', ''],
+                            'inicio_obra' => ['Início da obra', 'date', ''],
+                            'termino_obra' => ['Término ou previsão da obra', 'date', ''],
+                            'habite_uso' => ['Uso do imóvel (Habite-se)', 'text', 'Ex.: Residencial, Comercial'],
+                            'habite_pavimento' => ['Pavimentos (Habite-se)', 'text', 'Ex.: Térreo, Dois pavimentos'],
+                            'habite_tipo_construcao' => ['Tipo de construção (Habite-se)', 'text', 'Ex.: Alvenaria'],
+                            'habite_padrao' => ['Padrão construtivo (Habite-se)', 'text', 'Ex.: Baixo, Médio, Alto'],
                             'responsavel_tecnico_nome' => ['Responsável técnico', 'text', 'Nome completo'],
                             'responsavel_tecnico_registro' => ['Registro profissional', 'text', 'CREA, CAU ou equivalente'],
                             'responsavel_tecnico_tipo_documento' => ['Tipo do documento técnico', 'text', 'ART/RRT'],
                             'responsavel_tecnico_numero' => ['Número do documento técnico', 'text', ''],
+                            'responsavel_tecnico_email' => ['E-mail do responsável técnico', 'text', ''],
+                            'responsavel_tecnico_telefone' => ['Telefone do responsável técnico', 'text', ''],
                             'especificacao' => ['Especificação', 'textarea', 'Descrição ou observações técnicas'],
                             'ctf_numero' => ['Cadastro Técnico Federal (CTF)', 'text', ''],
                             'licenca_anterior_numero' => ['Licença anterior', 'text', ''],
-                            'alvara_construcao_numero' => ['Alvará de construção anterior', 'text', ''],
-                            'inicio_obra' => ['Início da obra', 'date', ''],
-                            'termino_obra' => ['Término ou previsão da obra', 'date', ''],
+                            'publicacao_diario_oficial' => ['Publicação em Diário Oficial', 'text', ''],
                             'eng_fiscal_nome' => ['Engenheiro fiscal', 'text', ''],
                             'eng_fiscal_registro' => ['Registro do engenheiro fiscal', 'text', ''],
                             'tipo_estudo_ambiental' => ['Tipo de estudo ambiental', 'text', ''],

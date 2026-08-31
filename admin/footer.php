@@ -48,11 +48,35 @@
                 // automática, independente da preferência salva.
                 const miniQuery = window.matchMedia('(min-width: 641px) and (max-width: 1024px)');
 
+                function atualizarBotaoBarra() {
+                    if (!sidebarToggle) return;
+                    const icon = sidebarToggle.querySelector('i');
+                    let iconClass;
+                    let descricao;
+
+                    if (desktopQuery.matches) {
+                        const recolhida = body.classList.contains('sidebar-collapsed');
+                        iconClass = recolhida ? 'fa-angles-right' : 'fa-angles-left';
+                        descricao = recolhida ? 'Expandir barra lateral' : 'Recolher barra lateral';
+                        sidebarToggle.setAttribute('aria-expanded', recolhida ? 'false' : 'true');
+                    } else {
+                        const aberta = body.classList.contains('sidebar-open');
+                        iconClass = aberta ? 'fa-xmark' : 'fa-bars';
+                        descricao = aberta ? 'Fechar menu de navegação' : 'Abrir menu de navegação';
+                        sidebarToggle.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+                    }
+
+                    if (icon) icon.className = 'fas ' + iconClass;
+                    sidebarToggle.setAttribute('aria-label', descricao);
+                    sidebarToggle.setAttribute('title', descricao);
+                }
+
                 function aplicarModoBarra() {
                     if (miniQuery.matches) {
                         // Faixa do mini: recolhida sempre, mas sem sobrescrever
                         // o que a pessoa escolheu para a tela grande.
                         body.classList.add('sidebar-collapsed');
+                        atualizarBotaoBarra();
                         return;
                     }
                     if (desktopQuery.matches) {
@@ -64,6 +88,7 @@
                         // Gaveta: nunca "recolhida" — ou está aberta, ou fora da tela.
                         body.classList.remove('sidebar-collapsed');
                     }
+                    atualizarBotaoBarra();
                 }
 
                 aplicarModoBarra();
@@ -93,6 +118,7 @@
                     if (!notificationSidebar?.classList.contains('active')) {
                         contentOverlay?.classList.remove('active');
                     }
+                    atualizarBotaoBarra();
                 }
 
                 const searchReqSection = document.getElementById('searchReqSection');
@@ -298,6 +324,7 @@
                             body.classList.toggle('sidebar-open');
                             contentOverlay?.classList.toggle('active', body.classList.contains('sidebar-open'));
                         }
+                        atualizarBotaoBarra();
                     });
                 }
 

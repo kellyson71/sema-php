@@ -30,17 +30,30 @@ function renderLocationComposer(string $name, string $label, bool $required = tr
     $requiredMark = $required ? ' <span style="color:#f87171">*</span>' : '';
     $ruaPlaceholder = $required ? 'Rua / logradouro *' : 'Rua / logradouro';
     $bairroPlaceholder = $required ? 'Bairro *' : 'Bairro';
+    $isObra = $name === 'endereco_objetivo';
+    $nameRua = $isObra ? ' name="obra_logradouro"' : '';
+    $nameBairro = $isObra ? ' name="obra_bairro"' : '';
+    $nameLote = $isObra ? ' name="obra_lote"' : '';
+    $nameQuadra = $isObra ? ' name="obra_quadra"' : '';
+    $nameNumero = $isObra ? ' name="obra_numero"' : '';
+    $controlesAusencia = $isObra ? <<<HTML
+    <div class="public-location-flags">
+        <label class="public-location-flag"><input type="checkbox" name="obra_sem_lote_quadra" value="1" data-location-no-lot> <span>O imóvel não possui lote/quadra</span></label>
+        <label class="public-location-flag"><input type="checkbox" name="obra_sem_numero" value="1" data-location-no-number> <span>O imóvel não possui número</span></label>
+    </div>
+HTML : '';
 
     return <<<HTML
 <div class="public-location-composer" data-location-composer{$optionalAttr}>
     <div class="form-section-label" style="margin-top:0;">{$labelEsc}{$requiredMark}</div>
     <input type="hidden" name="{$nameEsc}" value="{$valueEsc}" data-location-output>
+    {$controlesAusencia}
     <div class="form-grid-2">
-        <input{$requiredAttr} data-location-field="rua" placeholder="{$ruaPlaceholder}" autocomplete="street-address">
-        <input{$requiredAttr} data-location-field="bairro" placeholder="{$bairroPlaceholder}">
-        <input data-location-field="lote" placeholder="Lote">
-        <input data-location-field="quadra" placeholder="Quadra">
-        <input data-location-field="numero" placeholder="Número (deixe vazio para SN)" inputmode="numeric"
+        <input{$requiredAttr}{$nameRua} data-location-field="rua" placeholder="{$ruaPlaceholder}" autocomplete="street-address">
+        <input{$requiredAttr}{$nameBairro} data-location-field="bairro" placeholder="{$bairroPlaceholder}">
+        <input{$nameLote} data-location-field="lote" placeholder="Lote">
+        <input{$nameQuadra} data-location-field="quadra" placeholder="Quadra">
+        <input{$nameNumero} data-location-field="numero" placeholder="Número" inputmode="numeric"
             maxlength="10" title="Informe somente o número, como 123 ou 123A; deixe vazio para SN.">
     </div>
     <div class="public-location-preview">

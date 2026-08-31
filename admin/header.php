@@ -76,9 +76,6 @@ $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['st
 $searchItems = [
     ['label' => 'Dashboard', 'caption' => 'Visão geral do painel', 'url' => $adminBase . 'index.php', 'icon' => 'fa-gauge-high'],
     ['label' => 'Requerimentos', 'caption' => 'Lista principal de protocolos', 'url' => $adminBase . 'requerimentos.php', 'icon' => 'fa-clipboard-list'],
-    ['label' => 'Fila — Setor 1', 'caption' => 'Triagem de protocolos', 'url' => $adminBase . 'fila_setor.php?setor=setor1', 'icon' => 'fa-inbox'],
-    ['label' => 'Fila — Setor 2', 'caption' => 'Análise técnica', 'url' => $adminBase . 'fila_setor.php?setor=setor2', 'icon' => 'fa-magnifying-glass'],
-    ['label' => 'Fila — Setor 3', 'caption' => 'Revisão final', 'url' => $adminBase . 'fila_setor.php?setor=setor3', 'icon' => 'fa-shield-halved'],
     ['label' => 'Notificações', 'caption' => 'Central operacional do admin', 'url' => $adminBase . 'notificacoes.php', 'icon' => 'fa-bell'],
     ['label' => 'Denúncias', 'caption' => 'Acompanhar denúncias ambientais', 'url' => $adminBase . 'denuncias.php', 'icon' => 'fa-bullhorn'],
     ['label' => 'Estatísticas', 'caption' => 'Indicadores e relatórios', 'url' => $adminBase . 'estatisticas.php', 'icon' => 'fa-chart-column'],
@@ -89,6 +86,7 @@ $searchItems = [
 ];
 
 if ($isAdmin) {
+    $searchItems[] = ['label' => 'Filas por Setor', 'caption' => 'Visão administrativa das filas S1, S2 e S3', 'url' => $adminBase . 'fila_setor.php', 'icon' => 'fa-layer-group'];
     $searchItems[] = ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'];
     $searchItems[] = ['label' => 'Gerenciar Usuários', 'caption' => 'Administradores e acessos', 'url' => $adminBase . 'administradores.php', 'icon' => 'fa-users-gear'];
 }
@@ -1545,6 +1543,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if ($isAdmin): ?>
                     <li>
                         <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
                             <span class="sidebar-link-icon"><i class="fas fa-layer-group"></i></span>
@@ -1556,6 +1555,7 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php endif; ?>
                     <li>
                         <a href="<?= $adminBase ?>denuncias.php" class="sidebar-link <?= in_array($currentPage, ['denuncias.php', 'nova_denuncia.php', 'visualizar_denuncia.php'], true) ? 'active' : '' ?>" title="Denúncias">
                             <span class="sidebar-link-icon"><i class="fas fa-bullhorn"></i></span>
@@ -1789,8 +1789,9 @@ if ($isAnalista) {
     <div class="content-wrapper">
         <div class="topbar">
             <div class="topbar-left">
-                <button type="button" class="icon-button" id="sidebarToggle" aria-label="Alternar navegação">
-                    <i class="fas fa-bars"></i>
+                <button type="button" class="icon-button" id="sidebarToggle"
+                        aria-label="Recolher barra lateral" title="Recolher barra lateral">
+                    <i class="fas fa-angles-left" aria-hidden="true"></i>
                 </button>
                 <div class="topbar-heading">
                     <div class="topbar-eyebrow">

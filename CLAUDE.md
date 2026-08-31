@@ -84,16 +84,22 @@ Schema completo em `database/u492577848_SEMA.sql`. Migrations incrementais em `d
 
 Arquivos ficam em `uploads/{protocolo}/` (formulário público) e `uploads/pareceres/{requerimento_id}/` (pareceres gerados). Apenas PDFs são aceitos, máximo 10MB. Validação dupla: extensão e MIME type.
 
-## Credenciais e acessos
+## Credenciais dos bancos de dados
 
-Todas as credenciais (SSH, FTP, banco de produção e de homologação) estão em **`ACESSOS.md`**, na raiz do projeto. Esse arquivo é ignorado pelo git — **nunca copiar senhas dele para cá**, este arquivo é versionado e vai para o GitHub.
+| Ambiente | Host | Usuário | Senha | Banco |
+|---|---|---|---|---|
+| Homologação | `srv1844.hstgr.io` | `u492577848_SEMA_hmg` | `Kellys0n_123` | `u492577848_SEMA_hmg` |
+| Produção | `srv1844.hstgr.io` | `u492577848_SEMA` | `Pmpfestagio2021` | `u492577848_SEMA` |
+| Docker local | `db` | `user` | `password` | `u492577848_SEMA` |
+
+As demais credenciais (SMTP, Hostinger Mail API e reCAPTCHA) estão em **`CREDENCIAIS_LOCAL.md`**, na raiz do projeto. Esse arquivo é ignorado pelo Git e não deve ser versionado.
 
 ## Acesso ao banco de dados via SSH
 
 Produção e homologação usam **bancos separados** no mesmo host `srv1844.hstgr.io`:
 `u492577848_SEMA` (produção) e `u492577848_SEMA_hmg` (homologação). Migrations em homologação não afetam produção.
 
-Credenciais em `ACESSOS.md`. Forma do comando:
+Credenciais do banco estão na tabela acima. Forma do comando:
 ```bash
 ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
   "mysql -h srv1844.hstgr.io -u USUARIO -pSENHA BANCO -e 'SUA QUERY;'"

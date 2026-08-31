@@ -10,27 +10,35 @@ require_once dirname(__DIR__) . '/conexao.php'; // admin/conexao.php
 require_once $rootDir . '/includes/parecer_service.php';
 require_once $rootDir . '/includes/pdf_sanitizer.php';
 require_once $rootDir . '/includes/assinatura_avancada_service.php';
+require_once $rootDir . '/includes/assinatura_workflow_helpers.php';
+require_once $rootDir . '/includes/admin_notifications.php';
 
-// Validar login
-if (function_exists('verificaLogin')) {
-    verificaLogin();
-}
-
-function respostaJson(array $payload): void {
+function respostaJson(array $payload, int $httpStatus = 200): void {
+    http_response_code($httpStatus);
+    header('Content-Type: application/json');
     ob_clean();
-    echo json_encode($payload);
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../index.php");
-    exit;
+    respostaJson(['success' => false, 'code' => 'method_not_allowed', 'error' => 'Método inválido.'], 405);
+}
+
+if (!assinaturaSessaoAdminAtiva($pdo)) {
+    respostaJson([
+        'success' => false,
+        'code' => 'session_expired',
+        'error' => 'Sua sessão realmente expirou. Entre novamente para continuar.',
+    ], 401);
 }
 
 $conteudo        = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
 $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 $salvar_banco    = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
 $template_salvo  = $_POST['template_salvo'] ?? 'Documento Eletrônico';
+$nomeCurto_template = preg_replace('/\.html$/i', '', basename((string) $template_salvo));
+$numeroDocumentoInformado = trim((string) ($_POST['numero_documento'] ?? ''));
 
 // Modo de assinatura: 'assinar' (padrão), 'sem_assinar', 'assinar_e_requisitar'
 $modoAssinatura = $_POST['modo_assinatura'] ?? 'assinar';
@@ -38,6 +46,9 @@ if (!in_array($modoAssinatura, ['assinar', 'sem_assinar', 'assinar_e_requisitar'
     $modoAssinatura = 'assinar';
 }
 $ehAssinaturaDigital = ($modoAssinatura !== 'sem_assinar');
+$tipoAssinanteManual = trim((string) ($_POST['assinatura_manual_tipo'] ?? 'secretario'));
+$nomeAssinanteManual = (string) ($_POST['assinatura_manual_nome'] ?? '');
+$cargoAssinanteManual = (string) ($_POST['assinatura_manual_cargo'] ?? '');
 
 // Posição customizada do bloco de assinatura (mm na última página), vinda do
 // arrasto no preview do editor. Vazio = posição padrão (inferior-direito).
@@ -49,6 +60,15 @@ if ($salvar_banco) {
     header('Content-Type: application/json');
 }
 
+if ($salvar_banco) {
+    try {
+        validarCsrfAssinatura($_POST['csrf_token'] ?? null);
+    } catch (Throwable $e) {
+        $erro = respostaErroAssinatura($e, '[processa_assinatura] CSRF');
+        respostaJson($erro['payload'], $erro['status']);
+    }
+}
+
 if (empty($conteudo)) {
     if ($salvar_banco) respostaJson(['success' => false, 'error' => 'O conteúdo do documento não pode estar vazio.']);
     die("ERRO: O conteúdo do documento não pode estar vazio.");
@@ -56,8 +76,17 @@ if (empty($conteudo)) {
 
 $admin_id = $_SESSION['admin_id'] ?? null;
 if (!$admin_id) {
-    if ($salvar_banco) respostaJson(['success' => false, 'error' => 'Sessão expirada ou não encontrada.']);
+    if ($salvar_banco) respostaJson([
+        'success' => false,
+        'code' => 'session_expired',
+        'error' => 'Sua sessão realmente expirou. Entre novamente para continuar.',
+    ], 401);
     die("ERRO: Sessão expirada ou não encontrada.");
+}
+// PDF e criptografia podem demorar; a partir daqui a sessão é somente leitura.
+// Liberar o lock evita que autosave/outra aba pareça ter encerrado a sessão.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
 }
 
 // Co-assinatura: resolver os destinatários ANTES de gravar qualquer coisa. Antes a
@@ -78,6 +107,25 @@ if ($modoAssinatura === 'assinar_e_requisitar' && empty($destinatarios)) {
     die("ERRO: " . $erroDestinatarios);
 }
 
+if ($modoAssinatura === 'assinar_e_requisitar') {
+    $marcadores = implode(',', array_fill(0, count($destinatarios), '?'));
+    $stmtDestinatarios = $pdo->prepare("SELECT id FROM administradores
+        WHERE ativo = 1 AND id IN ($marcadores)");
+    $stmtDestinatarios->execute($destinatarios);
+    $destinatariosValidos = array_map('intval', $stmtDestinatarios->fetchAll(PDO::FETCH_COLUMN));
+    sort($destinatariosValidos);
+    $destinatariosEsperados = $destinatarios;
+    sort($destinatariosEsperados);
+    if ($destinatariosValidos !== $destinatariosEsperados) {
+        if ($salvar_banco) respostaJson([
+            'success' => false,
+            'code' => 'invalid_cosigners',
+            'error' => 'Um dos destinatários selecionados não está mais ativo. Atualize a página.',
+        ], 409);
+        die('ERRO: destinatário de coassinatura inválido.');
+    }
+}
+
 try {
     $stmt = $pdo->prepare("SELECT nome, nome_completo, cargo, cpf, matricula_portaria FROM administradores WHERE id = ?");
     $stmt->execute([$admin_id]);
@@ -87,8 +135,11 @@ try {
         if ($salvar_banco) respostaJson(['success' => false, 'error' => 'Administrador não encontrado.']);
         die("ERRO: Administrador não encontrado no banco.");
     }
-} catch (Exception $e) {
-    if ($salvar_banco) respostaJson(['success' => false, 'error' => 'Erro SQL: ' . $e->getMessage()]);
+} catch (Throwable $e) {
+    if ($salvar_banco) {
+        $erro = respostaErroAssinatura($e, '[processa_assinatura] Consulta do assinante');
+        respostaJson($erro['payload'], $erro['status']);
+    }
     die("ERRO SQL: " . $e->getMessage());
 }
 
@@ -100,30 +151,41 @@ $hashConteudo   = AssinaturaAvancadaService::hashConteudo($conteudo);
 $servicoAvancada = new AssinaturaAvancadaService($pdo);
 
 if ($ehAssinaturaDigital && $salvar_banco) {
-    $pin = trim($_POST['pin_assinatura'] ?? '');
+    try {
+        $pin = trim($_POST['pin_assinatura'] ?? '');
 
-    if ($pin !== '') {
+        if ($pin === '') {
+            respostaJson([
+                'success' => false,
+                'code' => 'credential_required',
+                'error' => 'Informe sua credencial para confirmar a assinatura.',
+            ], 422);
+        }
+
         if ($servicoAvancada->temChave((int) $admin_id)) {
-            // Admin com PIN configurado → tenta RSA avançado
+            // Conta com chave avançada confirma com o PIN que cifra a chave privada.
             try {
                 $assinaturaRsa = $servicoAvancada->assinar((int) $admin_id, $pin, $hashConteudo);
             } catch (RuntimeException $e) {
                 if ($e->getMessage() === 'PIN_INCORRETO') {
-                    respostaJson(['success' => false, 'code' => 'senha_incorreta',
-                        'error' => 'Senha de acesso incorreta.']);
+                    respostaJson(['success' => false, 'code' => 'credential_invalid',
+                        'error' => 'PIN de assinatura incorreto.'], 422);
                 }
-                error_log('[processa_assinatura] Erro RSA: ' . $e->getMessage());
+                throw $e;
             }
         } else {
-            // Sem PIN configurado → usa campo como confirmação por senha de login
+            // Conta sem chave avançada confirma com a senha de login.
             $stSenha = $pdo->prepare("SELECT senha FROM administradores WHERE id = ?");
             $stSenha->execute([$admin_id]);
             $hashSenha = $stSenha->fetchColumn();
             if (!$hashSenha || !password_verify($pin, $hashSenha)) {
-                respostaJson(['success' => false, 'code' => 'senha_incorreta',
-                    'error' => 'Senha de acesso incorreta.']);
+                respostaJson(['success' => false, 'code' => 'credential_invalid',
+                    'error' => 'Senha de acesso incorreta.'], 422);
             }
         }
+    } catch (Throwable $e) {
+        $erro = respostaErroAssinatura($e, '[processa_assinatura] Validação da credencial');
+        respostaJson($erro['payload'], $erro['status']);
     }
 }
 
@@ -135,6 +197,28 @@ $assinante = [
     'matricula' => ($admin['matricula_portaria'] ?? ''),
     'data_hora' => date('d/m/Y \à\s H:i:s')
 ];
+
+$assinanteManual = null;
+if ($modoAssinatura === 'sem_assinar') {
+    try {
+        $secretarioManual = $tipoAssinanteManual === 'secretario'
+            ? buscarSecretarioAtivoUnico($pdo)
+            : null;
+        $assinanteManual = resolverAssinanteManual(
+            $tipoAssinanteManual,
+            array_merge(['id' => (int) $admin_id], $admin),
+            $secretarioManual,
+            $nomeAssinanteManual,
+            $cargoAssinanteManual
+        );
+    } catch (Throwable $e) {
+        if ($salvar_banco) {
+            $erro = respostaErroAssinatura($e, '[processa_assinatura] Assinante manual');
+            respostaJson($erro['payload'], $erro['status']);
+        }
+        throw $e;
+    }
+}
 
 $numero_processo = $requerimento_id ? "Processo_#{$requerimento_id}" : "Documento_Avulso";
 
@@ -166,8 +250,7 @@ if ($salvar_banco && $requerimento_id) {
 
         // 1. Gerar e salvar fisicamente o PDF no disco "F"
         if ($modoAssinatura === 'sem_assinar') {
-            $assinanteManual = array_merge($assinante, ['tipo' => 'manual']);
-            emitirParecerAssinado($conteudo, $assinanteManual, $numero_processo, 'F', $caminhoFisico, $opcoesPdf);
+            emitirParecerAssinado($conteudo, array_merge($assinanteManual, ['tipo' => 'manual']), $numero_processo, 'F', $caminhoFisico, $opcoesPdf);
         } else {
             emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'F', $caminhoFisico, $opcoesPdf);
         }
@@ -178,13 +261,38 @@ if ($salvar_banco && $requerimento_id) {
 
         // 2. Metadados
         $hashDocumento = hash_file('sha256', $caminhoFisico);
-        $nomeCurto_template = preg_replace('/\.html$/i', '', $template_salvo);
-
         $tipoAssinatura    = $ehAssinaturaDigital ? 'digital_sema' : 'sem_assinatura';
         $nivelAssinatura   = $ehAssinaturaDigital
             ? ($assinaturaRsa !== null ? 'avancada' : 'simples')
             : 'sem_assinatura';
         $assinanteCpfReg   = $ehAssinaturaDigital ? $assinante['cpf'] : '';
+        $metadadosAssinatura = $modoAssinatura === 'sem_assinar'
+            ? json_encode([
+                'gerado_por_id' => (int) $admin_id,
+                'assinatura_manual_tipo' => $tipoAssinanteManual,
+                'assinatura_manual' => $assinanteManual,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : null;
+
+        $pdo->beginTransaction();
+
+        // A numeração é independente por tipo/ano. Uma alteração manual maior
+        // também avança a sequência: se este documento for 60, o próximo será 61.
+        if (DocumentoRegras::templateNumerado($nomeCurto_template)) {
+            $numeroInterpretado = DocumentoRegras::interpretarNumero($numeroDocumentoInformado);
+            if (!$numeroInterpretado || $numeroInterpretado['numero'] < 1) {
+                throw new RuntimeException('Informe o número do documento no formato número/ano.');
+            }
+            $pdo->prepare('INSERT INTO document_numbers
+                (template_key, ano, numero, requerimento_id, documento_id, criado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?)')
+                ->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero'],
+                    $requerimento_id, $documentoId, $admin_id]);
+            $pdo->prepare('INSERT INTO document_number_sequences (template_key, ano, ultimo_numero)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE ultimo_numero = GREATEST(ultimo_numero, VALUES(ultimo_numero))')
+                ->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero']]);
+        }
 
         // 3. Persistência — assinatura_criptografada agora é a assinatura RSA
         //    real do admin sobre hash_conteudo (verificável com chave_publica).
@@ -193,8 +301,8 @@ if ($salvar_banco && $requerimento_id) {
                 documento_id, requerimento_id, tipo_documento, nome_arquivo,
                 caminho_arquivo, hash_documento, hash_conteudo, assinante_id, assinante_nome,
                 assinante_cpf, assinante_cargo, tipo_assinatura, nivel_assinatura, assinatura_visual,
-                assinatura_criptografada, chave_publica, timestamp_assinatura, ip_assinante
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+                assinatura_criptografada, chave_publica, timestamp_assinatura, ip_assinante, metadados_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
 
         $stmt->execute([
@@ -214,7 +322,8 @@ if ($salvar_banco && $requerimento_id) {
             '{}',
             $assinaturaRsa['assinatura'] ?? '',
             $assinaturaRsa['chave_publica'] ?? null,
-            $_SERVER['REMOTE_ADDR'] ?? null
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $metadadosAssinatura,
         ]);
 
         // 4. Persistir HTML-fonte (base imutável das assinaturas) + posição do bloco
@@ -247,12 +356,23 @@ if ($salvar_banco && $requerimento_id) {
                         criado_em = NOW()
                 ")->execute([$documentoId, $requerimento_id, $admin_id, $destinatarioId, $mensagemCoAs]);
 
-                // Notificação DIRECIONADA ao destinatário, com link para a tela dedicada
-                if (function_exists('createAdminNotificationForRequerimento')) {
-                    createAdminNotificationForRequerimento($pdo, $requerimento_id, 'coassinatura_solicitada', [
+            }
+        }
+
+        $pdo->commit();
+
+        // Notificações ficam fora da transação do documento: o helper legado
+        // pode validar/criar sua estrutura e DDL não pode provocar commit
+        // implícito enquanto documento, solicitação e histórico são gravados.
+        if ($modoAssinatura === 'assinar_e_requisitar') {
+            foreach ($destinatarios as $destinatarioId) {
+                try {
+                    createAdminNotificationForRequerimento($pdo, (int) $requerimento_id, 'coassinatura_solicitada', [
                         'destinatario_admin_id' => $destinatarioId,
                         'link_url' => 'coassinar_documento.php?documento_id=' . $documentoId,
                     ]);
+                } catch (Throwable $e) {
+                    error_log('[processa_assinatura] Solicitação criada, mas a notificação falhou: ' . $e->getMessage());
                 }
             }
         }
@@ -265,15 +385,24 @@ if ($salvar_banco && $requerimento_id) {
             'verify_url'   => $ehAssinaturaDigital ? $verifyUrlAcesso : null,
         ]);
 
-    } catch (Exception $e) {
-        error_log("Erro em processa_assinatura no fluxo JSON -> " . $e->getMessage());
-        respostaJson(['success' => false, 'error' => 'Falha crítica ao registrar documento: ' . $e->getMessage()]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        if (!empty($caminhoFisico) && is_file($caminhoFisico)) @unlink($caminhoFisico);
+        if (strpos($e->getMessage(), 'uq_document_number') !== false) {
+            respostaJson([
+                'success' => false,
+                'code' => 'document_number_conflict',
+                'error' => 'Este número já foi usado neste tipo de documento e ano. Escolha outro número.',
+            ], 409);
+        }
+        $erro = respostaErroAssinatura($e, '[processa_assinatura] Falha ao registrar documento');
+        respostaJson($erro['payload'], $erro['status']);
     }
 
 } else {
     // Fluxo Antigo Direto (Força Download no Navegador) — sem registro, sem QR
     if ($modoAssinatura === 'sem_assinar') {
-        emitirParecerAssinado($conteudo, [], $numero_processo, 'D');
+        emitirParecerAssinado($conteudo, array_merge($assinanteManual, ['tipo' => 'manual']), $numero_processo, 'D');
     } else {
         emitirParecerAssinado($conteudo, $assinante, $numero_processo, 'D');
     }

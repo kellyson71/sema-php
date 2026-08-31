@@ -32,7 +32,7 @@ test.describe('Admin Login - Carregamento', () => {
 
   test('botão de login está presente', async ({ page }) => {
     await irParaLogin(page);
-    const botao = page.locator('button[type="submit"], input[type="submit"]');
+    const botao = page.locator('#login-form button[type="submit"], #login-form input[type="submit"]');
     await expect(botao).toBeVisible();
   });
 

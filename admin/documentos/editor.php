@@ -2,21 +2,65 @@
 session_start();
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../../includes/assinatura_workflow_helpers.php';
 verificaLogin();
 
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 $template        = filter_input(INPUT_GET, 'template', FILTER_DEFAULT);
 $label           = filter_input(INPUT_GET, 'label', FILTER_DEFAULT) ?: '';
+$labelsOficiais = [
+    'alvara_de_construcao' => 'Alvará de Construção',
+    'alvara_de_desmembramento' => 'Alvará de Desmembramento',
+    'carta_habite_se' => 'Carta de Habite-se',
+];
+if ($label === '' && isset($labelsOficiais[$template])) $label = $labelsOficiais[$template];
 
 if (!$requerimento_id || empty($template)) {
     header('Location: selecionar.php' . ($requerimento_id ? '?requerimento_id=' . $requerimento_id : ''));
     exit;
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $stmt = $pdo->prepare("SELECT protocolo, status FROM requerimentos WHERE id = ?");
 $stmt->execute([$requerimento_id]);
 $req = $stmt->fetch();
 if (!$req) die("Erro: Requerimento não encontrado.");
+
+$adminTemChave = false;
+try {
+    $stmtChave = $pdo->prepare('SELECT 1 FROM admin_chaves_assinatura WHERE admin_id = ? LIMIT 1');
+    $stmtChave->execute([(int) ($_SESSION['admin_id'] ?? 0)]);
+    $adminTemChave = (bool) $stmtChave->fetchColumn();
+} catch (Throwable $e) {
+    // Instalações anteriores à assinatura avançada continuam usando a senha de acesso.
+}
+
+$secretarioManual = null;
+$erroSecretarioManual = '';
+try {
+    $secretarioManual = buscarSecretarioAtivoUnico($pdo);
+} catch (AssinaturaWorkflowException $e) {
+    $erroSecretarioManual = $e->getMessage();
+}
+$adminManualAtual = [
+    'id' => (int) ($_SESSION['admin_id'] ?? 0),
+    'nome' => (string) ($_SESSION['admin_nome_completo'] ?? $_SESSION['admin_nome'] ?? 'Usuário atual'),
+    'cargo' => (string) ($_SESSION['admin_cargo'] ?? 'Servidor(a) Municipal'),
+];
+try {
+    $stmtAdminManual = $pdo->prepare('SELECT id, nome, nome_completo, cargo FROM administradores WHERE id = ? LIMIT 1');
+    $stmtAdminManual->execute([$adminManualAtual['id']]);
+    $registroAdminManual = $stmtAdminManual->fetch(PDO::FETCH_ASSOC);
+    if ($registroAdminManual) {
+        $adminManualAtual = resolverAssinanteManual('atual', $registroAdminManual);
+    }
+} catch (Throwable $e) {
+    // A identificação final é novamente carregada e validada no endpoint.
+}
+$tipoAssinanteManualPadrao = $secretarioManual ? 'secretario' : 'atual';
 
 $titulo_pagina = 'Editor de Documento';
 include '../header.php';
@@ -239,6 +283,14 @@ include '../header.php';
             border-radius: 2px;
             padding: 0 2px;
         }
+        .doc-campo.em-edicao {
+            background: #eef7f1 !important;
+        }
+        .doc-campo.em-edicao .doc-campo-input {
+            border-color: #2e7d32 !important;
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12) !important;
+        }
 
         /* ═══════════════════════════════════════════════
            ESTRUTURA DO EDITOR — APARÊNCIA DE PÁGINA A4
@@ -394,6 +446,10 @@ include '../header.php';
             transition: all .15s ease;
         }
         .btn-preview:hover { background: var(--sema-green); color: #fff; }
+        .doc-autosave-status { display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-size:.72rem; color:#718078; }
+        .doc-autosave-status.salvando { color:#a26a12; }
+        .doc-autosave-status.salvo { color:#26734d; }
+        .doc-autosave-status.erro { color:#b13232; }
         /* Etiqueta de etapa */
         .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
@@ -406,6 +462,21 @@ include '../header.php';
         .pin-box .form-control { border:1px solid #cfe1d7; }
         .pin-box .form-control:focus { border-color: var(--sema-green); box-shadow:0 0 0 .18rem rgba(28,75,54,.13); }
         .pin-box-hint { font-size:.71rem; color:#6b8377; margin-top:5px; }
+        .modo-card.disabled { opacity:.58; cursor:not-allowed; background:#f8fafc; }
+        .modo-card.disabled:hover { transform:none; box-shadow:none; }
+
+        /* Pessoa exibida na linha de assinatura manual */
+        .manual-signers { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+        .manual-signer-option {
+            display:flex; align-items:flex-start; gap:8px; cursor:pointer; margin:0;
+            border:1.5px solid #dbe4df; border-radius:10px; padding:10px; background:#fff;
+        }
+        .manual-signer-option.selected { border-color:var(--sema-green); background:#f0faf4; }
+        .manual-signer-option.disabled { opacity:.55; cursor:not-allowed; }
+        .manual-signer-option input { margin-top:3px; accent-color:var(--sema-green); }
+        .manual-signer-option strong { display:block; font-size:.8rem; color:#1e293b; }
+        .manual-signer-option small { display:block; font-size:.69rem; color:#64748b; line-height:1.25; margin-top:2px; }
+        @media (max-width: 767px) { .manual-signers { grid-template-columns:1fr; } }
 
         /* Cards de co-assinante (lista selecionável) */
         .coass-grid { display:flex; flex-direction:column; gap:7px; max-height:200px; overflow-y:auto; padding:2px; }
@@ -465,22 +536,16 @@ include '../header.php';
         .section-header h5 { margin: 0; font-weight: 700; color: #1e293b; }
     </style>
 
-    <!-- Navegação de Topo -->
-    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-        <div class="d-flex align-items-center gap-3">
-            <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-sm btn-light border fw-medium px-3 text-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Voltar
-            </a>
-            <div>
-                <h5 class="mb-0 fw-bold text-dark">
-                    <i class="fas fa-edit me-2" style="color: var(--sema-green)"></i> Editor de Documento
-                </h5>
-                <small class="text-muted">Edite e assine o documento oficial do processo</small>
-            </div>
-        </div>
-        <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: #f0fdf4; color: var(--sema-green); border: 1px solid #bbf7d0; font-size: 0.85rem;">
-            <i class="fas fa-hashtag me-1"></i><?= htmlspecialchars($req['protocolo']) ?>
-        </span>
+    <div class="proc-crumb">
+        <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>">
+            <i class="fas fa-arrow-left" style="font-size:.72rem"></i> Modelos
+        </a>
+        <span class="proc-crumb-sep">/</span>
+        <span class="proc-crumb-proto">#<?= htmlspecialchars($req['protocolo']) ?></span>
+        <?php if ($label !== ''): ?>
+            <span class="proc-crumb-sep">/</span>
+            <span><?= htmlspecialchars($label) ?></span>
+        <?php endif; ?>
     </div>
 
     <!-- Skeleton loader enquanto o template carrega -->
@@ -493,23 +558,22 @@ include '../header.php';
     <div class="py-0 d-none" id="secao-editor">
 
         <!-- Barra de ações do editor -->
-        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3">
+        <div class="bg-white border rounded-3 shadow-sm px-4 py-3 mb-3 doc-editor-barra">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h5 class="mb-0 fw-bold text-dark" id="editor-title">
                         <i class="fas fa-edit me-2 text-success"></i> Editando Documento
                     </h5>
                     <small class="text-muted" style="font-size:.78rem">
-                        Campos <span style="font-weight:700">em negrito</span>
-                        são preenchidos automaticamente pelo protocolo.
+                        Campos em destaque vêm do protocolo. Edite o texto direto na página.
                     </small>
+                    <span id="doc-autosave-status" class="doc-autosave-status" aria-live="polite">
+                        <i class="fas fa-cloud"></i>Pronto
+                    </span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a href="selecionar.php?requerimento_id=<?= $requerimento_id ?>" class="btn btn-outline-secondary fw-medium px-3">
-                        <i class="fas fa-arrow-left me-1"></i> Voltar
-                    </a>
                     <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
-                        <i class="fas fa-bookmark me-1"></i> Salvar Template
+                        <i class="fas fa-bookmark me-1"></i> Salvar como modelo
                     </button>
                     <button class="btn btn-preview fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar — o que você vê é exatamente o documento final">
                         <i class="fas fa-eye me-1"></i> Pré-visualizar PDF
@@ -522,8 +586,27 @@ include '../header.php';
         </div>
 
         <!-- Wrapper que simula a "mesa" de trabalho com a página A4 -->
-        <div class="a4-outer-wrapper rounded-3">
-            <textarea id="editor-conteudo"></textarea>
+        <div class="doc-layout">
+          <div class="doc-col-principal">
+            <div class="a4-outer-wrapper rounded-3">
+                <textarea id="editor-conteudo"></textarea>
+            </div>
+          </div>
+
+          <aside class="doc-rail">
+            <div class="doc-rail-card">
+                <div class="doc-rail-head doc-campos-head">
+                    <span>Campos do documento</span>
+                    <span class="doc-campos-vazios" id="doc-campos-vazios" style="display:none"></span>
+                </div>
+                <div id="doc-campos-lista">
+                    <div class="doc-rail-vazio">Carregando campos…</div>
+                </div>
+                <div class="doc-campos-nota" id="doc-campos-nota" style="display:none">
+                    Campos vazios podem ser preenchidos direto na página, antes de assinar.
+                </div>
+            </div>
+          </aside>
         </div>
 
     </div><!-- /secao-editor -->
@@ -567,10 +650,60 @@ include '../header.php';
                       <div class="mc-icon"><i class="fas fa-pen-ruler"></i></div>
                       <div>
                           <div class="mc-title">Gerar com linha para assinatura manual</div>
-                          <div class="mc-desc">Sem assinatura eletrônica — o documento será assinado à caneta</div>
+                          <div class="mc-desc">Escolha o usuário atual, o secretário ou informe outra pessoa</div>
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
+              </div>
+
+              <!-- Pessoa que aparecerá na linha física (apenas modo manual) -->
+              <div id="painelAssinanteManual" style="display:none;background:#fffdf5;border:1px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:16px;">
+                  <label class="fw-semibold" style="font-size:.85rem;margin-bottom:8px;display:block;color:#76520c;">
+                      <i class="fas fa-signature me-1"></i> Quem deve aparecer na linha de assinatura?
+                  </label>
+                  <div class="manual-signers">
+                      <label class="manual-signer-option<?= $tipoAssinanteManualPadrao === 'atual' ? ' selected' : '' ?>">
+                          <input type="radio" name="assinante_manual_tipo" value="atual"
+                                 <?= $tipoAssinanteManualPadrao === 'atual' ? 'checked' : '' ?>>
+                          <span>
+                              <strong>Usuário atual</strong>
+                              <small><?= htmlspecialchars($adminManualAtual['nome']) ?><br><?= htmlspecialchars($adminManualAtual['cargo']) ?></small>
+                          </span>
+                      </label>
+                      <label class="manual-signer-option<?= $tipoAssinanteManualPadrao === 'secretario' ? ' selected' : '' ?><?= $secretarioManual ? '' : ' disabled' ?>">
+                          <input type="radio" name="assinante_manual_tipo" value="secretario"
+                                 <?= $tipoAssinanteManualPadrao === 'secretario' ? 'checked' : '' ?>
+                                 <?= $secretarioManual ? '' : 'disabled' ?>>
+                          <span>
+                              <strong>Secretário</strong>
+                              <small><?= $secretarioManual
+                                  ? htmlspecialchars($secretarioManual['nome']) . '<br>' . htmlspecialchars($secretarioManual['cargo'])
+                                  : htmlspecialchars($erroSecretarioManual) ?></small>
+                          </span>
+                      </label>
+                      <label class="manual-signer-option">
+                          <input type="radio" name="assinante_manual_tipo" value="personalizado">
+                          <span>
+                              <strong>Outra pessoa</strong>
+                              <small>Informe manualmente o nome e o cargo</small>
+                          </span>
+                      </label>
+                  </div>
+                  <div id="camposAssinantePersonalizado" class="row g-2 mt-1" style="display:none;">
+                      <div class="col-md-7">
+                          <label for="assinanteManualNome" class="form-label mb-1" style="font-size:.75rem;">Nome completo</label>
+                          <input type="text" id="assinanteManualNome" class="form-control form-control-sm" maxlength="255"
+                                 placeholder="Nome de quem assinará">
+                      </div>
+                      <div class="col-md-5">
+                          <label for="assinanteManualCargo" class="form-label mb-1" style="font-size:.75rem;">Cargo</label>
+                          <input type="text" id="assinanteManualCargo" class="form-control form-control-sm" maxlength="100"
+                                 placeholder="Ex.: Secretário Municipal">
+                      </div>
+                  </div>
+                  <div class="text-muted mt-2" style="font-size:.7rem;">
+                      Essa escolha cria apenas a linha para assinatura à caneta. O sistema registra separadamente quem gerou o PDF.
+                  </div>
               </div>
 
               <!-- Painel co-assinatura (apenas modo assinar_e_requisitar) -->
@@ -605,11 +738,16 @@ include '../header.php';
 
               <!-- Confirmação por senha (modos digitais) -->
               <div id="blocoPin" class="pin-box" style="display:none;">
-                  <div class="pin-box-label"><i class="fas fa-lock"></i> Confirme sua identidade</div>
+                  <div class="pin-box-label"><i class="fas fa-lock"></i>
+                      <span id="credencialLabel"><?= $adminTemChave ? 'PIN de assinatura' : 'Senha de acesso' ?></span>
+                  </div>
                   <input type="password" id="pinAssinatura" class="form-control" maxlength="128"
-                         autocomplete="current-password" placeholder="Digite sua senha de acesso">
-                  <div class="pin-box-hint">
-                      <i class="fas fa-shield-halved me-1"></i>Confirma que esta assinatura eletrônica foi feita por você.
+                         autocomplete="<?= $adminTemChave ? 'off' : 'current-password' ?>"
+                         placeholder="<?= $adminTemChave ? 'Digite seu PIN pessoal de assinatura' : 'Digite sua senha de acesso' ?>">
+                  <div class="pin-box-hint" id="credencialHint">
+                      <i class="fas fa-shield-halved me-1"></i><?= $adminTemChave
+                          ? 'O PIN desbloqueia sua chave criptográfica pessoal.'
+                          : 'A senha confirma que esta assinatura foi feita por você.' ?>
                   </div>
               </div>
 
@@ -657,7 +795,8 @@ include '../header.php';
                           <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkManual"
                                  style="margin-top:2px;">
                           <span style="font-size:.84rem;cursor:pointer;">
-                              Entendo que sem assinatura eletrônica este documento <strong>não pode ser aprovado pelo Secretário</strong> (Setor 3) <span class="text-danger">*</span>
+                              Entendo que este PDF será impresso e assinado fisicamente por
+                              <strong id="nomeConfirmacaoManual"><?= htmlspecialchars(($secretarioManual ?? $adminManualAtual)['nome']) ?></strong> e não terá assinatura eletrônica <span class="text-danger">*</span>
                           </span>
                       </label>
                   </div>
@@ -776,13 +915,20 @@ include '../header.php';
 
     <script>
     const reqId         = <?= $requerimento_id ?>;
+    const reqProtocolo  = <?= json_encode($req['protocolo'] ?? '') ?>;
     const templateNome  = <?= json_encode($template) ?>;
     const templateLabel = <?= json_encode($label) ?>;
     const logoSemaUrl   = <?= json_encode(rtrim(BASE_URL, '/') . '/assets/SEMA/PNG/Azul/' . rawurlencode('Logo SEMA Vertical.png')) ?>;
     const adminNome     = <?= json_encode($_SESSION['admin_nome_completo'] ?? $_SESSION['admin_nome'] ?? 'Assinante') ?>;
     const adminCargo    = <?= json_encode($_SESSION['admin_cargo'] ?? 'Administrador(a)') ?>;
+    const csrfToken     = <?= json_encode($_SESSION['csrf_token']) ?>;
+    const adminTemChave = <?= $adminTemChave ? 'true' : 'false' ?>;
+    const adminManualAtual = <?= json_encode($adminManualAtual, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const secretarioManual = <?= json_encode($secretarioManual, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let currentTemplate = templateNome;
-    let adminTemChave   = null; // null = ainda não consultado
+    let currentDraftId  = templateNome.startsWith('db_draft:') ? Number(templateNome.slice(9)) : 0;
+    let autosaveTimer   = null;
+    let autosaveInFlight = false;
 
     /* ─── Icon Picker ────────────────────────────────────────── */
     const ICONES_DISPONIVEIS = [
@@ -1095,8 +1241,7 @@ include '../header.php';
     function initEditor(html, title) {
         document.getElementById('editor-loading').remove();
         document.getElementById('secao-editor').classList.remove('d-none');
-        document.getElementById('editor-title').innerHTML =
-            '<i class="fas fa-edit text-success me-2"></i> Editando: <b>' + escapeHtml(title) + '</b>';
+        document.getElementById('editor-title').textContent = title;
 
         waitForSummernote(function() {
             var $editor = $('#editor-conteudo');
@@ -1124,10 +1269,373 @@ include '../header.php';
                 callbacks: {
                     onInit: function() {
                         montarCanvasMultiPagina();
+                        montarPainelCampos();
+                        iniciarSincronizacaoDocumento();
+                        iniciarAutosave();
+                    },
+                    onChange: function() {
+                        sincronizarDoDocumentoParaPainel();
                     }
                 }
             });
         });
+    }
+
+    const ROTULOS_CAMPO = {
+        protocolo_oficial: 'Protocolo oficial',
+        numero_documento_ano: 'Número do documento',
+        protocolo: 'Protocolo do requerimento',
+        nome_requerente: 'Requerente',
+        cpf_cnpj_requerente: 'CPF/CNPJ do requerente',
+        nome_proprietario: 'Proprietário',
+        cpf_cnpj_proprietario: 'CPF/CNPJ do proprietário',
+        endereco_objetivo: 'Endereço da obra',
+        responsavel_tecnico_nome: 'Responsável técnico',
+        responsavel_tecnico_conselho: 'Conselho profissional',
+        responsavel_tecnico_registro: 'Registro profissional',
+        responsavel_tecnico_numero: 'ART/RRT',
+        responsavel_tecnico_rotulo: 'Tipo do documento técnico',
+        area_construida: 'Área construída',
+        area_lote: 'Área do lote',
+        area_total_terreno: 'Área da porção maior',
+        desmembramento_area_lotes: 'Área total desmembrada',
+        area_remanescente: 'Área remanescente',
+        desmembramento_lotes_numeros: 'Lotes a desmembrar',
+        cadastro_imobiliario: 'Cadastro imobiliário',
+        especificacao: 'Especificação',
+        inicio_obra: 'Início da obra',
+        termino_obra: 'Término da obra',
+        alvara_construcao_numero: 'Alvará de construção de origem',
+        eng_fiscal_nome: 'Engenheira fiscal',
+        eng_fiscal_registro: 'CREA da engenheira fiscal',
+        data_atual: 'Data de emissão',
+    };
+
+    const ORDEM_CAMPO = [
+        'protocolo_oficial', 'numero_documento_ano', 'protocolo',
+        'nome_proprietario', 'cpf_cnpj_proprietario', 'nome_requerente',
+        'cpf_cnpj_requerente', 'endereco_objetivo', 'responsavel_tecnico_nome',
+        'responsavel_tecnico_conselho', 'responsavel_tecnico_registro',
+        'responsavel_tecnico_rotulo', 'responsavel_tecnico_numero',
+        'area_construida', 'area_lote', 'area_total_terreno',
+        'desmembramento_area_lotes', 'area_remanescente', 'desmembramento_lotes_numeros',
+        'cadastro_imobiliario', 'especificacao',
+        'inicio_obra', 'termino_obra', 'alvara_construcao_numero',
+        'eng_fiscal_nome', 'eng_fiscal_registro', 'data_atual'
+    ];
+
+    const PLACEHOLDERS_VAZIOS = [
+        '', 'não informado', 'nao informado', 'a ser informado',
+        'a ser informada', '??', '-', '—', 'n/a'
+    ];
+
+    function rotuloCampo(chave) {
+        if (ROTULOS_CAMPO[chave]) return ROTULOS_CAMPO[chave];
+        const texto = String(chave || '').replace(/_/g, ' ').trim();
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    function campoVazio(valor) {
+        return PLACEHOLDERS_VAZIOS.includes(String(valor || '').trim().toLowerCase());
+    }
+
+    function autosaveStatus(texto, estado) {
+        const el = document.getElementById('doc-autosave-status');
+        if (!el) return;
+        el.className = 'doc-autosave-status' + (estado ? ' ' + estado : '');
+        el.innerHTML = estado === 'salvando'
+            ? '<i class="fas fa-spinner fa-spin"></i>' + escapeHtml(texto)
+            : '<i class="fas fa-cloud"></i>' + escapeHtml(texto);
+    }
+
+    function iniciarAutosave() {
+        autosaveStatus('Alterações salvas', 'salvo');
+    }
+
+    function agendarAutosave() {
+        clearTimeout(autosaveTimer);
+        autosaveStatus('Salvando…', 'salvando');
+        autosaveTimer = setTimeout(salvarRascunho, 900);
+    }
+
+    function obterConteudoRascunho() {
+        let html = (typeof $ !== 'undefined' && $('#editor-conteudo').data('summernote'))
+            ? $('#editor-conteudo').summernote('code')
+            : document.getElementById('editor-conteudo').value;
+        return html.replace(/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/g, '').replace(/\u200B/g, '');
+    }
+
+    async function salvarRascunho() {
+        if (autosaveInFlight) return;
+        const html = obterConteudoRascunho();
+        if (!html || !html.trim()) return;
+
+        const dados = {};
+        document.querySelectorAll('.doc-campo-input').forEach((input) => {
+            dados[input.dataset.campo] = input.value;
+        });
+
+        const chaveLocal = 'sema_doc_rascunho_' + reqId + '_' + templateNome;
+        try {
+            localStorage.setItem(chaveLocal, JSON.stringify({ html, dados, atualizado_em: Date.now() }));
+        } catch (e) {}
+
+        autosaveInFlight = true;
+        try {
+            const res = await fetch('../parecer_handler.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'salvar_rascunho',
+                    requerimento_id: reqId,
+                    rascunho_id: currentDraftId,
+                    nome: templateLabel || templateNome || 'Documento em edição',
+                    conteudo_html: html,
+                    dados_json: JSON.stringify(dados),
+                    csrf_token: csrfToken
+                })
+            });
+            const ret = await res.json();
+            if (!ret.success) throw new Error(ret.error || 'Falha ao salvar');
+            currentDraftId = Number(ret.rascunho_id || currentDraftId);
+            autosaveStatus('Salvo às ' + String(ret.salvo_em || '').slice(-8), 'salvo');
+        } catch (e) {
+            autosaveStatus('Salvo localmente', 'erro');
+        } finally {
+            autosaveInFlight = false;
+        }
+    }
+
+    function obterCamposDocumento() {
+        const editavel = document.querySelector('.note-editable');
+        if (!editavel) return [];
+        const unicos = new Map();
+        editavel.querySelectorAll('.var-field[data-var]').forEach((el, indice) => {
+            const chave = el.dataset.var || ('campo_' + indice);
+            el.dataset.campoIdx = chave;
+            if (!unicos.has(chave)) unicos.set(chave, el);
+        });
+        return Array.from(unicos.entries()).sort((a, b) => {
+            const ai = ORDEM_CAMPO.indexOf(a[0]);
+            const bi = ORDEM_CAMPO.indexOf(b[0]);
+            return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+        });
+    }
+
+    function montarPainelCampos() {
+        const lista = document.getElementById('doc-campos-lista');
+        if (!lista) return;
+        const campos = obterCamposDocumento();
+        if (!campos.length) {
+            lista.innerHTML = '<div class="doc-rail-vazio">Este documento não usa campos automáticos.</div>';
+            atualizarContadorVazios();
+            return;
+        }
+
+        lista.innerHTML = campos.map(([chave, el]) => {
+            const valor = (el.textContent || '').trim();
+            const vazio = campoVazio(valor);
+            return `<div class="doc-campo${vazio ? ' vazio' : ''}">
+                <label class="doc-campo-rotulo" for="campo-${escapeHtml(chave)}">${escapeHtml(rotuloCampo(chave))}</label>
+                <span class="doc-campo-entrada">
+                    <input type="text" class="doc-campo-input" id="campo-${escapeHtml(chave)}"
+                           data-campo="${escapeHtml(chave)}" value="${vazio ? '' : escapeHtml(valor)}"
+                           placeholder="${vazio ? escapeHtml(valor || 'A preencher') : ''}" autocomplete="off">
+                    <button type="button" class="doc-campo-ir" data-ir="${escapeHtml(chave)}" title="Mostrar no documento" tabindex="-1">
+                        <i class="fas fa-location-crosshairs"></i>
+                    </button>
+                </span>
+            </div>`;
+        }).join('');
+
+        lista.querySelectorAll('.doc-campo-input').forEach((input) => {
+            input.addEventListener('input', () => aplicarCampo(input.dataset.campo, input.value));
+            input.addEventListener('focus', () => irParaCampo(input.dataset.campo, true));
+        });
+        lista.querySelectorAll('.doc-campo-ir').forEach((btn) => {
+            btn.addEventListener('click', () => irParaCampo(btn.dataset.ir, false));
+        });
+        atualizarContadorVazios();
+        iniciarSincronizacaoDocumento();
+    }
+
+    function aplicarCampo(chave, valor) {
+        const editavel = document.querySelector('.note-editable');
+        if (!editavel) return;
+        editavel.querySelectorAll('.var-field[data-var="' + CSS.escape(chave) + '"]').forEach((el) => {
+            el.textContent = String(valor);
+        });
+        const linha = document.querySelector('.doc-campo-input[data-campo="' + CSS.escape(chave) + '"]')?.closest('.doc-campo');
+        if (linha) linha.classList.toggle('vazio', campoVazio(valor));
+        atualizarContadorVazios();
+        agendarAutosave();
+    }
+
+    function sincronizarPainelCampos() {
+        const campos = new Map(obterCamposDocumento());
+        document.querySelectorAll('.doc-campo-input').forEach((input) => {
+            const alvo = campos.get(input.dataset.campo);
+            if (!alvo || document.activeElement === input) return;
+            const valorCru = (alvo.textContent || '').replace(/\u200B/g, '');
+            const ehVazio = campoVazio(valorCru.trim());
+            input.value = ehVazio ? '' : valorCru;
+            if (ehVazio) input.placeholder = valorCru.trim() || 'A preencher';
+            input.closest('.doc-campo')?.classList.toggle('vazio', ehVazio);
+        });
+        atualizarContadorVazios();
+    }
+
+    function obterVarFieldAtivo() {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if (!node) return null;
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            node = node.parentElement;
+        }
+        return node ? node.closest('.var-field[data-var]') : null;
+    }
+
+    function sincronizarDoDocumentoParaPainel(ev) {
+        const editavel = document.querySelector('.note-editable');
+        if (!editavel) return;
+
+        let campoAlvo = obterVarFieldAtivo();
+        if (!campoAlvo && ev && ev.target && ev.target.closest) {
+            campoAlvo = ev.target.closest('.var-field[data-var]');
+        }
+
+        if (campoAlvo && campoAlvo.dataset.var) {
+            const chave = campoAlvo.dataset.var;
+            const textoCru = (campoAlvo.textContent || '').replace(/\u200B/g, '');
+            const ehVazio = campoVazio(textoCru.trim());
+
+            // 1. Atualizar o input correspondente no painel lateral
+            const input = document.querySelector('.doc-campo-input[data-campo="' + CSS.escape(chave) + '"]');
+            if (input && document.activeElement !== input) {
+                input.value = ehVazio ? '' : textoCru;
+                input.closest('.doc-campo')?.classList.toggle('vazio', ehVazio);
+                if (ehVazio) {
+                    input.placeholder = textoCru.trim() || 'A preencher';
+                }
+            }
+
+            // 2. Destacar campo ativo no painel lateral
+            document.querySelectorAll('.doc-campo.em-edicao').forEach(el => el.classList.remove('em-edicao'));
+            if (input) {
+                input.closest('.doc-campo')?.classList.add('em-edicao');
+            }
+
+            // 3. Sincronizar outras ocorrências da mesma variável no documento
+            editavel.querySelectorAll('.var-field[data-var="' + CSS.escape(chave) + '"]').forEach((el) => {
+                if (el !== campoAlvo && el.textContent.replace(/\u200B/g, '') !== textoCru) {
+                    el.textContent = textoCru;
+                }
+            });
+
+            atualizarContadorVazios();
+            agendarAutosave();
+            return;
+        }
+
+        // Se não foi um campo específico ou foi alteração genérica
+        sincronizarPainelCampos();
+        agendarAutosave();
+    }
+
+    function iniciarSincronizacaoDocumento() {
+        const editable = document.querySelector('.note-editable');
+        if (!editable || editable.dataset.syncInit) return;
+        editable.dataset.syncInit = '1';
+
+        // 1. Digitação ou edição direta no documento atualiza a barra lateral em tempo real
+        editable.addEventListener('input', function(e) {
+            sincronizarDoDocumentoParaPainel(e);
+        });
+        editable.addEventListener('keyup', function(e) {
+            sincronizarDoDocumentoParaPainel(e);
+        });
+
+        // 2. Prevenir destruição do span do campo ao apagar todo o texto (Backspace / Delete)
+        editable.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                const sel = window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                const node = sel.anchorNode;
+                const span = node && (node.nodeType === Node.ELEMENT_NODE ? node.closest('.var-field[data-var]') : node.parentElement?.closest('.var-field[data-var]'));
+                if (span) {
+                    const rawText = (span.textContent || '').replace(/\u200B/g, '');
+                    const selectedText = sel.toString().replace(/\u200B/g, '');
+                    if (rawText.length <= 1 || (selectedText && selectedText.trim() === rawText.trim())) {
+                        e.preventDefault();
+                        span.innerHTML = '&#8203;';
+                        const r = document.createRange();
+                        r.setStart(span.firstChild, 1);
+                        r.setEnd(span.firstChild, 1);
+                        sel.removeAllRanges();
+                        sel.addRange(r);
+                        sincronizarDoDocumentoParaPainel(e);
+                    }
+                }
+            }
+        });
+
+        // 3. Ao clicar ou focar num campo do documento, destacar visualmente no painel lateral
+        editable.addEventListener('pointerup', function(e) {
+            const campo = e.target.closest?.('.var-field[data-var]');
+            document.querySelectorAll('.doc-campo.em-edicao').forEach(el => el.classList.remove('em-edicao'));
+            if (campo) {
+                const chave = campo.dataset.var;
+                const input = document.querySelector('.doc-campo-input[data-campo="' + CSS.escape(chave) + '"]');
+                if (input) {
+                    const linha = input.closest('.doc-campo');
+                    linha?.classList.add('em-edicao');
+                    linha?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        });
+
+        // 4. Ao colar conteúdo
+        editable.addEventListener('paste', function() {
+            setTimeout(function() {
+                sincronizarDoDocumentoParaPainel();
+            }, 50);
+        });
+
+        // 5. Ao sair do editor, remover destaque de edição
+        editable.addEventListener('blur', function() {
+            document.querySelectorAll('.doc-campo.em-edicao').forEach(el => el.classList.remove('em-edicao'));
+        });
+    }
+
+    function atualizarContadorVazios() {
+        const badge = document.getElementById('doc-campos-vazios');
+        const nota = document.getElementById('doc-campos-nota');
+        if (!badge) return;
+        const total = document.querySelectorAll('.doc-campo.vazio').length;
+        badge.textContent = total === 1 ? '1 vazio' : total + ' vazios';
+        badge.style.display = total ? '' : 'none';
+        if (nota) nota.style.display = total ? '' : 'none';
+    }
+
+    function irParaCampo(chave, suave) {
+        const alvo = document.querySelector('.note-editable .var-field[data-var="' + CSS.escape(chave) + '"]');
+        if (!alvo) return;
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.querySelectorAll('.var-field.campo-ativo').forEach((el) => el.classList.remove('campo-ativo'));
+        alvo.classList.add('campo-ativo');
+        if (!suave) {
+            alvo.classList.remove('campo-piscando');
+            void alvo.offsetWidth;
+            alvo.classList.add('campo-piscando');
+            setTimeout(() => alvo.classList.remove('campo-piscando'), 1600);
+        }
+    }
+
+    function valorCampoDocumento(chave) {
+        const input = document.querySelector('.doc-campo-input[data-campo="' + CSS.escape(chave) + '"]');
+        if (input) return input.value.replace(/\u200B/g, '').trim();
+        return (document.querySelector('.note-editable .var-field[data-var="' + CSS.escape(chave) + '"]')?.textContent || '').replace(/\u200B/g, '').trim();
     }
 
     /* ─── Conteúdo do editor, limpo dos elementos visuais ──── */
@@ -1142,7 +1650,7 @@ include '../header.php';
         html = html.replace(/<div[^>]*class="[^"]*page-(?:cut|gap|break-indicator)[^"]*"[^>]*>[\s\S]*?<\/div>/g, '');
         // Spans var-field viram texto puro
         html = html.replace(
-            /<span[^>]+class="var-field"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
+            /<span[^>]+class="[^"]*\bvar-field\b[^"]*"[^>]*>((?:(?!<\/span>)[\s\S])*)<\/span>/g,
             '$1'
         );
         // Cores residuais do Summernote
@@ -1150,8 +1658,58 @@ include '../header.php';
             /(<span[^>]*style="[^"]*)color\s*:\s*(?:rgb\(26\s*,\s*82\s*,\s*118\)|#1a5276)\s*;?/gi,
             '$1'
         );
+        html = html.replace(/\u200B/g, '');
         return html;
     }
+
+    function dadosAssinanteManual() {
+        const tipo = document.querySelector('input[name="assinante_manual_tipo"]:checked')?.value || 'atual';
+        if (tipo === 'secretario') {
+            return { tipo, nome: secretarioManual?.nome || '', cargo: secretarioManual?.cargo || '' };
+        }
+        if (tipo === 'personalizado') {
+            return {
+                tipo,
+                nome: document.getElementById('assinanteManualNome').value.trim(),
+                cargo: document.getElementById('assinanteManualCargo').value.trim(),
+            };
+        }
+        return { tipo: 'atual', nome: adminManualAtual.nome || adminNome, cargo: adminManualAtual.cargo || adminCargo };
+    }
+
+    function atualizarAssinanteManual() {
+        const dados = dadosAssinanteManual();
+        document.querySelectorAll('.manual-signer-option').forEach(opcao => {
+            opcao.classList.toggle('selected', opcao.querySelector('input')?.checked === true);
+        });
+        document.getElementById('camposAssinantePersonalizado').style.display = dados.tipo === 'personalizado' ? 'flex' : 'none';
+        document.getElementById('nomeConfirmacaoManual').textContent = dados.nome || 'a pessoa informada';
+    }
+
+    function validarAssinanteManual(exibirErro = true) {
+        const dados = dadosAssinanteManual();
+        if (dados.tipo === 'secretario' && !secretarioManual) {
+            if (exibirErro) Swal.fire('Secretário indisponível', 'Selecione o usuário atual ou informe outra pessoa.', 'warning');
+            return false;
+        }
+        if (dados.tipo === 'personalizado' && (!dados.nome || !dados.cargo)) {
+            if (exibirErro) {
+                Swal.fire('Dados incompletos', 'Informe o nome e o cargo da pessoa que assinará.', 'warning');
+                document.getElementById(!dados.nome ? 'assinanteManualNome' : 'assinanteManualCargo').focus();
+            }
+            return false;
+        }
+        return true;
+    }
+
+    document.querySelectorAll('input[name="assinante_manual_tipo"]').forEach(input => {
+        input.addEventListener('change', () => {
+            atualizarAssinanteManual();
+            document.getElementById('checkManual').checked = false;
+        });
+    });
+    document.getElementById('assinanteManualNome').addEventListener('input', atualizarAssinanteManual);
+    atualizarAssinanteManual();
 
     /* ─── Pré-visualizar o PDF REAL (TCPDF) em nova aba ────── */
     function previewPdf() {
@@ -1161,6 +1719,8 @@ include '../header.php';
             return;
         }
         const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
+        if (modoAtivo === 'sem_assinar' && !validarAssinanteManual()) return;
+        const dadosManual = dadosAssinanteManual();
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '../assinatura/preview_pdf.php';
@@ -1169,6 +1729,10 @@ include '../header.php';
             conteudo_parecer: html,
             requerimento_id:  reqId,
             modo_assinatura:  modoAtivo,
+            assinatura_manual_tipo: dadosManual.tipo,
+            assinatura_manual_nome: dadosManual.nome,
+            assinatura_manual_cargo: dadosManual.cargo,
+            csrf_token:       csrfToken,
             sig_pos_x: sigPosCustomizada ? sigPos.x.toFixed(1) : '',
             sig_pos_y: sigPosCustomizada ? sigPos.y.toFixed(1) : '',
         };
@@ -1252,6 +1816,7 @@ include '../header.php';
             const isRequisitar = modo === 'assinar_e_requisitar';
 
             document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
+            document.getElementById('painelAssinanteManual').style.display   = isSemAssinar ? 'block' : 'none';
             document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
             document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
 
@@ -1262,7 +1827,12 @@ include '../header.php';
         }
 
         cards.forEach(card => {
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (event) => {
+                if (card.dataset.disponivel === '0') {
+                    event.preventDefault();
+                    Swal.fire('Assinatura manual indisponível', card.dataset.indisponivelMsg || 'Revise o cadastro do secretário ativo.', 'warning');
+                    return;
+                }
                 const modo = card.dataset.modo;
 
                 cards.forEach(c => c.classList.remove('selected'));
@@ -1282,6 +1852,8 @@ include '../header.php';
     async function finalizarAssinatura() {
         const modoAtivo = document.querySelector('.modo-card.selected')?.dataset.modo ?? 'assinar';
         const isSemAssinar = modoAtivo === 'sem_assinar';
+        if (isSemAssinar && !validarAssinanteManual()) return;
+        const dadosManual = dadosAssinanteManual();
 
         // Validação dos checkboxes conforme modo (com feedback visual)
         const checkDiretrizes = document.getElementById('checkDiretrizes');
@@ -1305,7 +1877,8 @@ include '../header.php';
                 box.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 setTimeout(() => box.classList.remove('shake'), 500);
                 document.getElementById('pinAssinatura').focus();
-                Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite sua senha de acesso para confirmar', showConfirmButton:false, timer:2800 });
+                const credencialNome = adminTemChave ? 'seu PIN de assinatura' : 'sua senha de acesso';
+                Swal.fire({ toast:true, position:'top', icon:'warning', title:'Digite ' + credencialNome + ' para confirmar', showConfirmButton:false, timer:2800 });
                 return;
             }
         }
@@ -1334,7 +1907,12 @@ include '../header.php';
         fd.append('template_salvo',   templateNome);
         fd.append('download',         fazDownload);
         fd.append('modo_assinatura',  modoAtivo);
+        fd.append('assinatura_manual_tipo', dadosManual.tipo);
+        fd.append('assinatura_manual_nome', dadosManual.nome);
+        fd.append('assinatura_manual_cargo', dadosManual.cargo);
         fd.append('pin_assinatura',   pinParaAssinar);
+        fd.append('csrf_token',       csrfToken);
+        fd.append('numero_documento', valorCampoDocumento('numero_documento_ano'));
         if (sigPosCustomizada) {
             fd.append('sig_pos_x', sigPos.x.toFixed(1));
             fd.append('sig_pos_y', sigPos.y.toFixed(1));
@@ -1344,8 +1922,16 @@ include '../header.php';
             fd.append('coassinatura_mensagem', document.getElementById('coassMensagem').value);
         }
 
-        fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd })
-        .then(res => res.json())
+        fetch('../assinatura/processa_assinatura.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(async res => {
+            const tipo = res.headers.get('content-type') || '';
+            if (!tipo.includes('application/json')) {
+                throw new Error('O servidor retornou uma resposta inválida.');
+            }
+            const dados = await res.json();
+            dados._httpStatus = res.status;
+            return dados;
+        })
         .then(ret => {
             btn.disabled = false;
             btn.innerHTML = `<i class="fas fa-check-circle me-2"></i> <span id="btnAssinarLabel">${document.getElementById('btnAssinarLabel')?.textContent || 'Confirmar'}</span>`;
@@ -1354,7 +1940,7 @@ include '../header.php';
                 bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
                 const swalTitle = isSemAssinar ? 'Documento Gerado' : 'Assinado com Sucesso';
                 const swalText  = isSemAssinar
-                    ? 'Documento gerado com linha de assinatura manual. Lembre-se de coletar a assinatura física.'
+                    ? 'Documento gerado com a linha de assinatura de ' + dadosManual.nome + '. Lembre-se de coletar a assinatura física.'
                     : 'Documento assinado eletronicamente e registrado no processo. O QR code de verificação está impresso no documento.';
                 Swal.fire({
                     title: swalTitle,
@@ -1375,18 +1961,28 @@ include '../header.php';
                         window.location.href = '../visualizar_requerimento.php?id=' + reqId;
                     }, 500);
                 });
-            } else if (ret.code === 'senha_incorreta') {
-                Swal.fire('Senha incorreta', 'A senha de acesso informada não confere. Tente novamente.', 'error');
+            } else if (ret.code === 'session_expired') {
+                Swal.fire({
+                    title: 'Sessão encerrada',
+                    text: ret.error || 'Entre novamente para continuar.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entrar novamente'
+                }).then(() => {
+                    const retorno = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = '../login.php?redirect=' + retorno;
+                });
+            } else if (ret.code === 'credential_invalid' || ret.code === 'credential_required') {
+                Swal.fire('Credencial incorreta', ret.error || 'A credencial informada não confere. Tente novamente.', 'error');
                 document.getElementById('pinAssinatura').value = '';
                 document.getElementById('pinAssinatura').focus();
             } else {
-                Swal.fire('Erro Interno', ret.error || 'Não foi possível registrar o documento.', 'error');
+                Swal.fire('Não foi possível concluir', ret.error || 'Não foi possível registrar o documento.', 'error');
             }
         })
-        .catch(() => {
+        .catch((erro) => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
-            Swal.fire('Falha Crítica', 'Falha de comunicação ao registrar a assinatura.', 'error');
+            Swal.fire('Falha de comunicação', erro.message || 'Não foi possível comunicar com o servidor.', 'error');
         });
     }
 
@@ -1457,6 +2053,7 @@ include '../header.php';
             conteudo_html: templateHtml,
             template_base: templateNome,
             icone:         icone,
+            csrf_token:    csrfToken,
         });
         if (modo === 'novo')       { body.append('nome', nome); body.append('descricao', desc); }
         if (modo === 'substituir') { body.append('id', utId); }

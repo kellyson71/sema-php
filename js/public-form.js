@@ -65,6 +65,8 @@
     const quadra = host.querySelector('[data-location-field="quadra"]');
     const numero = host.querySelector('[data-location-field="numero"]');
     const bairro = host.querySelector('[data-location-field="bairro"]');
+    const semLote = host.querySelector('[data-location-no-lot]');
+    const semNumero = host.querySelector('[data-location-no-number]');
     const preview = host.querySelector('[data-location-preview]');
     const optional = host.dataset.locationOptional === 'true';
     if (!hidden || !rua || !bairro) return;
@@ -80,10 +82,10 @@
     function montar() {
       const partes = [];
       const ruaTxt = normalizar(rua.value);
-      const loteTxt = normalizar(lote?.value);
-      const quadraTxt = normalizar(quadra?.value);
+      const loteTxt = semLote?.checked ? '' : normalizar(lote?.value);
+      const quadraTxt = semLote?.checked ? '' : normalizar(quadra?.value);
       const numeroRaw = normalizar(numero?.value);
-      const numeroTxt = numeroRaw || 'SN';
+      const numeroTxt = semNumero?.checked || !numeroRaw ? 'SN' : numeroRaw;
       const bairroTxt = normalizar(bairro.value);
 
       if (optional && !ruaTxt && !loteTxt && !quadraTxt && !numeroRaw && !bairroTxt) {
@@ -94,7 +96,7 @@
       }
 
       if (ruaTxt) partes.push(ruaTxt);
-      if (loteTxt || quadraTxt) {
+      if (loteTxt) {
         const loteQuadra = [
           loteTxt ? 'LOTE ' + loteTxt : '',
           quadraTxt ? 'QUADRA ' + quadraTxt : ''
@@ -137,11 +139,41 @@
       field.addEventListener('input', montar);
       field.addEventListener('change', montar);
     });
+    function atualizarCamposAusencia() {
+      if (semLote) {
+        const ocultar = !!semLote.checked;
+        if (lote) {
+          lote.style.display = ocultar ? 'none' : '';
+          lote.disabled = ocultar;
+          if (ocultar) lote.value = '';
+        }
+        if (quadra) {
+          quadra.style.display = ocultar ? 'none' : '';
+          quadra.disabled = ocultar;
+          if (ocultar) quadra.value = '';
+        }
+      }
+      if (semNumero && numero) {
+        const ocultar = !!semNumero.checked;
+        numero.style.display = ocultar ? 'none' : '';
+        numero.disabled = ocultar;
+        if (ocultar) numero.value = '';
+      }
+    }
+
+    [semLote, semNumero].filter(Boolean).forEach((field) => {
+      field.addEventListener('change', () => {
+        atualizarCamposAusencia();
+        montar();
+      });
+    });
     host.SEMA_syncLocation = function () {
       hidratarDoConsolidado(true);
+      atualizarCamposAusencia();
       montar();
     };
     hidratarDoConsolidado();
+    atualizarCamposAusencia();
     montar();
   };
 
@@ -166,14 +198,11 @@
             <option value="">Conselho / documento${mark}</option>
             <option value="CREA">CREA</option>
             <option value="CAU">CAU</option>
-            <option value="ART">ART</option>
-            <option value="RRT">RRT</option>
-            <option value="TRT">TRT</option>
           </select>
         </div>
         <div class="form-grid-2">
           <input ${req} name="responsavel_tecnico_registro" placeholder="Registro profissional${mark}">
-          <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT/TRT${mark}">
+          <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}">
         </div>
         <div class="form-grid-2">
           <input type="email" name="responsavel_tecnico_email" placeholder="E-mail do responsável técnico">
@@ -186,6 +215,7 @@
   function renderDesmembramentoLote(index, label) {
     const prefix = index === 0 ? '' : `lotes[${index}]`;
     const areaName = index === 0 ? 'area_lote' : `${prefix}[area]`;
+    const cadastroName = index === 0 ? 'cadastro_imobiliario' : `${prefix}[cadastro_imobiliario]`;
     const confrontoName = (rumo, campo) => index === 0
       ? `confrontacao_${rumo}_${campo}`
       : `${prefix}[confrontacoes][${rumo}][${campo}]`;
@@ -198,10 +228,17 @@
           </div>
           ${index > 0 ? '<button type="button" class="public-remove-lote" data-remove-lote aria-label="Remover este lote">Remover lote</button>' : ''}
         </div>
-        <label class="public-lote-area">
-          Área deste lote (m²) *
-          <input required name="${areaName}" placeholder="Ex.: 250,00" data-lote-area data-desmembramento-field>
-        </label>
+        <div class="form-grid-2">
+          <label class="public-lote-area">
+            Área deste lote (m²) *
+            <input required type="number" inputmode="decimal" min="0.01" step="0.01"
+                   name="${areaName}" placeholder="Ex.: 250,00" data-lote-area data-desmembramento-field>
+          </label>
+          <label class="public-lote-area">
+            Cadastro imobiliário deste lote *
+            <input required name="${cadastroName}" placeholder="Ex.: 1010844" data-desmembramento-field>
+          </label>
+        </div>
         <div class="public-section-heading-small">Confrontações</div>
         <div class="public-confrontacoes-grid">
           ${[
@@ -214,11 +251,14 @@
               <legend>${rumoLabel}</legend>
               <label>
                 Medida (m)
-                <input required name="${confrontoName(rumo, 'metragem')}" placeholder="Ex.: 12,50" data-desmembramento-field>
+                <input required type="number" inputmode="decimal" min="0.01" step="0.01"
+                       name="${confrontoName(rumo, 'metragem')}" placeholder="Ex.: 12,50"
+                       data-confrontacao-medida data-desmembramento-field>
               </label>
               <label>
                 Limite / confrontante
-                <input required name="${confrontoName(rumo, 'descricao')}" placeholder="Ex.: Rua Adelino Aires, lote 12 ou vizinho" data-desmembramento-field>
+                <input required name="${confrontoName(rumo, 'descricao')}"
+                       placeholder="Ex.: Rua das Flores ou vizinho João da Silva" data-desmembramento-field>
               </label>
             </fieldset>
           `).join('')}
@@ -272,6 +312,7 @@
             <option>Comercial</option>
             <option>Mista</option>
             <option>Industrial</option>
+            <option>Institucional</option>
             <option>Muro e calçada</option>
             <option>Reforma e ampliação</option>
           </select>
@@ -279,7 +320,7 @@
         </div>
         <div class="form-grid-2">
           <input required name="area_construcao" placeholder="Área a ser construída (m²) *" data-preview-field>
-          <input name="cadastro_imobiliario" placeholder="Cadastro imobiliário">
+          <input required name="cadastro_imobiliario" placeholder="Cadastro imobiliário (sequencial) *">
         </div>
         <div class="form-grid-2">
           <label>Início previsto<input type="date" name="inicio_obra"></label>
@@ -294,15 +335,20 @@
       return `
         <div class="form-grid-2">
           <label>
-            Área total do terreno (m²) *
-            <input required name="area_total_terreno" placeholder="Ex.: 500,00" data-area-total>
+            Nº da Matrícula do Imóvel (RGI) *
+            <input required name="matricula_imovel" placeholder="Ex.: Matrícula 12.345 (Livro 2)" data-desmembramento-field>
           </label>
-          <div class="public-calculated-area" aria-live="polite">
-            <span>Área remanescente</span>
-            <strong data-area-remanescente>Informe as áreas acima</strong>
-            <small data-area-lotes-resumo>Soma dos lotes: —</small>
-            <input type="hidden" name="area_remanescente" data-area-remanescente-value>
-          </div>
+          <label>
+            Área total do terreno (m²) *
+            <input required type="number" inputmode="decimal" min="0.01" step="0.01"
+                   name="area_total_terreno" placeholder="Ex.: 500,00" data-area-total>
+          </label>
+        </div>
+        <div class="public-calculated-area" style="margin-bottom:14px;" aria-live="polite">
+          <span>Área remanescente</span>
+          <strong data-area-remanescente>Informe as áreas acima</strong>
+          <small data-area-lotes-resumo>Soma dos lotes: —</small>
+          <input type="hidden" name="area_remanescente" data-area-remanescente-value>
         </div>
         <div class="public-lotes-heading">
           <div>
@@ -316,7 +362,6 @@
           Descrição complementar do desmembramento *
           <textarea required name="descricao_atividade" placeholder="Acrescente alguma informação relevante sobre o desmembramento." rows="3" data-desmembramento-descricao></textarea>
         </label>
-        <div class="public-preview-box public-desmembramento-resumo"><span>Resumo</span><strong data-desmembramento-preview>Preencha os lotes para visualizar.</strong></div>
         <div class="public-desmembramento-warning" data-desmembramento-warning role="alert" hidden></div>
       `;
     }
@@ -328,42 +373,107 @@
           <input required name="area_construida" placeholder="Área construída (m²) *" data-habite-preview-field>
         </div>
         <div class="form-grid-2">
+          <input required name="cadastro_imobiliario" placeholder="Cadastro imobiliário (sequencial) *">
+          <label class="public-habite-select-field">Uso da edificação *
+            <select required name="habite_uso" data-habite-preview-field data-habite-other-select>
+              <option value="">Selecione o uso *</option>
+              <option>Residencial</option><option>Comercial</option><option>Mista</option>
+              <option>Industrial</option><option>Institucional</option><option value="Outro">Outro</option>
+            </select>
+            <input type="text" name="habite_uso_outro" class="public-habite-other-input" placeholder="Especifique o uso da edificação *" data-habite-other-input data-habite-preview-field hidden>
+          </label>
+        </div>
+        <div class="form-grid-2">
+          <label class="public-habite-select-field">Pavimento *
+            <select required name="habite_pavimento" data-habite-preview-field data-habite-other-select>
+              <option value="">Selecione o pavimento *</option>
+              <option>Pavimento térreo</option><option>Dois pavimentos</option><option>Três pavimentos</option>
+              <option>Quatro pavimentos</option><option>Cinco pavimentos</option><option>Seis pavimentos</option>
+              <option value="Outro">Outro</option>
+            </select>
+            <input type="text" name="habite_pavimento_outro" class="public-habite-other-input" placeholder="Especifique o pavimento *" data-habite-other-input data-habite-preview-field hidden>
+          </label>
+          <label class="public-habite-select-field">Tipo da construção *
+            <select required name="habite_tipo_construcao" data-habite-preview-field data-habite-other-select>
+              <option value="">Selecione o tipo *</option>
+              <option>Casa isolada</option><option>Casa geminada</option><option>Edifício</option>
+              <option>Galpão</option><option>Estabelecimento comercial</option><option value="Outro">Outro</option>
+            </select>
+            <input type="text" name="habite_tipo_construcao_outro" class="public-habite-other-input" placeholder="Especifique o tipo da construção *" data-habite-other-input data-habite-preview-field hidden>
+          </label>
+        </div>
+        <div class="form-grid-2">
           ${[
-            ['tipo_construcao', 'Tipo de construção', ['Alvenaria', 'Concreto armado', 'Estrutura metálica', 'Mista']],
-            ['estrutura', 'Estrutura', ['Convencional', 'Pré-moldada', 'Metálica']],
-            ['piso', 'Piso', ['Cerâmico', 'Cimentado', 'Porcelanato']],
-            ['cobertura', 'Cobertura', ['Telha cerâmica', 'Telha fibrocimento', 'Laje', 'Metálica']]
+            ['habite_padrao', 'Padrão construtivo', ['Baixo', 'Normal', 'Alto']],
+            ['habite_estrutura', 'Estrutura', ['Alvenaria e concreto armado', 'Concreto armado', 'Metálica', 'Pré-moldada']],
+            ['habite_portas', 'Portas', ['Madeira', 'Alumínio', 'Vidro', 'Ferro']],
+            ['habite_janelas', 'Janelas', ['Alumínio e vidro', 'Madeira', 'Vidro', 'Ferro']],
+            ['habite_piso', 'Revestimento do piso', ['Cerâmico', 'Cimentado', 'Porcelanato', 'Granito']],
+            ['habite_paredes', 'Revestimento das paredes', ['Pintura', 'Cerâmica', 'Reboco e pintura']],
+            ['habite_forro', 'Revestimento superior', ['Gesso', 'PVC', 'Laje', 'Madeira']],
+            ['habite_cobertura', 'Cobertura', ['Telha cerâmica', 'Telha de fibrocimento', 'Laje', 'Telha metálica']]
           ].map(([name, label, options]) => `
             <label class="public-habite-select-field">${label} *
               <select required name="${name}" data-habite-preview-field data-habite-other-select>
                 <option value="">Selecione *</option>
                 ${options.map((option) => `<option>${option}</option>`).join('')}
-                <option value="__outro__">Outro</option>
+                <option value="Outro">Outro</option>
               </select>
-              <input type="text" name="${name}_outro" placeholder="Descreva outro ${label.toLowerCase()}" data-habite-preview-field data-habite-other-input hidden>
+              <input type="text" name="${name}_outro" class="public-habite-other-input" placeholder="Especifique ${label.toLowerCase()} *" data-habite-other-input data-habite-preview-field hidden>
             </label>
           `).join('')}
         </div>
+        <div class="form-grid-2">
+          <label>Início da obra *<input required type="date" name="inicio_obra"></label>
+          <label>Término da obra *<input required type="date" name="termino_obra"></label>
+        </div>
         <div class="public-habite-rooms-heading">
-          <strong>Ambientes — quantidade total no imóvel</strong>
-          <span>Informe quantos existem na edificação concluída.</span>
+          <strong>Ambientes — quantidade no imóvel</strong>
+          <span>Informe a quantidade de cada ambiente na edificação concluída.</span>
         </div>
         <div class="form-grid-2">
-          <label>Quartos — total no imóvel<input type="number" min="0" name="quartos" placeholder="Quantidade" data-habite-preview-field data-habite-room></label>
-          <label>Suítes — total no imóvel<input type="number" min="0" name="suites" placeholder="Quantidade" data-habite-preview-field data-habite-room></label>
+          <label>Quartos
+            <input type="number" min="0" name="quartos" id="habite_quartos" placeholder="Quantidade" data-habite-preview-field data-habite-room>
+            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Quantidade de quartos sem banheiro privativo</span>
+          </label>
+          <label>Suítes
+            <input type="number" min="0" name="suites" id="habite_suites" placeholder="Quantidade" data-habite-preview-field data-habite-room>
+            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Quartos que possuem banheiro privativo</span>
+          </label>
         </div>
         <div class="form-grid-2">
-          <label>Banheiros — total no imóvel<input type="number" min="0" name="banheiros" placeholder="Quantidade" data-habite-preview-field data-habite-room></label>
-          <label>Salas — total no imóvel<input type="number" min="0" name="salas" placeholder="Quantidade" data-habite-preview-field data-habite-room></label>
+          <label>Banheiros sociais
+            <input type="number" min="0" name="banheiros_sociais" id="habite_banheiros_sociais" placeholder="Quantidade" data-habite-preview-field data-habite-room>
+            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Não inclua os banheiros das suítes</span>
+          </label>
+          <label>Salas
+            <input type="number" min="0" name="salas" id="habite_salas" placeholder="Quantidade" data-habite-preview-field data-habite-room>
+          </label>
         </div>
         <div class="form-grid-2">
-          <label>Cozinhas — total no imóvel<input type="number" min="0" name="cozinhas" placeholder="Quantidade" data-habite-preview-field data-habite-room></label>
+          <label>Cozinhas
+            <input type="number" min="0" name="cozinhas" id="habite_cozinhas" placeholder="Quantidade" data-habite-preview-field data-habite-room>
+          </label>
           <div></div>
         </div>
-        <button type="button" class="public-secondary-btn public-add-room-btn" data-add-habite-room>+ Adicionar outro ambiente</button>
-        <div class="public-extra-rooms" data-habite-extra-rooms></div>
-        <input type="hidden" name="especificacao" data-habite-preview-output>
-        <div class="public-preview-box"><span>Prévia das características:</span><strong data-habite-preview>Preencha os campos para montar o parágrafo do laudo.</strong></div>
+        <div data-habite-extra-rooms class="public-habite-extra-rooms"></div>
+        <button type="button" class="public-secondary-btn public-add-room-btn" data-add-habite-room style="margin-top:6px; margin-bottom:12px;">+ Adicionar outro ambiente</button>
+        <input type="hidden" name="habite_ambientes_json" data-habite-ambientes-output>
+        <div class="public-preview-box" style="margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <span>Prévia das características:</span>
+            <button type="button" class="public-secondary-btn" data-habite-regenerate style="font-size:.75rem; min-height:28px; padding:2px 10px; cursor:pointer;" title="Restaurar texto automático gerado pelos campos">
+              <i class="fas fa-arrows-rotate me-1"></i>Restaurar texto automático
+            </button>
+          </div>
+          <textarea name="especificacao" id="habite_especificacao" class="form-control" rows="4" data-habite-preview-output
+                    style="display:block; width:100%; box-sizing:border-box; padding:10px 12px; font-size:.85rem; line-height:1.55; text-transform:uppercase; border:1px solid var(--public-line); border-radius:4px; font-family:inherit; color:#024287; font-weight:700; background:#fff; resize:vertical;"
+                    placeholder="Preencha os campos para montar o parágrafo do laudo ou edite diretamente aqui."></textarea>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:.75rem; color:var(--public-muted);">
+            <span>Você pode editar e personalizar as características diretamente na caixa acima.</span>
+            <span data-habite-edit-status style="font-weight:700;"></span>
+          </div>
+        </div>
       `;
     }
 
@@ -525,6 +635,9 @@
 
   function applyData(form, data) {
     if (!data || typeof data !== 'object') return;
+    if (data.banheiros_sociais === undefined && data.banheiros !== undefined) {
+      data.banheiros_sociais = data.banheiros;
+    }
     form.querySelectorAll('input, select, textarea').forEach((field) => {
       if (!field.name || field.type === 'file') return;
       const direct = Object.prototype.hasOwnProperty.call(data, field.name) ? data[field.name] : fieldValue(data, field.name);
@@ -552,7 +665,21 @@
       tipo.value = data.tipo_alvara || data['tipo_alvara'];
       tipo.dispatchEvent(new Event('change', { bubbles: true }));
       window.SEMA_syncTipoCombobox?.(tipo.value);
-      setTimeout(() => applyData(form, data), 450);
+      // Os lotes adicionais são campos dinâmicos: precisam existir antes de
+      // receber os valores devolvidos pelo servidor.
+      const lotesExtras = data.lotes && typeof data.lotes === 'object'
+        ? Object.keys(data.lotes).length
+        : 0;
+      const addLote = form.querySelector('[data-add-lote]');
+      let lotesAtuais = Math.max(0, form.querySelectorAll('[data-lote-card]').length - 1);
+      while (addLote && lotesAtuais < lotesExtras) {
+        addLote.click();
+        lotesAtuais += 1;
+      }
+      setTimeout(() => {
+        applyData(form, data);
+        window.SEMA_PUBLIC_FORM?.restoreStep?.(cfg().returnStep || 1);
+      }, 450);
     }
   }
 
@@ -629,21 +756,304 @@
     }
 
     function validateStep(step) {
-      const tipo = document.getElementById('tipo_alvara');
-      if (step === 1 && !tipo.value) {
-        const busca = document.getElementById('tipo_alvara_busca') || tipo;
-        busca.focus();
-        if (typeof busca.reportValidity === 'function') busca.reportValidity();
+      clearFormErrors();
+      let firstInvalid = null;
+
+      function markInvalid(field, message) {
+        if (!field) return;
+        field.classList.add('field-invalid');
+        field.setAttribute('aria-invalid', 'true');
+        const host = field.closest('.form-toggle') || field.closest('.form-part-4') || field.closest('.public-habite-select-field') || field.parentElement;
+        let error = host.querySelector(':scope > .field-error');
+        if (!error) {
+          error = document.createElement('div');
+          error.className = 'field-error';
+          host.appendChild(error);
+        }
+        error.textContent = message;
+        if (!firstInvalid) firstInvalid = field;
+      }
+
+      function requireValue(selector, message) {
+        const field = typeof selector === 'string' ? form.querySelector(selector) : selector;
+        if (!field || !field.value.trim()) {
+          markInvalid(field, message);
+          return false;
+        }
+        return true;
+      }
+
+      function requireChecked(selector, hostSelector, message) {
+        if (form.querySelector(selector)) return true;
+        const host = form.querySelector(hostSelector);
+        markInvalid(host?.querySelector('input, select, textarea') || host, message);
         return false;
       }
-      const scope = step >= 1 && step <= 3 ? form : null;
-      if (!scope) return true;
-      const invalid = Array.from(scope.querySelectorAll('input, select, textarea')).find((field) => !field.disabled && !field.closest('[hidden]') && !field.checkValidity());
-      if (invalid) {
-        invalid.reportValidity();
-        invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      const tipoAlvara = getTipo();
+
+      // ============================================
+      // ETAPA 1
+      // ============================================
+      if (step === 1) {
+        if (!tipoAlvara) {
+          const busca = document.getElementById('tipo_alvara_busca') || document.getElementById('tipo_alvara');
+          markInvalid(busca, 'Selecione o tipo de solicitação.');
+        } else if (isDenuncia()) {
+          const anonimo = form.querySelector('input[name="anonimo"][value="1"]')?.checked;
+          const identificacaoEscolhida = requireChecked('input[name="anonimo"]:checked', '.public-denuncia-mode-section', 'Escolha se deseja se identificar ou fazer uma denúncia anônima.');
+          requireValue('input[name="proprietario_endereco"]', 'Informe o local da ocorrência.');
+          if (identificacaoEscolhida && !anonimo) {
+            requireValue('input[name="requerente[nome]"]', 'Informe seu nome ou escolha fazer uma denúncia anônima.');
+            if (requireValue('input[name="requerente[email]"]', 'Informe o e-mail para receber o protocolo da denúncia.')) {
+              const email = form.querySelector('input[name="requerente[email]"]');
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+                markInvalid(email, 'Informe um e-mail válido.');
+              }
+            }
+          }
+          requireValue('textarea[name="observacoes"]', 'Descreva a ocorrência denunciada.');
+          requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
+          requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
+          if (form.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
+            requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
+          }
+        } else {
+          // Requerente
+          requireValue('input[name="requerente[nome]"]', 'Informe o nome do requerente.');
+          const emailInput = form.querySelector('input[name="requerente[email]"]');
+          const emailConfInput = form.querySelector('input[name="requerente[email_confirmacao]"]');
+          if (requireValue(emailInput, 'Informe o e-mail do requerente.')) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) {
+              markInvalid(emailInput, 'Informe um e-mail válido.');
+            }
+          }
+          if (requireValue(emailConfInput, 'Confirme o e-mail do requerente.')) {
+            if (emailInput && emailInput.value.trim().toLowerCase() !== emailConfInput.value.trim().toLowerCase()) {
+              markInvalid(emailConfInput, 'A confirmação do e-mail não coincide com o e-mail informado.');
+            }
+          }
+          const cpfInput = form.querySelector('input[name="requerente[cpf_cnpj]"]');
+          if (requireValue(cpfInput, 'Informe o CPF ou CNPJ do requerente.')) {
+            const rawCpf = cpfInput.value.replace(/\D/g, '');
+            if (rawCpf.length !== 11 && rawCpf.length !== 14) {
+              markInvalid(cpfInput, 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+            }
+          }
+          const telInput = form.querySelector('input[name="requerente[telefone]"]');
+          if (requireValue(telInput, 'Informe o telefone do requerente.')) {
+            const rawTel = telInput.value.replace(/\D/g, '');
+            if (rawTel.length < 10) {
+              markInvalid(telInput, 'Informe um telefone válido com DDD (mínimo 10 dígitos).');
+            }
+          }
+
+          // Localização
+          requireValue('input[name="endereco_objetivo"]', 'Informe a localização da obra ou objetivo.');
+          requireChecked('input[name="notificado_fiscal_obras"]:checked', 'input[name="notificado_fiscal_obras"]', 'Informe se houve notificação pelo fiscal de obras.');
+
+          // Proprietário
+          const nomeProprietario = form.querySelector('input[name="proprietario[nome]"]');
+          const cpfProprietario = form.querySelector('input[name="proprietario[cpf_cnpj]"]');
+          if (nomeProprietario?.value.trim() || cpfProprietario?.value.trim()) {
+            if (!nomeProprietario.value.trim()) markInvalid(nomeProprietario, 'Informe o nome do proprietário.');
+            if (!cpfProprietario.value.trim()) {
+              markInvalid(cpfProprietario, 'Informe o CPF ou CNPJ do proprietário.');
+            } else {
+              const rawCpfP = cpfProprietario.value.replace(/\D/g, '');
+              if (rawCpfP.length !== 11 && rawCpfP.length !== 14) {
+                markInvalid(cpfProprietario, 'Informe um CPF ou CNPJ válido para o proprietário.');
+              }
+            }
+          }
+
+          // Responsável técnico
+          const rules = cfg().tipoRules?.[tipoAlvara] || {};
+          const rtNome = form.querySelector('input[name="responsavel_tecnico_nome"]');
+          const rtReg = form.querySelector('input[name="responsavel_tecnico_registro"]');
+          const rtTipo = form.querySelector('select[name="responsavel_tecnico_tipo_documento"]');
+          const rtNum = form.querySelector('input[name="responsavel_tecnico_numero"], input[name="responsavel_tecnico_art"]');
+          if (rules.exige_responsavel_tecnico) {
+            requireValue(rtNome, 'Informe o nome do responsável técnico.');
+            requireValue(rtReg, 'Informe o registro profissional (CREA/CAU).');
+            requireValue(rtTipo, 'Selecione o conselho profissional (CREA ou CAU).');
+            requireValue(rtNum, 'Informe o número da ART/RRT.');
+          } else if (rtNome?.value.trim() || rtReg?.value.trim() || rtNum?.value.trim()) {
+            requireValue(rtNome, 'Informe o nome do responsável técnico.');
+            requireValue(rtReg, 'Informe o registro profissional.');
+            requireValue(rtTipo, 'Selecione o conselho profissional.');
+            requireValue(rtNum, 'Informe o número da ART/RRT.');
+          }
+
+          // Checar campos HTML5 visíveis na Etapa 1
+          const visibleStep1 = form.querySelectorAll('.public-secao-comum:not([hidden]) input, .public-secao-comum:not([hidden]) select, .secao-alvara:not([hidden]) input, .secao-alvara:not([hidden]) select');
+          visibleStep1.forEach((f) => {
+            if (!f.disabled && !f.closest('[hidden]') && !f.checkValidity()) {
+              markInvalid(f, f.validationMessage || 'Preencha este campo obrigatório.');
+            }
+          });
+        }
+      }
+
+      // ============================================
+      // ETAPA 2
+      // ============================================
+      if (step === 2 && !isDenuncia()) {
+        const rules = cfg().tipoRules?.[tipoAlvara] || {};
+
+        if (['habite_se', 'habite_se_simples', 'habite_se_obras_publicas'].includes(tipoAlvara)) {
+          requireValue('input[name="alvara_construcao_numero"]', 'Informe o número do alvará de construção de origem.');
+          requireValue('input[name="area_construida"]', 'Informe a área construída.');
+          requireValue('input[name="cadastro_imobiliario"]', 'Informe o cadastro imobiliário (sequencial).');
+          requireValue('select[name="habite_uso"]', 'Selecione o uso da edificação.');
+          requireValue('select[name="habite_pavimento"]', 'Selecione o pavimento.');
+          requireValue('select[name="habite_tipo_construcao"]', 'Selecione o tipo da construção.');
+
+          ['habite_padrao', 'habite_estrutura', 'habite_portas', 'habite_janelas', 'habite_piso', 'habite_paredes', 'habite_forro', 'habite_cobertura'].forEach((campo) => {
+            requireValue(`select[name="${campo}"]`, 'Selecione esta característica da edificação.');
+          });
+
+          form.querySelectorAll('[data-habite-other-select]').forEach((sel) => {
+            if (sel.value === 'Outro' || sel.value === '__outro__') {
+              const parent = sel.closest('.public-habite-select-field') || sel.parentElement;
+              const other = parent?.querySelector('[data-habite-other-input]');
+              if (other && !other.value.trim()) {
+                markInvalid(other, 'Especifique o valor para este campo marcado como Outro.');
+              }
+            }
+          });
+
+          const inicioInput = form.querySelector('input[name="inicio_obra"]');
+          const terminoInput = form.querySelector('input[name="termino_obra"]');
+          requireValue(inicioInput, 'Informe a data de início da obra.');
+          requireValue(terminoInput, 'Informe a data de término da obra.');
+          if (inicioInput?.value && terminoInput?.value && terminoInput.value < inicioInput.value) {
+            markInvalid(terminoInput, 'A data de término da obra não pode ser anterior ao início.');
+          }
+
+          form.querySelectorAll('.public-extra-room').forEach((row, idx) => {
+            const nomeInp = row.querySelector('[name*="_nome"]');
+            const qtdInp = row.querySelector('[name*="_quantidade"]');
+            if (!nomeInp?.value.trim()) markInvalid(nomeInp, `Informe o nome do ambiente extra ${idx + 1}.`);
+            if (!qtdInp?.value || Number(qtdInp.value) <= 0) markInvalid(qtdInp, `Informe a quantidade válida para o ambiente extra ${idx + 1}.`);
+          });
+
+          requireValue('textarea[name="especificacao"]', 'Informe ou gere as características da edificação.');
+        }
+
+        if (['construcao', 'construcao_obras_publicas'].includes(tipoAlvara)) {
+          requireValue('input[name="tipo_edificacao"]', 'Informe o tipo da edificação.');
+          const pavInput = form.querySelector('input[name="numero_pavimentos"]');
+          if (requireValue(pavInput, 'Informe a quantidade de pavimentos.')) {
+            if (Number(pavInput.value) < 1) markInvalid(pavInput, 'A quantidade de pavimentos deve ser de pelo menos 1.');
+          }
+          requireValue('input[name="area_construcao"]', 'Informe a área a ser construída.');
+          requireValue('input[name="cadastro_imobiliario"]', 'Informe o cadastro imobiliário (sequencial).');
+        }
+
+        if (tipoAlvara === 'desmembramento') {
+          requireValue('input[name="matricula_imovel"]', 'Informe o número da matrícula no Cartório de Registro de Imóveis (RGI).');
+          const toAreaNum = (val) => {
+            if (!val) return 0;
+            const str = String(val).trim().replace(/\./g, '').replace(',', '.');
+            return parseFloat(str) || 0;
+          };
+          const areaTotalInput = form.querySelector('input[name="area_total_terreno"], input[name="area_lote"]');
+          const totalTerreno = toAreaNum(areaTotalInput?.value);
+          if (totalTerreno <= 0) {
+            markInvalid(areaTotalInput, 'Informe a área total da porção maior do terreno.');
+          }
+
+          const lotes = form.querySelectorAll('[data-lote-card]');
+          let somaLotes = 0;
+          lotes.forEach((lote, idx) => {
+            const cad = lote.querySelector('input[name*="cadastro_imobiliario"]');
+            if (!cad?.value.trim()) markInvalid(cad, `Informe o cadastro imobiliário do Lote ${idx + 1}.`);
+
+            const areaInp = lote.querySelector('input[name*="area"]');
+            const aVal = toAreaNum(areaInp?.value);
+            if (aVal <= 0) {
+              markInvalid(areaInp, `Informe uma área válida para o Lote ${idx + 1}.`);
+            } else {
+              somaLotes += aVal;
+            }
+
+            ['norte', 'oeste', 'leste', 'sul'].forEach((rumo) => {
+              const met = lote.querySelector(`input[name*="[${rumo}][metragem]"]`);
+              const desc = lote.querySelector(`input[name*="[${rumo}][descricao]"]`);
+              if (!met || toAreaNum(met.value) <= 0) {
+                markInvalid(met, `Informe a metragem do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
+              }
+              if (!desc || !desc.value.trim()) {
+                markInvalid(desc, `Informe o confrontante do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
+              }
+            });
+          });
+
+          if (totalTerreno > 0 && somaLotes > totalTerreno) {
+            const primeiraArea = form.querySelector('[data-lote-card] input[name*="area"]');
+            markInvalid(primeiraArea, 'A soma das áreas dos lotes não pode ser maior que a área total do terreno.');
+          }
+        }
+
+        if (rules.ambiental) {
+          if (rules.exige_diario_oficial) requireValue('input[name="publicacao_diario_oficial"]', 'Informe os dados da publicação em Diário Oficial.');
+          if (rules.exige_ctf) requireValue('input[name="ctf_numero"]', 'Informe o número do Cadastro Técnico Federal (CTF).');
+          if (rules.exige_licenca_anterior) requireValue('input[name="licenca_anterior_numero"]', 'Informe o número da licença anterior.');
+          const possuiEstudo = form.querySelector('input[name="possui_estudo_ambiental"]:checked');
+          if (!possuiEstudo) {
+            requireChecked('input[name="possui_estudo_ambiental"]:checked', 'input[name="possui_estudo_ambiental"]', 'Informe se há estudo ambiental.');
+          } else if (possuiEstudo.value === '1') {
+            requireValue('input[name="tipo_estudo_ambiental"]', 'Informe o tipo de estudo ambiental.');
+          }
+        }
+
+        const camposDin = form.querySelector('#campos_dinamicos');
+        if (camposDin) {
+          camposDin.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach((f) => {
+            if (!f.disabled && !f.closest('[hidden]') && !f.checkValidity()) {
+              markInvalid(f, f.validationMessage || 'Preencha este campo obrigatório.');
+            }
+          });
+        }
+      }
+
+      // ============================================
+      // ETAPA 3
+      // ============================================
+      if (step === 3 && !isDenuncia()) {
+        const docsNecessarios = form.querySelector('#documentos_necessarios');
+        if (docsNecessarios) {
+          docsNecessarios.querySelectorAll('.doc-row-required, [data-required="true"]').forEach((row) => {
+            const fileInput = row.querySelector('input[type="file"]');
+            if (fileInput && !fileInput.disabled && (!fileInput.files || fileInput.files.length === 0)) {
+              markInvalid(fileInput, 'Anexe este documento obrigatório para continuar.');
+            }
+          });
+        }
+        const declarationInput = form.querySelector('#declaracao_veracidade');
+        if (declarationInput && !declarationInput.checked) {
+          markInvalid(declarationInput, 'Você deve declarar a veracidade das informações para enviar.');
+        }
+
+        const arquivos = Array.from(form.querySelectorAll('input[type="file"]')).flatMap((inp) => Array.from(inp.files || []));
+        const tamanhoTotal = arquivos.reduce((acc, arq) => acc + arq.size, 0);
+        const limiteTotal = Number(cfg().maxUploadTotalBytes || (250 * 1024 * 1024));
+        if (tamanhoTotal > limiteTotal) {
+          const primeiro = form.querySelector('input[type="file"]:not([disabled])');
+          markInvalid(primeiro, `A soma dos arquivos ultrapassa ${cfg().maxUploadTotalLabel || '250MB'}. Remova ou reduza algum documento.`);
+        }
+      }
+
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus({ preventScroll: true });
+        if (typeof firstInvalid.reportValidity === 'function' && !firstInvalid.checkValidity()) {
+          firstInvalid.reportValidity();
+        }
         return false;
       }
+
       return true;
     }
 
@@ -785,13 +1195,31 @@
       showStep(Number(form.dataset.publicCurrentStep || 1), { silent: true });
     }
 
-    window.SEMA_PUBLIC_FORM = { showStep, refresh };
+    function restoreStep(step) {
+      const target = Math.max(1, Math.min(3, Number(step) || 1));
+      unlockedStep = Math.max(unlockedStep, target);
+      showStep(target, { silent: true });
+      const alert = form.querySelector('.alert-erro, .alert-error');
+      if (alert) alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    window.SEMA_PUBLIC_FORM = { showStep, refresh, restoreStep, validateStep };
 
     steps.forEach((button) => button.addEventListener('click', () => {
       const target = Number(button.dataset.publicStep);
+      const current = Number(form.dataset.publicCurrentStep || 1);
+      if (target > current) {
+        for (let s = current; s < target; s++) {
+          if (!validateStep(s)) {
+            showStep(s);
+            return;
+          }
+        }
+      }
       showStep(target, { preview: target > unlockedStep });
     }));
     if (back) back.addEventListener('click', () => {
+      clearFormErrors();
       const current = Number(form.dataset.publicCurrentStep || 1);
       const preview = form.dataset.publicPreviewStep;
       showStep(preview ? unlockedStep : current - 1);
@@ -955,7 +1383,7 @@
         ].map(([rumo, label]) => {
           const metragem = card.querySelector(`[name*="[${rumo}][metragem]"], [name="confrontacao_${rumo}_metragem"]`)?.value.trim();
           const descricao = card.querySelector(`[name*="[${rumo}][descricao]"], [name="confrontacao_${rumo}_descricao"]`)?.value.trim();
-          return metragem || descricao ? `${label}: ${metragem || 'metragem não informada'} confrontando com ${descricao || 'confrontante não informado'}` : '';
+          return metragem || descricao ? `${label}: ${metragem ? `${metragem} m` : 'metragem não informada'} confrontando com ${descricao || 'confrontante não informado'}` : '';
         }).filter(Boolean);
         const texto = lados.length ? lados.join('; ') + '.' : 'Preencha as confrontações para visualizar.';
         return { area, texto: lados.length ? `Lote ${index + 1}${area ? ` (${formatArea(area)} m²)`: ''}: ${texto}` : '' };
@@ -977,10 +1405,8 @@
           : `Atenção: há uma inconsistência nos dados. A soma dos lotes (${formatArea(somaLotes)} m²) ultrapassa a área total (${formatArea(totalArea)} m²) em ${formatArea(excesso)} m². Revise os valores antes de enviar.`;
       }
 
-      const desmembramentoPreview = root.querySelector('[data-desmembramento-preview]');
       const desmembramentoDescricao = root.querySelector('[data-desmembramento-descricao]');
       const resumo = lotes.map((lote) => lote.texto).filter(Boolean).join(' ');
-      if (desmembramentoPreview) desmembramentoPreview.textContent = resumo || 'Preencha os lotes para visualizar.';
       if (desmembramentoDescricao && !desmembramentoDescricao.dataset.userEdited) {
         desmembramentoDescricao.dataset.programmaticUpdate = 'true';
         desmembramentoDescricao.value = resumo;
@@ -989,6 +1415,12 @@
     };
 
     total?.addEventListener('input', updateDesmembramento);
+    root.addEventListener('keydown', (event) => {
+      if (event.target.matches('[data-confrontacao-medida], [data-area-total], [data-lote-area]')
+          && ['e', 'E', '+', '-'].includes(event.key)) {
+        event.preventDefault();
+      }
+    });
     root.addEventListener('input', (event) => {
       if (event.target.matches('[data-desmembramento-field], [data-lote-area]')) updateDesmembramento();
     });
@@ -1021,12 +1453,19 @@
 
     const obraPreview = root.querySelector('[data-service-preview]');
     const obraOutput = root.querySelector('[data-service-preview-output]');
+    const pavimentoTexto = (valor) => {
+      const n = Math.max(1, parseInt(valor || '1', 10));
+      if (n === 1) return 'PAVIMENTO TÉRREO';
+      if (n === 2) return 'DOIS PAVIMENTOS (TÉRREO E PRIMEIRO PAVIMENTO)';
+      if (n === 3) return 'TRÊS PAVIMENTOS (TÉRREO, PRIMEIRO E SEGUNDO PAVIMENTO)';
+      return `${n} PAVIMENTOS`;
+    };
     const updateObraPreview = () => {
       if (!obraPreview || !obraOutput) return;
       const tipo = root.querySelector('[name="tipo_edificacao"]')?.value || 'edificação';
       const pav = root.querySelector('[name="numero_pavimentos"]')?.value || '1';
       const area = root.querySelector('[name="area_construcao"]')?.value || 'área não informada';
-      const texto = `Alvará para ${tipo.toLowerCase()}, com ${pav} pavimento(s), área a construir de ${area} m².`;
+      const texto = `CONSTRUÇÃO DE UMA ${tipo.toUpperCase()} DE ${pavimentoTexto(pav)} COM ${area} M² DE ÁREA A SER CONSTRUÍDA.`;
       obraPreview.textContent = texto;
       obraOutput.value = texto;
     };
@@ -1034,18 +1473,47 @@
     root.querySelectorAll('[data-preview-field]').forEach((field) => field.addEventListener('change', updateObraPreview));
     updateObraPreview();
 
-    const habitePreview = root.querySelector('[data-habite-preview]');
     const habiteOutput = root.querySelector('[data-habite-preview-output]');
+    const habiteAmbientesOutput = root.querySelector('[data-habite-ambientes-output]');
+    const habiteEditStatus = root.querySelector('[data-habite-edit-status]');
+    const habiteRegenerateBtn = root.querySelector('[data-habite-regenerate]');
+    let habiteManuallyEdited = false;
+
+    if (habiteOutput) {
+      habiteOutput.addEventListener('input', () => {
+        habiteManuallyEdited = true;
+        if (habiteEditStatus) {
+          habiteEditStatus.textContent = 'Editado manualmente';
+          habiteEditStatus.style.color = '#d97706';
+        }
+      });
+    }
+
+    if (habiteRegenerateBtn) {
+      habiteRegenerateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        habiteManuallyEdited = false;
+        updateHabitePreview(true);
+      });
+    }
+
     const syncHabiteOther = (select) => {
-      const other = select.parentElement?.querySelector('[data-habite-other-input]');
+      const parent = select.closest('.public-habite-select-field') || select.parentElement;
+      const other = parent?.querySelector('[data-habite-other-input]');
       if (!other) return;
-      other.hidden = select.value !== '__outro__';
-      other.required = select.value === '__outro__';
-      if (select.value !== '__outro__') other.value = '';
+      const isOther = select.value === 'Outro' || select.value === '__outro__';
+      other.hidden = !isOther;
+      other.required = isOther;
+      if (!isOther) other.value = '';
     };
     root.querySelectorAll('[data-habite-other-select]').forEach((select) => {
       select.addEventListener('change', () => {
         syncHabiteOther(select);
+        const parent = select.closest('.public-habite-select-field') || select.parentElement;
+        const other = parent?.querySelector('[data-habite-other-input]');
+        if ((select.value === 'Outro' || select.value === '__outro__') && other) {
+          other.focus();
+        }
         updateHabitePreview();
       });
       syncHabiteOther(select);
@@ -1053,30 +1521,122 @@
 
     const extraRooms = root.querySelector('[data-habite-extra-rooms]');
     root.querySelector('[data-add-habite-room]')?.addEventListener('click', () => {
+      if (!extraRooms) return;
       const index = extraRooms.children.length + 1;
       const row = document.createElement('div');
       row.className = 'form-grid-2 public-extra-room';
-      row.innerHTML = `<label>Outro ambiente<input required name="ambiente_extra_${index}_nome" placeholder="Ex.: Varanda" data-habite-preview-field></label><label>Total no imóvel<input required type="number" min="0" name="ambiente_extra_${index}_quantidade" placeholder="Quantidade" data-habite-preview-field></label><button type="button" class="public-remove-room" aria-label="Remover ambiente">Remover</button>`;
+      row.innerHTML = `<label>Outro ambiente<input required name="ambiente_extra_${index}_nome" placeholder="Ex.: Varanda" data-habite-preview-field></label><label>Total no imóvel<input required type="number" min="1" name="ambiente_extra_${index}_quantidade" placeholder="Quantidade" data-habite-preview-field></label><button type="button" class="public-remove-room" aria-label="Remover ambiente">Remover</button>`;
       extraRooms.appendChild(row);
       row.querySelector('.public-remove-room')?.addEventListener('click', () => {
         row.remove();
         updateHabitePreview();
       });
+      row.querySelectorAll('[data-habite-preview-field]').forEach((f) => {
+        f.addEventListener('input', updateHabitePreview);
+        f.addEventListener('change', updateHabitePreview);
+      });
       row.querySelector('input')?.focus();
     });
-    const updateHabitePreview = () => {
-      if (!habitePreview || !habiteOutput) return;
+    const updateHabitePreview = (force = false) => {
+      if (!habiteOutput) return;
       const v = (name) => root.querySelector(`[name="${name}"]`)?.value || '';
-      const selectValue = (name) => v(name) === '__outro__' ? (v(`${name}_outro`) || 'outro não informado') : v(name);
-      const ambientes = [...root.querySelectorAll('[data-habite-room]')].map((field) => field.value && `${field.closest('label')?.textContent.split('—')[0].trim() || field.name}: ${field.value}`).filter(Boolean);
+      const selectValue = (name) => {
+        const sel = root.querySelector(`[name="${name}"]`);
+        if (!sel) return '';
+        if (sel.value === 'Outro' || sel.value === '__outro__') {
+          const parent = sel.closest('.public-habite-select-field') || sel.parentElement;
+          const other = parent?.querySelector('[data-habite-other-input]');
+          return other?.value?.trim() || 'OUTRO';
+        }
+        return sel.value || '';
+      };
+      const quartos = Math.max(0, Number(v('quartos') || 0));
+      const suites = Math.max(0, Number(v('suites') || 0));
+      const banheirosSociais = Math.max(0, Number(v('banheiros_sociais') || v('banheiros') || 0));
+      const salas = Math.max(0, Number(v('salas') || 0));
+      const cozinhas = Math.max(0, Number(v('cozinhas') || 0));
+
+      const totalDormitorios = quartos + suites;
+      const totalBanheiros = banheirosSociais + suites;
+
+      const quantidades = {
+        quartos: quartos,
+        suites: suites,
+        banheiros_sociais: banheirosSociais,
+        banheiros: banheirosSociais,
+        salas: salas,
+        cozinhas: cozinhas,
+        total_dormitorios: totalDormitorios,
+        total_banheiros: totalBanheiros
+      };
+
+      const numerosMasc = {
+        1:'UM', 2:'DOIS', 3:'TRÊS', 4:'QUATRO', 5:'CINCO', 6:'SEIS', 7:'SETE', 8:'OITO', 9:'NOVE', 10:'DEZ',
+        11:'ONZE', 12:'DOZE', 13:'TREZE', 14:'QUATORZE', 15:'QUINZE', 16:'DEZESSEIS', 17:'DEZESSETE', 18:'DEZOITO', 19:'DEZENOVE', 20:'VINTE'
+      };
+      const numerosFem = { ...numerosMasc, 1:'UMA', 2:'DUAS' };
+      const numExtenso = (n, fem) => (fem ? numerosFem[n] : numerosMasc[n]) || String(n);
+
+      const ambientes = [];
+
+      // 1. Dormitórios e Suítes
+      if (totalDormitorios > 0) {
+        let dormTexto = `${numExtenso(totalDormitorios, false)} ${totalDormitorios === 1 ? 'DORMITÓRIO' : 'DORMITÓRIOS'}`;
+        if (suites > 0) {
+          dormTexto += `, SENDO ${numExtenso(suites, true)} ${suites === 1 ? 'SUÍTE' : 'SUÍTES'}`;
+        }
+        ambientes.push(dormTexto);
+      }
+
+      // 2. Banheiros sociais
+      if (banheirosSociais > 0) {
+        ambientes.push(`${numExtenso(banheirosSociais, false)} ${banheirosSociais === 1 ? 'BANHEIRO SOCIAL' : 'BANHEIROS SOCIAIS'}`);
+      }
+
+      // 3. Salas
+      if (salas > 0) {
+        ambientes.push(`${numExtenso(salas, true)} ${salas === 1 ? 'SALA' : 'SALAS'}`);
+      }
+
+      // 4. Cozinhas
+      if (cozinhas > 0) {
+        ambientes.push(`${numExtenso(cozinhas, true)} ${cozinhas === 1 ? 'COZINHA' : 'COZINHAS'}`);
+      }
+
+      // 5. Ambientes extras
+      const ambientesExtras = [];
       root.querySelectorAll('.public-extra-room').forEach((row) => {
-        const nome = row.querySelector('[name*="_nome"]')?.value;
-        const quantidade = row.querySelector('[name*="_quantidade"]')?.value;
-        if (nome && quantidade) ambientes.push(`${nome}: ${quantidade}`);
+        const nome = row.querySelector('[name*="_nome"]')?.value?.trim();
+        const quantidade = Number(row.querySelector('[name*="_quantidade"]')?.value || 0);
+        if (nome && quantidade > 0) {
+          const qTexto = numExtenso(quantidade, false);
+          ambientes.push(`${qTexto} ${String(nome).toUpperCase()}`);
+          ambientesExtras.push({ nome: nome, quantidade: quantidade });
+        }
       });
-      const texto = `Edificação em ${selectValue('tipo_construcao') || 'tipo não informado'}, estrutura ${selectValue('estrutura') || 'não informada'}, piso ${selectValue('piso') || 'não informado'}, cobertura ${selectValue('cobertura') || 'não informada'}${ambientes.length ? ', contendo (quantidade total no imóvel): ' + ambientes.join(', ') : ''}.`;
-      habitePreview.textContent = texto;
-      habiteOutput.value = texto;
+
+      const listaAmbientes = ambientes.length === 0
+        ? 'AMBIENTES A INFORMAR'
+        : (ambientes.length === 1
+            ? ambientes[0]
+            : `${ambientes.slice(0, -1).join(', ')} E ${ambientes[ambientes.length - 1]}`);
+
+      const texto = `A EDIFICAÇÃO ${(selectValue('habite_uso') || 'USO NÃO INFORMADO').toUpperCase()} COM ${(selectValue('habite_pavimento') || 'PAVIMENTO NÃO INFORMADO').toUpperCase()} COM ÁREA CONSTRUÍDA DE ${v('area_construida') || 'ÁREA NÃO INFORMADA'} M². O TIPO DA CONSTRUÇÃO É UMA ${(selectValue('habite_tipo_construcao') || 'TIPO NÃO INFORMADO').toUpperCase()} COM PADRÃO CONSTRUTIVO ${(selectValue('habite_padrao') || 'NÃO INFORMADO').toUpperCase()}, ESTRUTURA EM ${(selectValue('habite_estrutura') || 'NÃO INFORMADA').toUpperCase()}, ESQUADRIAS DE PORTAS EM ${(selectValue('habite_portas') || 'NÃO INFORMADAS').toUpperCase()} E JANELAS EM ${(selectValue('habite_janelas') || 'NÃO INFORMADAS').toUpperCase()}, REVESTIMENTO DE PISO ${(selectValue('habite_piso') || 'NÃO INFORMADO').toUpperCase()}, REVESTIMENTO DAS PAREDES EM ${(selectValue('habite_paredes') || 'NÃO INFORMADO').toUpperCase()}, REVESTIMENTO SUPERIOR DE ${(selectValue('habite_forro') || 'NÃO INFORMADO').toUpperCase()} E COBERTURA COM ${(selectValue('habite_cobertura') || 'NÃO INFORMADA').toUpperCase()}. CONSTITUÍDO POR ${listaAmbientes}.`;
+
+      if (!habiteManuallyEdited || force) {
+        habiteOutput.value = texto;
+        if (habiteEditStatus) {
+          habiteEditStatus.textContent = 'Gerado automaticamente';
+          habiteEditStatus.style.color = '#15803d';
+        }
+      }
+      if (habiteAmbientesOutput) {
+        const payload = { ...quantidades };
+        if (ambientesExtras.length > 0) {
+          payload.extras = ambientesExtras;
+        }
+        habiteAmbientesOutput.value = JSON.stringify(payload);
+      }
     };
     root.addEventListener('input', (event) => {
       if (event.target.matches('[data-habite-preview-field]')) updateHabitePreview();
@@ -1092,121 +1652,44 @@
   }
 
   function setupSubmitValidation(form) {
+    const clearOnInteract = (e) => {
+      const target = e.target;
+      if (target && target.classList?.contains('field-invalid')) {
+        target.classList.remove('field-invalid');
+        target.removeAttribute('aria-invalid');
+        const host = target.closest('.form-toggle') || target.closest('.form-part-4') || target.closest('.public-habite-select-field') || target.parentElement;
+        host?.querySelector(':scope > .field-error')?.remove();
+      }
+    };
+    form.addEventListener('input', clearOnInteract);
+    form.addEventListener('change', clearOnInteract);
+
     form.addEventListener('submit', function (e) {
-      clearFormErrors();
-      const tipoAlvara = document.getElementById('tipo_alvara').value;
-      let firstInvalid = null;
-
-      function markInvalid(field, message) {
-        if (!field) return;
-        field.classList.add('field-invalid');
-        field.setAttribute('aria-invalid', 'true');
-        const host = field.closest('.form-toggle') || field.closest('.form-part-4') || field.parentElement;
-        let error = host.querySelector(':scope > .field-error');
-        if (!error) {
-          error = document.createElement('div');
-          error.className = 'field-error';
-          host.appendChild(error);
-        }
-        error.textContent = message;
-        if (!firstInvalid) firstInvalid = field;
-      }
-
-      function requireValue(selector, message) {
-        const field = document.querySelector(selector);
-        if (!field || !field.value.trim()) {
-          markInvalid(field, message);
-          return false;
-        }
-        return true;
-      }
-
-      function requireChecked(selector, hostSelector, message) {
-        if (document.querySelector(selector)) return true;
-        const host = document.querySelector(hostSelector);
-        markInvalid(host?.querySelector('input, select, textarea') || host, message);
-        return false;
-      }
-
-      function validarEmailRequerente() {
-        const email = document.querySelector('input[name="requerente[email]"]');
-        const emailConfirmacao = document.querySelector('input[name="requerente[email_confirmacao]"]');
-        if (email?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) markInvalid(email, 'Informe um e-mail válido.');
-        if (email?.value.trim().toLowerCase() !== emailConfirmacao?.value.trim().toLowerCase()) {
-          markInvalid(emailConfirmacao, 'Os e-mails informados não coincidem.');
-        }
-      }
-
-      if (!tipoAlvara) markInvalid(document.getElementById('tipo_alvara'), 'Selecione o tipo de solicitação.');
-
-      if (tipoAlvara === 'denuncia') {
-        const anonimo = document.querySelector('input[name="anonimo"][value="1"]')?.checked;
-        const identificacaoEscolhida = requireChecked('input[name="anonimo"]:checked', '.public-denuncia-mode-section', 'Escolha se deseja se identificar ou fazer uma denúncia anônima.');
-        requireValue('input[name="proprietario_endereco"]', 'Informe o local da ocorrência.');
-        if (identificacaoEscolhida && !anonimo) {
-          requireValue('input[name="requerente[nome]"]', 'Informe seu nome ou escolha fazer uma denúncia anônima.');
-          requireValue('input[name="requerente[email]"]', 'Informe o e-mail para receber o protocolo da denúncia.');
-          const emailDenunciante = document.querySelector('input[name="requerente[email]"]');
-          if (emailDenunciante?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDenunciante.value.trim())) {
-            markInvalid(emailDenunciante, 'Informe um e-mail válido.');
+      const validator = window.SEMA_PUBLIC_FORM?.validateStep;
+      if (typeof validator === 'function') {
+        const isDenuncia = document.getElementById('tipo_alvara')?.value === 'denuncia';
+        if (isDenuncia) {
+          if (!validator(1)) {
+            e.preventDefault();
+            return false;
+          }
+        } else {
+          if (!validator(1)) {
+            window.SEMA_PUBLIC_FORM?.showStep(1);
+            e.preventDefault();
+            return false;
+          }
+          if (!validator(2)) {
+            window.SEMA_PUBLIC_FORM?.showStep(2);
+            e.preventDefault();
+            return false;
+          }
+          if (!validator(3)) {
+            window.SEMA_PUBLIC_FORM?.showStep(3);
+            e.preventDefault();
+            return false;
           }
         }
-        requireValue('textarea[name="observacoes"]', 'Descreva a ocorrência denunciada.');
-        requireChecked('input[name="setor"]:checked', 'input[name="setor"]', 'Selecione qual equipe deve analisar a denúncia.');
-        requireChecked('input[name="tipos_denuncia[]"]:checked', '#tipos_denuncia_grid', 'Selecione pelo menos um tipo de ocorrência.');
-        if (document.querySelector('input[name="tipos_denuncia[]"][value="outros"]')?.checked) {
-          requireValue('input[name="outros_descricao"]', 'Descreva a ocorrência marcada como Outros.');
-        }
-      } else {
-        requireValue('input[name="requerente[nome]"]', 'Informe o nome do requerente.');
-        requireValue('input[name="requerente[email]"]', 'Informe o e-mail do requerente.');
-        requireValue('input[name="requerente[email_confirmacao]"]', 'Confirme o e-mail do requerente.');
-        requireValue('input[name="requerente[cpf_cnpj]"]', 'Informe o CPF ou CNPJ do requerente.');
-        requireValue('input[name="requerente[telefone]"]', 'Informe o telefone do requerente.');
-        requireValue('input[name="endereco_objetivo"]', 'Informe a localização da obra ou objetivo.');
-        requireChecked('input[name="notificado_fiscal_obras"]:checked', 'input[name="notificado_fiscal_obras"]', 'Informe se houve notificação pelo fiscal de obras.');
-
-        validarEmailRequerente();
-
-        const nomeProprietario = document.querySelector('input[name="proprietario[nome]"]');
-        const cpfProprietario = document.querySelector('input[name="proprietario[cpf_cnpj]"]');
-        if (nomeProprietario?.value.trim() || cpfProprietario?.value.trim()) {
-          if (!nomeProprietario.value.trim()) markInvalid(nomeProprietario, 'Informe o nome do proprietário.');
-          if (!cpfProprietario.value.trim()) markInvalid(cpfProprietario, 'Informe o CPF ou CNPJ do proprietário.');
-        }
-
-        const rules = cfg().tipoRules?.[tipoAlvara] || {};
-        if (rules.ambiental) {
-          if (rules.exige_diario_oficial) requireValue('input[name="publicacao_diario_oficial"]', 'Informe os dados da publicação em Diário Oficial.');
-          if (rules.exige_ctf) requireValue('input[name="ctf_numero"]', 'Informe o número do Cadastro Técnico Federal.');
-          if (rules.exige_licenca_anterior) requireValue('input[name="licenca_anterior_numero"]', 'Informe o número da licença anterior.');
-          const possuiEstudo = document.querySelector('input[name="possui_estudo_ambiental"]:checked');
-          if (!possuiEstudo) requireChecked('input[name="possui_estudo_ambiental"]:checked', 'input[name="possui_estudo_ambiental"]', 'Informe se há estudo ambiental.');
-          else if (possuiEstudo.value === '1') requireValue('input[name="tipo_estudo_ambiental"]', 'Informe o tipo de estudo ambiental.');
-        }
-      }
-
-      const arquivosSelecionados = Array.from(form.querySelectorAll('input[type="file"]'))
-        .flatMap((input) => Array.from(input.files || []));
-      const tamanhoTotal = arquivosSelecionados.reduce((total, arquivo) => total + arquivo.size, 0);
-      const limiteTotal = Number(cfg().maxUploadTotalBytes || (250 * 1024 * 1024));
-      if (tamanhoTotal > limiteTotal) {
-        const primeiroArquivo = Array.from(form.querySelectorAll('input[type="file"]'))
-          .find((input) => !input.disabled && input.files?.length);
-        markInvalid(
-          primeiroArquivo,
-          `A soma dos arquivos ultrapassa ${cfg().maxUploadTotalLabel || '250MB'}. Remova ou reduza algum documento.`
-        );
-      }
-
-      if (firstInvalid) {
-        e.preventDefault();
-        if (firstInvalid.closest('.public-denuncia-location-section') || firstInvalid.closest('.secao-alvara') || firstInvalid.closest('.public-secao-comum') || firstInvalid.closest('.form-section-alvara')) window.SEMA_PUBLIC_FORM?.showStep(1);
-        else if (firstInvalid.closest('#campos_dinamicos') || firstInvalid.closest('.public-dynamic-section')) window.SEMA_PUBLIC_FORM?.showStep(2);
-        else if (firstInvalid.closest('.documentos-container')) window.SEMA_PUBLIC_FORM?.showStep(3);
-        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (typeof firstInvalid.focus === 'function') firstInvalid.focus({ preventScroll: true });
-        return false;
       }
 
       const loading = document.getElementById('loading');

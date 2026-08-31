@@ -41,6 +41,7 @@ composer.lock
 *.swp
 *.cache
 *~
+/scratch/
 .DS_Store
 Thumbs.db
 
@@ -156,6 +157,7 @@ passwords.txt
 
 # Credenciais e acessos (nunca versionar)
 ACESSOS.md
+CREDENCIAIS_LOCAL.md
 
 # ===== ARQUIVOS ESPECÍFICOS DO PROJETO =====
 # Diretórios removidos/antigos

@@ -236,11 +236,6 @@ $locationTemplates = [
                 </nav>
 
                 <?php
-                // DEBUG: Verificar conteúdo da sessão
-                if (MODO_TESTE) {
-                    error_log("DEBUG SESSION: " . print_r($_SESSION, true));
-                }
-                
                 // Exibir mensagens de erro ou sucesso
                 if (isset($_SESSION['mensagem']) && is_array($_SESSION['mensagem'])):
                     $mensagem = $_SESSION['mensagem'];
@@ -271,6 +266,8 @@ $locationTemplates = [
                 
                 // Preparar dados do formulário para restauração
                 $formData = [];
+                $formReturnStep = max(1, min(3, (int) ($_SESSION['form_step'] ?? 1)));
+                unset($_SESSION['form_step']);
                 if (isset($_SESSION['form_data'])) {
                     $formData = $_SESSION['form_data'];
                     unset($_SESSION['form_data']);
@@ -464,6 +461,7 @@ $locationTemplates = [
                     tipoRules: <?= json_encode($tipoRules, JSON_UNESCAPED_UNICODE) ?>,
                     formData: <?= json_encode($formData, JSON_UNESCAPED_UNICODE) ?>,
                     hasServerFormData: <?= json_encode(!empty($formData)) ?>,
+                    returnStep: <?= json_encode($formReturnStep) ?>,
                     enquadramentoOptionsHtml: <?= json_encode($enquadramentoOptionsHtml, JSON_UNESCAPED_UNICODE) ?>,
                     locationTemplates: <?= json_encode($locationTemplates, JSON_UNESCAPED_UNICODE) ?>,
                     denunciaUpload: {

@@ -153,29 +153,27 @@ include '../header.php';
             box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
         }
 
-        /* Melhor match — destaque discreto */
-        .template-card.melhor-match {
-            border: 1.5px solid #86efac !important;
-            border-bottom: 3px solid var(--sema-green) !important;
+        /* ═══════════════════════════════════════════════
+           CARD COM MELHOR ENCAIXE / MODELO RECOMENDADO
+        ═══════════════════════════════════════════════ */
+        .template-card.melhor-match,
+        .tpl-card.melhor {
+            border: 2px solid #16a34a !important;
+            border-bottom: 3.5px solid var(--sema-green, #1c4b36) !important;
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.12) !important;
         }
-        .template-card.melhor-match:hover {
-            border-color: var(--sema-green) !important;
-            box-shadow: 0 12px 30px rgba(28, 75, 54, 0.15) !important;
+        .template-card.melhor-match:hover,
+        .tpl-card.melhor:hover {
+            border-color: var(--sema-green, #1c4b36) !important;
+            box-shadow: 0 10px 26px rgba(22, 163, 74, 0.18) !important;
+            transform: translateY(-4px);
         }
-        .badge-melhor-match {
-            position: absolute;
-            top: 8px; left: 10px;
-            background: #f0fdf4;
-            color: #166534;
-            font-size: 0.55rem;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-            padding: 2px 7px;
-            border-radius: 4px;
-            white-space: nowrap;
-            z-index: 3;
-            border: 1px solid #bbf7d0;
+        .tpl-card.melhor .tpl-melhor {
+            background: var(--sema-green, #1c4b36);
+            color: #ffffff;
+            font-size: 0.62rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
         }
 
         /* Preview renderizada via iframe — miniatura centralizada */
@@ -389,10 +387,7 @@ include '../header.php';
         Nenhum modelo corresponde à busca.
     </div>
 
-            <?php /* Seções do redesenho: o agrupamento passou a ser por FINALIDADE
-                     do documento (o que ele faz no processo), não pela área temática.
-                     Cada bloco é preenchido pelo JS a partir do slug do template. */ ?>
-            <div class="doc-secoes">
+    <div class="doc-secoes">
                 <section class="doc-secao" id="secao-final" data-grupo="final">
                     <header class="doc-secao-head">
                         <h3>Documento final</h3>
@@ -574,7 +569,7 @@ include '../header.php';
         const n = String(nome || '').toLowerCase();
         if (n.indexOf('parecer_tecnico') === 0 || n.indexOf('parecer') === 0) return 'parecer';
         if (['notificacao_fiscal', 'auto_de_infracao', 'laudo_relatorio_tecnico',
-             'comunicados_orientacoes'].indexOf(n) !== -1) return 'fiscal';
+             'comunicados_orientacoes'].indexOf(n) !== -1 || n.indexOf('denuncia_') === 0) return 'fiscal';
         if (['alvara_de_construcao', 'carta_habite_se', 'alvara_de_desmembramento',
              'licenca_previa_projeto', 'licenca_atividade_economica'].indexOf(n) !== -1) return 'final';
         return 'outros';
@@ -589,8 +584,8 @@ include '../header.php';
         if (n.indexOf('licenca_previa') !== -1) return FAMILIAS.licenca;
         if (n.indexOf('economica') !== -1) return FAMILIAS.economico;
         if (n.indexOf('notificacao') !== -1) return FAMILIAS.notificacao;
-        if (n.indexOf('auto_de_infracao') !== -1) return FAMILIAS.auto;
-        if (n.indexOf('laudo') !== -1) return FAMILIAS.laudo;
+        if (n.indexOf('infracao') !== -1) return FAMILIAS.auto;
+        if (n.indexOf('laudo') !== -1 || n.indexOf('relatorio') !== -1) return FAMILIAS.laudo;
         if (n.indexOf('comunicado') !== -1) return FAMILIAS.comunicado;
         return FAMILIAS.generico;
     }
@@ -607,9 +602,11 @@ include '../header.php';
         const favTitle   = isFav ? 'Remover dos Meus Modelos' : 'Adicionar aos Meus Modelos';
         const isMelhor   = t.melhor_match === true;
         const urlEditor  = `editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(nome)}`;
-        const fillTexto  = (t.fill_score != null && t.fill_score > 0)
-            ? `${t.fill_score}% preenchido`
-            : 'Modelo em branco';
+        const fillTexto  = isMelhor
+            ? `<span style="color:#15803d;font-weight:700;"><i class="fas fa-circle-check me-1"></i>100% preenchido</span>`
+            : ((t.fill_score != null && t.fill_score > 0)
+                ? `${t.fill_score}% preenchido`
+                : 'Modelo em branco');
 
         return `
         <div class="tpl-card template-card-wrapper${isMelhor ? ' melhor' : ''}"
@@ -621,7 +618,7 @@ include '../header.php';
                 <span class="tpl-txt">
                     <span class="tpl-badges">
                         <span class="tpl-badge">${escapeHtml(badge)}</span>
-                        ${isMelhor ? '<span class="tpl-melhor"><i class="fas fa-wand-magic-sparkles"></i>MELHOR ENCAIXE</span>' : ''}
+                        ${isMelhor ? '<span class="tpl-melhor"><i class="fas fa-star"></i>RECOMENDADO</span>' : ''}
                     </span>
                     <span class="tpl-nome">${escapeHtml(label)}</span>
                     <span class="tpl-desc">${escapeHtml(desc)}</span>
@@ -631,9 +628,6 @@ include '../header.php';
                             onclick="event.stopPropagation();toggleFavorito('${escaparAttr(nome)}', this)">
                         <i class="${favIcon}" style="color:${favCor}"></i>
                     </button>
-                    <?php /* A miniatura em iframe saiu do card no redesenho, mas a
-                             prévia em tamanho de folha continua útil antes de escolher
-                             — virou este botão, em vez de sumir junto. */ ?>
                     <button type="button" class="tpl-olho" title="Ver prévia do modelo"
                             onclick="event.stopPropagation();expandirPreview('${escaparAttr(nome)}', '${escaparAttr(label)}', event)">
                         <i class="fas fa-eye"></i>
@@ -893,6 +887,18 @@ include '../header.php';
                 const porGrupo = { final: [], parecer: [], fiscal: [], outros: [] };
                 ret.templates.forEach((t) => {
                     porGrupo[grupoDoTemplate(t.nome)].push(t);
+                });
+
+                // Ordenar para colocar o modelo com melhor encaixe no início da lista
+                porGrupo.final.sort((a, b) => {
+                    if (a.melhor_match && !b.melhor_match) return -1;
+                    if (!a.melhor_match && b.melhor_match) return 1;
+                    return 0;
+                });
+                porGrupo.parecer.sort((a, b) => {
+                    if (a.melhor_match && !b.melhor_match) return -1;
+                    if (!a.melhor_match && b.melhor_match) return 1;
+                    return 0;
                 });
 
                 GRUPOS.forEach((g) => {

@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS requerimentos (
     comprovante_pagamento VARCHAR(255) NULL COMMENT 'Recibo/código do pagamento',
     possui_estudo_ambiental BOOLEAN NULL COMMENT 'Indica se possui estudo ambiental',
     tipo_estudo_ambiental VARCHAR(100) NULL COMMENT 'Tipo de estudo ambiental informado',
-    status ENUM('Em análise', 'Aprovado', 'Reprovado', 'Pendente', 'Aguardando Fiscalização', 'Apto a gerar alvará', 'Alvará Emitido', 'Finalizado', 'Indeferido', 'Cancelado', 'Aguardando boleto', 'Boleto pago') DEFAULT 'Em análise',
+    status ENUM('Pendente', 'Em análise', 'Aguardando Fiscalização', 'Aprovado', 'Reprovado', 'Cancelado', 'Indeferido', 'Finalizado', 'Apto a gerar alvará', 'Alvará Emitido', 'Aguardando boleto', 'Boleto pago', 'Aguardando Secretaria', 'Devolvido pela Secretaria', 'Documento Final Enviado', 'Aguardando complementação') DEFAULT 'Pendente',
     observacoes TEXT,
     data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -75,6 +75,18 @@ CREATE TABLE IF NOT EXISTS administradores (
     ultimo_acesso TIMESTAMP NULL,
     data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Preferências de interface por administrador e página
+CREATE TABLE IF NOT EXISTS admin_preferencias (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    pagina_chave VARCHAR(80) NOT NULL,
+    filtros_json JSON NOT NULL,
+    data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_admin_preferencia_pagina (admin_id, pagina_chave),
+    FOREIGN KEY (admin_id) REFERENCES administradores(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dados do fluxo de cobrança manual por boleto
 CREATE TABLE IF NOT EXISTS requerimento_pagamentos (

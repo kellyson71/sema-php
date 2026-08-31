@@ -5,7 +5,14 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
-// Fiscal e secretário são travados no próprio setor
+// A visão transversal das três filas é administrativa. Demais perfis usam a
+// lista de Requerimentos, que já os posiciona na fila correspondente ao papel.
+if (!in_array($_SESSION['admin_nivel'] ?? '', ['admin', 'admin_geral'], true)) {
+    header('Location: requerimentos.php');
+    exit;
+}
+
+// Administradores podem alternar livremente entre os setores.
 $nivelAdmin = $_SESSION['admin_nivel'] ?? '';
 $setorForcado = match($nivelAdmin) {
     'fiscal'     => 'setor2',

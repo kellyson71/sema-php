@@ -2,6 +2,7 @@
 require_once 'conexao.php';
 require_once 'helpers.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/denuncia_filters.php';
 require_once __DIR__ . '/../tipos_alvara.php';
 verificaLogin();
 
@@ -62,6 +63,19 @@ $filtroEmail = $_GET['email_enviado'] ?? '';
 if (!in_array($filtroEmail, ['1', '0'], true)) {
     $filtroEmail = '';
 }
+$filtroFonte = $_GET['fonte'] ?? 'todos';
+if (!in_array($filtroFonte, ['todos', 'requerimentos', 'denuncias'], true)) {
+    $filtroFonte = 'todos';
+}
+
+// Estes filtros não possuem equivalente numa denúncia. Ao utilizá-los, a
+// própria consulta passa a exibir apenas requerimentos, sem combinações
+// ambíguas ou resultados que pareçam ignorar o filtro escolhido.
+$filtroExclusivoRequerimento = $filtroTipo !== '' || $filtroCategoria !== '' || $filtroAcao !== ''
+    || $filtroNaoVisualizados || $filtroEmail !== '';
+if ($filtroExclusivoRequerimento) {
+    $filtroFonte = 'requerimentos';
+}
 
 // Status encerrados: ocultos por padrão, visíveis apenas se filtro explícito ou toggle ativo
 $statusEncerrados = ['Finalizado', 'Indeferido', 'Aprovado', 'Cancelado'];
@@ -104,67 +118,55 @@ if (isset($_GET['error'])) {
     }
 }
 
-$sql = "SELECT r.id, r.protocolo, r.tipo_alvara, r.status, r.setor_atual, r.aguardando_acao, r.data_envio, r.visualizado,
-               r.motivo_devolucao, r.devolvido_por,
-               req.nome AS requerente,
-               (SELECT a.nivel FROM administradores a WHERE a.id = r.devolvido_por) AS devolvido_por_nivel
-        FROM requerimentos r
-        JOIN requerentes req ON r.requerente_id = req.id
-        WHERE 1=1";
-$sqlCount = "SELECT COUNT(*) AS total
-             FROM requerimentos r
-             JOIN requerentes req ON r.requerente_id = req.id
-             WHERE 1=1";
-$params = [];
+$whereReq = ['1=1'];
+$paramsReq = [];
 
 // Com busca ativa (protocolo/nome/CPF), ignora a trava de setor: o usuário precisa
 // localizar o processo mesmo que ele ainda não tenha chegado ao seu setor.
 if ($setorFiltro && $filtroBusca === '') {
-    $sql      .= " AND r.setor_atual = ?";
-    $sqlCount .= " AND r.setor_atual = ?";
-    $params[]  = $setorFiltro;
+    $whereReq[] = 'r.setor_atual = ?';
+    $paramsReq[] = $setorFiltro;
 }
 
 if ($filtroStatus !== '') {
-    $sql .= " AND r.status = ?";
-    $sqlCount .= " AND r.status = ?";
-    $params[] = $filtroStatus;
+    $statusNormalizadoReq = normalizarStatusProcesso($filtroStatus);
+    if ($statusNormalizadoReq === 'em_analise') {
+        $whereReq[] = "LOWER(TRIM(r.status)) IN ('em análise','em analise','em_analise')";
+    } elseif ($statusNormalizadoReq === 'pendente') {
+        $whereReq[] = "LOWER(TRIM(r.status)) = 'pendente'";
+    } else {
+        $whereReq[] = 'r.status = ?';
+        $paramsReq[] = $filtroStatus;
+    }
 }
 
 if ($filtroTipo !== '') {
-    $sql .= " AND r.tipo_alvara = ?";
-    $sqlCount .= " AND r.tipo_alvara = ?";
-    $params[] = $filtroTipo;
+    $whereReq[] = 'r.tipo_alvara = ?';
+    $paramsReq[] = $filtroTipo;
 }
 
 if ($filtroCategoria !== '' && !empty($tiposPorCategoria[$filtroCategoria])) {
     $slugsCat = $tiposPorCategoria[$filtroCategoria];
     $placeholders = implode(',', array_fill(0, count($slugsCat), '?'));
-    $sql .= " AND r.tipo_alvara IN ($placeholders)";
-    $sqlCount .= " AND r.tipo_alvara IN ($placeholders)";
+    $whereReq[] = "r.tipo_alvara IN ($placeholders)";
     foreach ($slugsCat as $s) {
-        $params[] = $s;
+        $paramsReq[] = $s;
     }
 }
 
 if ($filtroBusca !== '') {
-    $sql .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
-    $sqlCount .= " AND (r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)";
+    $whereReq[] = '(r.protocolo LIKE ? OR req.nome LIKE ? OR req.cpf_cnpj LIKE ?)';
     $termoBusca = '%' . $filtroBusca . '%';
-    $params[] = $termoBusca;
-    $params[] = $termoBusca;
-    $params[] = $termoBusca;
+    array_push($paramsReq, $termoBusca, $termoBusca, $termoBusca);
 }
 
 if ($filtroAcao !== '') {
-    $sql .= " AND r.aguardando_acao = ?";
-    $sqlCount .= " AND r.aguardando_acao = ?";
-    $params[] = $filtroAcao;
+    $whereReq[] = 'r.aguardando_acao = ?';
+    $paramsReq[] = $filtroAcao;
 }
 
 if ($filtroNaoVisualizados) {
-    $sql .= " AND r.visualizado = 0";
-    $sqlCount .= " AND r.visualizado = 0";
+    $whereReq[] = 'r.visualizado = 0';
 }
 
 if ($filtroEmail !== '') {
@@ -172,32 +174,82 @@ if ($filtroEmail !== '') {
     // confirmação automática do requerimento sai pra todo mundo, então incluí-la aqui
     // tornaria o filtro inútil (praticamente tudo teria "já enviado").
     $existeEmail = "EXISTS (SELECT 1 FROM email_logs el WHERE el.requerimento_id = r.id AND el.status = 'SUCESSO' AND el.eh_teste = 0 AND el.usuario_envio <> 'Sistema')";
-    $condicaoEmail = $filtroEmail === '1' ? "AND $existeEmail" : "AND NOT $existeEmail";
-    $sql .= " $condicaoEmail";
-    $sqlCount .= " $condicaoEmail";
+    $whereReq[] = $filtroEmail === '1' ? $existeEmail : "NOT $existeEmail";
 }
 
 // Para fiscal/secretário (visão travada num setor), "encerrado" não se aplica:
 // o processo acabou de chegar ao setor deles, não é um processo arquivado.
 if (!$setorFiltro && !$mostrarEncerrados && $filtroStatus === '' && $filtroBusca === '') {
     $placeholdersEnc = implode(',', array_fill(0, count($statusEncerrados), '?'));
-    $sql .= " AND r.status NOT IN ($placeholdersEnc)";
-    $sqlCount .= " AND r.status NOT IN ($placeholdersEnc)";
-    foreach ($statusEncerrados as $se) { $params[] = $se; }
+    $whereReq[] = "r.status NOT IN ($placeholdersEnc)";
+    foreach ($statusEncerrados as $se) { $paramsReq[] = $se; }
 }
 
-// Fiscal e secretário veem a fila do mais recente pro mais antigo
-$ordenacao = $setorFiltro ? "r.data_envio DESC" : "r.visualizado ASC, r.data_envio DESC";
-$sql .= " ORDER BY {$ordenacao} LIMIT {$itensPorPagina} OFFSET {$offset}";
+$selectReq = "SELECT 'requerimento' AS tipo_registro, r.id, r.protocolo,
+    req.nome AS titulo, r.status, r.setor_atual AS setor, 'cidadao' AS origem,
+    0 AS anonimo, r.data_envio AS data_processo, r.tipo_alvara,
+    r.setor_atual, r.aguardando_acao, r.visualizado, r.motivo_devolucao,
+    r.devolvido_por, (SELECT a.nivel FROM administradores a WHERE a.id = r.devolvido_por) AS devolvido_por_nivel,
+    NULL AS tipo_denuncia
+    FROM requerimentos r JOIN requerentes req ON r.requerente_id = req.id
+    WHERE " . implode(' AND ', $whereReq);
 
-$stmt = $pdo->prepare($sql);
+$feedParts = [];
+$params = [];
+if ($filtroFonte !== 'denuncias') {
+    $feedParts[] = $selectReq;
+    $params = array_merge($params, $paramsReq);
+}
+
+if ($filtroFonte !== 'requerimentos') {
+    $whereDen = ["LOWER(TRIM(d.status)) NOT IN ('concluída','concluida','concluído','concluido','finalizado','finalizada')"];
+    $paramsDen = [];
+    if ($filtroBusca !== '') {
+        $whereDen[] = '(d.protocolo_publico LIKE ? OR d.infrator_nome LIKE ? OR d.infrator_cpf_cnpj LIKE ? OR d.observacoes LIKE ?)';
+        $termDen = '%' . $filtroBusca . '%';
+        array_push($paramsDen, $termDen, $termDen, $termDen, $termDen);
+    }
+    if ($filtroStatus !== '') {
+        $normalizado = normalizarStatusProcesso($filtroStatus);
+        if ($normalizado === 'pendente') {
+            $whereDen[] = "LOWER(TRIM(d.status)) = 'pendente'";
+        } elseif ($normalizado === 'em_analise') {
+            $whereDen[] = "LOWER(TRIM(d.status)) IN ('em análise','em analise','em_analise')";
+        } else {
+            // Denúncias concluídas não integram o feed principal.
+            $whereDen[] = '1=0';
+        }
+    }
+    $setorDenunciaInicial = setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
+    if ($setorDenunciaInicial !== 'ambos') {
+        $whereDen[] = 'd.setor = ?';
+        $paramsDen[] = $setorDenunciaInicial;
+    }
+
+    $feedParts[] = "SELECT 'denuncia' AS tipo_registro, d.id,
+        COALESCE(NULLIF(d.protocolo_publico,''), CONCAT('DEN-', LPAD(d.id, 6, '0'))) AS protocolo,
+        CASE WHEN NULLIF(TRIM(d.infrator_nome),'') IS NOT NULL AND LOWER(TRIM(d.infrator_nome)) NOT IN ('não informado','nao informado') THEN d.infrator_nome
+             WHEN d.anonimo = 1 THEN 'Denúncia anônima' ELSE 'Infrator não identificado' END AS titulo,
+        d.status, d.setor, d.origem, d.anonimo, d.data_registro AS data_processo,
+        NULL AS tipo_alvara, NULL AS setor_atual, NULL AS aguardando_acao, 1 AS visualizado,
+        NULL AS motivo_devolucao, NULL AS devolvido_por, NULL AS devolvido_por_nivel,
+        d.tipo_denuncia
+        FROM denuncias d WHERE " . implode(' AND ', $whereDen);
+    $params = array_merge($params, $paramsDen);
+}
+
+$feedSql = implode(' UNION ALL ', $feedParts);
+$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM ({$feedSql}) feed_count");
+$stmtCount->execute($params);
+$totalRequerimentos = (int) $stmtCount->fetchColumn();
+$totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
+$paginaAtual = min($paginaAtual, $totalPaginas);
+$offset = ($paginaAtual - 1) * $itensPorPagina;
+
+$stmt = $pdo->prepare("SELECT * FROM ({$feedSql}) feed ORDER BY data_processo DESC, tipo_registro DESC, id DESC LIMIT {$itensPorPagina} OFFSET {$offset}");
 $stmt->execute($params);
 $requerimentos = $stmt->fetchAll();
-
-$stmtCount = $pdo->prepare($sqlCount);
-$stmtCount->execute($params);
-$totalRequerimentos = (int) ($stmtCount->fetch()['total'] ?? 0);
-$totalPaginas = max(1, (int) ceil($totalRequerimentos / $itensPorPagina));
+$temRequerimentosNaPagina = count(array_filter($requerimentos, static fn($item) => $item['tipo_registro'] === 'requerimento')) > 0;
 
 $statusEncPH = implode(',', array_fill(0, count($statusEncerrados), '?'));
 
@@ -257,6 +309,36 @@ if ($setorFiltro) {
         'em_analise' => contarReq($pdo, null, "status = ?", ['Em análise']),
         'indeferidos'=> contarReq($pdo, null, "status = ?", ['Indeferido']),
     ];
+
+    // Na visão unificada, os três indicadores compartilhados refletem os dois
+    // tipos de processo. Indicadores sem equivalente em denúncias continuam
+    // contando apenas requerimentos.
+    $setorDenStats = setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
+    $whereSetorDenStats = $setorDenStats === 'ambos' ? '' : ' AND setor = ?';
+    $paramsSetorDenStats = $setorDenStats === 'ambos' ? [] : [$setorDenStats];
+    $stmtDenStats = $pdo->prepare("SELECT
+        SUM(CASE WHEN LOWER(TRIM(status)) NOT IN ('concluída','concluida','concluído','concluido','finalizado','finalizada') THEN 1 ELSE 0 END) AS total,
+        SUM(CASE WHEN LOWER(TRIM(status)) = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
+        SUM(CASE WHEN LOWER(TRIM(status)) IN ('em análise','em analise','em_analise') THEN 1 ELSE 0 END) AS em_analise
+        FROM denuncias WHERE 1=1{$whereSetorDenStats}");
+    $stmtDenStats->execute($paramsSetorDenStats);
+    $statsDenFeed = $stmtDenStats->fetch() ?: ['total' => 0, 'pendentes' => 0, 'em_analise' => 0];
+
+    if ($filtroFonte === 'denuncias') {
+        $estatisticas = array_merge($estatisticas, [
+            'total' => (int) ($statsDenFeed['total'] ?? 0),
+            'nao_lidos' => 0,
+            'pendentes' => (int) ($statsDenFeed['pendentes'] ?? 0),
+            'em_analise' => (int) ($statsDenFeed['em_analise'] ?? 0),
+            'aprovados' => 0,
+            'finalizados' => 0,
+            'indeferidos' => 0,
+        ]);
+    } elseif ($filtroFonte === 'todos') {
+        $estatisticas['total'] += (int) ($statsDenFeed['total'] ?? 0);
+        $estatisticas['pendentes'] += (int) ($statsDenFeed['pendentes'] ?? 0);
+        $estatisticas['em_analise'] += (int) ($statsDenFeed['em_analise'] ?? 0);
+    }
     $statusCards = [
         ['label' => 'Todos',       'value' => $estatisticas['total'],      'status' => '',           'icon' => 'fa-layer-group'],
         ['label' => 'Não abertos', 'value' => $estatisticas['nao_lidos'],  'status' => null,         'unread' => true, 'icon' => 'fa-eye-slash'],
@@ -361,6 +443,14 @@ $statusOperacionais = adminStatusFluxoPrincipal();
     align-items:center; gap:5px;
     text-transform:uppercase; cursor:help;
 }
+.feed-source-strip { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.feed-source-chip { display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); text-decoration:none; font-size:.78rem; font-weight:800; }
+.feed-source-chip:hover,.feed-source-chip.active { color:var(--primary); border-color:#9fbea9; background:#f1f7f3; }
+.req-list-item.feed-denuncia { border-left:4px solid #a9534d; }
+.req-list-item.feed-denuncia.obras { border-left-color:#c98b2e; }
+.feed-type-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px; background:#f6e9e8; color:#913f39; font-size:.66rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.feed-type-badge.requerimento { background:#eaf2ed; color:#245b38; }
+.feed-anon-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px; background:#302b36; color:#fff; font-size:.66rem; font-weight:800; }
 </style>
 
 <?php
@@ -404,6 +494,13 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
     </section>
 
     <?php renderMensagens($mensagem, $mensagemErro); ?>
+
+    <nav class="feed-source-strip" aria-label="Tipo de processo">
+        <a href="<?= htmlspecialchars(buildReqUrl(['fonte' => 'todos', 'pagina' => 1])) ?>" class="feed-source-chip <?= $filtroFonte === 'todos' ? 'active' : '' ?>"><i class="fas fa-layer-group"></i>Todos</a>
+        <a href="<?= htmlspecialchars(buildReqUrl(['fonte' => 'requerimentos', 'pagina' => 1])) ?>" class="feed-source-chip <?= $filtroFonte === 'requerimentos' ? 'active' : '' ?>"><i class="fas fa-clipboard-list"></i>Requerimentos</a>
+        <a href="<?= htmlspecialchars(buildReqUrl(['fonte' => 'denuncias', 'tipo' => '', 'categoria' => '', 'acao' => '', 'nao_visualizados' => '', 'email_enviado' => '', 'pagina' => 1])) ?>" class="feed-source-chip <?= $filtroFonte === 'denuncias' ? 'active' : '' ?>"><i class="fas fa-bullhorn"></i>Denúncias</a>
+        <?php if ($filtroExclusivoRequerimento): ?><span class="feed-source-chip" title="O filtro atual existe somente em requerimentos"><i class="fas fa-circle-info"></i>Visão limitada por filtro exclusivo</span><?php endif; ?>
+    </nav>
 
     <section class="req-summary-strip">
         <?php foreach ($statusCards as $card): ?>
@@ -554,6 +651,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
     <?php renderAlertas($pagamentosPendentesConclusao); ?>
 
     <?php if ($requerimentos): ?>
+        <?php if ($temRequerimentosNaPagina): ?>
         <div id="acoesMultiplas" class="bulk-actions-bar" style="display: none;">
             <div class="bulk-actions-inner">
                 <div class="bulk-actions-copy">
@@ -580,9 +678,36 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <section class="req-list" data-selection-container>
             <?php foreach ($requerimentos as $req): ?>
+                <?php if ($req['tipo_registro'] === 'denuncia'):
+                    $tiposOcorrencia = tiposDenuncia($req);
+                    $subtituloDenuncia = implode(' · ', $tiposOcorrencia);
+                    $ehObrasDenuncia = ($req['setor'] ?? '') === 'obras_urbanismo';
+                    $statusDenunciaClass = match (normalizarStatusProcesso((string) $req['status'])) {
+                        'em_analise' => 'status-em-analise',
+                        default => 'status-pendente',
+                    };
+                ?>
+                    <article class="req-list-item feed-denuncia <?= $ehObrasDenuncia ? 'obras' : '' ?>" data-record-type="denuncia" data-id="<?= (int) $req['id'] ?>">
+                        <div class="req-list-main" role="link" tabindex="0" onclick="window.location='visualizar_denuncia.php?id=<?= (int) $req['id'] ?>'" onkeydown="if(event.key==='Enter'){this.click()}">
+                            <div class="req-list-top">
+                                <span class="feed-type-badge"><i class="fas fa-bullhorn"></i>Denúncia</span>
+                                <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
+                                <span class="badge badge-status <?= htmlspecialchars($statusDenunciaClass) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                                <?php if (!empty($req['anonimo'])): ?><span class="feed-anon-badge"><i class="fas fa-user-secret"></i>Anônima</span><?php endif; ?>
+                            </div>
+                            <div class="req-name"><?= htmlspecialchars($req['titulo']) ?></div>
+                            <div class="req-type-row"><span class="req-type-short">DEN</span><span class="req-type-name"><?= htmlspecialchars($subtituloDenuncia ?: ($ehObrasDenuncia ? 'Obras e Urbanismo' : 'Meio Ambiente')) ?></span></div>
+                        </div>
+                        <div class="req-list-side">
+                            <div class="req-date"><?= formataDataBR($req['data_processo']) ?></div>
+                            <a href="visualizar_denuncia.php?id=<?= (int) $req['id'] ?>" class="req-open-button">Abrir <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </article>
+                <?php else: ?>
                 <?php
                 $metaClass = match (strtolower($req['status'])) {
                     'em análise', 'em_analise' => 'status-em-analise',
@@ -622,6 +747,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
 
                     <button type="button" class="req-list-main" onclick="abrirRequerimento(<?= (int) $req['id'] ?>)">
                         <div class="req-list-top">
+                            <span class="feed-type-badge requerimento"><i class="fas fa-clipboard-list"></i>Requerimento</span>
                             <span class="req-protocol">#<?= htmlspecialchars($req['protocolo']) ?></span>
                             <?php if ($buscaCruzaSetor && $req['setor_atual'] !== $setorFiltro): ?>
                                 <span class="badge" style="background:#eef1fd;color:#3b4b9e;border:1px solid #c9d0f2;font-size:.68rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;"
@@ -649,7 +775,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                                 <span class="req-unread-pill"><span class="req-unread-dot"></span>Não aberto</span>
                             <?php endif; ?>
                         </div>
-                        <div class="req-name"><?= htmlspecialchars($req['requerente']) ?></div>
+                        <div class="req-name"><?= htmlspecialchars($req['titulo']) ?></div>
                         <div class="req-type-row">
                             <span class="req-type-short"><?= htmlspecialchars($short) ?></span>
                             <span class="req-type-name"><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?></span>
@@ -657,7 +783,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                     </button>
 
                     <div class="req-list-side">
-                        <div class="req-date"><?= formataDataBR($req['data_envio']) ?></div>
+                        <div class="req-date"><?= formataDataBR($req['data_processo']) ?></div>
                         <details class="req-actions-menu">
                             <summary class="req-open-button" onclick="event.stopPropagation();">
                                 Ações <i class="fas fa-ellipsis-vertical"></i>
@@ -697,6 +823,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                         </details>
                     </div>
                 </article>
+                <?php endif; ?>
             <?php endforeach; ?>
         </section>
 
@@ -725,7 +852,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
     <?php else: ?>
         <div class="req-empty">
             <i class="fas fa-search"></i>
-            <p>Nenhum requerimento encontrado.</p>
+            <p>Nenhum processo encontrado.</p>
         </div>
     <?php endif; ?>
 </div>

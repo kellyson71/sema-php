@@ -11,24 +11,30 @@ $rootDir = dirname(__DIR__, 2);
 require_once $rootDir . '/includes/config.php';
 require_once dirname(__DIR__) . '/conexao.php';
 require_once $rootDir . '/includes/admin_notifications.php';
+require_once $rootDir . '/includes/assinatura_workflow_helpers.php';
 
-if (function_exists('verificaLogin')) {
-    verificaLogin();
+function recusaRespostaJson(array $payload, int $status = 200): void
+{
+    http_response_code($status);
+    header('Content-Type: application/json');
+    ob_clean();
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
-
-header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'error' => 'Método inválido.']);
-    exit;
+    recusaRespostaJson(['success' => false, 'code' => 'method_not_allowed', 'error' => 'Método inválido.'], 405);
+}
+if (!assinaturaSessaoAdminAtiva($pdo)) {
+    recusaRespostaJson(['success' => false, 'code' => 'session_expired',
+        'error' => 'Sua sessão realmente expirou. Entre novamente para continuar.'], 401);
 }
 
-
-$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
-$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
-if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
-    echo json_encode(['success' => false, 'error' => 'A sessão expirou. Recarregue a página e tente novamente.']);
-    exit;
+try {
+    validarCsrfAssinatura($_POST['csrf_token'] ?? null);
+} catch (Throwable $e) {
+    $erro = respostaErroAssinatura($e, '[recusar_assinatura] CSRF');
+    recusaRespostaJson($erro['payload'], $erro['status']);
 }
 
 $documentoId    = trim($_POST['documento_id'] ?? '');
@@ -37,12 +43,11 @@ $motivo         = trim($_POST['motivo'] ?? '');
 $adminId        = (int) ($_SESSION['admin_id'] ?? 0);
 
 if (!$documentoId || !$adminId) {
-    echo json_encode(['success' => false, 'error' => 'Dados insuficientes ou sessão expirada.']);
-    exit;
+    recusaRespostaJson(['success' => false, 'code' => 'invalid_request', 'error' => 'Documento não informado.'], 422);
 }
 if (mb_strlen($motivo) < 5) {
-    echo json_encode(['success' => false, 'error' => 'Informe o motivo da recusa (mínimo 5 caracteres).']);
-    exit;
+    recusaRespostaJson(['success' => false, 'code' => 'invalid_reason',
+        'error' => 'Informe o motivo da recusa (mínimo 5 caracteres).'], 422);
 }
 
 try {
@@ -57,8 +62,8 @@ try {
     $sol = $st->fetch(PDO::FETCH_ASSOC);
 
     if (!$sol) {
-        echo json_encode(['success' => false, 'error' => 'Não há solicitação de assinatura pendente para você neste documento.']);
-        exit;
+        recusaRespostaJson(['success' => false, 'code' => 'signature_request_missing',
+            'error' => 'Não há solicitação de assinatura pendente para você neste documento.'], 403);
     }
     $requerimentoId = $requerimentoId ?: (int) $sol['requerimento_id'];
 
@@ -79,11 +84,9 @@ try {
     $pdo->prepare("INSERT INTO historico_acoes (admin_id, requerimento_id, acao) VALUES (?, ?, ?)")
         ->execute([$adminId, $requerimentoId, "Recusou a co-assinatura do documento $documentoId — Motivo: $motivo"]);
 
-    echo json_encode(['success' => true]);
-    exit;
+    recusaRespostaJson(['success' => true]);
 
 } catch (Throwable $e) {
-    error_log('[recusar_assinatura] ' . $e->getMessage());
-    echo json_encode(['success' => false, 'error' => 'Erro ao registrar a recusa. Tente novamente.']);
-    exit;
+    $erro = respostaErroAssinatura($e, '[recusar_assinatura]');
+    recusaRespostaJson($erro['payload'], $erro['status']);
 }

@@ -1,16 +1,17 @@
 -- Aba "Pendências e cobrança" do redesenho de Visualizar Requerimento
 -- 2026-08-20
 
--- Observações internas: uma nota por requerimento, só visível à equipe,
--- sobreposta a cada edição (mesmo padrão de requerimento_pagamentos).
+-- Observações internas: anotações da equipe em formato de chat/histórico,
+-- visíveis apenas internamente.
 CREATE TABLE IF NOT EXISTS `requerimento_notas_internas` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `requerimento_id` INT(11) NOT NULL UNIQUE,
+  `requerimento_id` INT(11) NOT NULL,
   `texto` TEXT NOT NULL,
   `admin_id` INT(11) DEFAULT NULL,
   `criado_em` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `idx_requerimento_id` (`requerimento_id`),
   CONSTRAINT `fk_nota_interna_requerimento` FOREIGN KEY (`requerimento_id`)
     REFERENCES `requerimentos` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_nota_interna_admin` FOREIGN KEY (`admin_id`)

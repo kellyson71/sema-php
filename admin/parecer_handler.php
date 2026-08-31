@@ -91,11 +91,31 @@ try {
                 'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
                 'carta_habite_se'                    => 'Carta de Habite-se para edificação concluída (documento final de conclusão de obra).',
                 'alvara_de_construcao'               => 'Alvará de Construção com dados do proprietário, responsável técnico e especificação da obra.',
-                'alvara_de_desmembramento'           => 'Álvará de Desmembramento com autorização formal e fundamentação na Lei 6.766/1979.',
+                'alvara_de_desmembramento'           => 'Alvará de Desmembramento com autorização formal e fundamentação na Lei 6.766/1979.',
                 'notificacao_fiscal'                 => 'Notificação oficial expedida pela fiscalização.',
                 'laudo_relatorio_tecnico'            => 'Laudo ou Relatório Técnico detalhado de vistoria.',
                 'comunicados_orientacoes'            => 'Comunicados ou orientações técnicas ao requerente.',
                 'auto_de_infracao'                   => 'Auto de infração para documentação de irregularidades.',
+            ];
+
+            // Nomes oficiais e amigáveis dos modelos
+            $mapaLabels = [
+                'alvara_de_desmembramento'           => 'Alvará de Desmembramento',
+                'alvara_de_construcao'               => 'Alvará de Construção',
+                'carta_habite_se'                    => 'Carta de Habite-se',
+                'licenca_previa_projeto'             => 'Licença Prévia de Projeto',
+                'licenca_atividade_economica'        => 'Licença de Atividade Econômica',
+                'parecer_tecnico_alvara_construcao'  => 'Parecer Técnico - Alvará de Construção',
+                'parecer_tecnico_alvara_construcao_ambiental' => 'Parecer Técnico Ambiental - Construção',
+                'parecer_tecnico_desmembramento'     => 'Parecer Técnico - Desmembramento',
+                'parecer_tecnico_desmembramento_ambiental' => 'Parecer Técnico Ambiental - Desmembramento',
+                'parecer_tecnico_habite_se'          => 'Parecer Técnico - Habite-se',
+                'parecer_tecnico_habite_se_ambiental'=> 'Parecer Técnico Ambiental - Habite-se',
+                'notificacao_fiscal'                 => 'Notificação Fiscal',
+                'laudo_relatorio_tecnico'            => 'Laudo ou Relatório Técnico',
+                'comunicados_orientacoes'            => 'Comunicados e Orientações',
+                'auto_de_infracao'                   => 'Auto de Infração',
+                'em_branco'                          => 'Documento em Branco',
             ];
 
             // Mapa de ícones por slug
@@ -213,7 +233,7 @@ try {
                         $templates[] = [
                             'nome'          => $nomeBase, // Nome REAL do arquivo (para carregar o template)
                             'tipo'          => 'html',
-                            'label_amigavel'=> ucwords(str_replace(['_', ' - '], [' ', ' | '], $nomeBase)),
+                            'label_amigavel'=> $mapaLabels[$slug] ?? $mapaLabels[$nomeBase] ?? ucwords(str_replace(['_', ' - '], [' ', ' | '], $nomeBase)),
                             'descricao'     => $mapaDescricoes[$slug] ?? $mapaDescricoes[$nomeBase] ?? 'Modelo disponível para edição no editor online.',
                             'icone'         => $iconeInfo['icon'],
                             'icone_cor'     => $iconeInfo['cor'],
@@ -374,17 +394,90 @@ try {
                         'observacoes'                    => ['observacoes'],
                     ];
 
+                    $tipoAlvaraReq = $reqDados['tipo_alvara'] ?? '';
+                    $mapaTemplatesRecomendados = [
+                        'desmembramento' => [
+                            'alvara_de_desmembramento',
+                            'parecer_tecnico_desmembramento',
+                            'parecer_tecnico_desmembramento_ambiental',
+                        ],
+                        'construcao' => [
+                            'alvara_de_construcao',
+                            'parecer_tecnico_alvara_construcao',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'construcao_obras_publicas' => [
+                            'alvara_de_construcao',
+                            'parecer_tecnico_alvara_construcao',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'habite_se' => [
+                            'carta_habite_se',
+                            'parecer_tecnico_habite_se',
+                            'parecer_tecnico_habite_se_ambiental',
+                        ],
+                        'habite_se_simples' => [
+                            'carta_habite_se',
+                            'parecer_tecnico_habite_se',
+                            'parecer_tecnico_habite_se_ambiental',
+                        ],
+                        'habite_se_obras_publicas' => [
+                            'carta_habite_se',
+                            'parecer_tecnico_habite_se',
+                            'parecer_tecnico_habite_se_ambiental',
+                        ],
+                        'licenca_previa' => [
+                            'licenca_previa_projeto',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'licenca_previa_obras' => [
+                            'licenca_previa_projeto',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'licenca_previa_ambiental' => [
+                            'licenca_previa_projeto',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'licenca_previa_instalacao' => [
+                            'licenca_previa_projeto',
+                            'parecer_tecnico_alvara_construcao_ambiental',
+                        ],
+                        'funcionamento' => [
+                            'licenca_atividade_economica',
+                        ],
+                    ];
+
+                    $templatesExatos = $mapaTemplatesRecomendados[$tipoAlvaraReq] ?? [];
+                    $templateRecomendadoObj = null;
+
+                    // Primeiro calcular o fill_score base de todos os templates
                     $melhorScore = -1;
                     $melhorIdx   = -1;
 
                     foreach ($templates as $idx => &$t) {
-                        if ($t['nome'] === 'em_branco') { $t['fill_score'] = 0; continue; }
+                        if ($t['nome'] === 'em_branco') {
+                            $t['fill_score'] = 0;
+                            $t['melhor_match'] = false;
+                            $t['recomendado'] = false;
+                            continue;
+                        }
+
                         $caminhoHtml = $templatesDiretorio . $t['nome'] . '.html';
-                        if (!file_exists($caminhoHtml)) { $t['fill_score'] = 0; continue; }
+                        if (!file_exists($caminhoHtml)) {
+                            $t['fill_score'] = 0;
+                            $t['melhor_match'] = false;
+                            $t['recomendado'] = false;
+                            continue;
+                        }
 
                         preg_match_all('/\{\{([^}]+)\}\}/', file_get_contents($caminhoHtml), $m);
                         $varsTemplate = array_unique($m[1]);
-                        if (empty($varsTemplate)) { $t['fill_score'] = 0; continue; }
+                        if (empty($varsTemplate)) {
+                            $t['fill_score'] = 0;
+                            $t['melhor_match'] = false;
+                            $t['recomendado'] = false;
+                            continue;
+                        }
 
                         $preenchidas = 0;
                         foreach ($varsTemplate as $var) {
@@ -399,22 +492,44 @@ try {
                         $score = $preenchidas / count($varsTemplate);
                         $t['fill_score'] = (int) round($score * 100);
 
-                        if ($score > $melhorScore) { $melhorScore = $score; $melhorIdx = $idx; }
+                        if ($score > $melhorScore) {
+                            $melhorScore = $score;
+                            $melhorIdx = $idx;
+                        }
                     }
                     unset($t);
 
-                    if ($melhorIdx >= 0 && $melhorScore >= 0.5) {
+                    // Aplicar recomendação e 100% preenchido aos templates correspondentes ao tipo do requerimento
+                    if (!empty($templatesExatos)) {
+                        foreach ($templates as &$t) {
+                            if (in_array($t['nome'], $templatesExatos, true)) {
+                                $t['melhor_match'] = true;
+                                $t['recomendado']  = true;
+                                $t['fill_score']   = 100;
+                                if ($templateRecomendadoObj === null) {
+                                    $templateRecomendadoObj = $t;
+                                }
+                            } else {
+                                $t['melhor_match'] = false;
+                                $t['recomendado']  = false;
+                            }
+                        }
+                        unset($t);
+                    } elseif ($melhorIdx >= 0 && $melhorScore >= 0.5) {
                         $templates[$melhorIdx]['melhor_match'] = true;
+                        $templates[$melhorIdx]['recomendado']  = true;
+                        $templateRecomendadoObj = $templates[$melhorIdx];
                     }
                 }
             }
 
             echo json_encode([
-                'success'           => true,
-                'historico_recente' => $historicoRecente,
-                'templates'         => $templates,
-                'user_templates'    => $userTemplates,
-                'favoritos'         => $favNomes,
+                'success'              => true,
+                'historico_recente'    => $historicoRecente,
+                'templates'            => $templates,
+                'user_templates'       => $userTemplates,
+                'favoritos'            => $favNomes,
+                'template_recomendado' => $templateRecomendadoObj,
             ]);
             break;
 
@@ -501,7 +616,7 @@ try {
             // A2. Template personalizado do usuário (user_tpl:{id})
             if (strpos($template, 'user_tpl:') === 0) {
                 $utId = (int)substr($template, 9);
-                $stmtUt = $pdo->prepare("SELECT nome, conteudo_html FROM user_templates WHERE id = ? AND usuario_id = ?");
+                $stmtUt = $pdo->prepare("SELECT nome, conteudo_html, template_base FROM user_templates WHERE id = ? AND usuario_id = ?");
                 $stmtUt->execute([$utId, $_SESSION['admin_id']]);
                 $utRow = $stmtUt->fetch(PDO::FETCH_ASSOC);
                 if (!$utRow) throw new Exception('Template não encontrado ou sem permissão');
@@ -525,7 +640,12 @@ try {
                 $stmtAdmUt->execute([$_SESSION['admin_id']]);
                 $adminDataUt = $stmtAdmUt->fetch(PDO::FETCH_ASSOC);
 
-                $dadosUt = $parecerService->preencherDados($requerimentoUt, $adminDataUt);
+                $dadosUt = $parecerService->preencherDados(
+                    $requerimentoUt,
+                    $adminDataUt,
+                    $utRow['template_base'] ?: null,
+                    $pdo
+                );
                 $htmlUtBruto = ParecerService::aplicarHighlights($utRow['conteudo_html'], $dadosUt);
                 $htmlUt = ParecerService::extrairConteudoTemplate(ParecerService::removerEstilosTemplate($htmlUtBruto));
 
@@ -627,7 +747,7 @@ try {
             $stmtAdmin->execute([$_SESSION['admin_id']]);
             $adminData = $stmtAdmin->fetch(PDO::FETCH_ASSOC);
 
-            $dados = $parecerService->preencherDados($requerimento, $adminData);
+            $dados = $parecerService->preencherDados($requerimento, $adminData, $template, $pdo);
 
             // D. Tentar carregar via DocumentBuilder (definições modulares em definitions/)
             require_once __DIR__ . '/templates/engine/DocumentBuilder.php';
