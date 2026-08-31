@@ -4,6 +4,10 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/coassinatura_helper.php';
 verificaLogin();
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $documentoId = trim($_GET['documento_id'] ?? '');
 $adminId     = (int) ($_SESSION['admin_id'] ?? 0);
 
@@ -188,6 +192,7 @@ include 'header.php';
 <script>
 const _docId = <?= json_encode($documentoId) ?>;
 const _reqId = <?= (int) $requerimentoId ?>;
+const _csrfToken = <?= json_encode($_SESSION['csrf_token']) ?>;
 
 function assinarDoc() {
     const pin = document.getElementById('pinCo').value;
@@ -201,6 +206,7 @@ function assinarDoc() {
     fd.append('documento_id', _docId);
     fd.append('requerimento_id', _reqId);
     fd.append('pin_assinatura', pin);
+    fd.append('csrf_token', _csrfToken);
     fetch('assinatura/coassinar.php', { method:'POST', body:fd })
         .then(r => r.json())
         .then(d => {
