@@ -34,7 +34,31 @@ body {
   background-image: none;
 }
 
-header {
+.public-environment-banner {
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 4px 12px;
+  background: #f59e0b;
+  color: #1f2937;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 14px;
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.public-environment-spacer {
+  height: 22px;
+}
+
+header.public-topbar {
+  display: grid;
+  grid-template-columns: auto minmax(320px, 1fr) auto;
   min-height: 44px;
   height: auto;
   padding: 6px 24px;
@@ -43,15 +67,32 @@ header {
   gap: 18px;
 }
 
-header p {
+header.public-topbar p {
   font-size: .8rem;
 }
 
-header nav ul {
+.public-social-nav {
+  min-width: 0;
+}
+
+.public-social-nav ul {
   gap: 12px;
 }
 
-header nav img {
+.public-social-nav a {
+  display: flex;
+  border-radius: 50%;
+}
+
+.public-social-nav a:focus-visible,
+.public-top-actions a:focus-visible,
+.public-top-actions button:focus-visible,
+header.public-topbar .user-options button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.public-social-nav img {
   width: 28px;
   height: 28px;
   object-fit: contain;
@@ -60,8 +101,10 @@ header nav img {
 .public-top-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .public-top-actions a,
@@ -91,24 +134,25 @@ header nav img {
   color: #fff;
 }
 
-header .user-options {
+header.public-topbar .user-options {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  margin-left: 0;
   color: rgba(255, 255, 255, .88);
+  white-space: nowrap;
 }
 
-header .user-options p {
+header.public-topbar .user-options p {
   margin: 0;
   color: rgba(255, 255, 255, .88);
 }
 
-header .user-options p:not(#alter-font) {
+header.public-topbar .user-options p:not(#alter-font) {
   display: none;
 }
 
-header .user-options button {
+header.public-topbar .user-options button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -125,8 +169,8 @@ header .user-options button {
   cursor: pointer;
 }
 
-header .user-options button:hover,
-header .user-options button[aria-pressed="true"] {
+header.public-topbar .user-options button:hover,
+header.public-topbar .user-options button[aria-pressed="true"] {
   background: rgba(255, 255, 255, .22);
 }
 
@@ -2175,20 +2219,28 @@ button[type="submit"]:hover {
   line-height: 1.5;
 }
 
-@media (max-width: 860px) {
-  header {
-    align-items: flex-start;
-    flex-direction: column;
+@media (max-width: 1080px) {
+  header.public-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 16px;
   }
 
   .public-top-actions {
-    order: 3;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
   }
 
-  header .user-options {
-    margin-left: 0;
+  .public-top-actions a,
+  .public-top-actions button {
+    justify-content: center;
+    text-align: center;
   }
+}
+
+@media (max-width: 860px) {
 
   .public-footer-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2258,14 +2310,50 @@ button[type="submit"]:hover {
 }
 
 @media (max-width: 560px) {
-  header {
-    padding: 6px 12px;
+  header.public-topbar {
+    padding: 8px 12px;
+    gap: 8px 12px;
+  }
+
+  .public-social-nav ul {
+    gap: 8px;
+  }
+
+  .public-social-nav img {
+    width: 24px;
+    height: 24px;
+  }
+
+  header.public-topbar .user-options {
+    gap: 5px;
+  }
+
+  header.public-topbar .user-options #alter-font {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  header.public-topbar .user-options button {
+    min-width: 30px;
+    height: 28px;
+    padding: 0 7px;
+  }
+
+  .public-top-actions {
+    grid-template-columns: 1fr;
   }
 
   .public-top-actions a,
   .public-top-actions button {
-    flex: 1 1 calc(50% - 8px);
-    justify-content: center;
+    width: 100%;
+    min-height: 34px;
   }
 
   .public-footer-actions {

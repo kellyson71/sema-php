@@ -753,7 +753,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
 <div class="homolog-banner">
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6L4 20a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L15 8V2"/><path d="M8.5 2h7"/><path d="M6.5 15h11"/></svg>
-    Ambiente de homologação
+    Ambiente de testes
 </div>
 <?php endif; ?>
 

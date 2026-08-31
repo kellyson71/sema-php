@@ -144,47 +144,30 @@ $locationTemplates = [
     <div class="feedback" id="feedback"></div>
 
     <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
-    <!-- Banner de Homologação -->
-    <div style="
-        background: #f59e0b;
-        color: #1f2937;
-        text-align: center;
-        padding: 4px 12px;
-        font-weight: 600;
-        font-size: 0.72rem;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        z-index: 9999;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        pointer-events: none;
-    ">
-        Ambiente de Homologação
-    </div>
-    <div style="height: 22px;"></div> <!-- Espaçador para o banner fixo -->
+    <!-- Identificação clara do ambiente não produtivo. -->
+    <div class="public-environment-banner" role="status">Ambiente de testes</div>
+    <div class="public-environment-spacer" aria-hidden="true"></div>
     <?php endif; ?>
-    <header>
-        <nav>
+    <header class="public-topbar">
+        <nav class="public-social-nav" aria-label="Redes sociais da Prefeitura">
             <ul>
-                <li><a href="https://www.instagram.com/prefeituradepaudosferros/">
+                <li><a href="https://www.instagram.com/prefeituradepaudosferros/" aria-label="Instagram da Prefeitura">
                         <img src="./assets/img/instagram.png" alt="Instagram">
                     </a>
                 </li>
-                <li><a href="https://www.facebook.com/prefeituradepaudosferros/">
+                <li><a href="https://www.facebook.com/prefeituradepaudosferros/" aria-label="Facebook da Prefeitura">
                         <img src="./assets/img/facebook.png" alt="Facebook">
                     </a>
                 </li>
-                <li><a href="https://twitter.com/paudosferros">
+                <li><a href="https://twitter.com/paudosferros" aria-label="X/Twitter da Prefeitura">
                         <img src="./assets/img/twitter.png" alt="Twitter">
                     </a>
                 </li>
-                <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros">
+                <li><a href="https://www.youtube.com/c/prefeituramunicipaldepaudosferros" aria-label="YouTube da Prefeitura">
                         <img src="./assets/img/youtube.png" alt="YouTube">
                     </a>
                 </li>
-                <li><a href="https://instagram.com">
+                <li><a href="https://instagram.com" aria-label="Copiar endereço do portal">
                         <img src="./assets/img/copy-url.png" alt="URL">
                     </a>
                 </li>
@@ -197,11 +180,11 @@ $locationTemplates = [
             <button type="button" onclick="document.getElementById('modal-estudos').style.display='flex'">Estudos Ambientais</button>
         </nav>
 
-        <div class="user-options">
+        <div class="user-options" role="group" aria-label="Opções de acessibilidade">
             <p id="alter-font">Tamanho da fonte</p>
-            <button type="button" data-acao="aumentar">A+</button>
+            <button type="button" data-acao="aumentar" title="Aumentar tamanho da fonte" aria-label="Aumentar tamanho da fonte">A+</button>
             <p>|</p>
-            <button type="button" data-acao="diminuir">A-</button>
+            <button type="button" data-acao="diminuir" title="Diminuir tamanho da fonte" aria-label="Diminuir tamanho da fonte">A-</button>
             <button type="button" title="Alto contraste" aria-label="Alto contraste" data-acao="contraste"><i class="fas fa-circle-half-stroke"></i></button>
         </div>
     </header>

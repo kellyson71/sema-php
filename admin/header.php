@@ -1797,7 +1797,7 @@ if ($isAnalista) {
                     <div class="topbar-eyebrow">
                         <span class="pill"><?= htmlspecialchars($roleLabel) ?></span>
                         <?php if (defined('MODO_HOMOLOG') && MODO_HOMOLOG): ?>
-                            <span class="pill" style="background:#fff7ed;color:#c2410c;">Homologação</span>
+                            <span class="pill" style="background:#fff7ed;color:#c2410c;">Testes</span>
                         <?php else: ?>
                             <span>Secretaria Municipal de Meio Ambiente</span>
                         <?php endif; ?>
