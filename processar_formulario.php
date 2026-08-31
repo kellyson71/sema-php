@@ -319,12 +319,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setMensagem('erro', 'Informe uma área válida para cada lote do desmembramento.');
                 redirect('index.php');
             }
-            if ($lote['cadastro_imobiliario'] === '') {
-                $_SESSION['form_data'] = $_POST;
-                $_SESSION['form_step'] = 2;
-                setMensagem('erro', 'Informe o cadastro imobiliário de cada lote do desmembramento.');
-                redirect('index.php');
-            }
             foreach ($lote['confrontacoes'] as $lado) {
                 if ($lado['metragem'] <= 0 || $lado['descricao'] === '') {
                     $_SESSION['form_data'] = $_POST;
@@ -333,12 +327,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     redirect('index.php');
                 }
             }
-        }
-        if ($matricula_imovel === '') {
-            $_SESSION['form_data'] = $_POST;
-            $_SESSION['form_step'] = 2;
-            setMensagem('erro', 'Informe o número da matrícula do imóvel no Cartório de Registro de Imóveis (RGI).');
-            redirect('index.php');
         }
         if ($totalTerreno <= 0) {
             $_SESSION['form_data'] = $_POST;

@@ -235,8 +235,8 @@
                    name="${areaName}" placeholder="Ex.: 250,00" data-lote-area data-desmembramento-field>
           </label>
           <label class="public-lote-area">
-            Cadastro imobiliário deste lote *
-            <input required name="${cadastroName}" placeholder="Ex.: 1010844" data-desmembramento-field>
+            Cadastro imobiliário deste lote
+            <input name="${cadastroName}" placeholder="Ex.: 1010844 (opcional)" data-desmembramento-field>
           </label>
         </div>
         <div class="public-section-heading-small">Confrontações</div>
@@ -335,20 +335,14 @@
       return `
         <div class="form-grid-2">
           <label>
-            Nº da Matrícula do Imóvel (RGI) *
-            <input required name="matricula_imovel" placeholder="Ex.: Matrícula 12.345 (Livro 2)" data-desmembramento-field>
-          </label>
-          <label>
             Área total do terreno (m²) *
             <input required type="number" inputmode="decimal" min="0.01" step="0.01"
                    name="area_total_terreno" placeholder="Ex.: 500,00" data-area-total>
           </label>
-        </div>
-        <div class="public-calculated-area" style="margin-bottom:14px;" aria-live="polite">
-          <span>Área remanescente</span>
-          <strong data-area-remanescente>Informe as áreas acima</strong>
-          <small data-area-lotes-resumo>Soma dos lotes: —</small>
-          <input type="hidden" name="area_remanescente" data-area-remanescente-value>
+          <label>
+            Nº da Matrícula do Imóvel (RGI)
+            <input name="matricula_imovel" placeholder="Ex.: Matrícula 12.345 (Livro 2) (opcional)" data-desmembramento-field>
+          </label>
         </div>
         <div class="public-lotes-heading">
           <div>
@@ -363,6 +357,12 @@
           <textarea required name="descricao_atividade" placeholder="Acrescente alguma informação relevante sobre o desmembramento." rows="3" data-desmembramento-descricao></textarea>
         </label>
         <div class="public-desmembramento-warning" data-desmembramento-warning role="alert" hidden></div>
+        <div class="public-calculated-area" aria-live="polite">
+          <span>Área remanescente</span>
+          <strong data-area-remanescente>Informe as áreas acima</strong>
+          <small data-area-lotes-resumo>Soma dos lotes: —</small>
+          <input type="hidden" name="area_remanescente" data-area-remanescente-value>
+        </div>
       `;
     }
 
@@ -959,7 +959,6 @@
         }
 
         if (tipoAlvara === 'desmembramento') {
-          requireValue('input[name="matricula_imovel"]', 'Informe o número da matrícula no Cartório de Registro de Imóveis (RGI).');
           const toAreaNum = (val) => {
             if (!val) return 0;
             const str = String(val).trim().replace(/\./g, '').replace(',', '.');
@@ -974,9 +973,6 @@
           const lotes = form.querySelectorAll('[data-lote-card]');
           let somaLotes = 0;
           lotes.forEach((lote, idx) => {
-            const cad = lote.querySelector('input[name*="cadastro_imobiliario"]');
-            if (!cad?.value.trim()) markInvalid(cad, `Informe o cadastro imobiliário do Lote ${idx + 1}.`);
-
             const areaInp = lote.querySelector('input[name*="area"]');
             const aVal = toAreaNum(areaInp?.value);
             if (aVal <= 0) {
