@@ -26,6 +26,21 @@ function sanitizarRedirect($url, $fallback = 'index.php') {
     return $url ?: $fallback;
 }
 
+/**
+ * A homologação atual usa subdomínio, enquanto instalações antigas usam
+ * /homologacao/ no caminho (coberto por MODO_HOMOLOG).
+ */
+function loginEmHomologacao(): bool {
+    if (defined('MODO_HOMOLOG') && MODO_HOMOLOG) {
+        return true;
+    }
+
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $host = preg_replace('/:\\d+$/', '', $host);
+
+    return $host === 'semaholog.protocolosead.com';
+}
+
 // Verificar se já está logado
 if (isset($_SESSION['admin_id'])) {
     $redirect = sanitizarRedirect($_GET['redirect'] ?? '', 'index.php');
@@ -200,7 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['login_attempts'] < 8) {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($senha, $admin['senha'])) {
-            if (!empty($admin['bypass_2fa'] ?? null) || dispositivoConfiado($pdo)) {
+            // Em homologação, credenciais válidas já concedem acesso para facilitar testes.
+            // Produção continua exigindo 2FA, salvo bypass individual ou dispositivo confiado.
+            if (loginEmHomologacao() || !empty($admin['bypass_2fa'] ?? null) || dispositivoConfiado($pdo)) {
                 criarSessaoAdmin($pdo, $admin);
                 $redirectUrl = $_SESSION['login_redirect_url'] ?? 'index.php';
                 unset($_SESSION['login_redirect_url']);
