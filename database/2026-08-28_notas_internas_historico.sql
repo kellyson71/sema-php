@@ -3,4 +3,4 @@
 
 ALTER TABLE `requerimento_notas_internas`
   DROP INDEX IF EXISTS `requerimento_id`,
-  ADD INDEX `idx_requerimento_id` (`requerimento_id`);
+  ADD INDEX IF NOT EXISTS `idx_requerimento_id` (`requerimento_id`);
