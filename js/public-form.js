@@ -625,20 +625,37 @@
     const extensoesPermitidas = isDenuncia ? denunciaConfig.allowedExtensions : ['pdf'];
     const tiposPermitidos = isDenuncia ? denunciaConfig.allowedTypes : ['application/pdf'];
 
+    // Métrica: só extensão e tamanho. O nome do arquivo costuma trazer o nome
+    // da pessoa, então nunca é enviado — ver js/form-analytics.js.
+    const metricaArquivo = (file) => ({
+      campo: input.name || input.id || null,
+      extensao: file.name.toLowerCase().split('.').pop(),
+      tamanhoBytes: file.size,
+    });
+
     for (const file of Array.from(input.files)) {
       const ext = file.name.toLowerCase().split('.').pop();
       if (!extensoesPermitidas.includes(ext) || (file.type && !tiposPermitidos.includes(file.type))) {
+        window.SEMA_FORM_METRICS?.documentoRejeitado?.(
+          Object.assign(metricaArquivo(file), { motivo: 'formato' })
+        );
         input.value = '';
         setUploadMessage(input, isDenuncia ? 'Envie apenas JPG, PNG, PDF, MP4 ou MOV.' : 'Envie apenas arquivos em PDF.');
         return false;
       }
       if (file.size > limiteBytes) {
+        window.SEMA_FORM_METRICS?.documentoRejeitado?.(
+          Object.assign(metricaArquivo(file), { motivo: 'tamanho' })
+        );
         input.value = '';
         setUploadMessage(input, 'O arquivo "' + file.name + '" ultrapassa o limite de ' + limiteLabel + '.');
         return false;
       }
     }
 
+    Array.from(input.files).forEach((file) => {
+      window.SEMA_FORM_METRICS?.documentoAnexado?.(metricaArquivo(file));
+    });
     setUploadMessage(input, Array.from(input.files).map((file) => file.name).join(', '), true);
     return true;
   }
@@ -845,9 +862,14 @@
     function validateStep(step) {
       clearFormErrors();
       let firstInvalid = null;
+      // Só os NOMES dos campos, pra métrica de onde o formulário trava.
+      // Nenhum valor digitado sai daqui — ver js/form-analytics.js.
+      const camposInvalidos = [];
 
       function markInvalid(field, message) {
         if (!field) return;
+        const nome = field.name || field.id || '';
+        if (nome && !camposInvalidos.includes(nome)) camposInvalidos.push(nome);
         field.classList.add('field-invalid');
         field.setAttribute('aria-invalid', 'true');
         const host = field.closest('.form-toggle') || field.closest('.form-part-4') || field.closest('.public-habite-select-field') || field.parentElement;
@@ -1151,6 +1173,7 @@
       }
 
       if (firstInvalid) {
+        window.SEMA_FORM_METRICS?.validacaoFalhou?.(step, camposInvalidos);
         firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
         firstInvalid.focus({ preventScroll: true });
         if (typeof firstInvalid.reportValidity === 'function' && !firstInvalid.checkValidity()) {
@@ -1328,7 +1351,10 @@
             showStep(s);
             return;
           }
+          window.SEMA_FORM_METRICS?.avancouEtapa?.(s, s + 1);
         }
+      } else if (target < current) {
+        window.SEMA_FORM_METRICS?.voltouEtapa?.(current, target);
       }
       showStep(target, { preview: target > unlockedStep });
     }));
@@ -1336,17 +1362,21 @@
       clearFormErrors();
       const current = Number(form.dataset.publicCurrentStep || 1);
       const preview = form.dataset.publicPreviewStep;
-      showStep(preview ? unlockedStep : current - 1);
+      const destino = preview ? unlockedStep : current - 1;
+      if (destino !== current) window.SEMA_FORM_METRICS?.voltouEtapa?.(current, destino);
+      showStep(destino);
     });
     if (next) next.addEventListener('click', () => {
       const current = Number(form.dataset.publicCurrentStep || 1);
       if (!validateStep(current)) return;
       unlockedStep = Math.max(unlockedStep, Math.min(3, current + 1));
+      window.SEMA_FORM_METRICS?.avancouEtapa?.(current, Math.min(3, current + 1));
       showStep(current + 1);
     });
     const tipo = document.getElementById('tipo_alvara');
     if (tipo) tipo.addEventListener('change', () => {
       unlockedStep = 1;
+      window.SEMA_FORM_METRICS?.escolheuServico?.(tipo.value);
       syncResponsibleBlock();
       setTimeout(() => showStep(1, { silent: true }), 0);
     });
@@ -1838,27 +1868,23 @@
         const isDenuncia = document.getElementById('tipo_alvara')?.value === 'denuncia';
         if (isDenuncia) {
           if (!validator(1)) {
+            window.SEMA_FORM_METRICS?.envioBloqueado?.(1);
             e.preventDefault();
             return false;
           }
         } else {
-          if (!validator(1)) {
-            window.SEMA_PUBLIC_FORM?.showStep(1);
-            e.preventDefault();
-            return false;
-          }
-          if (!validator(2)) {
-            window.SEMA_PUBLIC_FORM?.showStep(2);
-            e.preventDefault();
-            return false;
-          }
-          if (!validator(3)) {
-            window.SEMA_PUBLIC_FORM?.showStep(3);
-            e.preventDefault();
-            return false;
+          for (const etapa of [1, 2, 3]) {
+            if (!validator(etapa)) {
+              window.SEMA_FORM_METRICS?.envioBloqueado?.(etapa);
+              window.SEMA_PUBLIC_FORM?.showStep(etapa);
+              e.preventDefault();
+              return false;
+            }
           }
         }
       }
+
+      window.SEMA_FORM_METRICS?.enviou?.();
 
       const loading = document.getElementById('loading');
       const botao = document.getElementById('botao');
@@ -1888,11 +1914,21 @@
     const form = document.getElementById('form');
     setupCookieNotice();
     if (!form) return;
+    const temDadosDoServidor = !!cfg().hasServerFormData;
+    const temRascunhoLocal = !temDadosDoServidor && Object.keys(getDraft() || {}).length > 0;
+    window.SEMA_FORM_METRICS?.iniciou?.({
+      rascunhoRestaurado: temRascunhoLocal,
+      voltouDeErro: temDadosDoServidor,
+    });
     setupDynamicFields(form);
     setupEmailConfirmation(form);
     setupWizard(form);
     restoreData(form);
     initDraft(form);
     setupSubmitValidation(form);
+    // O tipo pode já vir preenchido (rascunho ou retorno de erro): registra a
+    // escolha uma vez, depois dos restores, sem depender do evento de change.
+    const tipoInicial = document.getElementById('tipo_alvara')?.value;
+    if (tipoInicial) window.SEMA_FORM_METRICS?.escolheuServico?.(tipoInicial);
   });
 })();

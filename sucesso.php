@@ -11,8 +11,11 @@ $sucesso      = $_SESSION['sucesso'] ?? 'Requerimento enviado com sucesso!';
 $proprietario = $_SESSION['proprietario_nome'] ?? '';
 $emailFalhou  = !empty($_SESSION['email_confirmacao_falhou']);
 $emailDestino = $_SESSION['email_confirmacao_destino'] ?? '';
+// Métrica de conclusão: tipo de serviço e quantidade de anexos, nada do cidadão.
+$metricaTipo  = (string) ($_SESSION['metrica_tipo_alvara'] ?? '');
+$metricaDocs  = (int) ($_SESSION['metrica_documentos'] ?? 0);
 
-unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou'], $_SESSION['email_confirmacao_destino']);
+unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome'], $_SESSION['email_confirmacao_falhou'], $_SESSION['email_confirmacao_destino'], $_SESSION['metrica_tipo_alvara'], $_SESSION['metrica_documentos']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -31,6 +34,20 @@ unset($_SESSION['protocolo'], $_SESSION['sucesso'], $_SESSION['proprietario_nome
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <?php include __DIR__ . '/includes/posthog.php'; ?>
+    <script>
+        // Conclusão do protocolo. Sem protocolo, nome, CPF ou e-mail:
+        // só o serviço e a quantidade de anexos.
+        (function () {
+            if (typeof window.posthog === 'undefined' || typeof window.posthog.capture !== 'function') return;
+            try {
+                window.posthog.capture('requerimento_concluido', {
+                    tipo_alvara: <?= json_encode($metricaTipo !== '' ? $metricaTipo : 'nao_informado') ?>,
+                    documentos_anexados: <?= $metricaDocs ?>,
+                    email_confirmacao_falhou: <?= $emailFalhou ? 'true' : 'false' ?>
+                });
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="success-page">
     <header>

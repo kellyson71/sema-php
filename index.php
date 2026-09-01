@@ -140,6 +140,8 @@ $maxPostSize = defined('MAX_POST_SIZE') ? MAX_POST_SIZE : 256 * 1024 * 1024;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <script src="./js/index.js" defer></script>
+    <!-- Métricas antes do formulário: os hooks do wizard chamam SEMA_FORM_METRICS. -->
+    <script src="./js/form-analytics.js?v=<?= (int) filemtime(__DIR__ . '/js/form-analytics.js') ?>" defer></script>
     <script src="./js/public-form.js?v=<?= (int) filemtime(__DIR__ . '/js/public-form.js') ?>" defer></script>
     <?php include __DIR__ . '/includes/posthog.php'; ?>
 </head>

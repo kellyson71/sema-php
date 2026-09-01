@@ -599,6 +599,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $diretorio_upload = UPLOAD_DIR . $protocolo;
 
     // Processar os arquivos enviados
+    $totalDocumentosSalvos = 0;
     foreach ($_FILES as $campo => $arquivo) {
         // Verificar se é um documento opcional que foi marcado como "não preciso enviar"
         $checkbox_nao_preciso = $campo . '_nao_preciso';
@@ -621,6 +622,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
 
                 $documentoModel->criar($documento);
+                $totalDocumentosSalvos++;
             }
         } elseif ($nao_precisa_enviar) {
             // Registrar que o documento foi marcado como "não preciso enviar"
@@ -640,6 +642,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['protocolo'] = $protocolo;
     $_SESSION['proprietario_nome'] = $proprietario['nome'];
     $_SESSION['email_confirmacao_destino'] = $requerente['email'];
+    // Só o tipo de serviço e a contagem de anexos: a página de sucesso usa isso
+    // na métrica de conclusão, que não carrega nenhum dado do cidadão.
+    $_SESSION['metrica_tipo_alvara'] = $tipoAlvara;
+    $_SESSION['metrica_documentos'] = $totalDocumentosSalvos;
 
     // Enviar email de confirmação
     try {

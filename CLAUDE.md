@@ -91,6 +91,21 @@ Variáveis disponíveis nos templates (todas preenchidas por `ParecerService::pr
 - **Ambiental**: `{{atividade}}`, `{{cnae_descricao}}`, `{{eng_fiscal_nome}}`, `{{eng_fiscal_registro}}` (padrão configurável por `admin/configuracoes.php`, só no `carta_habite_se`)
 - **Administrativas (quando `$adminData` é passado)**: `{{admin_nome_completo}}`, `{{admin_cargo}}`, `{{admin_matricula_portaria}}`, `{{observacoes}}`
 
+## Métricas do formulário público (PostHog)
+
+`js/form-analytics.js` expõe `window.SEMA_FORM_METRICS`; `js/public-form.js` chama os hooks
+(sempre com `?.`, então o formulário funciona mesmo sem o PostHog carregado — é o caso do
+ambiente local, onde `POSTHOG_KEY` é vazio e `includes/posthog.php` não renderiza nada).
+
+Eventos emitidos: `form_iniciado`, `form_servico_selecionado`, `form_etapa_concluida`,
+`form_etapa_voltou`, `form_validacao_falhou`, `form_documento_anexado`,
+`form_documento_rejeitado`, `form_envio_bloqueado`, `form_enviado`, `form_abandonado`
+(no `pagehide`) e `requerimento_concluido` (em `sucesso.php`).
+
+⚠️ **Nenhum evento carrega valor digitado pelo cidadão.** Só saem nomes de campo, contagens,
+tempos, extensões e tamanhos de arquivo — nome de arquivo fica de fora de propósito, porque
+costuma conter o nome da pessoa. Toda propriedade nova tem que passar por essa mesma régua.
+
 ## Roles de administrador
 
 `admin`, `admin_geral`, `secretario`, `analista`, `fiscal`, `operador` — definidos no enum da tabela `administradores`. O menu lateral em `admin/header.php` exibe itens condicionalmente por role.
