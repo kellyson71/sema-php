@@ -31,10 +31,18 @@ Cidadão → index.php (formulário)
 
 Admin   → admin/login.php (bcrypt + 2FA TOTP ou email OTP)
        → admin/requerimentos.php (lista e filtra)
-       → admin/visualizar_requerimento.php (ações: aprovar, indeferir, gerar parecer)
+       → admin/visualizar_requerimento.php (ações: aprovar, indeferir, gerar parecer,
+         abrir pendência de complementação, notas internas)
        → admin/gerar_documento.php (editor TinyMCE + templates HTML)
        → admin/parecer_handler.php (salva parecer, dispara assinatura digital)
        → admin/assinatura/ (workflow de assinatura com código por email)
+       → admin/responsaveis_tecnicos.php (catálogo de engenheiros/arquitetos,
+         alimentado automaticamente a cada requerimento)
+
+Pendência/complementação → quando falta algo num requerimento, o admin abre uma
+pendência (includes/pendencia_helpers.php); o requerente recebe um link para
+responder e anexar documentos (pendencia.php); a equipe resolve manualmente ou
+reabre a pendência a partir de uma anterior, mantendo o rastro (reaberta_de_id).
 
 Público → consultar/index.php (consulta por protocolo)
         → consultar/verificar.php (valida QR code de documento assinado)
@@ -51,12 +59,16 @@ Público → consultar/index.php (consulta por protocolo)
 | `includes/email_service.php` | PHPMailer wrapper; loga tudo em `email_logs`; detecta emails de teste |
 | `includes/parecer_service.php` | Geração de documentos: preenche variáveis `{{campo}}` nos templates HTML/DOCX |
 | `includes/assinatura_digital_service.php` | Workflow de assinatura digital |
+| `includes/documento_regras.php` | Regras de formatação/numeração usadas nos documentos gerados (endereço, área, numeração oficial) |
+| `includes/notas_internas_helpers.php` | Chat/observações internas por requerimento, visível só à equipe |
+| `includes/pendencia_helpers.php` | Pendência de complementação: abrir, listar, resolver, reabrir |
+| `includes/public_form_components.php` | Componentes do formulário público (validação de e-mail, composer de endereço) |
 | `tipos_alvara.php` | Array `$tipos_alvara` com nome legível, documentos e observações por tipo |
 | `admin/conexao.php` | Conexão PDO do painel admin; cria tabelas de denúncias se não existirem |
 
 ## Tipos de alvará e campos dinâmicos
 
-`tipos_alvara.php` define todos os tipos (construcao, habite_se, habite_se_simples, licenca_previa_ambiental, etc.). Ao selecionar um tipo no formulário, o JS em `index.php` injeta campos específicos em `#campos_dinamicos` (área, responsável técnico, etc.) e carrega a lista de documentos via AJAX em `scripts/obter_documentos.php`.
+`tipos_alvara.php` define todos os tipos (construcao, habite_se, habite_se_simples, licenca_previa_ambiental, etc.). O formulário público (`index.php`) é um wizard de 3 etapas — 1) serviço e identificação, 2) dados do serviço, 3) documentos e envio — controlado por `js/public-form.js`. Ao selecionar um tipo, esse JS injeta campos específicos em `#campos_dinamicos` (área, responsável técnico, etc.) e carrega a lista de documentos via AJAX em `scripts/obter_documentos.php`. `window.SEMA_PUBLIC_FORM` expõe `showStep(n, {preview})`, `validateStep(n)`, `refresh()` e `restoreStep(n)` para navegação/depuração entre etapas; validação de etapa usa `.field-invalid`/`.field-error` (marcação própria via JS), não a validade nativa do HTML5.
 
 **Nunca exibir o slug bruto** do banco (`habite_se_simples`) — sempre converter via:
 ```php
@@ -69,8 +81,15 @@ Templates HTML ficam em `admin/templates/`. Variáveis usam sintaxe `{{nome_vari
 
 O método `ParecerService::preencherDados($requerimento, $adminData)` em `includes/parecer_service.php` mapeia os campos do banco para as variáveis dos templates. Ao adicionar um novo campo ao formulário, verificar se precisa adicionar o mapeamento neste método.
 
-Variáveis disponíveis nos templates:
-`{{protocolo}}`, `{{nome_requerente}}`, `{{cpf_cnpj_requerente}}`, `{{nome_proprietario}}`, `{{cpf_cnpj_proprietario}}`, `{{endereco_objetivo}}`, `{{tipo_alvara}}` (nome legível), `{{area}}` / `{{area_construida}}`, `{{detalhes_imovel}}` / `{{especificacao}}`, `{{responsavel_tecnico_nome}}`, `{{responsavel_tecnico_registro}}`, `{{responsavel_tecnico_tipo_documento}}`, `{{responsavel_tecnico_numero}}`, `{{art_numero}}`, `{{numero_documento_ano}}`, `{{data_atual}}`, `{{atividade}}`, `{{nome_interessado}}`, `{{cpf_interessado}}`
+Variáveis disponíveis nos templates (todas preenchidas por `ParecerService::preencherDados()`; campos vazios viram "Não informado" automaticamente):
+
+- **Protocolo e status**: `{{protocolo}}`, `{{status}}`, `{{data_envio}}`, `{{data_atual}}`, `{{ano_atual}}`, `{{numero_documento_ano}}`, `{{protocolo_oficial}}`, `{{tipo_alvara}}` (nome legível)
+- **Requerente / proprietário / interessado**: `{{nome_requerente}}`, `{{cpf_cnpj_requerente}}`, `{{email_requerente}}`, `{{telefone_requerente}}`, `{{nome_proprietario}}`, `{{cpf_cnpj_proprietario}}`, `{{nome_interessado}}`, `{{cpf_interessado}}` (proprietário, com fallback pro requerente)
+- **Endereço e área**: `{{endereco_objetivo}}`, `{{area}}` / `{{area_construida}}`, `{{area_lote}}`, `{{area_total_terreno}}`, `{{area_remanescente}}`, `{{cadastro_imobiliario}}`, `{{matricula_imovel}}`, `{{desmembramento_matricula_texto}}`
+- **Responsável técnico**: `{{responsavel_tecnico_nome}}`, `{{responsavel_tecnico_registro}}`, `{{responsavel_tecnico_tipo_documento}}`, `{{responsavel_tecnico_numero}}`, `{{responsavel_tecnico_conselho}}`, `{{responsavel_tecnico_rotulo}}`, `{{art_numero}}` (e-mail/telefone do RT são coletados no formulário mas não têm variável de template — nenhum template hoje usa)
+- **Construção / habite-se / desmembramento**: `{{especificacao}}` / `{{detalhes_imovel}}`, `{{inicio_obra}}`, `{{termino_obra}}`, `{{alvara_construcao_numero}}`, `{{desmembramento_lotes_numeros}}`, `{{desmembramento_area_lotes}}`, `{{desmembramento_lotes_html}}`
+- **Ambiental**: `{{atividade}}`, `{{cnae_descricao}}`, `{{eng_fiscal_nome}}`, `{{eng_fiscal_registro}}` (padrão configurável por `admin/configuracoes.php`, só no `carta_habite_se`)
+- **Administrativas (quando `$adminData` é passado)**: `{{admin_nome_completo}}`, `{{admin_cargo}}`, `{{admin_matricula_portaria}}`, `{{observacoes}}`
 
 ## Roles de administrador
 
@@ -79,6 +98,8 @@ Variáveis disponíveis nos templates:
 ## Banco de dados
 
 Schema completo em `database/u492577848_SEMA.sql`. Migrations incrementais em `database/*.sql`. Não existe ORM — usar PDO com prepared statements. A conexão do painel admin (`admin/conexao.php`) é separada da conexão pública (`includes/database.php`).
+
+⚠️ `database/u492577848_SEMA.sql` é um snapshot que fica defasado — não é regenerado a cada migration. Para saber o schema exato de um ambiente, some esse arquivo com todos os `database/*.sql` datados mais novos (ordem cronológica pelo nome do arquivo), ou confira direto no banco (`SHOW CREATE TABLE`). Produção tende a ficar atrás de homologação: antes de promover `homologacao` para `main`, conferir quais migrations ainda não foram rodadas em produção.
 
 ## Uploads
 
