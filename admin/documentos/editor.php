@@ -24,10 +24,73 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$stmt = $pdo->prepare("SELECT protocolo, status FROM requerimentos WHERE id = ?");
+// Dados completos do processo: alimentam a consulta rápida da barra de ações,
+// pra não precisar abrir o requerimento em outra aba durante a redação.
+require_once __DIR__ . '/../../tipos_alvara.php';
+
+$stmt = $pdo->prepare("
+    SELECT r.*,
+           req.nome AS requerente_nome, req.cpf_cnpj AS requerente_cpf_cnpj,
+           req.email AS requerente_email, req.telefone AS requerente_telefone,
+           p.nome AS proprietario_nome, p.cpf_cnpj AS proprietario_cpf_cnpj
+    FROM requerimentos r
+    JOIN requerentes req ON r.requerente_id = req.id
+    LEFT JOIN proprietarios p ON r.proprietario_id = p.id
+    WHERE r.id = ?
+");
 $stmt->execute([$requerimento_id]);
-$req = $stmt->fetch();
+$req = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$req) die("Erro: Requerimento não encontrado.");
+
+$stmtDocs = $pdo->prepare("SELECT campo_formulario, nome_original, caminho, tipo_arquivo, tamanho
+    FROM documentos WHERE requerimento_id = ? ORDER BY id");
+$stmtDocs->execute([$requerimento_id]);
+$documentosProcesso = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
+
+$tipoAlvaraLabel = $tipos_alvara[$req['tipo_alvara']]['nome']
+    ?? ucwords(str_replace('_', ' ', (string) $req['tipo_alvara']));
+
+/**
+ * Rótulo legível para o campo que originou o anexo.
+ *
+ * Os campos de upload nascem em scripts/obter_documentos.php como
+ * `doc_{tipo}_{indice}` (ou `doc_opcional_`, `doc_pf_`, `doc_pj_`), onde o
+ * índice é a posição na lista de tipos_alvara.php — dá pra recuperar o nome
+ * real do documento em vez de mostrar "Doc desmembramento 5".
+ */
+$rotuloCampoDocumento = static function (string $campo) use ($req, $tipos_alvara): string {
+    $especiais = [
+        'boleto_pagamento_admin' => 'Boleto enviado pela equipe',
+        'comprovante_pagamento_boleto' => 'Comprovante de pagamento',
+    ];
+    if (isset($especiais[$campo])) return $especiais[$campo];
+    if (preg_match('/^pendencia_(\d+)$/', $campo, $m)) return 'Resposta de pendência #' . $m[1];
+
+    $tipo = (string) $req['tipo_alvara'];
+    $listas = [
+        'doc_opcional_' . $tipo . '_' => 'documentos_opcionais',
+        'doc_pf_' . $tipo . '_'       => 'pessoa_fisica',
+        'doc_pj_' . $tipo . '_'       => 'pessoa_juridica',
+        'doc_' . $tipo . '_'          => 'documentos',
+    ];
+    foreach ($listas as $prefixo => $chave) {
+        if (strpos($campo, $prefixo) !== 0) continue;
+        $indice = substr($campo, strlen($prefixo));
+        if (!ctype_digit($indice)) continue;
+        $rotulo = $tipos_alvara[$tipo][$chave][(int) $indice] ?? '';
+        if ($rotulo === '') continue;
+        // As listas vêm numeradas e com ponto e vírgula final ("4. Documento do terreno;").
+        return trim(preg_replace('/^\d+\.\s*/', '', rtrim(trim($rotulo), ';')));
+    }
+    return ucfirst(str_replace('_', ' ', $campo));
+};
+
+$formatarTamanho = static function ($bytes): string {
+    $bytes = (int) $bytes;
+    if ($bytes <= 0) return '—';
+    if ($bytes < 1024 * 1024) return number_format($bytes / 1024, 0, ',', '.') . ' KB';
+    return number_format($bytes / (1024 * 1024), 1, ',', '.') . ' MB';
+};
 
 $adminTemChave = false;
 try {
@@ -503,6 +566,37 @@ include '../header.php';
         .doc-resumo-item strong { display:block; font-size:.82rem; color:#1a2e1e; overflow:hidden;
                                   text-overflow:ellipsis; white-space:nowrap; }
         .doc-resumo-item strong.pendente { color:#a26a12; }
+        /* Consulta rápida do processo (botão "Processo" na barra de ações) */
+        .doc-processo-contador { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px;
+                                 padding:0 6px; margin-left:6px; border-radius:999px; background:#e6efe9; color:#1f6b47;
+                                 font-size:.7rem; font-weight:800; }
+        .doc-processo-contador.escuro { background:var(--sema-green); color:#fff; }
+        .doc-processo-modal .modal-body { background:#fbfdfc; }
+        .doc-processo-bloco { background:#fff; border:1px solid #e4ebe7; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+        .doc-processo-bloco:last-child { margin-bottom:0; }
+        .doc-processo-bloco-titulo { display:flex; align-items:center; font-size:.72rem; font-weight:800; letter-spacing:.07em;
+                                     text-transform:uppercase; color:#7d8f84; margin-bottom:10px; }
+        .doc-processo-lista { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 16px; margin:0; font-size:.84rem; }
+        .doc-processo-lista dt { color:#7d8f84; font-weight:600; white-space:nowrap; }
+        .doc-processo-lista dd { margin:0; color:#17231c; overflow-wrap:anywhere; }
+        .doc-processo-texto { margin:0; font-size:.84rem; color:#17231c; line-height:1.55; }
+        .doc-processo-vazio { margin:0; font-size:.82rem; color:#8a998f; font-style:italic; }
+        .doc-processo-anexos { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+        .doc-processo-anexos li { display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid #e8eeea;
+                                  border-radius:10px; background:#fcfefd; }
+        .doc-processo-anexos li > i { color:#c0392b; flex-shrink:0; }
+        .doc-processo-anexos li.nao-enviado { background:#f8f9f8; border-style:dashed; }
+        .doc-processo-anexos li.nao-enviado > i { color:#b3bfb7; }
+        .doc-processo-anexo-info { flex:1; min-width:0; }
+        .doc-processo-anexo-info strong { display:block; font-size:.82rem; color:#17231c; font-weight:700; }
+        .doc-processo-anexo-info small { display:block; font-size:.73rem; color:#7d8f84; overflow-wrap:anywhere; }
+        .doc-processo-abrir { flex-shrink:0; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+                              border-radius:8px; color:var(--sema-green); background:#eef6f1; text-decoration:none; font-size:.75rem; }
+        .doc-processo-abrir:hover { background:var(--sema-green); color:#fff; }
+        @media (max-width:560px) {
+            .doc-processo-lista { grid-template-columns:1fr; gap:2px; }
+            .doc-processo-lista dt { margin-top:6px; }
+        }
         .signature-dialog { max-width:980px; }
         .signature-modal { overflow:hidden; background:#fff; }
         .signature-modal-header { display:flex; align-items:center; gap:15px; padding:22px 28px; background:linear-gradient(135deg,#153e2c 0%,#216044 100%); color:#fff; }
@@ -665,11 +759,17 @@ include '../header.php';
                     </span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()">
-                        <i class="fas fa-bookmark me-1"></i> Salvar como modelo
+                    <button class="btn btn-outline-success fw-medium px-3" onclick="abrirModalSalvarTemplate()"
+                            title="Guarda este texto como modelo reutilizável">
+                        <i class="fas fa-bookmark me-1"></i> Salvar
+                    </button>
+                    <button class="btn btn-outline-secondary fw-medium px-3" onclick="abrirModalProcesso()"
+                            title="Consulta rápida: dados do protocolo e documentos anexados pelo requerente">
+                        <i class="fas fa-folder-open me-1"></i> Processo
+                        <span class="doc-processo-contador"><?= count($documentosProcesso) ?></span>
                     </button>
                     <button class="btn btn-preview fw-medium px-3" onclick="previewPdf()" title="Gera o PDF real (TCPDF) sem assinar nem registrar. O que você vê é o documento final">
-                        <i class="fas fa-eye me-1"></i> Pré-visualizar PDF
+                        <i class="fas fa-file-pdf me-1"></i> Pré-visualizar
                     </button>
                     <button class="btn btn-sema fw-medium px-4" onclick="abrirModalAssinatura()">
                         <i class="fas fa-signature me-2"></i> Assinar e Finalizar
@@ -951,6 +1051,125 @@ include '../header.php';
               <span>Montando as páginas do PDF…</span>
             </div>
             <iframe id="previewPdfFrame" name="previewPdfFrame" src="about:blank" title="Pré-visualização paginada do documento"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consulta rápida do processo: dados do protocolo + anexos do requerente -->
+    <div class="modal fade" id="modalProcesso" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 doc-processo-modal">
+          <div class="modal-header modal-header-sema px-4 py-3">
+            <h5 class="modal-title fw-bold text-sema">
+              <i class="fas fa-folder-open me-2"></i> Processo <?= htmlspecialchars($req['protocolo']) ?>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+<?php
+$blocosProcesso = [
+    'Solicitação' => [
+        'Serviço'            => $tipoAlvaraLabel,
+        'Status'             => ucfirst(str_replace('_', ' ', (string) $req['status'])),
+        'Enviado em'         => !empty($req['data_envio']) ? date('d/m/Y H:i', strtotime((string) $req['data_envio'])) : '',
+        'Protocolo oficial'  => $req['protocolo_oficial'] ?? '',
+    ],
+    'Requerente' => [
+        'Nome'      => $req['requerente_nome'] ?? '',
+        'CPF/CNPJ'  => $req['requerente_cpf_cnpj'] ?? '',
+        'E-mail'    => $req['requerente_email'] ?? '',
+        'Telefone'  => $req['requerente_telefone'] ?? '',
+    ],
+    'Proprietário' => [
+        'Nome'     => $req['proprietario_nome'] ?? '',
+        'CPF/CNPJ' => $req['proprietario_cpf_cnpj'] ?? '',
+    ],
+    'Imóvel' => [
+        'Endereço'              => $req['endereco_objetivo'] ?? '',
+        'Cadastro imobiliário'  => $req['cadastro_imobiliario'] ?? '',
+        'Área a construir'      => $req['area_construcao'] ?? '',
+        'Área construída'       => $req['area_construida'] ?? '',
+        'Área do lote'          => $req['area_lote'] ?? '',
+        'Tipo de edificação'    => $req['tipo_edificacao'] ?? '',
+        'Pavimentos'            => $req['numero_pavimentos'] ?? '',
+    ],
+    'Responsável técnico' => [
+        'Nome'      => $req['responsavel_tecnico_nome'] ?? '',
+        'Registro'  => $req['responsavel_tecnico_registro'] ?? '',
+        'Documento' => trim(($req['responsavel_tecnico_tipo_documento'] ?? '') . ' ' . ($req['responsavel_tecnico_numero'] ?? '')),
+        'E-mail'    => $req['responsavel_tecnico_email'] ?? '',
+        'Telefone'  => $req['responsavel_tecnico_telefone'] ?? '',
+    ],
+];
+foreach ($blocosProcesso as $titulo => $linhas):
+    $linhas = array_filter($linhas, static fn($v) => trim((string) $v) !== '');
+    if (!$linhas) continue; ?>
+            <div class="doc-processo-bloco">
+              <div class="doc-processo-bloco-titulo"><?= htmlspecialchars($titulo) ?></div>
+              <dl class="doc-processo-lista">
+                <?php foreach ($linhas as $rotulo => $valor): ?>
+                  <dt><?= htmlspecialchars($rotulo) ?></dt>
+                  <dd><?= htmlspecialchars((string) $valor) ?></dd>
+                <?php endforeach; ?>
+              </dl>
+            </div>
+<?php endforeach; ?>
+
+<?php $especificacaoProcesso = trim((string) ($req['especificacao'] ?? '')); ?>
+<?php if ($especificacaoProcesso !== ''): ?>
+            <div class="doc-processo-bloco">
+              <div class="doc-processo-bloco-titulo">Especificação</div>
+              <p class="doc-processo-texto"><?= nl2br(htmlspecialchars($especificacaoProcesso)) ?></p>
+            </div>
+<?php endif; ?>
+
+<?php $observacoesProcesso = trim((string) ($req['observacoes'] ?? '')); ?>
+<?php if ($observacoesProcesso !== ''): ?>
+            <div class="doc-processo-bloco">
+              <div class="doc-processo-bloco-titulo">Observações do requerente</div>
+              <p class="doc-processo-texto"><?= nl2br(htmlspecialchars($observacoesProcesso)) ?></p>
+            </div>
+<?php endif; ?>
+
+            <div class="doc-processo-bloco">
+              <div class="doc-processo-bloco-titulo">
+                Documentos anexados
+                <span class="doc-processo-contador escuro"><?= count($documentosProcesso) ?></span>
+              </div>
+<?php if (!$documentosProcesso): ?>
+              <p class="doc-processo-vazio">Nenhum documento anexado a este protocolo.</p>
+<?php else: ?>
+              <ul class="doc-processo-anexos">
+<?php foreach ($documentosProcesso as $anexo):
+        $naoEnviado = ($anexo['tipo_arquivo'] ?? '') === 'opcional_nao_enviado';
+        $ehPdf = strpos((string) ($anexo['tipo_arquivo'] ?? ''), 'pdf') !== false; ?>
+                <li class="<?= $naoEnviado ? 'nao-enviado' : '' ?>">
+                  <i class="fas <?= $naoEnviado ? 'fa-minus-circle' : ($ehPdf ? 'fa-file-pdf' : 'fa-file') ?>"></i>
+                  <span class="doc-processo-anexo-info">
+                    <strong><?= htmlspecialchars($rotuloCampoDocumento((string) $anexo['campo_formulario'])) ?></strong>
+                    <small><?= $naoEnviado
+                        ? 'Marcado como não necessário pelo requerente'
+                        : htmlspecialchars((string) $anexo['nome_original']) . ' · ' . $formatarTamanho($anexo['tamanho']) ?></small>
+                  </span>
+<?php if (!$naoEnviado): ?>
+                  <a href="../../uploads/<?= htmlspecialchars(ltrim((string) $anexo['caminho'], '/\\')) ?>"
+                     target="_blank" rel="noopener" class="doc-processo-abrir" title="Abrir em nova aba">
+                    <i class="fas fa-arrow-up-right-from-square"></i>
+                  </a>
+<?php endif; ?>
+                </li>
+<?php endforeach; ?>
+              </ul>
+<?php endif; ?>
+            </div>
+          </div>
+          <div class="modal-footer border-0 px-4 pb-4 pt-0">
+            <a href="../visualizar_requerimento.php?id=<?= (int) $requerimento_id ?>" target="_blank" rel="noopener"
+               class="btn btn-outline-success fw-medium">
+              <i class="fas fa-arrow-up-right-from-square me-1"></i> Abrir o processo completo
+            </a>
+            <button type="button" class="btn btn-light border fw-medium" data-bs-dismiss="modal">Fechar</button>
           </div>
         </div>
       </div>
@@ -2068,6 +2287,11 @@ include '../header.php';
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
             Swal.fire('Falha de comunicação', erro.message || 'Não foi possível comunicar com o servidor.', 'error');
         });
+    }
+
+    /* ─── Consulta rápida do processo ─────────────────────── */
+    function abrirModalProcesso() {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProcesso')).show();
     }
 
     /* ─── Abrir modal Salvar Template ─────────────────────── */
