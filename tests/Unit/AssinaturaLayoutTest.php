@@ -19,16 +19,25 @@ final class AssinaturaLayoutTest extends TestCase
     #[Test]
     public function assinaturaRecebeNovaUltimaPaginaQuandoCobririaConteudo(): void
     {
-        $this->assertTrue(assinaturaPrecisaNovaPagina(260.0, 263.0));
+        $this->assertTrue(assinaturaPrecisaNovaPagina(270.0, 263.0));
+    }
+
+    #[Test]
+    public function cursorDoTcpdfNaoContaComoTextoVisivel(): void
+    {
+        // Caso real (parecer ambiental do processo 1046): o texto termina a
+        // 247mm, mas GetY() devolve 260,25mm por causa da entrelinha e da
+        // margem do último parágrafo. O bloco cabe e não pode ganhar folha.
+        $this->assertFalse(assinaturaPrecisaNovaPagina(260.25, 263.0));
     }
 
     #[Test]
     public function respiroMinimoEmpurraAAssinaturaParaAProximaFolha(): void
     {
-        // Texto termina exatamente no respiro: ainda cabe.
-        $this->assertFalse(assinaturaPrecisaNovaPagina(259.0, 263.0));
-        // Um milímetro além dele: ganha folha própria.
-        $this->assertTrue(assinaturaPrecisaNovaPagina(259.5, 263.0));
+        // Texto visível termina exatamente no respiro: ainda cabe.
+        $this->assertFalse(assinaturaPrecisaNovaPagina(265.0, 263.0));
+        // Meio milímetro além dele: ganha folha própria.
+        $this->assertTrue(assinaturaPrecisaNovaPagina(265.5, 263.0));
     }
 
     #[Test]

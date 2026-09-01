@@ -25,6 +25,18 @@ const A4_MARGEM_LATERAL_MM = 15.0;
 const A4_AREA_UTIL_MM = A4_ALTURA_MM - A4_CABECALHO_MM - A4_RODAPE_MM;
 /** Respiro mínimo entre o fim do texto e o topo do bloco de assinatura. */
 const ASSINATURA_RESPIRO_MM = 4.0;
+/**
+ * Folga que o cursor do TCPDF já carrega além da última linha visível.
+ *
+ * GetY() devolve a posição do cursor depois de fechar o último bloco, e não a
+ * base do último glifo: sobra ali a entrelinha da linha final mais a margem
+ * inferior do parágrafo. Medido em documentos reais, isso passa de 12mm — se
+ * o cálculo não descontar nada, um parecer que termina visualmente a 247mm é
+ * tratado como se chegasse a 260mm e a assinatura ganha uma folha só dela.
+ * Descontamos uma linha de 12pt (entrelinha 1,4), bem abaixo do medido, para
+ * continuar conservador.
+ */
+const ASSINATURA_FOLGA_CURSOR_MM = 6.0;
 
 /**
  * Largura e altura do bloco de assinatura para N assinantes.
@@ -61,5 +73,6 @@ function assinaturaPrecisaNovaPagina(
     float $inicioAssinaturaY,
     float $respiro = ASSINATURA_RESPIRO_MM
 ): bool {
-    return ($fimConteudoY + $respiro) > $inicioAssinaturaY;
+    $fimVisivelY = $fimConteudoY - ASSINATURA_FOLGA_CURSOR_MM;
+    return ($fimVisivelY + $respiro) > $inicioAssinaturaY;
 }
