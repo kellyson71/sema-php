@@ -29,7 +29,7 @@ return [
         [
             'tipo'   => 'paragrafos',
             'textos' => [
-                'O presente parecer tem por objetivo a análise técnica ambiental da solicitação de emissão de alvará de habite-se para a edificação com área construída de <strong>{{area_construida}} m²</strong>, situada no endereço <strong>{{endereco_objetivo}}</strong>, conforme <strong>{{responsavel_tecnico_rotulo}} Nº {{responsavel_tecnico_numero}}</strong>.',
+                'O presente parecer tem por objetivo a análise técnica ambiental da solicitação de emissão de alvará de habite-se para a edificação com área construída de <strong>{{area_construida}} m²</strong>, situada no endereço supracitado, conforme <strong>{{responsavel_tecnico_rotulo}} Nº {{responsavel_tecnico_numero}}</strong>.',
             ],
         ],
 
