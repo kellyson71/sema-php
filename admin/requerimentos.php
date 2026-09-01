@@ -190,7 +190,7 @@ $selectReq = "SELECT 'requerimento' AS tipo_registro, r.id, r.protocolo,
     0 AS anonimo, r.data_envio AS data_processo, r.tipo_alvara,
     r.setor_atual, r.aguardando_acao, r.visualizado, r.motivo_devolucao,
     r.devolvido_por, (SELECT a.nivel FROM administradores a WHERE a.id = r.devolvido_por) AS devolvido_por_nivel,
-    NULL AS tipo_denuncia
+    NULL AS tipo_denuncia, r.especificacao, r.endereco_objetivo, r.responsavel_tecnico_nome
     FROM requerimentos r JOIN requerentes req ON r.requerente_id = req.id
     WHERE " . implode(' AND ', $whereReq);
 
@@ -233,7 +233,7 @@ if ($filtroFonte !== 'requerimentos') {
         d.status, d.setor, d.origem, d.anonimo, d.data_registro AS data_processo,
         NULL AS tipo_alvara, NULL AS setor_atual, NULL AS aguardando_acao, 1 AS visualizado,
         NULL AS motivo_devolucao, NULL AS devolvido_por, NULL AS devolvido_por_nivel,
-        d.tipo_denuncia
+        d.tipo_denuncia, NULL AS especificacao, NULL AS endereco_objetivo, NULL AS responsavel_tecnico_nome
         FROM denuncias d WHERE " . implode(' AND ', $whereDen);
     $params = array_merge($params, $paramsDen);
 }
@@ -733,6 +733,14 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                     'retorno_recusado' => 'retorno-recusado',
                     default => '',
                 };
+                // Preview do que é específico deste requerimento — sem isso, todo
+                // registro do mesmo tipo mostra exatamente o mesmo texto na lista.
+                $previewReq = trim((string) ($req['especificacao'] ?? ''));
+                if ($previewReq === '') $previewReq = trim((string) ($req['endereco_objetivo'] ?? ''));
+                if ($previewReq === '' && !empty($req['responsavel_tecnico_nome'])) {
+                    $previewReq = 'Responsável técnico: ' . trim((string) $req['responsavel_tecnico_nome']);
+                }
+                $previewReq = mb_strimwidth($previewReq, 0, 130, '…', 'UTF-8');
                 ?>
                 <article class="req-list-item <?= $req['visualizado'] == 0 ? 'is-unread' : '' ?> <?= $extraCardClass ?>" data-id="<?= (int) $req['id'] ?>">
                     <div class="req-list-check">
@@ -780,6 +788,9 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                             <span class="req-type-short"><?= htmlspecialchars($short) ?></span>
                             <span class="req-type-name"><?= htmlspecialchars(nomeAlvara($req['tipo_alvara'])) ?></span>
                         </div>
+                        <?php if ($previewReq !== ''): ?>
+                            <div class="req-preview"><?= htmlspecialchars($previewReq) ?></div>
+                        <?php endif; ?>
                     </button>
 
                     <div class="req-list-side">

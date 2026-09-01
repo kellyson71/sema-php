@@ -30,14 +30,16 @@ $limite  = 6;
 // maioria das instalações; SOUNDEX cobre pequenos erros fonéticos/digitados.
 $termoSemPontuacao = preg_replace('/[^[:alnum:]À-ÿ]+/u', ' ', $termo);
 $palavras = array_values(array_filter(preg_split('/\s+/u', $termoSemPontuacao)));
-$condicoes = ['r.protocolo LIKE ?', 'req.nome LIKE ?', 'req.cpf_cnpj LIKE ?', 'SOUNDEX(req.nome) = SOUNDEX(?)'];
-$parametrosBusca = [$curinga, $curinga, $curinga, $termo];
+$condicoes = ['r.protocolo LIKE ?', 'req.nome LIKE ?', 'req.cpf_cnpj LIKE ?', 'SOUNDEX(req.nome) = SOUNDEX(?)', 'prop.nome LIKE ?'];
+$parametrosBusca = [$curinga, $curinga, $curinga, $termo, $curinga];
 
 // Cada palavra também é consultada separadamente: "joao silv" encontra
 // "João da Silva", mesmo com apenas parte do nome digitada.
 foreach ($palavras as $palavra) {
     if (mb_strlen($palavra) < 2) continue;
     $condicoes[] = 'req.nome LIKE ?';
+    $parametrosBusca[] = '%' . $palavra . '%';
+    $condicoes[] = 'prop.nome LIKE ?';
     $parametrosBusca[] = '%' . $palavra . '%';
 }
 $whereBusca = implode(' OR ', $condicoes);
@@ -48,6 +50,7 @@ try {
                req.nome AS requerente_nome, req.cpf_cnpj AS requerente_cpf
         FROM requerimentos r
         JOIN requerentes req ON r.requerente_id = req.id
+        LEFT JOIN proprietarios prop ON r.proprietario_id = prop.id
         WHERE {$whereBusca}
         ORDER BY
             -- Protocolo exato primeiro: quem digita o número inteiro quer aquele.
@@ -88,9 +91,43 @@ $resultados = array_map(static function (array $r) use ($rotuloSetor) {
     ];
 }, $linhas);
 
+// Responsáveis técnicos: mesmo termo, busca por nome ou registro (CREA/CAU).
+try {
+    $stmtRt = $pdo->prepare("
+        SELECT rt.id, rt.nome, rt.conselho, rt.registro, rt.email,
+               COUNT(rto.requerimento_id) AS total_obras
+        FROM responsaveis_tecnicos rt
+        LEFT JOIN responsavel_tecnico_obras rto ON rto.responsavel_tecnico_id = rt.id
+        WHERE rt.nome LIKE ? OR rt.registro LIKE ?
+        GROUP BY rt.id
+        ORDER BY rt.nome ASC
+        LIMIT " . ($limite + 1) . "
+    ");
+    $stmtRt->execute([$curinga, $curinga]);
+    $linhasRt = $stmtRt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $linhasRt = [];
+}
+
+$temMaisRt = count($linhasRt) > $limite;
+$linhasRt  = array_slice($linhasRt, 0, $limite);
+
+$resultadosRt = array_map(static function (array $rt) {
+    return [
+        'id'          => (int) $rt['id'],
+        'nome'        => $rt['nome'],
+        'conselho'    => $rt['conselho'],
+        'registro'    => $rt['registro'],
+        'total_obras' => (int) $rt['total_obras'],
+        'url'         => 'responsaveis_tecnicos.php?id=' . (int) $rt['id'],
+    ];
+}, $linhasRt);
+
 echo json_encode([
-    'resultados' => $resultados,
-    'total'      => count($resultados),
-    'tem_mais'   => $temMais,
-    'termo'      => $termo,
+    'resultados'    => $resultados,
+    'total'         => count($resultados),
+    'tem_mais'      => $temMais,
+    'resultados_rt' => $resultadosRt,
+    'tem_mais_rt'   => $temMaisRt,
+    'termo'         => $termo,
 ], JSON_UNESCAPED_UNICODE);

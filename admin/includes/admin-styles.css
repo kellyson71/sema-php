@@ -518,6 +518,16 @@
   font-size: 0.85rem;
 }
 
+.req-preview {
+  margin-top: 6px;
+  color: var(--req-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .req-list-side {
   display: flex;
   flex-direction: column;

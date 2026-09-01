@@ -70,7 +70,7 @@ $isAnalista = ($nivelAtual === 'analista' || $isAdmin);
 $isSecretario = ($nivelAtual === 'secretario' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
 $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../' . urlArquivo('perfil/' . $adminData['foto_perfil']) : null;
-$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php'], true);
+$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php', 'responsaveis_tecnicos.php'], true);
 $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente';
 
 $searchItems = [
@@ -82,6 +82,7 @@ $searchItems = [
     ['label' => 'Arquivados', 'caption' => 'Consultar requerimentos arquivados', 'url' => $adminBase . 'requerimentos_arquivados.php', 'icon' => 'fa-box-archive'],
     ['label' => 'Documentos Assinados', 'caption' => 'Acervo de documentos assinados', 'url' => $adminBase . 'documentos_assinados.php', 'icon' => 'fa-file-signature'],
     ['label' => 'Histórico de Envios', 'caption' => 'Logs de emails enviados', 'url' => $adminBase . 'logs_email.php', 'icon' => 'fa-envelope-open-text'],
+    ['label' => 'Responsáveis Técnicos', 'caption' => 'Catálogo de engenheiros/arquitetos', 'url' => $adminBase . 'responsaveis_tecnicos.php', 'icon' => 'fa-hard-hat'],
     ['label' => 'Meu Perfil', 'caption' => 'Dados do usuário logado', 'url' => $adminBase . 'perfil.php', 'icon' => 'fa-user-gear'],
 ];
 
@@ -1597,6 +1598,16 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <li>
+                        <a href="<?= $adminBase ?>responsaveis_tecnicos.php" class="sidebar-link <?= $currentPage === 'responsaveis_tecnicos.php' ? 'active' : '' ?>" title="Responsáveis Técnicos">
+                            <span class="sidebar-link-icon"><i class="fas fa-hard-hat"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Responsáveis Técnicos</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -1829,6 +1840,13 @@ if ($isAnalista) {
                             <span class="search-section-hint" id="searchReqHint"></span>
                         </div>
                         <div id="searchReqList"></div>
+                    </div>
+                    <div id="searchRtSection" class="d-none">
+                        <div class="search-section-head">
+                            <span>Responsáveis Técnicos</span>
+                            <span class="search-section-hint" id="searchRtHint"></span>
+                        </div>
+                        <div id="searchRtList"></div>
                     </div>
                     <div class="search-section-head search-atalhos-head d-none" id="searchAtalhosHead">Ir para</div>
                     <?php foreach ($searchItems as $item): ?>

@@ -124,6 +124,9 @@
                 const searchReqSection = document.getElementById('searchReqSection');
                 const searchReqList    = document.getElementById('searchReqList');
                 const searchReqHint    = document.getElementById('searchReqHint');
+                const searchRtSection  = document.getElementById('searchRtSection');
+                const searchRtList     = document.getElementById('searchRtList');
+                const searchRtHint     = document.getElementById('searchRtHint');
                 const searchAtalhosHead= document.getElementById('searchAtalhosHead');
                 const searchLoading    = document.getElementById('globalSearchLoading');
 
@@ -226,6 +229,38 @@
                     return itens.length;
                 }
 
+                function renderResponsaveisTecnicos(dados, termo) {
+                    if (!searchRtList || !searchRtSection) return 0;
+                    const itens = (dados && dados.resultados_rt) || [];
+
+                    if (itens.length === 0) {
+                        searchRtSection.classList.add('d-none');
+                        searchRtList.innerHTML = '';
+                        return 0;
+                    }
+
+                    searchRtList.innerHTML = itens.map((rt) => `
+                        <a href="${rt.url}" class="search-result-item search-req" data-search-item data-rt>
+                            <span class="search-result-icon"><i class="fas fa-hard-hat"></i></span>
+                            <span class="search-result-copy">
+                                <span class="search-result-title">
+                                    <span class="search-req-nome">${realca(rt.nome, termo)}</span>
+                                </span>
+                                <span class="search-result-caption">
+                                    ${escapaHtmlBusca(rt.conselho)} ${escapaHtmlBusca(rt.registro)} · ${rt.total_obras} obra(s)
+                                </span>
+                            </span>
+                        </a>`).join('');
+
+                    if (searchRtHint) {
+                        searchRtHint.textContent = dados.tem_mais_rt
+                            ? 'mostrando os ' + itens.length + ' mais recentes — Enter vê todos'
+                            : (itens.length === 1 ? '1 encontrado' : itens.length + ' encontrados');
+                    }
+                    searchRtSection.classList.remove('d-none');
+                    return itens.length;
+                }
+
                 // Renumera tudo o que está visível (requerimentos + atalhos) para
                 // as setas percorrerem a lista inteira, e não só uma das partes.
                 function reindexarBusca() {
@@ -272,6 +307,7 @@
                             if (!dados || dados.termo !== searchInput.value.trim()) return;
                             ultimoTermoReq = termo;
                             const qtdReq = renderRequerimentos(dados, termo);
+                            const qtdRt = renderResponsaveisTecnicos(dados, termo);
                             const qtdAtalhos = filtrarAtalhos(termo.toLowerCase());
                             const total = reindexarBusca();
                             searchEmpty?.classList.toggle('d-none', total > 0);
@@ -294,6 +330,7 @@
                         clearTimeout(buscaTimer);
                         searchLoading?.classList.add('d-none');
                         searchReqSection?.classList.add('d-none');
+                        searchRtSection?.classList.add('d-none');
                         ultimoTermoReq = '';
                         filtrarAtalhos(termoBaixo);
                         const total = reindexarBusca();

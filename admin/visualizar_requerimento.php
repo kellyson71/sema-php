@@ -555,6 +555,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['adicionar_nota_inter
     }
 }
 
+// Salvar classificação interna do Habite-se (padrão construtivo interno e
+// denominação interna) — só a equipe da SEMA vê e preenche esses campos.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_internos_habite'])) {
+    if (!adminPostCsrfValido()) {
+        setMensagem('danger', 'Sessão expirada. Recarregue a página e tente novamente.');
+    } else {
+        $padraoInterno = mb_substr(trim($_POST['habite_padrao_interno'] ?? ''), 0, 100);
+        $denominacaoInterna = mb_substr(trim($_POST['habite_denominacao_interna'] ?? ''), 0, 150);
+        $stmt = $pdo->prepare('UPDATE requerimentos SET habite_padrao_interno = ?, habite_denominacao_interna = ? WHERE id = ?');
+        $stmt->execute([$padraoInterno ?: null, $denominacaoInterna ?: null, $id]);
+        setMensagem('success', 'Classificação interna salva.');
+    }
+    header("Location: visualizar_requerimento.php?id={$id}");
+    exit;
+}
+
 // Excluir observação interna
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_nota_interna'])) {
     $notaId = (int) ($_POST['nota_id'] ?? 0);
@@ -2893,6 +2909,11 @@ document.addEventListener('DOMContentLoaded', function() {
             .info-card-head { display:flex; align-items:center; gap:7px; padding:8px 14px; border-bottom:1px solid #dde8e2; }
             .info-card-head i { color:#5a8a6a; font-size:.78rem; }
             .info-card-head span { font-size:.7rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#5a8a6a; }
+            .rt-perfil-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px;
+                background:#eaf5ef; color:#1c4b36; font-size:.7rem; font-weight:700; text-transform:none; letter-spacing:0;
+                text-decoration:none; transition:.14s ease; }
+            .rt-perfil-chip i { color:inherit; font-size:.62rem; transition:.14s ease; }
+            .rt-perfil-chip:hover { background:#1c4b36; color:#fff; transform:translateX(1px); }
             .info-kv { display:grid; grid-template-columns:auto 1fr; gap:0 12px; padding:10px 14px; }
             .info-k { font-size:.73rem; font-weight:600; color:#8fa399; white-space:nowrap; padding:4px 0; border-bottom:1px solid #f2f6f4; }
             .info-v { font-size:.82rem; color:#1a2e1e; padding:4px 0; word-break:break-word; border-bottom:1px solid #f2f6f4; }
@@ -2970,11 +2991,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="info-kv">
                         <?php if ($isDesmembramento): ?>
                             <?php if (!empty($requerimento['matricula_imovel'])): ?>
-                                <span class="info-k">Matrícula (RGI)</span>
+                                <span class="info-k">Cadastro Imobiliário (imóvel original)</span>
                                 <span class="info-v quick-editable" data-quick-field="matricula_imovel" data-quick-value="<?= htmlspecialchars($requerimento['matricula_imovel'] ?? '', ENT_QUOTES) ?>"><span class="quick-value" style="font-weight:700;color:#14532d;"><?= htmlspecialchars($requerimento['matricula_imovel']) ?></span></span>
                             <?php endif; ?>
+                            <?php
+                            $desmJsonPreview = json_decode((string) ($requerimento['desmembramento_lotes_json'] ?? ''), true);
+                            $areaTotalDesconhecidaMotivo = trim((string) ($desmJsonPreview['area_total_desconhecida_motivo'] ?? ''));
+                            ?>
                             <span class="info-k">Área Total do Terreno</span>
-                            <span class="info-v quick-editable" data-quick-field="area_total_terreno" data-quick-value="<?= htmlspecialchars($requerimento['area_total_terreno'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['area_total_terreno']) ? htmlspecialchars(DocumentoRegras::formatarArea($requerimento['area_total_terreno'])) . ' m²' : $ni ?></span></span>
+                            <span class="info-v quick-editable" data-quick-field="area_total_terreno" data-quick-value="<?= htmlspecialchars($requerimento['area_total_terreno'] ?? '', ENT_QUOTES) ?>">
+                                <span class="quick-value"><?= !empty($requerimento['area_total_terreno']) ? htmlspecialchars(DocumentoRegras::formatarArea($requerimento['area_total_terreno'])) . ' m²' : $ni ?></span>
+                                <?php if ($areaTotalDesconhecidaMotivo !== ''): ?>
+                                    <span style="display:block;font-size:.74rem;color:#a15c00;background:#fff7e6;border:1px solid #ffe3ac;border-radius:6px;padding:5px 8px;margin-top:4px;">
+                                        <i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>Requerente não informou a área — motivo: <?= htmlspecialchars($areaTotalDesconhecidaMotivo) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </span>
                             <span class="info-k">Área Desmembrada</span>
                             <span class="info-v"><span class="quick-value" style="font-weight:700;"><?= htmlspecialchars(DocumentoRegras::somaLotesDesmembramento($requerimento)) ?> m²</span></span>
                             <span class="info-k">Área Remanescente</span>
@@ -3001,7 +3033,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     <span class="badge bg-light text-dark border">Cad.: <?= htmlspecialchars((string) $lote['cadastro_imobiliario']) ?></span>
                                                 <?php endif; ?>
                                             </div>
-                                            <?php if (!empty($lote['confrontacoes'])): ?>
+                                            <?php if (($lote['geometria'] ?? 'regular') === 'irregular'): ?>
+                                                <div style="font-size:.74rem;color:#496154;">
+                                                    <strong>Lote irregular:</strong> <?= nl2br(htmlspecialchars((string) ($lote['descricao_irregular'] ?? ''))) ?>
+                                                </div>
+                                            <?php elseif (!empty($lote['confrontacoes'])): ?>
                                                 <div style="font-size:.74rem;color:#496154;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px 8px;">
                                                     <?php foreach (['norte'=>'Norte','oeste'=>'Oeste','leste'=>'Leste','sul'=>'Sul'] as $rKey => $rLabel): ?>
                                                         <?php if (!empty($lote['confrontacoes'][$rKey]['metragem']) || !empty($lote['confrontacoes'][$rKey]['descricao'])): ?>
@@ -3042,6 +3078,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php if (!empty($requerimento['especificacao'])): ?>
                                 <span class="info-k">Especificação</span>
                                 <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
+                            <?php endif; ?>
+                            <?php if (!empty($requerimento['padrao_popular'])): ?>
+                                <span class="info-k">Padrão Popular (&lt;70m²)</span>
+                                <span class="info-v"><?= $requerimento['padrao_popular'] === 'sim' ? 'Sim' : 'Não' ?></span>
                             <?php endif; ?>
 
                         <?php elseif ($isHabiteSe): ?>
@@ -3115,6 +3155,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="info-k">Características</span>
                                 <span class="info-v quick-editable" data-quick-field="especificacao" data-quick-value="<?= htmlspecialchars($requerimento['especificacao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= nl2br(htmlspecialchars($requerimento['especificacao'])) ?></span></span>
                             <?php endif; ?>
+                            <?php if (!empty($requerimento['padrao_popular'])): ?>
+                                <span class="info-k">Padrão Popular (&lt;70m²)</span>
+                                <span class="info-v"><?= $requerimento['padrao_popular'] === 'sim' ? 'Sim' : 'Não' ?></span>
+                            <?php endif; ?>
+                            <?php if ($requerimento['bombeiro_possui'] !== null): ?>
+                                <span class="info-k">Corpo de Bombeiros</span>
+                                <span class="info-v"><?= $requerimento['bombeiro_possui'] ? ('Possui — ' . htmlspecialchars($requerimento['bombeiro_numero'] ?? '')) : 'Não possui' ?></span>
+                            <?php endif; ?>
 
                         <?php else: ?>
                             <?php if (!empty($requerimento['area_construida']) || !empty($requerimento['area_construcao'])): ?>
@@ -3174,10 +3222,49 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
+                <!-- Dados internos do Habite-se (classificação da própria SEMA, não vem do cidadão) -->
+                <?php if ($isHabiteSe): ?>
+                <div class="info-card">
+                    <div class="info-card-head"><i class="fas fa-clipboard-check"></i><span>Classificação Interna (SEMA)</span></div>
+                    <form method="post" class="d-flex flex-column gap-2">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="salvar_dados_internos_habite" value="1">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label" for="habite_padrao_interno" style="font-size:.78rem;font-weight:700;">Padrão Construtivo Interno</label>
+                                <input type="text" class="form-control form-control-sm" id="habite_padrao_interno" name="habite_padrao_interno"
+                                       value="<?= htmlspecialchars($requerimento['habite_padrao_interno'] ?? '', ENT_QUOTES) ?>" placeholder="Sujeito a avaliação técnica">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="habite_denominacao_interna" style="font-size:.78rem;font-weight:700;">Denominação Interna</label>
+                                <input type="text" class="form-control form-control-sm" id="habite_denominacao_interna" name="habite_denominacao_interna"
+                                       value="<?= htmlspecialchars($requerimento['habite_denominacao_interna'] ?? '', ENT_QUOTES) ?>" placeholder="Sujeito a avaliação técnica">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline-primary align-self-start">Salvar classificação interna</button>
+                    </form>
+                </div>
+                <?php endif; ?>
+
                 <!-- Responsável Técnico -->
                 <?php if (!empty($requerimento['responsavel_tecnico_nome'])): ?>
+                <?php
+                $rtPerfilId = null;
+                if (!empty($requerimento['responsavel_tecnico_registro'])) {
+                    $stRtPerfil = $pdo->prepare('SELECT id FROM responsaveis_tecnicos WHERE registro = ? LIMIT 1');
+                    $stRtPerfil->execute([$requerimento['responsavel_tecnico_registro']]);
+                    $rtPerfilId = $stRtPerfil->fetchColumn() ?: null;
+                }
+                ?>
                 <div class="info-card">
-                    <div class="info-card-head"><i class="fas fa-hard-hat"></i><span>Responsável Técnico</span></div>
+                    <div class="info-card-head">
+                        <i class="fas fa-hard-hat"></i><span>Responsável Técnico</span>
+                        <?php if ($rtPerfilId): ?>
+                            <a href="responsaveis_tecnicos.php?id=<?= (int) $rtPerfilId ?>" class="rt-perfil-chip ms-auto">
+                                Ver perfil completo<i class="fas fa-arrow-right"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
                     <div class="info-kv">
                         <span class="info-k">Nome</span>
                         <span class="info-v quick-editable" data-quick-field="responsavel_tecnico_nome" data-quick-value="<?= htmlspecialchars($requerimento['responsavel_tecnico_nome'] ?? '', ENT_QUOTES) ?>" style="font-weight:700;"><span class="quick-value"><?= htmlspecialchars($requerimento['responsavel_tecnico_nome']) ?></span></span>
