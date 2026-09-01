@@ -4547,6 +4547,11 @@ document.addEventListener('DOMContentLoaded', function() {
 #arquivarModal .clean-action-modal .modal-footer form,
 #indeferimentoModal .clean-action-modal .modal-footer form,
 [id^="reabrirPendenciaModal"] .clean-action-modal .modal-footer form { display:contents; }
+
+/* Os .alert do Bootstrap nesses modais ficavam com opacity:0 (herdado de algum
+   lugar fora do nosso controle — não é regra nossa, nem do Bootstrap puro),
+   deixando um vão em branco no lugar do aviso amarelo. Força visível. */
+.clean-action-body .alert { opacity:1 !important; animation:none !important; }
 </style>
 
 <!-- Modal: Enviar Boleto -->
