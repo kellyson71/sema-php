@@ -2973,7 +2973,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <!-- Requerente -->
                 <div class="info-card">
-                    <div class="info-card-head"><i class="fas fa-user"></i><span>Requerente</span></div>
+                    <div class="info-card-head">
+                        <i class="fas fa-user"></i><span>Requerente</span>
+                        <?php if (!empty($requerimento['requerente_cpf_cnpj'])): ?>
+                            <a href="requerente_perfil.php?cpf=<?= urlencode($requerimento['requerente_cpf_cnpj']) ?>" class="rt-perfil-chip ms-auto">
+                                Ver perfil completo<i class="fas fa-arrow-right"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
                     <div class="info-kv">
                         <span class="info-k">Nome</span>
                         <span class="info-v quick-editable" data-quick-field="requerente_nome" data-quick-value="<?= htmlspecialchars($requerimento['requerente_nome'] ?? '', ENT_QUOTES) ?>" style="font-weight:700;"><span class="quick-value"><?= htmlspecialchars($requerimento['requerente_nome'] ?? '') ?></span></span>
