@@ -81,12 +81,17 @@ final class DocumentoRegras
     public static function conselhoResponsavel(array $r): string
     {
         $valor = mb_strtoupper(trim((string) ($r['responsavel_tecnico_tipo_documento'] ?? '')), 'UTF-8');
-        return in_array($valor, ['CAU', 'RRT'], true) ? 'CAU' : 'CREA';
+        if (in_array($valor, ['CAU', 'RRT'], true)) return 'CAU';
+        if ($valor === 'CTF') return 'CTF';
+        return 'CREA';
     }
 
     public static function rotuloDocumentoTecnico(array $r): string
     {
-        return self::conselhoResponsavel($r) === 'CAU' ? 'RRT' : 'ART';
+        $conselho = self::conselhoResponsavel($r);
+        if ($conselho === 'CAU') return 'RRT';
+        if ($conselho === 'CTF') return 'Registro';
+        return 'ART';
     }
 
     public static function textoPavimentos($quantidade): string
@@ -241,6 +246,13 @@ final class DocumentoRegras
             $cadastroTexto = $cadastro !== '' ? ' DO CADASTRO ' . htmlspecialchars($cadastro, ENT_QUOTES, 'UTF-8') : '';
             $html .= '<p><strong>DESCRIÇÃO DO LOTE Nº ' . $numero . $cadastroTexto
                 . ' COM ' . htmlspecialchars($area, ENT_QUOTES, 'UTF-8') . ' M²:</strong></p>';
+
+            if (($lote['geometria'] ?? 'regular') === 'irregular') {
+                $descricaoIrregular = mb_strtoupper(trim((string) ($lote['descricao_irregular'] ?? '')), 'UTF-8');
+                $html .= '<p>' . htmlspecialchars($descricaoIrregular, ENT_QUOTES, 'UTF-8') . '</p>';
+                continue;
+            }
+
             foreach (['norte' => 'AO NORTE', 'oeste' => 'A OESTE', 'leste' => 'AO LESTE', 'sul' => 'AO SUL'] as $rumo => $textoRumo) {
                 $lado = (array) ($lote['confrontacoes'][$rumo] ?? []);
                 $metragem = self::formatarArea($lado['metragem'] ?? '');

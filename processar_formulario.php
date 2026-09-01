@@ -181,10 +181,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setMensagem('erro', 'Informe todos os dados obrigatórios do responsável técnico, incluindo conselho, registro e ART/RRT.');
         redirect('index.php');
     }
-    if ($responsavel_tecnico_tipo_documento !== '' && !in_array(strtoupper($responsavel_tecnico_tipo_documento), ['CREA', 'CAU'], true)) {
+    if ($responsavel_tecnico_tipo_documento !== '' && !in_array(strtoupper($responsavel_tecnico_tipo_documento), ['CREA', 'CAU', 'CTF'], true)) {
         $_SESSION['form_data'] = $_POST;
         $_SESSION['form_step'] = 1;
-        setMensagem('erro', 'Selecione CREA ou CAU como conselho do responsável técnico.');
+        setMensagem('erro', 'Selecione CREA, CAU ou CTF como conselho/documento do responsável técnico.');
         redirect('index.php');
     }
 
@@ -196,6 +196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $area_total_terreno       = trim($_POST['area_total_terreno'] ?? '');
     $area_remanescente        = trim($_POST['area_remanescente'] ?? '');
     $alvara_construcao_numero = trim($_POST['alvara_construcao_numero'] ?? '');
+    $padrao_popular_post      = $_POST['padrao_popular'] ?? '';
+    $padrao_popular           = in_array($padrao_popular_post, ['sim', 'nao'], true) ? $padrao_popular_post : null;
+    $bombeiro_possui_post     = $_POST['bombeiro_possui'] ?? '';
+    $bombeiro_possui          = $bombeiro_possui_post === '1' ? 1 : ($bombeiro_possui_post === '0' ? 0 : null);
+    $bombeiro_numero          = $bombeiro_possui === 1 ? trim((string) ($_POST['bombeiro_numero'] ?? '')) : '';
     // O parecer técnico do Habite-se é parâmetro institucional, não campo do cidadão.
     $eng_fiscal_nome          = 'ISABELY KEYVA FERNANDES COSTA';
     $eng_fiscal_registro      = '2118668139';
@@ -285,31 +290,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $lotes = [];
         $areaPrimeiroLote = $toArea($_POST['area_lote'] ?? '');
+        $geometriaPrimeiroLote = ($_POST['geometria'] ?? 'regular') === 'irregular' ? 'irregular' : 'regular';
         $lotes[] = [
             'ordem' => 1,
             'area' => $areaPrimeiroLote,
             'cadastro_imobiliario' => trim((string) ($_POST['cadastro_imobiliario'] ?? '')),
-            'confrontacoes' => $confrontacoes(),
+            'geometria' => $geometriaPrimeiroLote,
+            'descricao_irregular' => $geometriaPrimeiroLote === 'irregular' ? trim((string) ($_POST['descricao_irregular'] ?? '')) : '',
+            'confrontacoes' => $geometriaPrimeiroLote === 'irregular' ? [] : $confrontacoes(),
         ];
         foreach ((array) ($_POST['lotes'] ?? []) as $index => $lotePost) {
             if (!is_array($lotePost)) continue;
+            $geometriaLote = ($lotePost['geometria'] ?? 'regular') === 'irregular' ? 'irregular' : 'regular';
             $lados = [];
-            foreach (['norte', 'oeste', 'leste', 'sul'] as $rumo) {
-                $ladoPost = (array) ($lotePost['confrontacoes'][$rumo] ?? []);
-                $lados[$rumo] = [
-                    'metragem' => $toArea($ladoPost['metragem'] ?? ''),
-                    'descricao' => trim((string) ($ladoPost['descricao'] ?? '')),
-                ];
+            if ($geometriaLote !== 'irregular') {
+                foreach (['norte', 'oeste', 'leste', 'sul'] as $rumo) {
+                    $ladoPost = (array) ($lotePost['confrontacoes'][$rumo] ?? []);
+                    $lados[$rumo] = [
+                        'metragem' => $toArea($ladoPost['metragem'] ?? ''),
+                        'descricao' => trim((string) ($ladoPost['descricao'] ?? '')),
+                    ];
+                }
             }
             $lotes[] = [
                 'ordem' => count($lotes) + 1,
                 'area' => $toArea($lotePost['area'] ?? ''),
                 'cadastro_imobiliario' => trim((string) ($lotePost['cadastro_imobiliario'] ?? '')),
+                'geometria' => $geometriaLote,
+                'descricao_irregular' => $geometriaLote === 'irregular' ? trim((string) ($lotePost['descricao_irregular'] ?? '')) : '',
                 'confrontacoes' => $lados,
             ];
         }
 
         $totalTerreno = $toArea($_POST['area_total_terreno'] ?? '');
+        $areaTotalDesconhecida = !empty($_POST['area_total_desconhecida']);
+        $areaTotalDesconhecidaMotivo = $areaTotalDesconhecida ? trim((string) ($_POST['area_total_desconhecida_motivo'] ?? '')) : '';
+        if ($areaTotalDesconhecida && $areaTotalDesconhecidaMotivo === '') {
+            $_SESSION['form_data'] = $_POST;
+            $_SESSION['form_step'] = 2;
+            setMensagem('erro', 'Explique por que não sabe a área total do terreno.');
+            redirect('index.php');
+        }
         $somaLotes = array_sum(array_column($lotes, 'area'));
         $inconsistencia = $totalTerreno > 0 && $somaLotes > $totalTerreno;
         foreach ($lotes as $lote) {
@@ -318,6 +339,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['form_step'] = 2;
                 setMensagem('erro', 'Informe uma área válida para cada lote do desmembramento.');
                 redirect('index.php');
+            }
+            if ($lote['geometria'] === 'irregular') {
+                if ($lote['descricao_irregular'] === '') {
+                    $_SESSION['form_data'] = $_POST;
+                    $_SESSION['form_step'] = 2;
+                    setMensagem('erro', 'Descreva o formato de cada lote marcado como irregular.');
+                    redirect('index.php');
+                }
+                continue;
             }
             foreach ($lote['confrontacoes'] as $lado) {
                 if ($lado['metragem'] <= 0 || $lado['descricao'] === '') {
@@ -328,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        if ($totalTerreno <= 0) {
+        if ($totalTerreno <= 0 && !$areaTotalDesconhecida) {
             $_SESSION['form_data'] = $_POST;
             $_SESSION['form_step'] = 2;
             setMensagem('erro', 'Informe uma área válida para a porção maior do terreno.');
@@ -340,11 +370,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setMensagem('erro', 'A soma das áreas dos lotes não pode ser maior que a área da porção maior.');
             redirect('index.php');
         }
-        $area_remanescente = number_format(max(0, $totalTerreno - $somaLotes), 2, ',', '.');
+        $area_remanescente = $areaTotalDesconhecida ? '' : number_format(max(0, $totalTerreno - $somaLotes), 2, ',', '.');
         $desmembramentoLotesJson = json_encode([
-            'area_total_terreno' => $totalTerreno,
+            'area_total_terreno' => $areaTotalDesconhecida ? null : $totalTerreno,
+            'area_total_desconhecida' => $areaTotalDesconhecida,
+            'area_total_desconhecida_motivo' => $areaTotalDesconhecidaMotivo ?: null,
             'soma_lotes' => $somaLotes,
-            'area_remanescente' => max(0, $totalTerreno - $somaLotes),
+            'area_remanescente' => $areaTotalDesconhecida ? null : max(0, $totalTerreno - $somaLotes),
             'inconsistencia' => $inconsistencia,
             'lotes' => $lotes,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -404,6 +436,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'habite_forro' => $habiteCampos['habite_forro'] ?: null,
         'habite_cobertura' => $habiteCampos['habite_cobertura'] ?: null,
         'habite_ambientes_json' => $habiteAmbientesJson,
+        'padrao_popular' => $padrao_popular,
+        'bombeiro_possui' => $bombeiro_possui,
+        'bombeiro_numero' => $bombeiro_numero ?: null,
         'notificado_fiscal_obras' => isset($_POST['notificado_fiscal_obras']) ? (int)$_POST['notificado_fiscal_obras'] : null,
         'enquadramento_atividade' => $enquadramento_atividade ?: null,
         'localizacao_google_maps' => $localizacao_google_maps ?: null,

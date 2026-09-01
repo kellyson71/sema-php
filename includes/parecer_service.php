@@ -208,8 +208,11 @@ class ParecerService
             'area_lote' => $requerimento['area_lote'] !== null && $requerimento['area_lote'] !== '' ? DocumentoRegras::formatarArea($requerimento['area_lote']) : '',
             // Campos dos modelos de construção / habite-se / desmembramento
             'cadastro_imobiliario' => $cadastroImobiliario,
+            // Nota: a coluna do banco ainda se chama matricula_imovel por
+            // motivos históricos, mas hoje guarda o Cadastro Imobiliário do
+            // imóvel original a ser desmembrado (ver index.php/js/public-form.js).
             'matricula_imovel' => trim((string) ($requerimento['matricula_imovel'] ?? '')),
-            'desmembramento_matricula_texto' => trim((string) ($requerimento['matricula_imovel'] ?? '')) !== '' ? ', COM MATRÍCULA Nº ' . trim((string) ($requerimento['matricula_imovel'] ?? '')) . ' DO REGISTRO GERAL DE IMÓVEIS (RGI)' : '',
+            'desmembramento_matricula_texto' => trim((string) ($requerimento['matricula_imovel'] ?? '')) !== '' ? ', COM CADASTRO IMOBILIÁRIO Nº ' . trim((string) ($requerimento['matricula_imovel'] ?? '')) : '',
             'inicio_obra' => $inicioObra,
             'termino_obra' => $terminoObra,
             'area_total_terreno' => $areaTotalTerreno,

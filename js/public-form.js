@@ -194,15 +194,16 @@
         <p class="public-field-note">Informe os dados do profissional quando houver responsável técnico vinculado ao serviço.</p>
         <div class="form-grid-2">
           <input ${req} name="responsavel_tecnico_nome" placeholder="Nome do responsável técnico${mark}">
-          <select ${req} name="responsavel_tecnico_tipo_documento">
+          <select ${req} name="responsavel_tecnico_tipo_documento" data-rt-conselho>
             <option value="">Conselho / documento${mark}</option>
             <option value="CREA">CREA</option>
             <option value="CAU">CAU</option>
+            <option value="CTF">CTF</option>
           </select>
         </div>
         <div class="form-grid-2">
           <input ${req} name="responsavel_tecnico_registro" placeholder="Registro profissional${mark}">
-          <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}">
+          <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}" data-rt-numero>
         </div>
         <div class="form-grid-2">
           <input type="email" name="responsavel_tecnico_email" placeholder="E-mail do responsável técnico">
@@ -212,10 +213,22 @@
     `;
   }
 
+  function renderPadraoPopular() {
+    return `
+      <div class="form-section-label" style="margin-top:14px;">É construção de padrão popular (menor que 70m²)?</div>
+      <div class="form-grid-2">
+        <label class="public-choice-card"><input type="radio" name="padrao_popular" value="sim"> Sim</label>
+        <label class="public-choice-card"><input type="radio" name="padrao_popular" value="nao"> Não</label>
+      </div>
+    `;
+  }
+
   function renderDesmembramentoLote(index, label) {
     const prefix = index === 0 ? '' : `lotes[${index}]`;
     const areaName = index === 0 ? 'area_lote' : `${prefix}[area]`;
     const cadastroName = index === 0 ? 'cadastro_imobiliario' : `${prefix}[cadastro_imobiliario]`;
+    const geometriaName = index === 0 ? 'geometria' : `${prefix}[geometria]`;
+    const descricaoIrregularName = index === 0 ? 'descricao_irregular' : `${prefix}[descricao_irregular]`;
     const confrontoName = (rumo, campo) => index === 0
       ? `confrontacao_${rumo}_${campo}`
       : `${prefix}[confrontacoes][${rumo}][${campo}]`;
@@ -239,8 +252,22 @@
             <input name="${cadastroName}" placeholder="Ex.: 1010844 (opcional)" data-desmembramento-field>
           </label>
         </div>
-        <div class="public-section-heading-small">Confrontações</div>
-        <div class="public-confrontacoes-grid">
+        <div class="form-section-label" style="margin-top:14px;">Geometria do lote *</div>
+        <div class="form-grid-2 public-lote-geometria-grid">
+          <label class="public-choice-card">
+            <input type="radio" name="${geometriaName}" value="regular" checked required data-lote-geometria>
+            Regular <span style="font-weight:400;font-size:.78rem;">(informo as confrontações)</span>
+          </label>
+          <label class="public-choice-card public-lote-geometria-irregular">
+            <input type="radio" name="${geometriaName}" value="irregular" required data-lote-geometria>
+            <svg width="34" height="26" viewBox="0 0 34 26" aria-hidden="true" style="flex-shrink:0;">
+              <polygon points="3,20 9,4 22,2 31,11 26,24 12,23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            Irregular <span style="font-weight:400;font-size:.78rem;">(descrevo o formato em texto)</span>
+          </label>
+        </div>
+        <div class="public-section-heading-small" data-confrontacoes-heading>Confrontações</div>
+        <div class="public-confrontacoes-grid" data-confrontacoes-grid>
           ${[
             ['norte', 'Norte'],
             ['oeste', 'Oeste'],
@@ -263,8 +290,43 @@
             </fieldset>
           `).join('')}
         </div>
+        <label class="public-description-field" data-descricao-irregular-field hidden>
+          Descreva o formato do lote e seus limites *
+          <textarea name="${descricaoIrregularName}" rows="3" placeholder="Ex.: Lote em formato de L, com frente de 12m para a Rua X, fundos irregulares acompanhando o curso do riacho..." data-desmembramento-field></textarea>
+        </label>
       </section>
     `;
+  }
+
+  // Ocorrências mostradas na denúncia mudam conforme a área escolhida
+  // (Meio Ambiente x Obras e Serviços Urbanos) — cada setor recebe categorias
+  // relevantes à sua fiscalização.
+  const TIPOS_OCORRENCIA_POR_SETOR = {
+    meio_ambiente: [
+      ['desmatamento', 'Desmatamento / supressão de vegetação'],
+      ['queimada', 'Queimada'],
+      ['poluicao_agua', 'Poluição da água (rio/açude)'],
+      ['poluicao_ar', 'Poluição do ar / fumaça'],
+      ['poluicao_sonora', 'Poluição sonora'],
+      ['maus_tratos_animais', 'Maus-tratos a animais'],
+      ['descarte_irregular_ambiental', 'Descarte irregular de resíduos/entulho em área ambiental'],
+      ['outros', 'Outros']
+    ],
+    obras_urbanismo: [
+      ['obstrucao_via', 'Obstrução de via'],
+      ['terreno_sujo', 'Terreno sujo'],
+      ['terreno_baldio', 'Terreno baldio'],
+      ['esgoto_via', 'Esgoto em via pública'],
+      ['construcao_irregular', 'Construção irregular'],
+      ['entulho_construcao', 'Entulho em construção civil'],
+      ['entulho_via', 'Entulho em via pública'],
+      ['outros', 'Outros']
+    ]
+  };
+
+  function renderTiposOcorrenciaOptions(setor) {
+    const opcoes = TIPOS_OCORRENCIA_POR_SETOR[setor] || TIPOS_OCORRENCIA_POR_SETOR.obras_urbanismo;
+    return opcoes.map(([val, label]) => `<label class="public-choice-card"><input type="checkbox" name="tipos_denuncia[]" value="${val}" onchange="toggleOutros(this)"> ${label}</label>`).join('');
   }
 
   function renderDynamicFields(tipo) {
@@ -284,16 +346,7 @@
 
         <div class="form-section-label" style="margin-top:18px;">Tipo de ocorrência <span style="color:#f87171">*</span></div>
         <div class="public-check-grid" id="tipos_denuncia_grid">
-          ${[
-            ['obstrucao_via', 'Obstrução de via'],
-            ['terreno_sujo', 'Terreno sujo'],
-            ['terreno_baldio', 'Terreno baldio'],
-            ['esgoto_via', 'Esgoto em via pública'],
-            ['construcao_irregular', 'Construção irregular'],
-            ['entulho_construcao', 'Entulho em construção civil'],
-            ['entulho_via', 'Entulho em via pública'],
-            ['outros', 'Outros']
-          ].map(([val, label]) => `<label class="public-choice-card"><input type="checkbox" name="tipos_denuncia[]" value="${val}" onchange="toggleOutros(this)"> ${label}</label>`).join('')}
+          ${renderTiposOcorrenciaOptions('obras_urbanismo')}
         </div>
         <div id="bloco_outros" style="display:none;margin-top:10px;">
           <input name="outros_descricao" placeholder="Descreva a ocorrência marcada como Outros *" style="width:100%">
@@ -326,6 +379,7 @@
           <label>Início previsto<input type="date" name="inicio_obra"></label>
           <label>Término previsto<input type="date" name="termino_obra"></label>
         </div>
+        ${renderPadraoPopular()}
         <input type="hidden" name="especificacao" data-service-preview-output>
         <div class="public-preview-box"><span>Prévia da especificação:</span><strong data-service-preview>Selecione os dados da obra para gerar a frase.</strong></div>
       `;
@@ -338,15 +392,22 @@
             Área total do terreno (m²) *
             <input required type="number" inputmode="decimal" min="0.01" step="0.01"
                    name="area_total_terreno" placeholder="Ex.: 500,00" data-area-total>
+            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Área total do terreno a ser desmembrado (soma de todos os lotes resultantes).</span>
+            <label class="public-location-flag" style="margin-top:6px;">
+              <input type="checkbox" name="area_total_desconhecida" value="1" data-area-total-desconhecida> <span>Não sei a área total</span>
+            </label>
+            <textarea name="area_total_desconhecida_motivo" rows="2" placeholder="Por que não sabe a área total? *"
+                      data-area-total-desconhecida-motivo hidden style="display:block; width:100%; box-sizing:border-box; margin-top:8px; font-size:.82rem; padding:8px 10px;"></textarea>
           </label>
           <label>
-            Nº da Matrícula do Imóvel (RGI)
-            <input name="matricula_imovel" placeholder="Ex.: Matrícula 12.345 (Livro 2) (opcional)" data-desmembramento-field>
+            Cadastro Imobiliário do imóvel original
+            <input name="matricula_imovel" placeholder="Ex.: 1010844 (opcional)" data-desmembramento-field>
           </label>
         </div>
         <div class="public-lotes-heading">
           <div>
             <div class="form-section-label" style="margin-top:18px;">Lotes do desmembramento</div>
+            <p class="public-field-note">Informe os dados dos <strong>novos lotes resultantes</strong> deste desmembramento — não o lote original antes da divisão.</p>
           </div>
         </div>
         <div data-lotes-list>${renderDesmembramentoLote(0, 'Lote 1')}</div>
@@ -426,6 +487,16 @@
         <div class="form-grid-2">
           <label>Início da obra *<input required type="date" name="inicio_obra"></label>
           <label>Término da obra *<input required type="date" name="termino_obra"></label>
+        </div>
+        ${renderPadraoPopular()}
+        <div class="public-environment-study" style="margin-top:14px;">
+          <div class="form-section-label">Corpo de Bombeiros</div>
+          <p class="public-field-note">Informe se você já possui o laudo/AVCB do Corpo de Bombeiros para este imóvel (opcional).</p>
+          <div class="form-grid-2">
+            <label class="public-choice-card"><input type="radio" name="bombeiro_possui" value="1" data-bombeiro-radio> Sim, possuo</label>
+            <label class="public-choice-card"><input type="radio" name="bombeiro_possui" value="0" data-bombeiro-radio> Não possuo</label>
+          </div>
+          <input type="text" name="bombeiro_numero" placeholder="Número do laudo/AVCB" data-bombeiro-numero hidden style="margin-top:10px;">
         </div>
         <div class="public-habite-rooms-heading">
           <strong>Ambientes — quantidade no imóvel</strong>
@@ -640,6 +711,10 @@
     }
     form.querySelectorAll('input, select, textarea').forEach((field) => {
       if (!field.name || field.type === 'file') return;
+      // tipo_alvara é restaurado à parte, antes desta função rodar de novo:
+      // reaplicar aqui dispararia 'change' e re-renderizaria #campos_dinamicos
+      // no meio deste mesmo loop, órfãos os campos que ainda faltam processar.
+      if (field.name === 'tipo_alvara') return;
       const direct = Object.prototype.hasOwnProperty.call(data, field.name) ? data[field.name] : fieldValue(data, field.name);
       if (direct === undefined || direct === null || direct === '') return;
       if (field.type === 'checkbox') {
@@ -700,6 +775,17 @@
     // por tipo: fica visível na etapa 1 mesmo antes de escolher a solicitação.
     const comumSection = form.querySelector('.public-secao-comum');
     const responsavelComum = form.querySelector('#responsavel-tecnico-comum');
+    // CTF não usa ART/RRT como as demais entidades de classe — troca o
+    // rótulo do campo de número pra não confundir quem preenche.
+    responsavelComum?.addEventListener('change', (event) => {
+      if (!event.target.matches('[data-rt-conselho]')) return;
+      const numeroInput = responsavelComum.querySelector('[data-rt-numero]');
+      if (!numeroInput) return;
+      const obrigatorio = numeroInput.required ? ' *' : '';
+      numeroInput.placeholder = event.target.value === 'CTF'
+        ? `Número do Certificado de Registro${obrigatorio}`
+        : `Número da ART/RRT${obrigatorio}`;
+    });
     const denunciaModeSection = form.querySelector('.public-denuncia-mode-section');
     const anonimoWarning = form.querySelector('[data-anonimo-warning]');
     const denunciaLocationSection = form.querySelector('.public-denuncia-location-section');
@@ -965,9 +1051,16 @@
             return parseFloat(str) || 0;
           };
           const areaTotalInput = form.querySelector('input[name="area_total_terreno"], input[name="area_lote"]');
+          const areaTotalDesconhecidaChecked = form.querySelector('[data-area-total-desconhecida]')?.checked;
           const totalTerreno = toAreaNum(areaTotalInput?.value);
-          if (totalTerreno <= 0) {
+          if (totalTerreno <= 0 && !areaTotalDesconhecidaChecked) {
             markInvalid(areaTotalInput, 'Informe a área total da porção maior do terreno.');
+          }
+          if (areaTotalDesconhecidaChecked) {
+            const motivoInput = form.querySelector('[data-area-total-desconhecida-motivo]');
+            if (!motivoInput || !motivoInput.value.trim()) {
+              markInvalid(motivoInput, 'Explique por que não sabe a área total.');
+            }
           }
 
           const lotes = form.querySelectorAll('[data-lote-card]');
@@ -981,16 +1074,24 @@
               somaLotes += aVal;
             }
 
-            ['norte', 'oeste', 'leste', 'sul'].forEach((rumo) => {
-              const met = lote.querySelector(`input[name*="[${rumo}][metragem]"]`);
-              const desc = lote.querySelector(`input[name*="[${rumo}][descricao]"]`);
-              if (!met || toAreaNum(met.value) <= 0) {
-                markInvalid(met, `Informe a metragem do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
+            const irregular = lote.querySelector('[data-lote-geometria]:checked')?.value === 'irregular';
+            if (irregular) {
+              const descIrregular = lote.querySelector('[data-descricao-irregular-field] textarea');
+              if (!descIrregular || !descIrregular.value.trim()) {
+                markInvalid(descIrregular, `Descreva o formato do Lote ${idx + 1}.`);
               }
-              if (!desc || !desc.value.trim()) {
-                markInvalid(desc, `Informe o confrontante do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
-              }
-            });
+            } else {
+              ['norte', 'oeste', 'leste', 'sul'].forEach((rumo) => {
+                const met = lote.querySelector(`input[name*="[${rumo}][metragem]"], input[name="confrontacao_${rumo}_metragem"]`);
+                const desc = lote.querySelector(`input[name*="[${rumo}][descricao]"], input[name="confrontacao_${rumo}_descricao"]`);
+                if (!met || toAreaNum(met.value) <= 0) {
+                  markInvalid(met, `Informe a metragem do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
+                }
+                if (!desc || !desc.value.trim()) {
+                  markInvalid(desc, `Informe o confrontante do lado ${rumo.toUpperCase()} do Lote ${idx + 1}.`);
+                }
+              });
+            }
           });
 
           if (totalTerreno > 0 && somaLotes > totalTerreno) {
@@ -1342,6 +1443,14 @@
 
     root.querySelectorAll('input[name="tipos_denuncia[]"][value="outros"]').forEach((checkbox) => window.toggleOutros(checkbox));
 
+    const setorRadios = root.querySelectorAll('input[name="setor"]');
+    const tiposGrid = root.querySelector('#tipos_denuncia_grid');
+    if (setorRadios.length && tiposGrid) {
+      setorRadios.forEach((radio) => radio.addEventListener('change', () => {
+        tiposGrid.innerHTML = renderTiposOcorrenciaOptions(radio.value);
+      }));
+    }
+
     const estudoRadios = root.querySelectorAll('input[name="possui_estudo_ambiental"]');
     const tipoEstudoInput = root.querySelector('input[name="tipo_estudo_ambiental"]');
     const tipoEstudoSelect = root.querySelector('select[name="tipo_estudo_ambiental"]');
@@ -1372,7 +1481,35 @@
       }));
     }
 
+    // Corpo de Bombeiros: opcional em todo o formulário — só revela o campo
+    // de número quando o requerente confirma que já possui o laudo/AVCB.
+    const bombeiroRadios = root.querySelectorAll('[data-bombeiro-radio]');
+    const bombeiroNumero = root.querySelector('[data-bombeiro-numero]');
+    if (bombeiroRadios.length && bombeiroNumero) {
+      bombeiroRadios.forEach((radio) => radio.addEventListener('change', () => {
+        const possui = radio.value === '1' && radio.checked;
+        bombeiroNumero.hidden = !possui;
+        if (!possui) bombeiroNumero.value = '';
+      }));
+    }
+
     const total = root.querySelector('[data-area-total]');
+    const areaTotalDesconhecida = root.querySelector('[data-area-total-desconhecida]');
+    const areaTotalMotivo = root.querySelector('[data-area-total-desconhecida-motivo]');
+    if (total && areaTotalDesconhecida) {
+      areaTotalDesconhecida.addEventListener('change', () => {
+        const desconhecida = areaTotalDesconhecida.checked;
+        total.disabled = desconhecida;
+        total.required = !desconhecida;
+        if (desconhecida) total.value = '';
+        if (areaTotalMotivo) {
+          areaTotalMotivo.hidden = !desconhecida;
+          areaTotalMotivo.required = desconhecida;
+          if (!desconhecida) areaTotalMotivo.value = '';
+        }
+        total.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    }
     const remText = root.querySelector('[data-area-remanescente]');
     const remValue = root.querySelector('[data-area-remanescente-value]');
     const lotesResumo = root.querySelector('[data-area-lotes-resumo]');
@@ -1438,6 +1575,24 @@
     });
     root.addEventListener('change', (event) => {
       if (event.target.matches('[data-desmembramento-field], [data-lote-area]')) updateDesmembramento();
+    });
+
+    // Lote irregular: esconde as confrontações (medida/confrontante por rumo)
+    // e passa a exigir só uma descrição livre do formato do lote.
+    root.addEventListener('change', (event) => {
+      if (!event.target.matches('[data-lote-geometria]')) return;
+      const card = event.target.closest('[data-lote-card]');
+      if (!card) return;
+      const irregular = event.target.value === 'irregular' && event.target.checked;
+      const confrontacoesGrid = card.querySelector('[data-confrontacoes-grid]');
+      const confrontacoesHeading = card.querySelector('[data-confrontacoes-heading]');
+      const descricaoField = card.querySelector('[data-descricao-irregular-field]');
+      if (confrontacoesGrid) confrontacoesGrid.hidden = irregular;
+      if (confrontacoesHeading) confrontacoesHeading.hidden = irregular;
+      if (descricaoField) descricaoField.hidden = !irregular;
+      confrontacoesGrid?.querySelectorAll('input').forEach((input) => { input.required = !irregular; });
+      const descricaoInput = descricaoField?.querySelector('textarea');
+      if (descricaoInput) descricaoInput.required = irregular;
     });
 
     const addLote = root.querySelector('[data-add-lote]');

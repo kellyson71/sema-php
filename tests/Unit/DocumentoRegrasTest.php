@@ -221,6 +221,39 @@ final class DocumentoRegrasTest extends TestCase
         self::assertStringContainsString('10,00 METROS AO NORTE CONFINANTE COM RUA A.', $html);
     }
 
+    public function testDesmembramentoLoteIrregularUsaDescricaoLivreEmVezDeConfrontacoes(): void
+    {
+        $html = DocumentoRegras::lotesDesmembramentoHtml([
+            'desmembramento_lotes_json' => json_encode(['lotes' => [[
+                'ordem' => 1,
+                'area' => 300,
+                'cadastro_imobiliario' => '2020933',
+                'geometria' => 'irregular',
+                'descricao_irregular' => 'Lote em formato de L, com frente de 12m para a Rua X.',
+                'confrontacoes' => [],
+            ]]]),
+        ]);
+
+        self::assertStringContainsString('DESCRIÇÃO DO LOTE Nº 1 DO CADASTRO 2020933 COM 300,00 M²', $html);
+        self::assertStringContainsString('LOTE EM FORMATO DE L, COM FRENTE DE 12M PARA A RUA X.', $html);
+        self::assertStringNotContainsString('CONFINANTE COM', $html);
+    }
+
+    public function testConselhoResponsavelReconheceCtfComoTerceiraOpcao(): void
+    {
+        self::assertSame('CREA', DocumentoRegras::conselhoResponsavel(['responsavel_tecnico_tipo_documento' => 'CREA']));
+        self::assertSame('CAU', DocumentoRegras::conselhoResponsavel(['responsavel_tecnico_tipo_documento' => 'CAU']));
+        self::assertSame('CTF', DocumentoRegras::conselhoResponsavel(['responsavel_tecnico_tipo_documento' => 'CTF']));
+        self::assertSame('CREA', DocumentoRegras::conselhoResponsavel(['responsavel_tecnico_tipo_documento' => '']));
+    }
+
+    public function testRotuloDocumentoTecnicoParaCtfEhRegistro(): void
+    {
+        self::assertSame('ART', DocumentoRegras::rotuloDocumentoTecnico(['responsavel_tecnico_tipo_documento' => 'CREA']));
+        self::assertSame('RRT', DocumentoRegras::rotuloDocumentoTecnico(['responsavel_tecnico_tipo_documento' => 'CAU']));
+        self::assertSame('Registro', DocumentoRegras::rotuloDocumentoTecnico(['responsavel_tecnico_tipo_documento' => 'CTF']));
+    }
+
     public function testInterpretaNumeroManualComAno(): void
     {
         self::assertSame(['numero' => 60, 'ano' => 2026], DocumentoRegras::interpretarNumero('60/2026'));
