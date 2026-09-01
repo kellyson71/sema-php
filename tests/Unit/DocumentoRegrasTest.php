@@ -217,7 +217,7 @@ final class DocumentoRegrasTest extends TestCase
             ]]]),
         ]);
 
-        self::assertStringContainsString('DESCRIÇÃO DO LOTE Nº 1 DO CADASTRO 1010844 COM 250,00 M²', $html);
+        self::assertStringContainsString('DESCRIÇÃO DO LOTE Nº 1</strong> DO CADASTRO 1010844 <strong>COM 250,00 M²', $html);
         self::assertStringContainsString('10,00 METROS AO NORTE CONFINANTE COM RUA A.', $html);
     }
 
@@ -234,7 +234,7 @@ final class DocumentoRegrasTest extends TestCase
             ]]]),
         ]);
 
-        self::assertStringContainsString('DESCRIÇÃO DO LOTE Nº 1 DO CADASTRO 2020933 COM 300,00 M²', $html);
+        self::assertStringContainsString('DESCRIÇÃO DO LOTE Nº 1</strong> DO CADASTRO 2020933 <strong>COM 300,00 M²', $html);
         self::assertStringContainsString('LOTE EM FORMATO DE L, COM FRENTE DE 12M PARA A RUA X.', $html);
         self::assertStringNotContainsString('CONFINANTE COM', $html);
     }
