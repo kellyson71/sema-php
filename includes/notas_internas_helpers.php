@@ -57,9 +57,11 @@ function excluirNotaInterna(PDO $pdo, int $notaId, int $requerimentoId, int $adm
 {
     if ($isAdminGeral) {
         $stmt = $pdo->prepare("DELETE FROM requerimento_notas_internas WHERE id = ? AND requerimento_id = ?");
-        return $stmt->execute([$notaId, $requerimentoId]);
+        $stmt->execute([$notaId, $requerimentoId]);
+        return $stmt->rowCount() > 0;
     }
 
     $stmt = $pdo->prepare("DELETE FROM requerimento_notas_internas WHERE id = ? AND requerimento_id = ? AND admin_id = ?");
-    return $stmt->execute([$notaId, $requerimentoId, $adminId]);
+    $stmt->execute([$notaId, $requerimentoId, $adminId]);
+    return $stmt->rowCount() > 0;
 }

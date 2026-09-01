@@ -105,7 +105,9 @@ test.describe('Admin Requerimentos - Com Autenticação', () => {
 
   test('campo de busca está presente', async () => {
     await irParaRequerimentos(page);
-    const busca = page.locator('[name="busca"], #busca, input[type="search"]');
+    // A topbar também tem uma busca global (#globalSearchInput); aqui verificamos
+    // especificamente o filtro de busca da listagem de requerimentos.
+    const busca = page.locator('[name="busca"]');
     await expect(busca).toBeVisible();
   });
 

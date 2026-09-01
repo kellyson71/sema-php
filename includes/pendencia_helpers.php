@@ -1,8 +1,5 @@
 <?php
 
-require_once __DIR__ . '/functions.php';
-require_once __DIR__ . '/pagamento_helpers.php';
-
 /**
  * Prefixo de campo_formulario usado pelos anexos de complementação.
  * Ex.: pendencia_12 → anexos da pendência 12.
