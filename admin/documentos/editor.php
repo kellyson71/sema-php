@@ -494,23 +494,23 @@ include '../header.php';
         .doc-autosave-status.salvando { color:#a26a12; }
         .doc-autosave-status.salvo { color:#26734d; }
         .doc-autosave-status.erro { color:#b13232; }
-        .review-box { background:#f7faf8; border:1px solid #cfe3d7; border-radius:12px; padding:14px 16px; }
-        .review-box-title { color:#14532d; font-size:.86rem; font-weight:800; margin-bottom:10px; }
-        .review-box-grid { display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:.8rem; }
-        .review-box-grid span { color:#718078; }
-        .review-box-grid strong { color:#1a2e1e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        /* Resumo compacto do documento no topo do modal de finalização */
+        .doc-resumo { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; background:#e3ece6;
+                      border:1px solid #e3ece6; border-radius:12px; overflow:hidden; }
+        .doc-resumo-item { background:#f8fbf9; padding:10px 14px; min-width:0; }
+        .doc-resumo-item span { display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em;
+                                color:#7d8f84; font-weight:700; margin-bottom:2px; }
+        .doc-resumo-item strong { display:block; font-size:.82rem; color:#1a2e1e; overflow:hidden;
+                                  text-overflow:ellipsis; white-space:nowrap; }
+        .doc-resumo-item strong.pendente { color:#a26a12; }
         .signature-dialog { max-width:980px; }
         .signature-modal { overflow:hidden; background:#fff; }
         .signature-modal-header { display:flex; align-items:center; gap:15px; padding:22px 28px; background:linear-gradient(135deg,#153e2c 0%,#216044 100%); color:#fff; }
         .signature-modal-icon { width:46px; height:46px; border-radius:14px; flex:none; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.14); color:#d9f4e3; font-size:1.1rem; }
         .signature-modal-heading { flex:1; min-width:0; }
-        .signature-modal-kicker { font-size:.63rem; font-weight:800; letter-spacing:.13em; color:#bce4ca; margin-bottom:3px; }
         .signature-modal-heading .modal-title { font-size:1.15rem; letter-spacing:-.01em; }
         .signature-modal-heading p { margin:3px 0 0; color:#d8e9dd; font-size:.78rem; }
         .signature-modal-header .btn-close { filter:brightness(0) invert(1); opacity:.75; align-self:flex-start; margin-top:2px; }
-        .signature-modal .review-box { background:#f8fbf9; border-color:#d9e8de; box-shadow:none; padding:17px 18px; }
-        .signature-modal .review-box-title { font-size:.9rem; display:flex; align-items:center; }
-        .signature-modal .review-box-grid { grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr); gap:6px 12px; }
         .signature-modal .modo-lista { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
         .signature-modal .modo-card { min-height:142px; display:flex; flex-direction:column; align-items:flex-start; gap:9px; padding:15px; border-radius:13px; position:relative; }
         .signature-modal .modo-card .mc-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
@@ -538,15 +538,13 @@ include '../header.php';
             .signature-modal .modo-lista { grid-template-columns:1fr; }
             .signature-modal .modo-card { min-height:0; flex-direction:row; align-items:center; }
             .signature-modal .modo-card .mc-desc { max-width:80%; }
-            .signature-modal .review-box-grid { grid-template-columns:auto 1fr; }
+            .doc-resumo { grid-template-columns:repeat(2,minmax(0,1fr)); }
             .signature-modal .signature-confirm-footer { flex-direction:column-reverse; align-items:stretch; }
             .pdf-preview-chip { display:none; }
             .pdf-preview-stage { height:calc(100vh - 88px); min-height:0; padding:0; }
             .pdf-preview-stage iframe, .pdf-preview-loading { border-radius:0; }
             .pdf-preview-loading { inset:0; }
         }
-        /* Etiqueta de etapa */
-        .etapa-kicker { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color: var(--sema-teal); }
 
         /* PIN de assinatura — compacto */
         .pin-box {
@@ -596,7 +594,6 @@ include '../header.php';
 
         /* Caixa de aceite (diretrizes / manual) */
         .aceite-box { display:flex; align-items:flex-start; gap:10px; padding:13px 15px; margin-bottom:14px; border:1.5px solid #bbf7d0; border-radius:12px; background:#f7fefb; transition: border-color .15s, background .15s; }
-        .aceite-box.warn { border-color:#fde68a; background:#fffdf5; }
         @keyframes shakeX { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-7px);} 40%,80%{transform:translateX(7px);} }
         .shake { animation: shakeX .4s ease; border-color:#ef4444 !important; background:#fef2f2 !important; }
 
@@ -730,30 +727,29 @@ include '../header.php';
           <div class="signature-modal-header">
              <div class="signature-modal-icon"><i class="fas fa-file-signature"></i></div>
              <div class="signature-modal-heading">
-                 <div class="signature-modal-kicker">ETAPA 3 · FINALIZAÇÃO</div>
-                 <h5 class="modal-title fw-bold">Assinar e finalizar documento</h5>
-                 <p>Revise o conteúdo, escolha como o documento será finalizado e confirme a operação.</p>
+                 <h5 class="modal-title fw-bold">Finalizar documento</h5>
+                 <p id="resumoDocumentoLinha">Aguardando…</p>
              </div>
              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body p-4 p-lg-5">
 
-              <div class="review-box mb-4" id="blocoRevisaoDocumento">
-                  <div class="review-box-title"><i class="fas fa-clipboard-check me-2"></i>Revise antes de finalizar</div>
-                  <div class="review-box-grid">
-                      <span>Processo</span><strong id="reviewProtocolo">Aguardando</strong>
-                      <span>Documento</span><strong id="reviewDocumento">Aguardando</strong>
-                      <span>Campos</span><strong id="reviewCampos">Aguardando</strong>
-                      <span>Páginas</span><strong id="reviewPaginas">Aguardando</strong>
+              <div class="doc-resumo mb-4" id="blocoRevisaoDocumento">
+                  <div class="doc-resumo-item">
+                      <span>Processo</span><strong id="reviewProtocolo">—</strong>
                   </div>
-                  <label class="aceite-box mt-3 mb-0" for="checkRevisao">
-                      <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkRevisao" style="margin-top:2px;">
-                      <span style="font-size:.84rem;cursor:pointer;">Revisei o conteúdo e confirmo que os dados estão corretos. <span class="text-danger">*</span></span>
-                  </label>
+                  <div class="doc-resumo-item">
+                      <span>Documento</span><strong id="reviewDocumento">—</strong>
+                  </div>
+                  <div class="doc-resumo-item">
+                      <span>Páginas</span><strong id="reviewPaginas">—</strong>
+                  </div>
+                  <div class="doc-resumo-item">
+                      <span>Campos</span><strong id="reviewCampos">—</strong>
+                  </div>
               </div>
 
               <!-- Seletor de modo: lista vertical com hierarquia clara -->
-              <div class="mb-1 etapa-kicker">Etapa 1 de 2</div>
               <p class="fw-bold mb-3" style="font-size:.95rem;">Como este documento será finalizado?</p>
               <div class="modo-lista mb-4" id="modoCards">
                   <label class="modo-card selected" data-modo="assinar">
@@ -778,8 +774,8 @@ include '../header.php';
                       <input type="radio" name="modo_assinatura_radio" value="sem_assinar" style="display:none;">
                       <div class="mc-icon"><i class="fas fa-pen-ruler"></i></div>
                       <div>
-                          <div class="mc-title">Gerar com linha para assinatura manual</div>
-                          <div class="mc-desc">Escolha o usuário atual, o secretário ou informe outra pessoa</div>
+                          <div class="mc-title">Gerar para assinar à caneta</div>
+                          <div class="mc-desc">PDF com linha de assinatura para impressão — sem assinatura eletrônica</div>
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
@@ -831,7 +827,7 @@ include '../header.php';
                       </div>
                   </div>
                   <div class="text-muted mt-2" style="font-size:.7rem;">
-                      Essa escolha cria apenas a linha para assinatura à caneta. O sistema registra separadamente quem gerou o PDF.
+                      O sistema registra separadamente quem gerou o PDF.
                   </div>
               </div>
 
@@ -902,9 +898,6 @@ include '../header.php';
               </div>
 
               <form id="formCheckout">
-                  <div class="mb-1 etapa-kicker">Etapa 2 de 2</div>
-                  <p class="fw-bold mb-2" style="font-size:.92rem;">Confirmação</p>
-
                   <!-- Diretrizes (só para modos com assinatura digital) -->
                   <div id="blocoDiretrizes">
                       <label class="aceite-box" id="aceiteDiretrizes" for="checkDiretrizes">
@@ -918,18 +911,6 @@ include '../header.php';
                       </label>
                   </div>
 
-                  <!-- Confirmação para modo sem_assinar -->
-                  <div id="blocoConfirmacaoManual" style="display:none;">
-                      <label class="aceite-box warn" id="aceiteManual" for="checkManual">
-                          <input class="form-check-input shadow-none flex-shrink-0" type="checkbox" id="checkManual"
-                                 style="margin-top:2px;">
-                          <span style="font-size:.84rem;cursor:pointer;">
-                              Entendo que este PDF será impresso e assinado fisicamente por
-                              <strong id="nomeConfirmacaoManual"><?= htmlspecialchars(($secretarioManual ?? $adminManualAtual)['nome']) ?></strong> e não terá assinatura eletrônica <span class="text-danger">*</span>
-                          </span>
-                      </label>
-                  </div>
-
                   <div class="form-check ms-1 mb-3">
                       <input class="form-check-input" type="checkbox" id="checkDownload" checked>
                       <label class="form-check-label text-muted" for="checkDownload" style="font-size:.84rem;">
@@ -939,10 +920,10 @@ include '../header.php';
 
                   <div class="signature-confirm-footer">
                       <button type="button" class="btn btn-light fw-medium px-4 border"
-                              data-bs-dismiss="modal">Revisar Documento</button>
+                              data-bs-dismiss="modal">Voltar ao documento</button>
                       <button type="button" class="btn btn-sema fw-bold px-5"
                               id="btnAssinarFinal" onclick="finalizarAssinatura()">
-                          <i class="fas fa-check-circle me-2"></i> <span id="btnAssinarLabel">Confirmar Assinatura Técnica</span>
+                          <i class="fas fa-check-circle me-2"></i> <span id="btnAssinarLabel">Assinar documento</span>
                       </button>
                   </div>
               </form>
@@ -1751,7 +1732,6 @@ include '../header.php';
             opcao.classList.toggle('selected', opcao.querySelector('input')?.checked === true);
         });
         document.getElementById('camposAssinantePersonalizado').style.display = dados.tipo === 'personalizado' ? 'flex' : 'none';
-        document.getElementById('nomeConfirmacaoManual').textContent = dados.nome || 'a pessoa informada';
     }
 
     function validarAssinanteManual(exibirErro = true) {
@@ -1771,10 +1751,7 @@ include '../header.php';
     }
 
     document.querySelectorAll('input[name="assinante_manual_tipo"]').forEach(input => {
-        input.addEventListener('change', () => {
-            atualizarAssinanteManual();
-            document.getElementById('checkManual').checked = false;
-        });
+        input.addEventListener('change', atualizarAssinanteManual);
     });
     document.getElementById('assinanteManualNome').addEventListener('input', atualizarAssinanteManual);
     atualizarAssinanteManual();
@@ -1824,15 +1801,20 @@ include '../header.php';
             return;
         }
 
-        document.getElementById('reviewProtocolo').textContent = reqProtocolo || 'Não informado';
-        document.getElementById('reviewDocumento').textContent = templateLabel || templateNome || 'Documento';
+        const paginasTexto = `${_lastTotalPages} página${_lastTotalPages > 1 ? 's' : ''}`;
         const totalCampos = document.querySelectorAll('.var-field').length;
         const pendentes = validarCamposAntesDeAssinar().length;
-        document.getElementById('reviewCampos').textContent = totalCampos
-            ? `${totalCampos} ocorrência(s)${pendentes ? ` · ${pendentes} pendente(s)` : ' · tudo preenchido'}`
-            : 'Redação livre';
-        document.getElementById('reviewPaginas').textContent = `${_lastTotalPages} página${_lastTotalPages > 1 ? 's' : ''} · assinatura na última`;
-        document.getElementById('checkRevisao').checked = false;
+        const campoCampos = document.getElementById('reviewCampos');
+
+        document.getElementById('reviewProtocolo').textContent = reqProtocolo || 'Não informado';
+        document.getElementById('reviewDocumento').textContent = templateLabel || templateNome || 'Documento';
+        document.getElementById('reviewPaginas').textContent = paginasTexto;
+        campoCampos.textContent = !totalCampos
+            ? 'Redação livre'
+            : (pendentes ? `${pendentes} em branco` : 'Todos preenchidos');
+        campoCampos.classList.toggle('pendente', pendentes > 0);
+        document.getElementById('resumoDocumentoLinha').textContent =
+            `${templateLabel || templateNome || 'Documento'} · ${paginasTexto} · assinatura na última página`;
 
         const chk = document.getElementById('checkDiretrizes');
         chk.checked = false;
@@ -1884,9 +1866,9 @@ include '../header.php';
     (function() {
         const cards = document.querySelectorAll('.modo-card');
         const btnLabels = {
-            assinar: 'Assinar Documento',
-            sem_assinar: 'Gerar Documento',
-            assinar_e_requisitar: 'Assinar e Solicitar',
+            assinar: 'Assinar documento',
+            sem_assinar: 'Gerar PDF para assinar',
+            assinar_e_requisitar: 'Assinar e solicitar',
         };
 
         function aplicarModo(modo) {
@@ -1897,11 +1879,8 @@ include '../header.php';
 
             document.getElementById('painelCoAssinaturaEditor').style.display = isRequisitar ? 'block' : 'none';
             document.getElementById('painelAssinanteManual').style.display   = isSemAssinar ? 'block' : 'none';
-            document.getElementById('blocoDiretrizes').style.display        = isSemAssinar ? 'none' : 'block';
-            document.getElementById('blocoConfirmacaoManual').style.display = isSemAssinar ? 'block' : 'none';
-
-            document.getElementById('checkDiretrizes').required = !isSemAssinar;
-            document.getElementById('checkManual').required     = isSemAssinar;
+            document.getElementById('blocoDiretrizes').style.display = isSemAssinar ? 'none' : 'block';
+            document.getElementById('checkDiretrizes').required      = !isSemAssinar;
 
             atualizarBlocosPin();
         }
@@ -1935,24 +1914,28 @@ include '../header.php';
         if (isSemAssinar && !validarAssinanteManual()) return;
         const dadosManual = dadosAssinanteManual();
 
-        if (!document.getElementById('checkRevisao').checked) {
-            sacudirAceite('blocoRevisaoDocumento', 'Confirme a revisão do documento antes de finalizar.');
-            return;
-        }
-
+        // Campo em branco não impede a finalização: quem assina decide. Só
+        // pedimos uma confirmação explícita para o caso de ter passado batido.
         const camposPendentes = validarCamposAntesDeAssinar();
         if (camposPendentes.length > 0) {
             const nomes = camposPendentes.slice(0, 6).map(rotuloCampo).join(', ');
             const extra = camposPendentes.length > 6
                 ? ` e mais ${camposPendentes.length - 6}` : '';
-            Swal.fire({
-                title: 'Há campos pendentes',
-                html: `Preencha <strong>${escapeHtml(nomes)}${extra}</strong> antes de finalizar o documento.`,
-                icon: 'warning'
+            const confirmacao = await Swal.fire({
+                title: `${camposPendentes.length} campo${camposPendentes.length > 1 ? 's' : ''} em branco`,
+                html: `Ficar${camposPendentes.length > 1 ? 'ão' : 'á'} sem preenchimento: <strong>${escapeHtml(nomes)}${extra}</strong>.<br>Deseja continuar mesmo assim?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Continuar assim mesmo',
+                cancelButtonText: 'Voltar e preencher',
+                confirmButtonColor: '#1c4b36',
             });
-            const primeiro = document.querySelector('.doc-campo.vazio .doc-campo-input');
-            if (primeiro) primeiro.focus();
-            return;
+            if (!confirmacao.isConfirmed) {
+                bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao'))?.hide();
+                const primeiro = document.querySelector('.doc-campo.vazio .doc-campo-input');
+                if (primeiro) primeiro.focus();
+                return;
+            }
         }
 
         const errosFormato = validarFormatoCampos();
@@ -1965,15 +1948,10 @@ include '../header.php';
         // o fluxo irreversível de assinatura.
         await salvarRascunho();
 
-        // Validação dos checkboxes conforme modo (com feedback visual)
-        const checkDiretrizes = document.getElementById('checkDiretrizes');
-        const checkManual     = document.getElementById('checkManual');
-        if (!isSemAssinar && !checkDiretrizes.checked) {
+        // O aceite das diretrizes é exigência legal da assinatura eletrônica;
+        // o modo manual não assina nada eletronicamente, então não se aplica.
+        if (!isSemAssinar && !document.getElementById('checkDiretrizes').checked) {
             sacudirAceite('aceiteDiretrizes', 'Confirme que leu e aceita as diretrizes de assinatura.');
-            return;
-        }
-        if (isSemAssinar && !checkManual.checked) {
-            sacudirAceite('aceiteManual', 'Confirme que entendeu a observação sobre a assinatura manual.');
             return;
         }
 

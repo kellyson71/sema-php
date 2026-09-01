@@ -294,8 +294,8 @@ function aplicarBlocosAssinaturaNoPdf(SEMA_PDF $pdf, array $assinantes, array $o
 
     // Modo linha manual: apenas um assinante com tipo='manual'
     if (($assinantes[0]['tipo'] ?? '') === 'manual') {
-        $bW = 70.0;
-        $bH = 13.0;
+        $bW = 85.0;
+        $bH = 20.0;
         $bX = (A4_LARGURA_MM - $bW) / 2;
         $bY = A4_ALTURA_MM - A4_RODAPE_MM - $bH;
 
@@ -419,26 +419,32 @@ function _renderBlocoAssinaturaGov(SEMA_PDF $pdf, array $assinantes, float $bX, 
 }
 
 /**
- * Renderiza uma linha simples de assinatura manual (sem bloco digital).
+ * Linha de assinatura à caneta, no formato usual de documento oficial:
+ * espaço em branco para a rubrica, filete fino centralizado, nome em caixa
+ * alta logo abaixo e o cargo em seguida. Usa a mesma família do corpo do
+ * documento (Times) para não destoar do texto.
  */
 function _renderLinhaAssinaturaManual(SEMA_PDF $pdf, array $assinante, float $bX, float $bY, float $bW): void
 {
-    $nome  = strtoupper($assinante['nome'] ?? '');
-    $cargo = $assinante['cargo'] ?? '';
+    $nome  = mb_strtoupper(trim((string) ($assinante['nome'] ?? '')), 'UTF-8');
+    $cargo = trim((string) ($assinante['cargo'] ?? ''));
 
+    // Filete: fino como o de documento impresso, deixando espaço acima para a rubrica.
+    $linhaY = $bY + 9.0;
     $pdf->SetDrawColor(0, 0, 0);
-    $pdf->SetLineWidth(0.35);
-    $pdf->Line($bX, $bY + 7, $bX + $bW, $bY + 7);
+    $pdf->SetLineWidth(0.2);
+    $pdf->Line($bX, $linhaY, $bX + $bW, $linhaY);
 
-    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->SetFont('times', 'B', 10);
     $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetXY($bX, $bY + 8);
-    $pdf->Cell($bW, 3, $nome, 0, 0, 'C');
+    $pdf->SetXY($bX, $linhaY + 1.2);
+    $pdf->Cell($bW, 4, $nome, 0, 0, 'C');
 
-    if ($cargo) {
-        $pdf->SetFont('helvetica', '', 8);
-        $pdf->SetXY($bX, $bY + 11.5);
-        $pdf->Cell($bW, 3, $cargo, 0, 0, 'C');
+    if ($cargo !== '') {
+        $pdf->SetFont('times', '', 9);
+        $pdf->SetTextColor(45, 45, 45);
+        $pdf->SetXY($bX, $linhaY + 5.2);
+        $pdf->Cell($bW, 4, $cargo, 0, 0, 'C');
     }
 }
 
