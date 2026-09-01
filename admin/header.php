@@ -1486,6 +1486,102 @@ if ($isAnalista) {
             color: var(--muted);
             line-height: 1.45;
         }
+
+        .changelog-changes-cols {
+            display: block;
+            columns: 2;
+            column-gap: 28px;
+        }
+
+        .changelog-changes-cols li {
+            break-inside: avoid;
+        }
+
+        @media (max-width: 720px) {
+            .changelog-changes-cols { columns: 1; }
+        }
+
+        .changelog-highlights {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .changelog-highlight-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+            padding: 13px 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-soft);
+        }
+
+        .changelog-highlight-icon {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.86rem;
+        }
+
+        .changelog-highlight-card strong {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+
+        .changelog-highlight-card p {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .changelog-subsection {
+            margin-bottom: 14px;
+        }
+
+        .changelog-subsection-title {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted-2);
+            margin-bottom: 8px;
+        }
+
+        .changelog-fixes-block {
+            padding-top: 12px;
+            border-top: 1px dashed var(--line);
+        }
+
+        .changelog-fixes-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #a26a12;
+        }
+
+        .changelog-fixes {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        .changelog-fixes li {
+            font-size: 0.78rem;
+            color: var(--muted-2);
+            line-height: 1.4;
+            margin-bottom: 3px;
+        }
     </style>
     <?php include dirname(__DIR__) . '/includes/posthog.php'; ?>
 </head>
@@ -1689,7 +1785,7 @@ if ($isAnalista) {
 
     <!-- Modal de changelog -->
     <div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable changelog-modal" style="max-width:540px;">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable changelog-modal" style="max-width:900px;">
             <div class="modal-content">
                 <div class="modal-header changelog-modal-header">
                     <div>
@@ -1714,11 +1810,50 @@ if ($isAnalista) {
                                     <span class="changelog-entry-date"><?= htmlspecialchars($entry['date']) ?></span>
                                 </div>
                                 <h6 class="changelog-entry-title"><?= htmlspecialchars($entry['title']) ?></h6>
-                                <ul class="changelog-changes">
-                                    <?php foreach ($entry['changes'] as $change): ?>
-                                        <li><?= htmlspecialchars($change) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
+
+                                <?php if (!empty($entry['highlights'])): ?>
+                                    <div class="changelog-highlights">
+                                        <?php foreach ($entry['highlights'] as $h): ?>
+                                            <div class="changelog-highlight-card">
+                                                <span class="changelog-highlight-icon"><i class="fas <?= htmlspecialchars($h['icon']) ?>"></i></span>
+                                                <div>
+                                                    <strong><?= htmlspecialchars($h['title']) ?></strong>
+                                                    <p><?= htmlspecialchars($h['desc']) ?></p>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($entry['more'])): ?>
+                                    <div class="changelog-subsection">
+                                        <span class="changelog-subsection-title">Também nesta atualização</span>
+                                        <ul class="changelog-changes changelog-changes-cols">
+                                            <?php foreach ($entry['more'] as $change): ?>
+                                                <li><?= htmlspecialchars($change) ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($entry['fixes'])): ?>
+                                    <div class="changelog-subsection changelog-fixes-block">
+                                        <span class="changelog-subsection-title changelog-fixes-title"><i class="fas fa-wrench"></i>Correções</span>
+                                        <ul class="changelog-fixes changelog-changes-cols">
+                                            <?php foreach ($entry['fixes'] as $fix): ?>
+                                                <li><?= htmlspecialchars($fix) ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($entry['changes'])): ?>
+                                    <ul class="changelog-changes changelog-changes-cols">
+                                        <?php foreach ($entry['changes'] as $change): ?>
+                                            <li><?= htmlspecialchars($change) ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>

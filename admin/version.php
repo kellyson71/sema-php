@@ -11,21 +11,54 @@ if (!defined('APP_VERSION')) {
             'badge' => 'Grande atualização',
             'badge_color' => '#0d5433',
             'badge_bg' => '#def2e6',
-            'changes' => [
-                'Formulário público reformulado com o novo layout institucional (identificação única para todos os serviços, rodapé com endereço, horário e mapa)',
-                'Nova tela de visualização de requerimento, com pendências, notas internas e histórico reunidos num só lugar',
-                'Painel admin com navegação do acervo e dashboard reorganizado (paginação de fila e histórico de concluídos)',
-                'Catálogo de responsáveis técnicos: perfil individual de cada engenheiro/arquiteto com as obras vinculadas',
-                'Busca do painel ampliada — agora encontra também por proprietário e responsável técnico',
+            'highlights' => [
+                [
+                    'icon' => 'fa-swatchbook',
+                    'title' => 'Novo visual institucional',
+                    'desc' => 'Formulário público e painel admin redesenhados, com identificação única para todos os serviços.',
+                ],
+                [
+                    'icon' => 'fa-id-card-clip',
+                    'title' => 'Catálogo de responsáveis técnicos',
+                    'desc' => 'Perfil individual de cada engenheiro/arquiteto, com as obras vinculadas.',
+                ],
+                [
+                    'icon' => 'fa-clipboard-list',
+                    'title' => 'Nova tela de requerimento',
+                    'desc' => 'Pendências, notas internas e histórico reunidos num só lugar.',
+                ],
+                [
+                    'icon' => 'fa-magnifying-glass',
+                    'title' => 'Busca ampliada',
+                    'desc' => 'Agora encontra também por proprietário e responsável técnico.',
+                ],
+                [
+                    'icon' => 'fa-gauge-high',
+                    'title' => 'Dashboard reorganizado',
+                    'desc' => 'Paginação de fila e histórico de concluídos no acervo.',
+                ],
+                [
+                    'icon' => 'fa-bell',
+                    'title' => 'Monitoramento automático',
+                    'desc' => 'Erros de produção agora avisam a equipe por e-mail.',
+                ],
+            ],
+            'more' => [
                 'Prévia do conteúdo direto na listagem de requerimentos, no mesmo padrão da listagem de denúncias',
                 'Denúncia com checklist de ocorrência específico por área (Meio Ambiente x Obras e Serviços Urbanos)',
-                'Desmembramento: lote regular ou irregular, campo de área total com opção "não sei", coluna de confrontações',
+                'Desmembramento: lote regular ou irregular, área total com opção "não sei", coluna de confrontações',
                 'Responsável técnico com opção CTF além de CREA/CAU; habite-se com padrão popular e Corpo de Bombeiros',
                 'Editor de documentos com histórico de versões de modelos e autosave de rascunho',
                 'E-mails com prévia, reenvio seguro, validação de destinatário e evidência de envio/recebimento no log',
-                'Exigência de token CSRF em todo o fluxo de assinatura, recusa e coassinatura de documentos',
                 'Aviso do remetente oficial de e-mail para prevenir golpes em nome da SEMA',
-                'Monitoramento automático: erros de produção agora avisam a equipe por e-mail',
+            ],
+            'fixes' => [
+                'Token CSRF agora é exigido em todo o fluxo de assinatura, recusa e coassinatura',
+                'Carimbo de assinatura não sobrepõe mais o texto em documentos de várias páginas',
+                'Exclusão de nota interna não reportava sucesso quando outro admin tentava excluir',
+                'Barra superior do portal mais responsiva em telas pequenas',
+                'Denúncia agora exige CPF e orienta a consulta ao final do envio',
+                'Dados registrais do desmembramento voltaram a ser opcionais',
             ],
         ],
         [
