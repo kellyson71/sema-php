@@ -260,8 +260,7 @@ final class DocumentoRegrasTest extends TestCase
         self::assertNull(DocumentoRegras::interpretarNumero('sessenta'));
     }
 
-    #[Test]
-    public function referenciaDaEdificacaoJuntaTipoEArea(): void
+    public function testReferenciaDaEdificacaoJuntaTipoEArea(): void
     {
         $this->assertSame(
             'uma edificação residencial unifamiliar com 53,00 m²',
@@ -272,8 +271,7 @@ final class DocumentoRegrasTest extends TestCase
         );
     }
 
-    #[Test]
-    public function referenciaDaEdificacaoOmiteOTipoQuandoORequerimentoEAnteriorAoCampo(): void
+    public function testReferenciaDaEdificacaoOmiteOTipoQuandoORequerimentoEAnteriorAoCampo(): void
     {
         // Requerimento enviado antes do formulário reformulado: sem tipo, a
         // frase precisa continuar legível para quem completa no editor.
@@ -283,8 +281,7 @@ final class DocumentoRegrasTest extends TestCase
         );
     }
 
-    #[Test]
-    public function areaNaoDuplicaAUnidadeQuandoOCidadaoJaDigitouM2(): void
+    public function testAreaNaoDuplicaAUnidadeQuandoOCidadaoJaDigitouM2(): void
     {
         $this->assertSame('52,03', DocumentoRegras::formatarArea('52,03 m²'));
         $this->assertSame('52,03', DocumentoRegras::formatarArea('52,03m2'));
