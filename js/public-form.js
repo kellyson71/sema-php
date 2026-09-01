@@ -389,10 +389,10 @@
       return `
         <div class="form-grid-2">
           <label>
-            Área total do terreno (m²) *
+            Área total a ser desmembrada (m²) *
             <input required type="number" inputmode="decimal" min="0.01" step="0.01"
                    name="area_total_terreno" placeholder="Ex.: 500,00" data-area-total>
-            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Área total do terreno a ser desmembrado (soma de todos os lotes resultantes).</span>
+            <span style="display:block; font-size:.73rem; color:var(--public-muted); font-weight:500; text-transform:none; margin-top:2px;">Soma de todos os lotes resultantes do desmembramento.</span>
             <label class="public-location-flag" style="margin-top:6px;">
               <input type="checkbox" name="area_total_desconhecida" value="1" data-area-total-desconhecida> <span>Não sei a área total</span>
             </label>
