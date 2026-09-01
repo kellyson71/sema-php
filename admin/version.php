@@ -1,9 +1,33 @@
 <?php
 if (!defined('APP_VERSION')) {
-    define('APP_VERSION', '3.0.0');
-    define('APP_VERSION_DATE', '21/05/2026');
+    define('APP_VERSION', '3.7.0');
+    define('APP_VERSION_DATE', '01/09/2026');
 
     $appChangelog = [
+        [
+            'version' => '3.7.0',
+            'date' => '01/09/2026',
+            'title' => 'Novo visual institucional, catálogo de responsáveis técnicos e monitoramento',
+            'badge' => 'Grande atualização',
+            'badge_color' => '#0d5433',
+            'badge_bg' => '#def2e6',
+            'changes' => [
+                'Formulário público reformulado com o novo layout institucional (identificação única para todos os serviços, rodapé com endereço, horário e mapa)',
+                'Nova tela de visualização de requerimento, com pendências, notas internas e histórico reunidos num só lugar',
+                'Painel admin com navegação do acervo e dashboard reorganizado (paginação de fila e histórico de concluídos)',
+                'Catálogo de responsáveis técnicos: perfil individual de cada engenheiro/arquiteto com as obras vinculadas',
+                'Busca do painel ampliada — agora encontra também por proprietário e responsável técnico',
+                'Prévia do conteúdo direto na listagem de requerimentos, no mesmo padrão da listagem de denúncias',
+                'Denúncia com checklist de ocorrência específico por área (Meio Ambiente x Obras e Serviços Urbanos)',
+                'Desmembramento: lote regular ou irregular, campo de área total com opção "não sei", coluna de confrontações',
+                'Responsável técnico com opção CTF além de CREA/CAU; habite-se com padrão popular e Corpo de Bombeiros',
+                'Editor de documentos com histórico de versões de modelos e autosave de rascunho',
+                'E-mails com prévia, reenvio seguro, validação de destinatário e evidência de envio/recebimento no log',
+                'Exigência de token CSRF em todo o fluxo de assinatura, recusa e coassinatura de documentos',
+                'Aviso do remetente oficial de e-mail para prevenir golpes em nome da SEMA',
+                'Monitoramento automático: erros de produção agora avisam a equipe por e-mail',
+            ],
+        ],
         [
             'version' => '3.0.0',
             'date' => '21/05/2026',
