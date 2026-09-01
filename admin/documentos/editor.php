@@ -1153,7 +1153,9 @@ foreach ($blocosProcesso as $titulo => $linhas):
                         : htmlspecialchars((string) $anexo['nome_original']) . ' · ' . $formatarTamanho($anexo['tamanho']) ?></small>
                   </span>
 <?php if (!$naoEnviado): ?>
-                  <a href="../../uploads/<?= htmlspecialchars(ltrim((string) $anexo['caminho'], '/\\')) ?>"
+                  <!-- uploads/ é fechada por .htaccess: todo download passa pelo
+                       arquivo.php, que exige sessão de admin. -->
+                  <a href="../../arquivo.php?path=<?= rawurlencode(ltrim(str_replace('\\', '/', (string) $anexo['caminho']), '/')) ?>"
                      target="_blank" rel="noopener" class="doc-processo-abrir" title="Abrir em nova aba">
                     <i class="fas fa-arrow-up-right-from-square"></i>
                   </a>
