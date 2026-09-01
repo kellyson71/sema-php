@@ -39,6 +39,14 @@ try {
     coRespostaJson($erro['payload'], $erro['status']);
 }
 
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    ob_clean();
+    echo json_encode(['success' => false, 'error' => 'A sessão de assinatura expirou. Recarregue a página e tente novamente.']);
+    exit;
+}
+
 $documentoId    = trim($_POST['documento_id']    ?? '');
 $adminId        = $_SESSION['admin_id'] ?? null;
 $pinAssinatura  = $_POST['pin_assinatura'] ?? '';
@@ -94,6 +102,16 @@ try {
             'Não há uma solicitação de assinatura pendente para você neste documento.',
             403
         );
+    }
+
+    // Somente o servidor indicado em uma solicitação pendente pode assinar.
+    $stmtPermissao = $pdo->prepare("SELECT id FROM solicitacoes_assinatura WHERE documento_id = ? AND destinatario_id = ? AND status = 'pendente' LIMIT 1");
+    $stmtPermissao->execute([$documentoId, $adminId]);
+    if (!$stmtPermissao->fetchColumn()) {
+        $pdo->rollBack();
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Não há uma solicitação de assinatura pendente para você neste documento.']);
+        exit;
     }
 
     // 2. Verificar se o admin já assinou este documento
@@ -196,10 +214,9 @@ try {
 
     $numero_processo = "Processo_#{$requerimentoId}";
     $verifyUrl = rtrim(BASE_URL, '/') . '/verificar';
-    $sigPos = ($fonte['sig_pos_x'] !== null && $fonte['sig_pos_y'] !== null)
-        ? ['x' => (float) $fonte['sig_pos_x'], 'y' => (float) $fonte['sig_pos_y']]
-        : null;
-
+    // Posição do carimbo agora é determinística no próprio gerar_pdf.php — não
+    // depende mais de sig_pos_x/sig_pos_y (removidos junto com a reescrita da
+    // paginação, ver f69e2f8).
     $sufixoTemporario = bin2hex(random_bytes(8));
     $caminhoTemporario = $caminhoFisico . '.tmp.' . $sufixoTemporario;
     $caminhoBackup = $caminhoFisico . '.bak.' . $sufixoTemporario;
@@ -207,7 +224,6 @@ try {
     emitirParecerAssinado($fonte['conteudo_html'], $assinantes, $numero_processo, 'F', $caminhoTemporario, [
         'verify_url' => $verifyUrl,
         'doc_codigo' => $documentoId,
-        'sig_pos'    => $sigPos,
     ]);
 
     if (!is_file($caminhoTemporario) || filesize($caminhoTemporario) === 0) {

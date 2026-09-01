@@ -40,3 +40,5 @@ require_once __DIR__ . '/helpers/pure_functions.php';
 // separado de functions.php justamente por não depender de config/database.
 require_once __DIR__ . '/../includes/entrega_helpers.php';
 require_once __DIR__ . '/../includes/public_form_components.php';
+require_once __DIR__ . '/../includes/assinatura_layout_helper.php';
+require_once __DIR__ . '/../includes/html_paginacao.php';

@@ -2718,6 +2718,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <!-- Barra de comando: ações do processo -->
     <?php if (!$mostrarPainelEncerrado): ?>
+    <?php if ($isBlocked && !$isFiscalPuro): ?>
+    <!-- Processo finalizado/indeferido, mas a barra de comando apareceu porque
+         este perfil pode entregar o doc. final (ver $tratarComoAtivoParaSetor2
+         acima). Sem isto, quem cai aqui não tinha como reabrir o processo. -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:10px;background:#fef9c3;border:1px solid #eab30855;margin-bottom:16px;">
+        <span style="font-size:.83rem;color:#854d0e;">
+            <i class="fas fa-lock me-1"></i>
+            Este processo já está <strong><?= $isFinalized ? 'finalizado' : 'indeferido' ?></strong>. Para alterar o status é preciso reabri-lo primeiro.
+        </span>
+        <button type="button" class="btn btn-outline-secondary btn-sm fw-medium flex-shrink-0" onclick="showReopenModal()">
+            <i class="fas fa-unlock me-1"></i>Reabrir
+        </button>
+    </div>
+    <?php endif; ?>
     <div class="cmd-tip" style="background:<?= $bi['bg'] ?>;border:1px solid <?= $bi['color'] ?>22;">
         <i class="fas <?= $bi['icon'] ?>" style="color:<?= $bi['color'] ?>;margin-top:2px;flex-shrink:0;"></i>
         <span style="font-size:.83rem;color:<?= $bi['color'] ?>;line-height:1.5;"><?= $bi['text'] ?></span>

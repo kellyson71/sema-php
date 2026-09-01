@@ -33,6 +33,13 @@ if (!assinaturaSessaoAdminAtiva($pdo)) {
     ], 401);
 }
 
+$csrfRecebido = (string) ($_POST['csrf_token'] ?? '');
+$csrfSessao = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfSessao === '' || $csrfRecebido === '' || !hash_equals($csrfSessao, $csrfRecebido)) {
+    header('Content-Type: application/json');
+    respostaJson(['success' => false, 'error' => 'A sessão de assinatura expirou. Recarregue a página e tente novamente.']);
+}
+
 $conteudo        = sanitizarHtmlParaPdf(trim($_POST['conteudo_parecer'] ?? ''));
 $requerimento_id = trim($_POST['requerimento_id'] ?? '');
 $salvar_banco    = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -49,12 +56,6 @@ $ehAssinaturaDigital = ($modoAssinatura !== 'sem_assinar');
 $tipoAssinanteManual = trim((string) ($_POST['assinatura_manual_tipo'] ?? 'secretario'));
 $nomeAssinanteManual = (string) ($_POST['assinatura_manual_nome'] ?? '');
 $cargoAssinanteManual = (string) ($_POST['assinatura_manual_cargo'] ?? '');
-
-// Posição customizada do bloco de assinatura (mm na última página), vinda do
-// arrasto no preview do editor. Vazio = posição padrão (inferior-direito).
-$sigPosX = isset($_POST['sig_pos_x']) && $_POST['sig_pos_x'] !== '' ? (float) $_POST['sig_pos_x'] : null;
-$sigPosY = isset($_POST['sig_pos_y']) && $_POST['sig_pos_y'] !== '' ? (float) $_POST['sig_pos_y'] : null;
-$sigPos  = ($sigPosX !== null && $sigPosY !== null) ? ['x' => $sigPosX, 'y' => $sigPosY] : null;
 
 if ($salvar_banco) {
     header('Content-Type: application/json');
@@ -245,7 +246,6 @@ if ($salvar_banco && $requerimento_id) {
         $opcoesPdf = [
             'verify_url' => $ehAssinaturaDigital ? $verifyUrlPdf : '',
             'doc_codigo' => $documentoId,
-            'sig_pos'    => $sigPos,
         ];
 
         // 1. Gerar e salvar fisicamente o PDF no disco "F"
@@ -326,12 +326,14 @@ if ($salvar_banco && $requerimento_id) {
             $metadadosAssinatura,
         ]);
 
-        // 4. Persistir HTML-fonte (base imutável das assinaturas) + posição do bloco
+        // 4. Persistir HTML-fonte (base imutável das assinaturas). A posição do
+        //    carimbo não é mais persistida: ela é derivada do próprio PDF na
+        //    hora de gerar, sempre no rodapé da última folha real.
         $pdo->prepare("
             INSERT IGNORE INTO documentos_fonte
-                (documento_id, requerimento_id, conteudo_html, tipo_documento, caminho_arquivo, criado_por_id, sig_pos_x, sig_pos_y)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ")->execute([$documentoId, $requerimento_id, $conteudo, $nomeCurto_template, $caminhoRelativo, $admin_id, $sigPosX, $sigPosY]);
+                (documento_id, requerimento_id, conteudo_html, tipo_documento, caminho_arquivo, criado_por_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ")->execute([$documentoId, $requerimento_id, $conteudo, $nomeCurto_template, $caminhoRelativo, $admin_id]);
 
         // 5. Histórico
         $acaoHistorico = match ($modoAssinatura) {
