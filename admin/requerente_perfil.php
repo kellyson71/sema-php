@@ -58,6 +58,12 @@ if (empty($processos)) {
 // entre um requerimento e outro; o mais novo é o mais confiável.
 $maisRecente = $processos[0];
 
+$totalProcessos = count($processos);
+$perPage = 10;
+$totalPages = max(1, (int) ceil($totalProcessos / $perPage));
+$page = max(1, min($totalPages, (int) ($_GET['p'] ?? 1)));
+$processosPagina = array_slice($processos, ($page - 1) * $perPage, $perPage);
+
 $titulo_pagina = 'Requerente';
 include 'header.php';
 ?>
@@ -86,6 +92,11 @@ include 'header.php';
 .rt-back { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; border:1px solid var(--req-line);
     color:var(--req-ink); font-size:.82rem; font-weight:700; text-decoration:none; margin-left:auto; transition:.12s; }
 .rt-back:hover { border-color:var(--req-line-strong); background:var(--req-primary-soft); color:var(--req-primary); }
+.rt-pagination { display:flex; justify-content:center; gap:6px; margin-top:22px; }
+.rt-page-link { min-width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:9px;
+    border:1px solid var(--req-line); color:var(--req-ink); font-size:.82rem; font-weight:700; text-decoration:none; }
+.rt-page-link.active { background:var(--req-primary); border-color:var(--req-primary); color:#fff; }
+.rt-page-link:hover:not(.active) { border-color:var(--req-line-strong); background:var(--req-primary-soft); }
 </style>
 
 <div class="rt-hero">
@@ -104,7 +115,7 @@ include 'header.php';
 </div>
 
 <div class="rt-section-title">Processos deste requerente</div>
-<?php foreach ($processos as $proc): ?>
+<?php foreach ($processosPagina as $proc): ?>
     <a href="visualizar_requerimento.php?id=<?= (int) $proc['id'] ?>" class="rt-obra-row">
         <div>
             <div class="rt-obra-protocolo">#<?= htmlspecialchars($proc['protocolo']) ?></div>
@@ -117,5 +128,13 @@ include 'header.php';
         </div>
     </a>
 <?php endforeach; ?>
+
+<?php if ($totalPages > 1): ?>
+    <div class="rt-pagination">
+        <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+            <a href="?cpf=<?= urlencode($cpfCnpj) ?>&p=<?= $p ?>" class="rt-page-link <?= $p === $page ? 'active' : '' ?>"><?= $p ?></a>
+        <?php endfor; ?>
+    </div>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>
