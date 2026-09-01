@@ -235,8 +235,13 @@ final class DocumentoRegras
         $lotes = is_array($json['lotes'] ?? null) ? $json['lotes'] : [];
         if (!$lotes) {
             $espec = trim((string) ($r['especificacao'] ?? ''));
-            return mb_strlen($espec, 'UTF-8') > 3 ? '<p style="text-align:justify;">' . htmlspecialchars($espec, ENT_QUOTES, 'UTF-8') . '</p>' : '';
+            return mb_strlen($espec, 'UTF-8') > 3
+                ? '<p style="text-align:justify; margin:0 0 14px 0;">' . htmlspecialchars($espec, ENT_QUOTES, 'UTF-8') . '</p>'
+                : '';
         }
+
+        $tituloStyle = 'margin:18px 0 8px 0;';
+        $linhaStyle = 'margin:0 0 4px 0;';
 
         $html = '';
         foreach ($lotes as $indice => $lote) {
@@ -244,12 +249,15 @@ final class DocumentoRegras
             $cadastro = trim((string) ($lote['cadastro_imobiliario'] ?? $r['cadastro_imobiliario'] ?? ''));
             $area = self::formatarArea($lote['area'] ?? '');
             $cadastroTexto = $cadastro !== '' ? ' DO CADASTRO ' . htmlspecialchars($cadastro, ENT_QUOTES, 'UTF-8') : '';
-            $html .= '<p><strong>DESCRIÇÃO DO LOTE Nº ' . $numero . $cadastroTexto
-                . ' COM ' . htmlspecialchars($area, ENT_QUOTES, 'UTF-8') . ' M²:</strong></p>';
+
+            $html .= '<div style="margin:0 0 16px 0;">';
+            $html .= '<p style="' . $tituloStyle . '"><strong>DESCRIÇÃO DO LOTE Nº ' . $numero . '</strong>'
+                . $cadastroTexto . ' <strong>COM ' . htmlspecialchars($area, ENT_QUOTES, 'UTF-8') . ' M²:</strong></p>';
 
             if (($lote['geometria'] ?? 'regular') === 'irregular') {
                 $descricaoIrregular = mb_strtoupper(trim((string) ($lote['descricao_irregular'] ?? '')), 'UTF-8');
-                $html .= '<p>' . htmlspecialchars($descricaoIrregular, ENT_QUOTES, 'UTF-8') . '</p>';
+                $html .= '<p style="' . $linhaStyle . '">' . htmlspecialchars($descricaoIrregular, ENT_QUOTES, 'UTF-8') . '</p>';
+                $html .= '</div>';
                 continue;
             }
 
@@ -257,9 +265,10 @@ final class DocumentoRegras
                 $lado = (array) ($lote['confrontacoes'][$rumo] ?? []);
                 $metragem = self::formatarArea($lado['metragem'] ?? '');
                 $confinante = mb_strtoupper(trim((string) ($lado['descricao'] ?? '')), 'UTF-8');
-                $html .= '<p>' . htmlspecialchars($metragem, ENT_QUOTES, 'UTF-8') . ' METROS ' . $textoRumo
+                $html .= '<p style="' . $linhaStyle . '">' . htmlspecialchars($metragem, ENT_QUOTES, 'UTF-8') . ' METROS ' . $textoRumo
                     . ' CONFINANTE COM ' . htmlspecialchars($confinante, ENT_QUOTES, 'UTF-8') . '.</p>';
             }
+            $html .= '</div>';
         }
         return $html;
     }
