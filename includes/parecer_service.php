@@ -201,6 +201,12 @@ class ParecerService
             'responsavel_tecnico_conselho' => DocumentoRegras::conselhoResponsavel($requerimento),
             'responsavel_tecnico_rotulo' => DocumentoRegras::rotuloDocumentoTecnico($requerimento),
             'especificacao' => $especificacao,
+            // Tipo escolhido no formulário (Residencial unifamiliar, Comercial,
+            // Mista...). Em minúsculas porque entra no meio da frase do parecer.
+            'tipo_edificacao' => mb_strtolower(trim((string) ($requerimento['tipo_edificacao'] ?? '')), 'UTF-8'),
+            // Frase pronta: "uma edificação residencial unifamiliar com 53,00 m²".
+            // Sai sem o tipo quando o requerimento é anterior ao campo no formulário.
+            'edificacao_referencia' => DocumentoRegras::edificacaoReferencia($requerimento),
             'art_numero' => $artNumero,
             'area_construida' => $area !== '' ? DocumentoRegras::formatarArea($area) : 'a ser informada',
             'area' => $area !== '' ? DocumentoRegras::formatarArea($area) : 'a ser informada',

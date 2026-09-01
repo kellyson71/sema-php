@@ -229,6 +229,27 @@ final class DocumentoRegras
             . $ambientesTexto;
     }
 
+    /**
+     * Trecho do parecer de construção: "uma edificação residencial unifamiliar
+     * com 53,00 m²".
+     *
+     * O tipo da edificação só passou a ser coletado no formulário reformulado,
+     * então requerimento antigo não tem o campo. Nesse caso a frase sai sem o
+     * tipo — "uma edificação com 53,00 m²" — e quem analisa completa no editor,
+     * como já fazia antes.
+     */
+    public static function edificacaoReferencia(array $r): string
+    {
+        $tipo = mb_strtolower(trim((string) ($r['tipo_edificacao'] ?? '')), 'UTF-8');
+        $area = self::formatarArea($r['area_construcao'] ?? $r['area_construida'] ?? '');
+
+        $sujeito = $tipo !== '' ? 'uma edificação ' . $tipo : 'uma edificação';
+        if ($area === '') {
+            return $sujeito;
+        }
+        return $sujeito . ' com ' . $area . ' m²';
+    }
+
     public static function lotesDesmembramentoHtml(array $r): string
     {
         $json = json_decode((string) ($r['desmembramento_lotes_json'] ?? ''), true);
@@ -296,7 +317,12 @@ final class DocumentoRegras
         if (is_numeric($valor)) {
             return number_format((float) $valor, 2, ',', '.');
         }
-        return trim((string) $valor);
+        // Parte dos requerimentos foi enviada com a unidade dentro do campo
+        // ("52,03 m²"). Os modelos escrevem o "m²" por conta própria, então a
+        // unidade sai daqui pra não sobrar "52,03 m² m²" no documento.
+        $texto = trim((string) $valor);
+        $semUnidade = preg_replace('/\s*(m²|m2|metros\s+quadrados)\s*$/iu', '', $texto);
+        return trim((string) $semUnidade);
     }
 
     public static function configuracao(PDO $pdo, string $chave, string $padrao): string
