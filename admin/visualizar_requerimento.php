@@ -2652,6 +2652,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span class="proc-dias-aberto"><?= $diasEmAberto ?> dia<?= $diasEmAberto > 1 ? 's' : '' ?> em aberto</span>
                 <?php endif; ?>
             </div>
+            <?php if ($isIndeferido && !empty($requerimento['observacoes'])): ?>
+                <?php
+                // A observação vem como "PROCESSO INDEFERIDO\n\nMotivo: X\n\nOrientações: Y" —
+                // aqui é só o motivo que importa pra quem abre o processo, sem ter que ir até
+                // o histórico pra descobrir por quê.
+                $motivoTexto = preg_replace('/^PROCESSO INDEFERIDO\s*/i', '', trim((string) $requerimento['observacoes']));
+                $motivoTexto = trim($motivoTexto);
+                ?>
+                <?php if ($motivoTexto !== ''): ?>
+                <div class="proc-motivo">
+                    <i class="fas fa-circle-exclamation"></i>
+                    <span><?= nl2br(htmlspecialchars($motivoTexto)) ?></span>
+                    <a href="?id=<?= $id ?>&tab=historico#historico">Ver histórico <i class="fas fa-arrow-right" style="font-size:.68rem;"></i></a>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <div class="proc-actions">
             <?php if (!$isBlocked): ?>
