@@ -481,6 +481,7 @@
                 <option value="Outro">Outro</option>
               </select>
               <input type="text" name="${name}_outro" class="public-habite-other-input" placeholder="Especifique ${label.toLowerCase()} *" data-habite-other-input data-habite-preview-field hidden>
+              ${name === 'habite_padrao' ? '<span class="public-field-note" style="margin-top:4px;">Sujeito a avaliação técnica da SEMA.</span>' : ''}
             </label>
           `).join('')}
         </div>

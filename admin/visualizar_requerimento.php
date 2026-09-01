@@ -555,22 +555,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['adicionar_nota_inter
     }
 }
 
-// Salvar classificação interna do Habite-se (padrão construtivo interno e
-// denominação interna) — só a equipe da SEMA vê e preenche esses campos.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_internos_habite'])) {
-    if (!adminPostCsrfValido()) {
-        setMensagem('danger', 'Sessão expirada. Recarregue a página e tente novamente.');
-    } else {
-        $padraoInterno = mb_substr(trim($_POST['habite_padrao_interno'] ?? ''), 0, 100);
-        $denominacaoInterna = mb_substr(trim($_POST['habite_denominacao_interna'] ?? ''), 0, 150);
-        $stmt = $pdo->prepare('UPDATE requerimentos SET habite_padrao_interno = ?, habite_denominacao_interna = ? WHERE id = ?');
-        $stmt->execute([$padraoInterno ?: null, $denominacaoInterna ?: null, $id]);
-        setMensagem('success', 'Classificação interna salva.');
-    }
-    header("Location: visualizar_requerimento.php?id={$id}");
-    exit;
-}
-
 // Excluir observação interna
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_nota_interna'])) {
     $notaId = (int) ($_POST['nota_id'] ?? 0);
@@ -2048,8 +2032,12 @@ include 'header.php';
 
 <?php
 // Verificar se o processo está finalizado ou indeferido
+// "Reprovado" conta como indeferido pra tudo que é UI: admin/estatisticas.php já
+// trata os dois como a mesma categoria de "falha" nas métricas, mas aqui a tela
+// só olhava pro literal 'indeferido' — um processo Reprovado continuava sendo
+// tratado como ativo (dias em aberto contando, painel de ações ativas, etc.).
 $isFinalized = (strtolower($requerimento['status']) === 'finalizado');
-$isIndeferido = (strtolower($requerimento['status']) === 'indeferido');
+$isIndeferido = in_array(strtolower($requerimento['status']), ['indeferido', 'reprovado'], true);
 $isBlocked = $isFinalized || $isIndeferido;
 $activeTab = $_GET['tab'] ?? 'informacoes';
 $tabsPermitidas = ['informacoes', 'documentos', 'historico', 'pendencias'];
@@ -2725,7 +2713,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:10px;background:#fef9c3;border:1px solid #eab30855;margin-bottom:16px;">
         <span style="font-size:.83rem;color:#854d0e;">
             <i class="fas fa-lock me-1"></i>
-            Este processo já está <strong><?= $isFinalized ? 'finalizado' : 'indeferido' ?></strong>. Para alterar o status é preciso reabri-lo primeiro.
+            Este processo já está <strong><?= $isFinalized ? 'finalizado' : htmlspecialchars(mb_strtolower($requerimento['status'], 'UTF-8')) ?></strong>. Para alterar o status é preciso reabri-lo primeiro.
         </span>
         <button type="button" class="btn btn-outline-secondary btn-sm fw-medium flex-shrink-0" onclick="showReopenModal()">
             <i class="fas fa-unlock me-1"></i>Reabrir
@@ -3120,10 +3108,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="info-k">Uso / Pavimento</span>
                                 <span class="info-v"><?= htmlspecialchars((string) ($requerimento['habite_uso'] ?? '—')) ?> / <?= htmlspecialchars((string) ($requerimento['habite_pavimento'] ?? '—')) ?></span>
                             <?php endif; ?>
-                            <?php if (!empty($requerimento['habite_padrao']) || !empty($requerimento['habite_tipo_construcao'])): ?>
-                                <span class="info-k">Padrão / Tipo</span>
-                                <span class="info-v"><?= htmlspecialchars((string) ($requerimento['habite_padrao'] ?? '—')) ?> / <?= htmlspecialchars((string) ($requerimento['habite_tipo_construcao'] ?? '—')) ?></span>
+                            <?php if (!empty($requerimento['habite_tipo_construcao'])): ?>
+                                <span class="info-k">Tipo de construção</span>
+                                <span class="info-v quick-editable" data-quick-field="habite_tipo_construcao" data-quick-value="<?= htmlspecialchars($requerimento['habite_tipo_construcao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= htmlspecialchars($requerimento['habite_tipo_construcao']) ?></span></span>
                             <?php endif; ?>
+                            <span class="info-k">Padrão construtivo</span>
+                            <span class="info-v quick-editable" data-quick-field="habite_padrao" data-quick-value="<?= htmlspecialchars($requerimento['habite_padrao'] ?? '', ENT_QUOTES) ?>"><span class="quick-value"><?= !empty($requerimento['habite_padrao']) ? htmlspecialchars($requerimento['habite_padrao']) : $ni ?></span></span>
                             <?php if (!empty($requerimento['inicio_obra']) || !empty($requerimento['termino_obra'])): ?>
                                 <span class="info-k">Período da Obra</span>
                                 <span class="info-v"><?= (!empty($requerimento['inicio_obra']) ? date('d/m/Y', strtotime($requerimento['inicio_obra'])) : '—') . ' a ' . (!empty($requerimento['termino_obra']) ? date('d/m/Y', strtotime($requerimento['termino_obra'])) : '—') ?></span>
@@ -3243,29 +3233,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <!-- Dados internos do Habite-se (classificação da própria SEMA, não vem do cidadão) -->
-                <?php if ($isHabiteSe): ?>
-                <div class="info-card">
-                    <div class="info-card-head"><i class="fas fa-clipboard-check"></i><span>Classificação Interna (SEMA)</span></div>
-                    <form method="post" class="d-flex flex-column gap-2">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="salvar_dados_internos_habite" value="1">
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label" for="habite_padrao_interno" style="font-size:.78rem;font-weight:700;">Padrão Construtivo Interno</label>
-                                <input type="text" class="form-control form-control-sm" id="habite_padrao_interno" name="habite_padrao_interno"
-                                       value="<?= htmlspecialchars($requerimento['habite_padrao_interno'] ?? '', ENT_QUOTES) ?>" placeholder="Sujeito a avaliação técnica">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="habite_denominacao_interna" style="font-size:.78rem;font-weight:700;">Denominação Interna</label>
-                                <input type="text" class="form-control form-control-sm" id="habite_denominacao_interna" name="habite_denominacao_interna"
-                                       value="<?= htmlspecialchars($requerimento['habite_denominacao_interna'] ?? '', ENT_QUOTES) ?>" placeholder="Sujeito a avaliação técnica">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-sm btn-outline-primary align-self-start">Salvar classificação interna</button>
-                    </form>
-                </div>
-                <?php endif; ?>
 
                 <!-- Responsável Técnico -->
                 <?php if (!empty($requerimento['responsavel_tecnico_nome'])): ?>
@@ -3418,6 +3385,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="card-body">
                     <div class="row g-2">
+                        <!-- As etapas só aparecem se o processo realmente passou por elas — um
+                             processo indeferido direto na triagem, por exemplo, nunca chega a
+                             ter tempo de fiscalização, e mostrar "N/A" ali sugeria um caminho
+                             fixo que nem todo processo percorre. -->
+                        <?php if ($tempoAteVisualizacao !== null): ?>
                         <!-- Etapa 1: Envio → 1ª Visualização -->
                         <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
@@ -3429,7 +3401,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="text-muted" style="font-size:.75rem">envio → visualização</div>
                             </div>
                         </div>
+                        <?php endif; ?>
 
+                        <?php if ($tempoAnalisePendente !== null): ?>
                         <!-- Etapa 2: Em análise → Pendente -->
                         <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
@@ -3441,7 +3415,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="text-muted" style="font-size:.75rem">em análise → pendente</div>
                             </div>
                         </div>
+                        <?php endif; ?>
 
+                        <?php if ($tempoAnaliseFiscalizacao !== null): ?>
                         <!-- Etapa 3: Pendente → Fiscalização -->
                         <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
@@ -3453,7 +3429,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="text-muted" style="font-size:.75rem">pendente → fiscalização</div>
                             </div>
                         </div>
+                        <?php endif; ?>
 
+                        <?php if ($tempoFiscalizacaoSecretario !== null): ?>
                         <!-- Etapa 4: Fiscalização → Secretário -->
                         <div class="col-6 col-md">
                             <div class="p-3 rounded bg-light">
@@ -3465,6 +3443,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="text-muted" style="font-size:.75rem">fiscal → secretário</div>
                             </div>
                         </div>
+                        <?php endif; ?>
 
                         <!-- Tempo Total / Em Aberto -->
                         <div class="col-6 col-md">
@@ -3940,7 +3919,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php elseif ($isIndeferido): ?>
                         <div class="ms-auto">
                             <span class="badge bg-danger">
-                                <i class="fas fa-times-circle me-1"></i>Indeferido
+                                <i class="fas fa-times-circle me-1"></i><?= htmlspecialchars($requerimento['status']) ?>
                             </span>
                         </div>
                     <?php endif; ?>
@@ -4093,21 +4072,27 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php endif; ?>
                         </div>
                     <?php else: ?>
-                        <!-- Processo Indeferido — painel compacto -->
+                        <!-- Processo Indeferido/Reprovado — painel compacto -->
                         <?php
-                        $ultimaAcaoEnc = '';
-                        foreach (array_reverse($historico) as $h) {
-                            if (stripos($h['acao'],'Indefer') !== false) { $ultimaAcaoEnc = $h['acao']; break; }
-                        }
-                        if (!$ultimaAcaoEnc && !empty($historico)) $ultimaAcaoEnc = end($historico)['acao'];
+                        // A ação mais recente é que decide o texto — pode ter sido o "Indeferir
+                        // processo" formal (que dispara e-mail) ou uma troca manual de status
+                        // pra Reprovado/Indeferido via "Atualizar status" (que não dispara nada).
+                        // Afirmar "notificado por e-mail" sem checar isso já enganou a equipe
+                        // achando que um e-mail tinha saído quando na verdade não saiu.
+                        $ultimaAcaoEnc = !empty($historico) ? end($historico)['acao'] : '';
+                        $emailFoiEnviadoNestaAcao = $ultimaAcaoEnc !== '' && (stripos($ultimaAcaoEnc, 'email') !== false || stripos($ultimaAcaoEnc, 'e-mail') !== false);
+                        $statusAtualLabel = htmlspecialchars($requerimento['status']);
                         ?>
                         <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;">
                             <span style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;">
                                 <i class="fas fa-ban" style="color:#b91c1c;font-size:1.1rem;"></i>
                             </span>
                             <div style="flex:1;min-width:0;">
-                                <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo indeferido</p>
-                                <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">O requerente foi notificado por e-mail<?php if($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc,0,60,'…')) ?><?php endif; ?></p>
+                                <p style="margin:0 0 2px;font-weight:800;font-size:.9rem;color:#1a2e1e;">Processo <?= mb_strtolower($statusAtualLabel, 'UTF-8') ?></p>
+                                <p style="margin:0 0 10px;font-size:.8rem;color:var(--req-muted,#888);">
+                                    <?= $emailFoiEnviadoNestaAcao ? 'O requerente foi notificado por e-mail' : 'Status alterado sem notificação automática por e-mail' ?>
+                                    <?php if ($ultimaAcaoEnc): ?> · <?= htmlspecialchars(mb_strimwidth($ultimaAcaoEnc, 0, 90, '…')) ?><?php endif; ?>
+                                </p>
                                 <?php if (!$isFiscalPuro): ?>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                     <button type="button" class="btn btn-outline-secondary btn-sm fw-medium" onclick="showReopenModal()">
