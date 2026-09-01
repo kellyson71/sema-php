@@ -236,13 +236,12 @@ final class DocumentoRegras
         if (!$lotes) {
             $espec = trim((string) ($r['especificacao'] ?? ''));
             return mb_strlen($espec, 'UTF-8') > 3
-                ? '<p style="text-align:justify; margin:0 0 14px 0;">' . htmlspecialchars($espec, ENT_QUOTES, 'UTF-8') . '</p>'
+                ? '<p style="text-align:justify;">' . htmlspecialchars($espec, ENT_QUOTES, 'UTF-8') . '</p><br>'
                 : '';
         }
 
-        $tituloStyle = 'margin:18px 0 8px 0;';
-        $linhaStyle = 'margin:0 0 4px 0;';
-
+        // O editor zera margin de <p>/<div> pra bater com o TCPDF (que ignora
+        // margem vertical) — o espaçamento entre blocos tem que vir de <br>.
         $html = '';
         foreach ($lotes as $indice => $lote) {
             $numero = (int) ($lote['ordem'] ?? ($indice + 1));
@@ -250,25 +249,23 @@ final class DocumentoRegras
             $area = self::formatarArea($lote['area'] ?? '');
             $cadastroTexto = $cadastro !== '' ? ' DO CADASTRO ' . htmlspecialchars($cadastro, ENT_QUOTES, 'UTF-8') : '';
 
-            $html .= '<div style="margin:0 0 16px 0;">';
-            $html .= '<p style="' . $tituloStyle . '"><strong>DESCRIÇÃO DO LOTE Nº ' . $numero . '</strong>'
-                . $cadastroTexto . ' <strong>COM ' . htmlspecialchars($area, ENT_QUOTES, 'UTF-8') . ' M²:</strong></p>';
+            $linhas = ['<strong>DESCRIÇÃO DO LOTE Nº ' . $numero . '</strong>'
+                . $cadastroTexto . ' <strong>COM ' . htmlspecialchars($area, ENT_QUOTES, 'UTF-8') . ' M²:</strong>'];
 
             if (($lote['geometria'] ?? 'regular') === 'irregular') {
                 $descricaoIrregular = mb_strtoupper(trim((string) ($lote['descricao_irregular'] ?? '')), 'UTF-8');
-                $html .= '<p style="' . $linhaStyle . '">' . htmlspecialchars($descricaoIrregular, ENT_QUOTES, 'UTF-8') . '</p>';
-                $html .= '</div>';
-                continue;
+                $linhas[] = htmlspecialchars($descricaoIrregular, ENT_QUOTES, 'UTF-8');
+            } else {
+                foreach (['norte' => 'AO NORTE', 'oeste' => 'A OESTE', 'leste' => 'AO LESTE', 'sul' => 'AO SUL'] as $rumo => $textoRumo) {
+                    $lado = (array) ($lote['confrontacoes'][$rumo] ?? []);
+                    $metragem = self::formatarArea($lado['metragem'] ?? '');
+                    $confinante = mb_strtoupper(trim((string) ($lado['descricao'] ?? '')), 'UTF-8');
+                    $linhas[] = htmlspecialchars($metragem, ENT_QUOTES, 'UTF-8') . ' METROS ' . $textoRumo
+                        . ' CONFINANTE COM ' . htmlspecialchars($confinante, ENT_QUOTES, 'UTF-8') . '.';
+                }
             }
 
-            foreach (['norte' => 'AO NORTE', 'oeste' => 'A OESTE', 'leste' => 'AO LESTE', 'sul' => 'AO SUL'] as $rumo => $textoRumo) {
-                $lado = (array) ($lote['confrontacoes'][$rumo] ?? []);
-                $metragem = self::formatarArea($lado['metragem'] ?? '');
-                $confinante = mb_strtoupper(trim((string) ($lado['descricao'] ?? '')), 'UTF-8');
-                $html .= '<p style="' . $linhaStyle . '">' . htmlspecialchars($metragem, ENT_QUOTES, 'UTF-8') . ' METROS ' . $textoRumo
-                    . ' CONFINANTE COM ' . htmlspecialchars($confinante, ENT_QUOTES, 'UTF-8') . '.</p>';
-            }
-            $html .= '</div>';
+            $html .= '<p style="text-align:justify;">' . implode('<br>', $linhas) . '</p><br>';
         }
         return $html;
     }
