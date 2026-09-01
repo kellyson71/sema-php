@@ -271,12 +271,12 @@ final class DocumentoRegrasTest extends TestCase
         );
     }
 
-    public function testReferenciaDaEdificacaoOmiteOTipoQuandoORequerimentoEAnteriorAoCampo(): void
+    public function testReferenciaDaEdificacaoAssumeResidencialQuandoORequerimentoEAnteriorAoCampo(): void
     {
-        // Requerimento enviado antes do formulário reformulado: sem tipo, a
-        // frase precisa continuar legível para quem completa no editor.
+        // Requerimento enviado antes do formulário reformulado: sem o campo,
+        // vale o padrão do acervo, que quem analisa troca no editor se preciso.
         $this->assertSame(
-            'uma edificação com 82,62 m²',
+            'uma edificação residencial com 82,62 m²',
             DocumentoRegras::edificacaoReferencia(['area_construcao' => '82,62'])
         );
     }

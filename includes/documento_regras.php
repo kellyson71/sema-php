@@ -229,21 +229,28 @@ final class DocumentoRegras
             . $ambientesTexto;
     }
 
+    /** Tipo assumido quando o requerimento não traz o campo (ver abaixo). */
+    private const EDIFICACAO_TIPO_PADRAO = 'residencial';
+
     /**
      * Trecho do parecer de construção: "uma edificação residencial unifamiliar
      * com 53,00 m²".
      *
      * O tipo da edificação só passou a ser coletado no formulário reformulado,
-     * então requerimento antigo não tem o campo. Nesse caso a frase sai sem o
-     * tipo — "uma edificação com 53,00 m²" — e quem analisa completa no editor,
-     * como já fazia antes.
+     * então requerimento antigo não tem o campo. Nesses casos assume-se
+     * "residencial", que é a esmagadora maioria do acervo; quando for outro
+     * (comercial, mista...), quem analisa troca a palavra no editor, como já
+     * fazia antes de o campo existir.
      */
     public static function edificacaoReferencia(array $r): string
     {
         $tipo = mb_strtolower(trim((string) ($r['tipo_edificacao'] ?? '')), 'UTF-8');
+        if ($tipo === '') {
+            $tipo = self::EDIFICACAO_TIPO_PADRAO;
+        }
         $area = self::formatarArea($r['area_construcao'] ?? $r['area_construida'] ?? '');
 
-        $sujeito = $tipo !== '' ? 'uma edificação ' . $tipo : 'uma edificação';
+        $sujeito = 'uma edificação ' . $tipo;
         if ($area === '') {
             return $sujeito;
         }
