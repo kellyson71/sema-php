@@ -3964,14 +3964,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             SELECT MIN(timestamp_assinatura) AS primeira_assinatura,
                                    tipo_documento, documento_id,
                                    GROUP_CONCAT(DISTINCT assinante_nome ORDER BY timestamp_assinatura ASC SEPARATOR ', ') AS assinantes,
-                                   nivel_assinatura
+                                   nivel_assinatura,
+                                   MIN(tipo_assinatura) AS tipo_assinatura,
+                                   MAX(substituido_por_documento_id) AS substituido_por
                             FROM assinaturas_digitais
-                            WHERE requerimento_id = ? AND tipo_assinatura != 'sem_assinatura' $filtroKellyson
+                            -- Documento gerado para assinar à caneta também é documento
+                            -- entregue: aparece aqui (com selo próprio) e é retificável.
+                            WHERE requerimento_id = ? $filtroKellyson
                             GROUP BY documento_id
                             ORDER BY primeira_assinatura ASC
                         ");
                         $stmtDocsF->execute([$id]);
                         $docsAssinadosF = $stmtDocsF->fetchAll(PDO::FETCH_ASSOC);
+                        // A retificação reabre o HTML guardado junto do PDF; sem ele
+                        // (documentos anteriores à funcionalidade) não há o que editar.
+                        $pastaHtmlAssinado = __DIR__ . '/pareceres/' . $id . '/';
 
                         // Tempo total formatado
                         function formatarTempoCurto(int $seg): string {
@@ -4016,6 +4023,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <?php foreach ($docsAssinadosF as $dF):
                                             $nomeDocF = htmlspecialchars(ucfirst(str_replace('_',' ', $dF['tipo_documento'])));
                                             $isAvancado = ($dF['nivel_assinatura'] === 'avancada');
+                                            $foiSubstituido = !empty($dF['substituido_por']);
+                                            $podeRetificar = !$foiSubstituido
+                                                && is_file($pastaHtmlAssinado . $dF['documento_id'] . '.html');
                                         ?>
                                             <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;">
                                                 <i class="fas fa-file-pdf" style="color:#dc2626;font-size:.85rem;flex-shrink:0;"></i>
@@ -4026,7 +4036,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                         · <?= date('d/m/Y', strtotime($dF['primeira_assinatura'])) ?>
                                                     </div>
                                                 </div>
-                                                <?php if ($isAvancado): ?>
+                                                <?php if ($dF['tipo_assinatura'] === 'sem_assinatura'): ?>
+                                                    <span style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;font-weight:700;flex-shrink:0;">À CANETA</span>
+                                                <?php elseif ($isAvancado): ?>
                                                     <span style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700;flex-shrink:0;">AVANÇADA</span>
                                                 <?php else: ?>
                                                     <span style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;flex-shrink:0;">ELETRÔNICA</span>
@@ -4037,6 +4049,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <a href="assinatura/redownload_pdf.php?id=<?= urlencode($dF['documento_id']) ?>"
                                                    title="Baixar"
                                                    style="color:#64748b;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-download"></i></a>
+                                                <?php if ($podeRetificar): ?>
+                                                    <a href="documentos/editor.php?requerimento_id=<?= (int) $id ?>&template=assinado:<?= urlencode($dF['documento_id']) ?>"
+                                                       title="Corrigir e reemitir mantendo o mesmo número"
+                                                       style="color:#b7791f;font-size:.8rem;flex-shrink:0;text-decoration:none;"><i class="fas fa-rotate"></i></a>
+                                                <?php elseif ($foiSubstituido): ?>
+                                                    <span title="Esta versão foi retificada e não vale mais"
+                                                          style="font-size:.6rem;padding:2px 6px;border-radius:4px;background:#fffaf1;color:#8a5a00;border:1px solid #fcd9a0;font-weight:700;flex-shrink:0;">RETIFICADO</span>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
@@ -5790,6 +5810,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         <div class="data-value" style="flex:1;min-width:0;">
                             <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
                                 <span>${nomeLimpo}</span>${seloTipo}
+                                ${p.substituido ? '<span class="badge" style="background:#fffaf1;color:#8a5a00;border:1px solid #fcd9a0;font-size:.62rem;">RETIFICADO</span>' : ''}
                             </div>
                             <div class="text-muted small">${p.data} • ${formatarTamanhoArquivo(p.tamanho)}
                                 ${p.assinante ? `<br><span class="text-primary"><i class="fas fa-user-check me-1"></i>Assinado por: ${p.assinante}</span>` : ''}
@@ -5799,6 +5820,7 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                         <div class="data-actions">
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}&inline=1" class="copy-btn me-1" title="Visualizar PDF" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb"><i class="fas fa-eye"></i></a>` : ''}
                             ${!p.apagado && downloadUrl ? `<a href="${downloadUrl}" class="copy-btn me-1" title="Baixar PDF" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>` : ''}
+                            ${p.pode_retificar ? `<a href="documentos/editor.php?requerimento_id=<?php echo $id; ?>&template=assinado:${encodeURIComponent(p.documento_id)}" class="copy-btn me-1" title="Corrigir e reemitir mantendo o mesmo número" onclick="event.stopPropagation()" style="color:#b7791f"><i class="fas fa-rotate"></i></a>` : ''}
                             <button onclick="event.stopPropagation();excluirDocAssinado('${p.documento_id}')" class="copy-btn" title="Excluir" style="color:#dc2626"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>`;

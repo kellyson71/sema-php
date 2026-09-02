@@ -912,21 +912,25 @@ try {
             $stmtAd = $pdo->prepare("
                 SELECT ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
                        ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo,
-                       ad.timestamp_assinatura,
+                       ad.timestamp_assinatura, ad.substituido_por_documento_id,
                        GROUP_CONCAT(DISTINCT ad2.assinante_id ORDER BY ad2.assinante_id SEPARATOR ',') AS assinantes_ids
                 FROM assinaturas_digitais ad
                 LEFT JOIN assinaturas_digitais ad2
                     ON (ad2.documento_id = ad.documento_id)
                 WHERE ad.requerimento_id = ? $filtroKellyson
                 GROUP BY ad.documento_id, ad.nome_arquivo, ad.tipo_documento, ad.assinante_nome,
-                         ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo, ad.timestamp_assinatura
+                         ad.assinante_cargo, ad.assinante_cpf, ad.caminho_arquivo, ad.timestamp_assinatura,
+                         ad.substituido_por_documento_id
                 ORDER BY ad.timestamp_assinatura DESC
             ");
             $stmtAd->execute([$requerimento_id]);
             $rows = $stmtAd->fetchAll(PDO::FETCH_ASSOC);
 
             $adminIdSessao = (int) ($_SESSION['admin_id'] ?? 0);
-            $pareceres = array_map(function($r) use ($pdo, $adminIdSessao) {
+            // A retificação reabre o HTML guardado ao lado do PDF. Documentos
+            // assinados antes disso não têm o arquivo e não são retificáveis.
+            $pastaHtmlAssinado = __DIR__ . '/pareceres/' . $requerimento_id . '/';
+            $pareceres = array_map(function($r) use ($pdo, $adminIdSessao, $pastaHtmlAssinado) {
                 $existe = !empty($r['caminho_arquivo']) && file_exists($r['caminho_arquivo']);
                 $tamanho = $existe ? filesize($r['caminho_arquivo']) : 0;
                 // Converter GROUP_CONCAT string para array de inteiros
@@ -960,6 +964,9 @@ try {
                     'co_completo'       => $coStatus['completo'],
                     'co_solicitante_id' => $coStatus['solicitante_id'],
                     'co_eu_pendente'    => $euTenhoPendente,
+                    'substituido'       => !empty($r['substituido_por_documento_id']),
+                    'pode_retificar'    => empty($r['substituido_por_documento_id'])
+                                            && is_file($pastaHtmlAssinado . $r['documento_id'] . '.html'),
                 ];
             }, $rows);
 
