@@ -3,6 +3,13 @@ require_once 'conexao.php';
 require_once __DIR__ . '/../includes/functions.php';
 verificaLogin();
 
+// Para o secretário, essa fila já foi absorvida na dashboard (index.php) —
+// evita ter dois lugares diferentes mostrando a mesma pendência de assinatura.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    header('Location: index.php');
+    exit;
+}
+
 $adminId = (int) ($_SESSION['admin_id'] ?? 0);
 
 // Pendências de co-assinatura direcionadas a mim

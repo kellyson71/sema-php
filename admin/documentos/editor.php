@@ -887,6 +887,14 @@ include '../header.php';
                       </div>
                       <i class="fas fa-circle-check mc-check"></i>
                   </label>
+                  <label class="modo-card" data-modo="govbr">
+                      <div class="mc-icon"><i class="fas fa-id-card"></i></div>
+                      <div>
+                          <div class="mc-title">Assinar via Gov.br</div>
+                          <div class="mc-desc">Baixa o PDF e abre o assinador do gov.br para concluir por lá</div>
+                      </div>
+                      <i class="fas fa-arrow-up-right-from-square mc-check"></i>
+                  </label>
               </div>
 
               <!-- Pessoa que aparecerá na linha física (apenas modo manual) -->
@@ -2165,12 +2173,57 @@ foreach ($blocosProcesso as $titulo => $linhas):
                 }
                 const modo = card.dataset.modo;
 
+                // Gov.br ainda não tem integração de assinatura própria — é um
+                // atalho que baixa o PDF pronto e abre o assinador do gov.br
+                // pra concluir por lá. Não vira o "modo" persistido do form,
+                // porque o backend (processa_assinatura.php) só conhece
+                // assinar/assinar_e_requisitar/sem_assinar.
+                if (modo === 'govbr') {
+                    event.preventDefault();
+                    iniciarFluxoGovBr();
+                    return;
+                }
+
                 cards.forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
 
                 aplicarModo(modo);
             });
         });
+
+        /* ─── Gov.br (placeholder): baixa o PDF pronto e abre o assinador oficial ─── */
+        window.iniciarFluxoGovBr = function() {
+            const html = obterConteudoLimpo();
+            if (!html || html.trim() === '' || html === '<p><br></p>') {
+                Swal.fire('Atenção', 'O documento está vazio.', 'warning');
+                return;
+            }
+            if (!validarAssinanteManual()) return;
+            const dadosManual = dadosAssinanteManual();
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '../assinatura/preview_pdf.php';
+            form.target = '_blank';
+            const campos = {
+                conteudo_parecer: html,
+                requerimento_id: reqId,
+                modo_assinatura: 'sem_assinar',
+                assinatura_manual_tipo: dadosManual.tipo,
+                assinatura_manual_nome: dadosManual.nome,
+                assinatura_manual_cargo: dadosManual.cargo,
+                csrf_token: csrfToken,
+            };
+            for (const [k, v] of Object.entries(campos)) {
+                const inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = k; inp.value = v;
+                form.appendChild(inp);
+            }
+            document.body.appendChild(form);
+            form.submit();
+            form.remove();
+            window.open('https://www.gov.br/governodigital/pt-br/assinatura-eletronica', '_blank');
+            Swal.fire({ toast:true, position:'top', icon:'info', title:'PDF baixado e gov.br aberto em novas abas', showConfirmButton:false, timer:3200 });
+        };
 
         // Sincroniza o painel com o card já marcado como "selected" no carregamento
         // (relevante quando a assinatura direta está bloqueada e outro card vem pré-selecionado).

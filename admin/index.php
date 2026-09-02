@@ -80,6 +80,10 @@ if ($setorFiltro) {
     $ultimosRequerimentos = $stmt->fetchAll();
 }
 
+// Para o secretário, essa lista alimenta a fila unificada da dashboard (item
+// "Precisa de você agora") — por isso não tem LIMIT nesse caso, diferente do
+// rail decorativo que os outros papéis ainda veem.
+$limiteAssinaturasPainel = ($nivelAdmin === 'secretario') ? '' : 'LIMIT 3';
 $stmt = $pdo->prepare("
     SELECT sa.documento_id, sa.requerimento_id, sa.criado_em,
            r.protocolo, req.nome AS requerente_nome, s.nome AS solicitante_nome,
@@ -92,7 +96,7 @@ $stmt = $pdo->prepare("
     WHERE sa.destinatario_id = ? AND sa.status = 'pendente'
     GROUP BY sa.documento_id
     ORDER BY sa.criado_em DESC
-    LIMIT 3
+    {$limiteAssinaturasPainel}
 ");
 $stmt->execute([(int) ($_SESSION['admin_id'] ?? 0)]);
 $assinaturasPainel = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -306,8 +310,196 @@ $barrasSemana = [
     .week-days { display:flex; justify-content:space-between; margin-top:6px; font-size:.68rem; color:#c0cbc4; }
     @media (max-width:1199px) { .home-body { flex-direction:column; } .home-main, .home-rail { width:100%; } }
     @media (max-width:767px) { .home-shell { gap:14px; } .home-title { font-size:1.35rem; } .home-panel-head { align-items:flex-start; } .home-all { margin-left:0; } .home-row { align-items:flex-start; } .home-action { display:none; } .week-stats { justify-content:space-between; } }
+
+    /* Dashboard do secretário (setor3) — fila única de prioridade, mobile-first.
+       Acento em verde DSGov (--sec-accent) para casar com o design system
+       GovBR adotado no formulário público, sem depender do arquivo
+       govbr-theme.css (que é feito pra outra tela e traria CSS incompatível). */
+    .sec-shell { --sec-accent:#009640; --sec-accent-soft:#e6f7ee; display:flex; flex-direction:column; gap:16px; max-width:900px; margin:0 auto; }
+    .sec-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+    .sec-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .sec-kpi { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; text-align:center; }
+    .sec-kpi-value { font-size:1.7rem; font-weight:800; color:var(--ink); line-height:1; }
+    .sec-kpi-label { margin-top:4px; font-size:.74rem; color:var(--muted-2); }
+    .sec-kpi.highlight { background:var(--primary); }
+    .sec-kpi.highlight .sec-kpi-value, .sec-kpi.highlight .sec-kpi-label { color:#fff; }
+    .sec-panel { background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+    .sec-panel-head { padding:14px 18px; border-bottom:1px solid #eef2ef; font-size:.95rem; font-weight:700; color:var(--ink); }
+    .sec-card { display:flex; flex-direction:column; gap:10px; padding:16px 18px; border-bottom:1px solid #f4f7f5; }
+    .sec-card:last-child { border-bottom:0; }
+    .sec-card-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .sec-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; background:#eef3f0; color:#3d5c46; }
+    .sec-pill.novo { background:var(--sec-accent-soft); color:var(--sec-accent); }
+    .sec-pill.coass { background:#fdf3e0; color:#b7791f; }
+    .sec-protocol { font-family:'Geist Mono',ui-monospace,monospace; font-size:.82rem; color:var(--ink); }
+    .sec-name { font-size:1rem; font-weight:700; color:var(--ink); }
+    .sec-meta { font-size:.82rem; color:var(--muted-2); }
+    .sec-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .sec-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:0 16px; border-radius:11px; font-size:.86rem; font-weight:700; text-decoration:none; flex:1; min-width:150px; }
+    .sec-btn-primary { background:var(--primary); color:#fff; }
+    .sec-btn-primary:hover { background:var(--primary-strong); color:#fff; }
+    .sec-btn-secondary { background:#fff; border:1px solid var(--line); color:var(--ink); }
+    .sec-btn-secondary:hover { border-color:var(--primary); color:var(--primary); }
+    .sec-empty { padding:40px 18px; text-align:center; color:var(--muted); }
+    .sec-empty i { font-size:2rem; color:var(--sec-accent); margin-bottom:10px; display:block; }
+    .sec-more { margin-top:2px; }
+    .sec-more summary { cursor:pointer; padding:12px 18px; font-size:.85rem; font-weight:700; color:var(--muted); background:#fbfcfb; border:1px solid var(--line); border-radius:14px; list-style:none; }
+    .sec-more summary::-webkit-details-marker { display:none; }
+    .sec-more summary::after { content:"\f107"; font-family:"Font Awesome 6 Free"; font-weight:900; float:right; }
+    .sec-more[open] summary::after { content:"\f106"; }
+    .sec-more-body { padding:14px 18px; border:1px solid var(--line); border-top:0; border-radius:0 0 14px 14px; background:#fff; }
+    .sec-hub-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #f4f7f5; font-size:.85rem; }
+    .sec-hub-row:last-child { border-bottom:0; }
+    .sec-hist-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #f4f7f5; font-size:.83rem; color:var(--muted); }
+    .sec-hist-row:last-child { border-bottom:0; }
+    @media (max-width:600px) { .sec-kpis { grid-template-columns:1fr 1fr; } .sec-kpi:first-child { grid-column:1 / -1; } .sec-btn { min-width:0; } }
 </style>
 
+<?php if ($nivelAdmin === 'secretario'): ?>
+    <?php
+    // Fila única: junta processos aguardando decisão final (setor3) e
+    // documentos aguardando co-assinatura — do ponto de vista do secretário
+    // as duas coisas respondem à mesma pergunta ("tem algo esperando por
+    // mim?"), então deixam de viver em blocos separados do painel.
+    $filaSecretario = [];
+    foreach ($ultimosRequerimentos as $req) {
+        $novo = !(int) $req['visualizado'];
+        $dias = 0;
+        try {
+            $dias = (new DateTimeImmutable((string) $req['data_envio']))->diff(new DateTimeImmutable('now'))->days;
+        } catch (Throwable $e) {
+        }
+        $filaSecretario[] = [
+            'tipo' => 'requerimento',
+            'ordem' => $novo ? 0 : 1,
+            'espera' => $dias,
+            'protocolo' => $req['protocolo'],
+            'nome' => $req['requerente'],
+            'meta' => nomeAlvara($req['tipo_alvara']) . ' · ' . $tempoFila($req['data_envio']),
+            'novo' => $novo,
+            'href_decidir' => 'visualizar_requerimento.php?id=' . (int) $req['id'],
+            'href_documento' => 'documentos/selecionar.php?requerimento_id=' . (int) $req['id'],
+        ];
+    }
+    foreach ($assinaturasPainel as $a) {
+        $tipoDoc = ucfirst(str_replace('_', ' ', (string) ($a['tipo_documento'] ?? 'documento')));
+        $dias = 0;
+        try {
+            $dias = (new DateTimeImmutable((string) $a['criado_em']))->diff(new DateTimeImmutable('now'))->days;
+        } catch (Throwable $e) {
+        }
+        $filaSecretario[] = [
+            'tipo' => 'coassinatura',
+            'ordem' => 0,
+            'espera' => $dias,
+            'protocolo' => $a['protocolo'],
+            'nome' => $a['requerente_nome'],
+            'meta' => $tipoDoc . ' · solicitado por ' . $a['solicitante_nome'],
+            'novo' => true,
+            'href_decidir' => 'coassinar_documento.php?documento_id=' . urlencode($a['documento_id']),
+            'href_documento' => null,
+        ];
+    }
+    usort($filaSecretario, static function (array $a, array $b): int {
+        return [$a['ordem'], -$a['espera']] <=> [$b['ordem'], -$b['espera']];
+    });
+    $qtdFilaSecretario = count($filaSecretario);
+    $qtdNovosSecretario = count(array_filter($filaSecretario, static fn (array $i): bool => $i['novo']));
+    ?>
+    <div class="sec-shell">
+        <section class="sec-hero">
+            <div>
+                <div class="home-date"><?= htmlspecialchars($dataPainelLabel) ?></div>
+                <h2 class="home-title"><?= htmlspecialchars($saudacao) ?>, <?= htmlspecialchars($primeiroNome) ?></h2>
+                <p class="home-subtitle">
+                    <?php if ($qtdFilaSecretario > 0): ?>
+                        <?= $qtdFilaSecretario ?> <?= $qtdFilaSecretario === 1 ? 'item espera' : 'itens esperam' ?> por você.
+                    <?php else: ?>
+                        Tudo em dia — nenhum processo esperando sua decisão agora.
+                    <?php endif; ?>
+                </p>
+            </div>
+        </section>
+
+        <section class="sec-kpis">
+            <div class="sec-kpi highlight">
+                <div class="sec-kpi-value"><?= (int) $qtdFilaSecretario ?></div>
+                <div class="sec-kpi-label">Esperando você</div>
+            </div>
+            <div class="sec-kpi">
+                <div class="sec-kpi-value"><?= (int) $qtdNovosSecretario ?></div>
+                <div class="sec-kpi-label">Novos</div>
+            </div>
+            <div class="sec-kpi">
+                <div class="sec-kpi-value"><?= (int) $emAnalise ?></div>
+                <div class="sec-kpi-label">Em análise</div>
+            </div>
+        </section>
+
+        <section class="sec-panel">
+            <div class="sec-panel-head">Precisa de você agora</div>
+            <?php if ($filaSecretario): ?>
+                <?php foreach ($filaSecretario as $item): ?>
+                    <div class="sec-card">
+                        <div class="sec-card-top">
+                            <?php if ($item['tipo'] === 'coassinatura'): ?>
+                                <span class="sec-pill coass"><i class="fas fa-file-signature"></i> Co-assinatura</span>
+                            <?php elseif ($item['novo']): ?>
+                                <span class="sec-pill novo"><i class="fas fa-circle"></i> Novo</span>
+                            <?php else: ?>
+                                <span class="sec-pill">Aguardando decisão</span>
+                            <?php endif; ?>
+                            <span class="sec-protocol"><?= htmlspecialchars($item['protocolo']) ?></span>
+                        </div>
+                        <div>
+                            <div class="sec-name"><?= htmlspecialchars($item['nome']) ?></div>
+                            <div class="sec-meta"><?= htmlspecialchars($item['meta']) ?></div>
+                        </div>
+                        <div class="sec-actions">
+                            <?php if ($item['href_documento']): ?>
+                                <a href="<?= htmlspecialchars($item['href_documento']) ?>" class="sec-btn sec-btn-primary"><i class="fas fa-pen-nib"></i> Assinar</a>
+                                <a href="<?= htmlspecialchars($item['href_decidir']) ?>" class="sec-btn sec-btn-secondary"><i class="fas fa-eye"></i> Ver processo</a>
+                            <?php else: ?>
+                                <a href="<?= htmlspecialchars($item['href_decidir']) ?>" class="sec-btn sec-btn-primary"><i class="fas fa-pen-nib"></i> Revisar e assinar</a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="sec-empty"><i class="fas fa-circle-check"></i>Nenhum processo ou documento esperando você.</div>
+            <?php endif; ?>
+        </section>
+
+        <details class="sec-more">
+            <summary>Acompanhamento (filas por setor e concluídos recentes)</summary>
+            <div class="sec-more-body">
+                <?php
+                $hubMeta = [
+                    'setor1' => 'Triagem Ambiental (Setor 1)',
+                    'setor2' => 'Fiscalização de Obras (Setor 2)',
+                    'setor3' => 'Revisão do Secretário (Setor 3)',
+                ];
+                foreach ($hubMeta as $s => $label):
+                ?>
+                    <a href="fila_setor.php?setor=<?= htmlspecialchars($s) ?>" class="sec-hub-row" style="color:inherit;text-decoration:none;">
+                        <span><?= htmlspecialchars($label) ?></span>
+                        <strong><?= (int) $hubSetores[$s] ?></strong>
+                    </a>
+                <?php endforeach; ?>
+
+                <?php if ($historicoConcluidos): ?>
+                    <div style="margin-top:12px;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);">Últimos concluídos</div>
+                    <?php foreach ($historicoConcluidos as $req): ?>
+                        <a href="visualizar_requerimento.php?id=<?= (int) $req['id'] ?>" class="sec-hist-row" style="text-decoration:none;">
+                            <span><?= htmlspecialchars($req['protocolo']) ?> · <?= htmlspecialchars($req['requerente']) ?></span>
+                            <span><?= htmlspecialchars(date('d/m/Y', strtotime($req['data_atualizacao'] ?: $req['data_envio']))) ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </details>
+    </div>
+<?php else: ?>
 <div class="home-shell">
     <section class="home-hero">
         <div>
@@ -482,5 +674,6 @@ $barrasSemana = [
         </aside>
     </section>
 </div>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>

@@ -33,6 +33,23 @@ $notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'
 $notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'read', 20, 0);
 $assinaturasPendentes = contarAssinaturasPendentesPara($pdo, (int) $_SESSION['admin_id']);
 
+// Para o secretário (setor3), o que importa é o que chega pra ele decidir/assinar —
+// eventos de setor1/setor2 que não tocam a fila dele viram ruído. Não muda o schema,
+// só reordena o que já foi buscado, priorizando os tipos relevantes ao papel.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    $tiposRelevantesSecretario = [
+        'encaminhado_setor3', 'assinatura_solicitada', 'coassinatura_solicitada',
+        'coassinatura_recusada', 'coassinatura_concluida', 'setor3_aprovado',
+    ];
+    $ordenaRelevanciaSecretario = static function (array $a, array $b) use ($tiposRelevantesSecretario): int {
+        $pa = in_array($a['tipo'], $tiposRelevantesSecretario, true) ? 0 : 1;
+        $pb = in_array($b['tipo'], $tiposRelevantesSecretario, true) ? 0 : 1;
+        return $pa <=> $pb;
+    };
+    usort($notificacoesNaoLidas, $ordenaRelevanciaSecretario);
+    usort($notificacoesLidas, $ordenaRelevanciaSecretario);
+}
+
 $pageTitles = [
     'index.php' => 'Painel Inicial',
     'requerimentos.php' => 'Requerimentos',
