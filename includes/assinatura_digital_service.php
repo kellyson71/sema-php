@@ -14,32 +14,46 @@ class AssinaturaDigitalService
         $this->keysPath = dirname(__DIR__) . '/includes/keys/';
         $this->privateKeyPath = $this->keysPath . 'private.pem';
         $this->publicKeyPath = $this->keysPath . 'public.pem';
-
-        if (!is_dir($this->keysPath)) {
-            mkdir($this->keysPath, 0700, true);
-        }
-
-        if (!file_exists($this->privateKeyPath) || !file_exists($this->publicKeyPath)) {
-            $this->gerarChavesRSA();
-        }
     }
 
-    private function gerarChavesRSA()
+    /**
+     * Cria o par de chaves legado só quando ele for de fato usado.
+     *
+     * Isto ficava no construtor, e quem paga essa conta são as páginas
+     * públicas: /verificar e consultar/baixar.php instanciam este serviço só
+     * para conferir documento, nunca para assinar. Numa instalação sem a pasta
+     * gravável (o ambiente local é assim), cada visita tentava gerar uma chave
+     * de 2048 bits e despejava warnings com o caminho absoluto do servidor na
+     * tela do cidadão.
+     */
+    private function garantirChavesRSA(): void
     {
-        $config = [
+        if (file_exists($this->privateKeyPath) && file_exists($this->publicKeyPath)) {
+            return;
+        }
+
+        if (!is_dir($this->keysPath) && !@mkdir($this->keysPath, 0700, true) && !is_dir($this->keysPath)) {
+            throw new RuntimeException('Não foi possível criar o diretório de chaves de assinatura.');
+        }
+
+        $res = openssl_pkey_new([
             'private_key_bits' => 2048,
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
-        ];
-
-        $res = openssl_pkey_new($config);
+        ]);
+        if ($res === false) {
+            throw new RuntimeException('Não foi possível gerar o par de chaves de assinatura.');
+        }
 
         openssl_pkey_export($res, $privateKey);
-        file_put_contents($this->privateKeyPath, $privateKey);
-        chmod($this->privateKeyPath, 0600);
+        $detalhesPublica = openssl_pkey_get_details($res);
 
-        $publicKey = openssl_pkey_get_details($res);
-        file_put_contents($this->publicKeyPath, $publicKey['key']);
-        chmod($this->publicKeyPath, 0644);
+        if (@file_put_contents($this->privateKeyPath, $privateKey) === false
+            || @file_put_contents($this->publicKeyPath, $detalhesPublica['key']) === false) {
+            throw new RuntimeException('Diretório de chaves sem permissão de escrita: ' . $this->keysPath);
+        }
+
+        @chmod($this->privateKeyPath, 0600);
+        @chmod($this->publicKeyPath, 0644);
     }
 
     public function calcularHashDocumento($caminhoArquivo)
@@ -52,6 +66,8 @@ class AssinaturaDigitalService
 
     public function assinarHash($hash)
     {
+        $this->garantirChavesRSA();
+
         if (!file_exists($this->privateKeyPath)) {
             throw new Exception('Chave privada não encontrada');
         }
