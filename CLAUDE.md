@@ -106,6 +106,25 @@ Eventos emitidos: `form_iniciado`, `form_servico_selecionado`, `form_etapa_concl
 tempos, extensões e tamanhos de arquivo — nome de arquivo fica de fora de propósito, porque
 costuma conter o nome da pessoa. Toda propriedade nova tem que passar por essa mesma régua.
 
+## Retificação de documento assinado
+
+Depois de assinado e entregue, um documento ainda pode ser corrigido. Em
+`admin/documentos/selecionar.php` os documentos vigentes do processo aparecem no
+histórico com "Corrigir e reemitir" (`template=assinado:{documento_id}`); o editor
+reabre o HTML original — guardado em `admin/pareceres/{req_id}/{documento_id}.html`
+no momento da assinatura — e a reemissão **mantém o mesmo número**.
+
+Ao assinar a retificação, `admin/assinatura/processa_assinatura.php`:
+- repõe o `document_numbers` daquele número para o novo `documento_id`;
+- marca a versão anterior em `assinaturas_digitais` (`substituido_por_documento_id`,
+  `substituido_em`, `substituido_por_admin_id`, `motivo_substituicao`);
+- o `/verificar` passa a mostrar "Documento retificado" na versão antiga, com link
+  para a vigente — a assinatura dela continua íntegra, mas ela não vale mais.
+
+Reusar um número de **outro** processo continua bloqueado (erro 409).
+Documentos assinados antes desta funcionalidade não têm o HTML guardado e por isso
+não aparecem para retificação — para eles, só emitindo um documento novo.
+
 ## Roles de administrador
 
 `admin`, `admin_geral`, `secretario`, `analista`, `fiscal`, `operador` — definidos no enum da tabela `administradores`. O menu lateral em `admin/header.php` exibe itens condicionalmente por role.

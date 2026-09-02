@@ -566,6 +566,14 @@ include '../header.php';
         .doc-resumo-item strong { display:block; font-size:.82rem; color:#1a2e1e; overflow:hidden;
                                   text-overflow:ellipsis; white-space:nowrap; }
         .doc-resumo-item strong.pendente { color:#a26a12; }
+        /* Retificação de documento já assinado */
+        .doc-retificacao-aviso { display:flex; align-items:flex-start; gap:10px; width:100%; margin-top:12px; padding:10px 13px;
+                                 border:1px solid #fcd9a0; background:#fffaf1; border-radius:10px; }
+        .doc-retificacao-aviso > i { color:#b7791f; margin-top:2px; }
+        .doc-retificacao-aviso strong { display:block; font-size:.84rem; color:#8a5a00; }
+        .doc-retificacao-aviso span { display:block; font-size:.75rem; color:#96703a; line-height:1.45; }
+        .doc-retificacao-campo { border:1px solid #fcd9a0; background:#fffaf1; border-radius:12px; padding:13px 15px; margin-bottom:14px; }
+
         /* Consulta rápida do processo (botão "Processo" na barra de ações) */
         .doc-processo-contador { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px;
                                  padding:0 6px; margin-left:6px; border-radius:999px; background:#e6efe9; color:#1f6b47;
@@ -998,6 +1006,18 @@ include '../header.php';
               </div>
 
               <form id="formCheckout">
+                  <!-- Retificação: contexto do ato, guardado junto da versão aposentada -->
+                  <div id="blocoRetificacao" class="doc-retificacao-campo" style="display:none;">
+                      <label for="motivoRetificacao" class="fw-semibold d-block mb-1" style="font-size:.85rem;color:#8a5a00;">
+                          <i class="fas fa-rotate me-1"></i> Motivo da retificação <span class="text-muted fw-normal">(opcional)</span>
+                      </label>
+                      <input type="text" id="motivoRetificacao" class="form-control form-control-sm" maxlength="500"
+                             placeholder="Ex.: correção da área construída a pedido do contribuinte">
+                      <div class="text-muted mt-1" style="font-size:.72rem;">
+                          Fica registrado junto da versão anterior, que deixa de valer na verificação pública.
+                      </div>
+                  </div>
+
                   <!-- Diretrizes (só para modos com assinatura digital) -->
                   <div id="blocoDiretrizes">
                       <label class="aceite-box" id="aceiteDiretrizes" for="checkDiretrizes">
@@ -1420,6 +1440,7 @@ foreach ($blocosProcesso as $titulo => $linhas):
         .then(res => res.json())
         .then(ret => {
             if (ret.success) {
+                if (ret.retifica) aplicarModoRetificacao(ret.retifica);
                 initEditor(ret.html, templateLabel || ret.nome_rascunho || templateNome);
             } else {
                 document.getElementById('editor-loading').innerHTML = `
@@ -1442,11 +1463,45 @@ foreach ($blocosProcesso as $titulo => $linhas):
         });
     }
 
+    /**
+     * Edição local mais recente que a versão do servidor (queda de conexão,
+     * aba fechada). Pergunta num modal — o confirm() nativo do navegador
+     * travava a página e destoava do resto do painel.
+     */
+    async function recuperarEdicaoLocal(htmlDoServidor) {
+        let salvoLocal = null;
+        try {
+            salvoLocal = JSON.parse(localStorage.getItem('sema_doc_rascunho_' + reqId + '_' + templateNome) || 'null');
+        } catch (e) {
+            return htmlDoServidor;
+        }
+        const recente = salvoLocal && (Date.now() - Number(salvoLocal.atualizado_em || 0)) < 7 * 24 * 60 * 60 * 1000;
+        if (!recente || !salvoLocal.html || salvoLocal.html === htmlDoServidor) return htmlDoServidor;
+
+        const quando = new Date(Number(salvoLocal.atualizado_em)).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        });
+        const escolha = await Swal.fire({
+            title: 'Edição não salva encontrada',
+            html: `Este documento tem uma edição feita neste navegador em <strong>${quando}</strong> que não chegou ao servidor.<br>`
+                + 'Deseja continuar de onde parou?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Recuperar minha edição',
+            cancelButtonText: 'Usar a versão do servidor',
+            confirmButtonColor: '#1c4b36',
+            reverseButtons: true,
+        });
+        return escolha.isConfirmed ? salvoLocal.html : htmlDoServidor;
+    }
+
     /* ─── Inicializar editor Summernote ────────────────────── */
-    function initEditor(html, title) {
+    async function initEditor(html, title) {
         document.getElementById('editor-loading').remove();
         document.getElementById('secao-editor').classList.remove('d-none');
         document.getElementById('editor-title').textContent = title;
+
+        html = await recuperarEdicaoLocal(html);
 
         waitForSummernote(function() {
             var $editor = $('#editor-conteudo');
@@ -1455,16 +1510,6 @@ foreach ($blocosProcesso as $titulo => $linhas):
                 $editor.summernote('destroy');
             }
 
-            // Recuperação local para o caso de queda de conexão/aba fechada.
-            // Só oferece a restauração quando há uma versão recente diferente.
-            try {
-                const salvoLocal = JSON.parse(localStorage.getItem('sema_doc_rascunho_' + reqId + '_' + templateNome) || 'null');
-                const recente = salvoLocal && (Date.now() - Number(salvoLocal.atualizado_em || 0)) < 7 * 24 * 60 * 60 * 1000;
-                if (recente && salvoLocal.html && salvoLocal.html !== html
-                    && window.confirm('Encontramos uma edição local mais recente deste documento. Deseja restaurá-la?')) {
-                    html = salvoLocal.html;
-                }
-            } catch (e) {}
             $editor.val(html);
 
             $editor.summernote({
@@ -1619,7 +1664,9 @@ foreach ($blocosProcesso as $titulo => $linhas):
             action: 'salvar_rascunho',
             requerimento_id: reqId,
             rascunho_id: currentDraftId,
-            nome: templateLabel || templateNome || 'Documento em edição',
+            nome: retificacao
+                ? ('Retificação — ' + (retificacao.numero || retificacao.template || 'documento assinado'))
+                : (templateLabel || templateNome || 'Documento em edição'),
             conteudo_html: html,
             dados_json: JSON.stringify(dados),
             csrf_token: csrfToken
@@ -2045,6 +2092,9 @@ foreach ($blocosProcesso as $titulo => $linhas):
         document.getElementById('pinNovo').value = '';
         document.getElementById('pinNovoConfirma').value = '';
 
+        const blocoRetificacao = document.getElementById('blocoRetificacao');
+        if (blocoRetificacao) blocoRetificacao.style.display = retificacao ? 'block' : 'none';
+
         atualizarBlocosPin();
         new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
     }
@@ -2213,15 +2263,23 @@ foreach ($blocosProcesso as $titulo => $linhas):
         fd.append('conteudo_parecer', conteudoHtml);
         fd.append('requerimento_id',  reqId);
         fd.append('salvar_banco',     'true');
-        fd.append('template_salvo',   templateNome);
+        // Numa retificação o templateNome é o ponteiro "assinado:<id>"; o que
+        // vale para numeração e tipo do documento é o modelo original.
+        fd.append('template_salvo',   retificacao?.template || templateNome);
         fd.append('download',         fazDownload);
         fd.append('modo_assinatura',  modoAtivo);
         fd.append('assinatura_manual_tipo', dadosManual.tipo);
         fd.append('assinatura_manual_nome', dadosManual.nome);
         fd.append('assinatura_manual_cargo', dadosManual.cargo);
         fd.append('pin_assinatura',   pinParaAssinar);
+        if (retificacao?.documento_id) {
+            fd.append('retifica_documento_id', retificacao.documento_id);
+            fd.append('motivo_retificacao', document.getElementById('motivoRetificacao')?.value || '');
+        }
         fd.append('csrf_token',       csrfToken);
-        fd.append('numero_documento', valorCampoDocumento('numero_documento_ano'));
+        // Na retificação o texto reaberto já não tem os spans de campo (eles são
+        // removidos ao gerar o PDF), então o número vem do documento original.
+        fd.append('numero_documento', valorCampoDocumento('numero_documento_ano') || retificacao?.numero || '');
         if (modoAtivo === 'assinar_e_requisitar') {
             destinatarios.forEach(d => fd.append('coassinatura_destinatarios[]', d));
             fd.append('coassinatura_mensagem', document.getElementById('coassMensagem').value);
@@ -2289,6 +2347,23 @@ foreach ($blocosProcesso as $titulo => $linhas):
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Confirmar Assinatura Técnica';
             Swal.fire('Falha de comunicação', erro.message || 'Não foi possível comunicar com o servidor.', 'error');
         });
+    }
+
+    /* ─── Retificação de documento já assinado ────────────── */
+    let retificacao = null;
+
+    function aplicarModoRetificacao(info) {
+        retificacao = info;
+        const barra = document.querySelector('.doc-editor-barra');
+        if (!barra) return;
+        const aviso = document.createElement('div');
+        aviso.className = 'doc-retificacao-aviso';
+        aviso.innerHTML = '<i class="fas fa-rotate"></i><div>'
+            + '<strong>Retificando ' + (info.numero ? 'o documento Nº ' + escapeHtml(info.numero) : 'um documento assinado') + '</strong>'
+            + '<span>Assinado por ' + escapeHtml(info.assinante || '—') + ' em ' + escapeHtml(info.assinado_em || '—')
+            + '. Ao assinar, o número é mantido e a versão anterior deixa de valer na verificação pública.</span>'
+            + '</div>';
+        barra.appendChild(aviso);
     }
 
     /* ─── Consulta rápida do processo ─────────────────────── */

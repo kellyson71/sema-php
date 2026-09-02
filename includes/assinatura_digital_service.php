@@ -363,8 +363,21 @@ class AssinaturaDigitalService
             ];
         }
 
+        // Documento retificado: a assinatura desta versão continua íntegra, mas
+        // ela não é mais a vigente. Quem confere precisa ver isso em primeiro
+        // plano — senão valida como atual um alvará que já foi corrigido.
+        $substituicao = null;
+        if (!empty($principal['substituido_por_documento_id'])) {
+            $substituicao = [
+                'documento_id' => $principal['substituido_por_documento_id'],
+                'em'           => $principal['substituido_em'],
+                'motivo'       => $principal['motivo_substituicao'] ?? null,
+            ];
+        }
+
         return [
             'valido'         => true,
+            'substituido'    => $substituicao,
             'dados'          => $principal,
             'assinantes'     => $assinantes,
             'caminho_fisico' => $caminhoFisico,

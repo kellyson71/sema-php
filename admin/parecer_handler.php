@@ -192,6 +192,47 @@ try {
                 }
             }
 
+            // 2b. Documentos já assinados deste processo. São a base da
+            // retificação: reabrir o texto que virou PDF, corrigir e reemitir
+            // mantendo o número. Só entram os que ainda estão vigentes.
+            $documentosAssinados = [];
+            if ($requerimento_id > 0) {
+                // Agrupado por documento_id: co-assinatura grava uma linha por
+                // assinante e aqui interessa o documento, não cada assinatura.
+                $stmtAss = $pdo->prepare("
+                    SELECT ad.documento_id,
+                           MIN(ad.tipo_documento)       AS tipo_documento,
+                           MIN(ad.assinante_nome)       AS assinante_nome,
+                           MIN(ad.timestamp_assinatura) AS timestamp_assinatura,
+                           MIN(dn.numero)               AS numero,
+                           MIN(dn.ano)                  AS ano
+                    FROM assinaturas_digitais ad
+                    LEFT JOIN document_numbers dn ON dn.documento_id = ad.documento_id
+                    WHERE ad.requerimento_id = ?
+                      AND ad.substituido_por_documento_id IS NULL
+                    GROUP BY ad.documento_id
+                    ORDER BY MIN(ad.timestamp_assinatura) DESC
+                ");
+                $stmtAss->execute([$requerimento_id]);
+                $pastaAssinados = dirname(__DIR__) . '/admin/pareceres/' . $requerimento_id . '/';
+                foreach ($stmtAss->fetchAll(PDO::FETCH_ASSOC) as $doc) {
+                    // Sem o HTML guardado não há o que reabrir (documentos
+                    // assinados antes desta funcionalidade).
+                    if (!is_file($pastaAssinados . $doc['documento_id'] . '.html')) continue;
+                    $numeroTexto = $doc['numero'] ? ' Nº ' . $doc['numero'] . '/' . $doc['ano'] : '';
+                    $documentosAssinados[] = [
+                        'id'         => 'assinado:' . $doc['documento_id'],
+                        'nome'       => ($mapaLabels[$doc['tipo_documento']] ?? ucwords(str_replace('_', ' ', $doc['tipo_documento']))) . $numeroTexto,
+                        'data'       => date('d/m/Y H:i', strtotime($doc['timestamp_assinatura'])),
+                        'data_ts'    => strtotime($doc['timestamp_assinatura']),
+                        'assinante'  => $doc['assinante_nome'],
+                        'label'      => 'Retificar: ' . ($mapaLabels[$doc['tipo_documento']] ?? $doc['tipo_documento']) . $numeroTexto,
+                        'origem'     => 'assinado',
+                        'numero'     => $doc['numero'] ? $doc['numero'] . '/' . $doc['ano'] : '',
+                    ];
+                }
+            }
+
             // 3. Unificar e ordenar histórico
             $historicoUnificado = array_merge($meusRascunhos, $historicoDocs);
             usort($historicoUnificado, function($a, $b) { return $b['data_ts'] - $a['data_ts']; });
@@ -526,6 +567,7 @@ try {
             echo json_encode([
                 'success'              => true,
                 'historico_recente'    => $historicoRecente,
+                'documentos_assinados' => $documentosAssinados,
                 'templates'            => $templates,
                 'user_templates'       => $userTemplates,
                 'favoritos'            => $favNomes,
@@ -679,6 +721,50 @@ try {
                     'is_draft' => true,
                     'nome_rascunho' => $rascunho['nome'],
                     'dados' => []
+                ]);
+                break;
+            }
+
+            // B0. Retificação: reabre o HTML de um documento já assinado.
+            if (strpos($template, 'assinado:') === 0) {
+                $documentoAssinadoId = preg_replace('/[^a-f0-9]/i', '', substr($template, 9));
+                $stmtAss = $pdo->prepare("
+                    SELECT ad.documento_id, ad.tipo_documento, ad.assinante_nome, ad.timestamp_assinatura,
+                           ad.substituido_por_documento_id, dn.numero, dn.ano
+                    FROM assinaturas_digitais ad
+                    LEFT JOIN document_numbers dn ON dn.documento_id = ad.documento_id
+                    WHERE ad.documento_id = ? AND ad.requerimento_id = ?
+                    LIMIT 1
+                ");
+                $stmtAss->execute([$documentoAssinadoId, $requerimento_id]);
+                $docAssinado = $stmtAss->fetch(PDO::FETCH_ASSOC);
+                if (!$docAssinado) throw new Exception('Documento assinado não encontrado neste processo.');
+                if (!empty($docAssinado['substituido_por_documento_id'])) {
+                    throw new Exception('Esta versão já foi substituída por outra. Abra a versão vigente para retificar.');
+                }
+
+                $caminhoHtmlAssinado = dirname(__DIR__) . '/admin/pareceres/' . $requerimento_id . '/' . $documentoAssinadoId . '.html';
+                if (!is_file($caminhoHtmlAssinado)) {
+                    throw new Exception('O texto deste documento não foi guardado (assinado antes da retificação existir). Gere um documento novo.');
+                }
+
+                $htmlAssinado = ParecerService::extrairConteudoTemplate(
+                    ParecerService::removerEstilosTemplate((string) file_get_contents($caminhoHtmlAssinado))
+                );
+
+                echo json_encode([
+                    'success'          => true,
+                    'html'             => $htmlAssinado,
+                    'is_draft'         => true,
+                    'nome_rascunho'    => 'Retificação',
+                    'dados'            => [],
+                    'retifica'         => [
+                        'documento_id' => $documentoAssinadoId,
+                        'template'     => $docAssinado['tipo_documento'],
+                        'numero'       => $docAssinado['numero'] ? $docAssinado['numero'] . '/' . $docAssinado['ano'] : '',
+                        'assinante'    => $docAssinado['assinante_nome'],
+                        'assinado_em'  => date('d/m/Y H:i', strtotime($docAssinado['timestamp_assinatura'])),
+                    ],
                 ]);
                 break;
             }

@@ -32,8 +32,14 @@ if ($resultado === null && $erroEntrada === null) {
     $documentoId = trim($_GET['id'] ?? $_POST['codigo'] ?? '');
     if ($documentoId !== '') {
         $resultado = $servico->verificarDocumento($documentoId);
-        $resultado['estado'] = !empty($resultado['valido']) ? 'autentico'
-            : (isset($resultado['dados']) ? 'alterado' : 'desconhecido');
+        if (!empty($resultado['valido']) && !empty($resultado['substituido'])) {
+            // Assinatura íntegra, mas esta versão foi retificada: não pode ser
+            // apresentada como o documento vigente.
+            $resultado['estado'] = 'substituido';
+        } else {
+            $resultado['estado'] = !empty($resultado['valido']) ? 'autentico'
+                : (isset($resultado['dados']) ? 'alterado' : 'desconhecido');
+        }
         $servico->registrarVerificacao($documentoId, null, $resultado['estado'], 'codigo');
     }
 }
@@ -189,6 +195,50 @@ function mascararCpfPublico(?string $cpf): string
                         Verifica documentos emitidos pela Secretaria Municipal de Meio Ambiente.
                         Para máxima confiabilidade, envie o arquivo original (sem reabrir/re-salvar).
                     </p>
+                </div>
+
+            <?php elseif (($resultado['estado'] ?? '') === 'substituido'): ?>
+                <div class="banner warn">
+                    <svg class="res-icon" viewBox="0 0 100 100">
+                        <circle class="ring" cx="50" cy="50" r="47"/>
+                        <path class="mark" d="M50 26 L50 58 M50 70 L50 74"/>
+                    </svg>
+                    <h2>Documento retificado</h2>
+                    <p>
+                        As assinaturas deste arquivo são autênticas, mas esta versão foi
+                        <strong>substituída por uma retificação</strong>
+                        <?php if (!empty($resultado['substituido']['em'])): ?>
+                            em <?php echo date('d/m/Y', strtotime((string) $resultado['substituido']['em'])); ?>
+                        <?php endif; ?>
+                        e não é mais a versão vigente.
+                    </p>
+                </div>
+                <div class="res-body">
+                    <?php if (!empty($resultado['substituido']['motivo'])): ?>
+                        <div class="res-section-label"><i class="fas fa-circle-info me-1"></i> Motivo informado</div>
+                        <p style="font-size:.9rem;"><?php echo htmlspecialchars((string) $resultado['substituido']['motivo']); ?></p>
+                    <?php endif; ?>
+                    <div class="res-section-label"><i class="fas fa-file-circle-check me-1"></i> Versão vigente</div>
+                    <p style="font-size:.9rem;">
+                        Confira a versão que está valendo pelo código
+                        <strong><?php echo htmlspecialchars((string) $resultado['substituido']['documento_id']); ?></strong>.
+                    </p>
+                    <a class="btn-verificar d-inline-block text-decoration-none"
+                       href="?id=<?php echo urlencode((string) $resultado['substituido']['documento_id']); ?>">
+                        Abrir a versão vigente
+                    </a>
+                    <div class="res-section-label mt-4"><i class="fas fa-users me-1"></i> Assinado eletronicamente por</div>
+                    <div class="assinantes-wrap">
+                        <?php foreach (($resultado['assinantes'] ?? []) as $a): ?>
+                        <div class="assinante-item">
+                            <div class="av"><?php echo htmlspecialchars(strtoupper(mb_substr(trim($a['nome']), 0, 1))); ?></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold" style="font-size:.92rem;"><?php echo htmlspecialchars($a['nome']); ?></div>
+                                <div class="text-muted" style="font-size:.78rem;"><?php echo htmlspecialchars($a['cargo'] ?? ''); ?></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
 
             <?php elseif (($resultado['estado'] ?? '') === 'autentico'): ?>
