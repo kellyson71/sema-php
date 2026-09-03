@@ -111,6 +111,9 @@ include 'header.php';
             <a href="#andamento" class="cmd-btn-primary"><i class="fas fa-clipboard-check"></i>Registrar andamento</a>
             <a href="exportar_denuncia.php?id=<?= (int) $denuncia['id'] ?>" target="_blank" class="cmd-btn"><i class="fas fa-file-export cmd-ic"></i>Exportar</a>
             <a href="documentos/selecionar_denuncia.php?denuncia_id=<?= (int) $denuncia['id'] ?>" class="cmd-btn"><i class="fas fa-file-signature cmd-ic"></i>Gerar documento</a>
+            <?php if (($denuncia['setor'] ?? 'meio_ambiente') === 'obras_urbanismo' && ($nivelAtual === 'fiscal' || $isAdmin)): ?>
+                <a href="converter_denuncia_notificacao.php?id=<?= (int) $denuncia['id'] ?>" class="cmd-btn"><i class="fas fa-triangle-exclamation cmd-ic"></i>Converter em notificação</a>
+            <?php endif; ?>
             <button type="button" onclick="toggleEdicao()" id="btnEditar" class="cmd-btn"><i class="fas fa-edit cmd-ic"></i>Editar</button>
             <span class="cmd-sep"></span>
             <div class="dropdown">

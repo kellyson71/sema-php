@@ -129,12 +129,13 @@ class AssinaturaDigitalService
             'hash' => $hash,
             'signature' => $assinaturaCriptografada,
             'tipo_documento' => $dados['tipo_documento'],
-            'requerimento_id' => $dados['requerimento_id']
+            'requerimento_id' => $dados['requerimento_id'] ?? null,
+            'notificacao_obras_id' => $dados['notificacao_obras_id'] ?? null
         ];
 
         $stmt = $this->pdo->prepare("
             INSERT INTO assinaturas_digitais (
-                documento_id, requerimento_id, tipo_documento, nome_arquivo,
+                documento_id, requerimento_id, notificacao_obras_id, tipo_documento, nome_arquivo,
                 caminho_arquivo, hash_documento, assinante_id, assinante_nome,
                 assinante_cpf, assinante_cargo, tipo_assinatura, assinatura_visual,
                 assinatura_criptografada, timestamp_assinatura, ip_assinante, metadados_json
@@ -143,7 +144,8 @@ class AssinaturaDigitalService
 
         $stmt->execute([
             $documentoId,
-            $dados['requerimento_id'],
+            $dados['requerimento_id'] ?? null,
+            $dados['notificacao_obras_id'] ?? null,
             $dados['tipo_documento'],
             $dados['nome_arquivo'],
             $dados['caminho_arquivo'],

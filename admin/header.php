@@ -31,7 +31,11 @@ $totalNotificacoes = $notificationCounts['total'];
 $notificationTotal = $notificationCounts['unread'];
 $notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'unread', 20, 0);
 $notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'read', 20, 0);
-$assinaturasPendentes = contarAssinaturasPendentesPara($pdo, (int) $_SESSION['admin_id']);
+$assinaturasPendentes = contarAssinaturasPendentesPara(
+    $pdo,
+    (int) $_SESSION['admin_id'],
+    ($_SESSION['admin_nivel'] ?? '') === 'secretario'
+);
 
 // Para o secretário (setor3), o que importa é o que chega pra ele decidir/assinar —
 // eventos de setor1/setor2 que não tocam a fila dele viram ruído. Não muda o schema,
@@ -55,6 +59,7 @@ $pageTitles = [
     'requerimentos.php' => 'Requerimentos',
     'documentos_assinados.php' => 'Documentos Assinados',
     'estatisticas.php' => 'Estatísticas',
+    'estatisticas_setores.php' => 'Estatísticas dos setores',
     'visualizar_requerimento.php' => 'Detalhes do Requerimento',
     'perfil.php' => 'Meu Perfil',
     'administradores.php' => 'Gerenciar Usuários',
@@ -87,7 +92,7 @@ $isAnalista = ($nivelAtual === 'analista' || $isAdmin);
 $isSecretario = ($nivelAtual === 'secretario' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
 $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../' . urlArquivo('perfil/' . $adminData['foto_perfil']) : null;
-$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php', 'responsaveis_tecnicos.php'], true);
+$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'estatisticas_setores.php', 'logs_email.php', 'responsaveis_tecnicos.php'], true);
 $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente';
 
 $searchItems = [
@@ -102,6 +107,9 @@ $searchItems = [
     ['label' => 'Responsáveis Técnicos', 'caption' => 'Catálogo de engenheiros/arquitetos', 'url' => $adminBase . 'responsaveis_tecnicos.php', 'icon' => 'fa-hard-hat'],
     ['label' => 'Meu Perfil', 'caption' => 'Dados do usuário logado', 'url' => $adminBase . 'perfil.php', 'icon' => 'fa-user-gear'],
 ];
+if ($isSecretario) {
+    $searchItems[] = ['label' => 'Estatísticas dos setores', 'caption' => 'Carga, tempos, retrabalho e gargalos', 'url' => $adminBase . 'estatisticas_setores.php', 'icon' => 'fa-chart-line'];
+}
 
 if ($isAdmin) {
     $searchItems[] = ['label' => 'Filas por Setor', 'caption' => 'Visão administrativa das filas S1, S2 e S3', 'url' => $adminBase . 'fila_setor.php', 'icon' => 'fa-layer-group'];
@@ -1640,11 +1648,11 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <li>
-                        <a href="<?= $adminBase ?>fila_revisao_secretario.php" class="sidebar-link <?= $currentPage === 'fila_revisao_secretario.php' ? 'active' : '' ?>" title="Processos do setor 3">
-                            <span class="sidebar-link-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <a href="<?= $adminBase ?>estatisticas_setores.php" class="sidebar-link <?= $currentPage === 'estatisticas_setores.php' ? 'active' : '' ?>" title="Estatísticas dos setores">
+                            <span class="sidebar-link-icon"><i class="fas fa-chart-line"></i></span>
                             <span class="sidebar-link-content">
                                 <span class="sidebar-link-text">
-                                    <span class="sidebar-link-title">Processos do setor 3</span>
+                                    <span class="sidebar-link-title">Estatísticas dos setores</span>
                                 </span>
                             </span>
                         </a>
@@ -1720,6 +1728,19 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if ($nivelAtual === 'fiscal' || $isAdmin): $emFiscalizacaoObras = strpos($_SERVER['PHP_SELF'] ?? '', '/fiscalizacao_obras/') !== false; ?>
+                    <li>
+                        <a href="<?= $adminBase ?>fiscalizacao_obras/index.php" class="sidebar-link <?= $emFiscalizacaoObras ? 'active' : '' ?>" title="Notificações de Obras">
+                            <span class="sidebar-link-icon"><i class="fas fa-triangle-exclamation"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Notificações de Obras</span>
+                                    <span class="sidebar-link-caption">Prazos de fiscalização</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
@@ -1751,6 +1772,14 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php if ($isAdmin): ?>
+                    <li>
+                        <a href="<?= $adminBase ?>estatisticas_setores.php" class="sidebar-link <?= $currentPage === 'estatisticas_setores.php' ? 'active' : '' ?>" title="Estatísticas dos setores">
+                            <span class="sidebar-link-icon"><i class="fas fa-chart-line"></i></span>
+                            <span class="sidebar-link-content"><span class="sidebar-link-text"><span class="sidebar-link-title">Estatísticas dos setores</span></span></span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <li>
                         <a href="<?= $adminBase ?>responsaveis_tecnicos.php" class="sidebar-link <?= $currentPage === 'responsaveis_tecnicos.php' ? 'active' : '' ?>" title="Responsáveis Técnicos">
                             <span class="sidebar-link-icon"><i class="fas fa-hard-hat"></i></span>
@@ -1766,10 +1795,10 @@ if ($isAnalista) {
             <?php endif; ?>
 
 
+            <?php if ($isAdmin): ?>
             <div class="sidebar-section">
                 <div class="menu-header"><span>Administração</span></div>
                 <ul>
-                    <?php if ($isAdmin): ?>
                         <li>
                             <a href="<?= $adminBase ?>administradores.php" class="sidebar-link <?= $currentPage === 'administradores.php' ? 'active' : '' ?>" title="Gerenciar Usuários">
                                 <span class="sidebar-link-icon"><i class="fas fa-users-gear"></i></span>
@@ -1781,9 +1810,9 @@ if ($isAnalista) {
                                 </span>
                             </a>
                         </li>
-                    <?php endif; ?>
                 </ul>
             </div>
+            <?php endif; ?>
 
         </div>
 

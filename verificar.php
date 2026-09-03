@@ -282,8 +282,19 @@ function mascararCpfPublico(?string $cpf): string
                             <div class="info-val"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $resultado['dados']['tipo_documento']))); ?></div>
                         </div>
                         <div>
-                            <div class="info-label">Processo</div>
-                            <div class="info-val">#<?php echo (int) $resultado['dados']['requerimento_id']; ?></div>
+                            <?php if (!empty($resultado['dados']['notificacao_obras_id'])): ?>
+                                <?php
+                                    require_once __DIR__ . '/includes/fiscalizacao_obras_helpers.php';
+                                    $notifRef = buscarNotificacaoObras($pdo, (int) $resultado['dados']['notificacao_obras_id']);
+                                ?>
+                                <div class="info-label">Notificação</div>
+                                <div class="info-val"><?php echo $notifRef
+                                    ? 'Nº ' . (int) $notifRef['numero'] . '/' . (int) $notifRef['ano']
+                                    : '#' . (int) $resultado['dados']['notificacao_obras_id']; ?></div>
+                            <?php else: ?>
+                                <div class="info-label">Processo</div>
+                                <div class="info-val">#<?php echo (int) $resultado['dados']['requerimento_id']; ?></div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
