@@ -18,6 +18,18 @@ $id     = (int) ($_POST['requerimento_id'] ?? 0);
 $acao   = $_POST['fluxo_acao'] ?? '';
 $motivo = trim($_POST['motivo'] ?? '');
 
+// Cada tela que aciona o fluxo indica de onde veio para o usuário voltar pra
+// lá depois — sem isso, toda ação (mesmo vinda da fila enxuta do secretário)
+// jogava de volta pra tela cheia do requerimento.
+function fluxoRedirectBase(int $id): string
+{
+    return match ($_POST['referer'] ?? '') {
+        'visualizar_documento' => "visualizar_documento.php?requerimento_id=$id",
+        'painel_secretario'    => 'painel_secretario.php?tab=fila',
+        default                => "visualizar_requerimento.php?id=$id",
+    };
+}
+
 if (!$id || !$acao) {
     header("Location: requerimentos.php?error=dados_invalidos");
     exit;
@@ -98,11 +110,7 @@ if ($acao === 'doc_final_envio' && !$isSuper && !in_array($nivelAtual, $rolesEnt
 }
 
 if (isset($rolePorAcao[$acao]) && !$isSuper && $nivelAtual !== $rolePorAcao[$acao]) {
-    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
-    $dest = $fromDocViewer
-        ? "visualizar_documento.php?requerimento_id=$id&error=sem_permissao"
-        : "visualizar_requerimento.php?id=$id&error=sem_permissao";
-    header("Location: $dest");
+    header("Location: " . fluxoRedirectBase($id) . "&error=sem_permissao");
     exit;
 }
 
@@ -311,7 +319,7 @@ try {
 
         default:
             $pdo->rollBack();
-            header("Location: visualizar_requerimento.php?id=$id&error=acao_invalida");
+            header("Location: " . fluxoRedirectBase($id) . "&error=acao_invalida");
             exit;
     }
 
@@ -323,12 +331,7 @@ try {
 
     $pdo->commit();
 
-    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
-    if ($fromDocViewer) {
-        header("Location: visualizar_documento.php?requerimento_id=$id&success=fluxo_atualizado");
-    } else {
-        header("Location: visualizar_requerimento.php?id=$id&success=fluxo_atualizado");
-    }
+    header("Location: " . fluxoRedirectBase($id) . "&success=fluxo_atualizado&acao_concluida=$acao");
     exit;
 
 } catch (Throwable $e) {
@@ -337,11 +340,6 @@ try {
     // A causa precisa chegar à tela: antes o redirect levava só "error=erro_fluxo",
     // que a página sequer exibia — a ação falhava em silêncio total.
     $_SESSION['fluxo_erro_msg'] = $e->getMessage();
-    $fromDocViewer = ($_POST['referer'] ?? '') === 'visualizar_documento';
-    if ($fromDocViewer) {
-        header("Location: visualizar_documento.php?requerimento_id=$id&error=erro_fluxo");
-    } else {
-        header("Location: visualizar_requerimento.php?id=$id&error=erro_fluxo");
-    }
+    header("Location: " . fluxoRedirectBase($id) . "&error=erro_fluxo");
     exit;
 }

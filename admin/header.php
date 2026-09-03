@@ -1640,7 +1640,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <li>
-                        <a href="<?= $adminBase ?>requerimentos.php" class="sidebar-link <?= $currentPage === 'requerimentos.php' ? 'active' : '' ?>" title="Processos do setor 3">
+                        <a href="<?= $adminBase ?>fila_revisao_secretario.php" class="sidebar-link <?= $currentPage === 'fila_revisao_secretario.php' ? 'active' : '' ?>" title="Processos do setor 3">
                             <span class="sidebar-link-icon"><i class="fas fa-clipboard-list"></i></span>
                             <span class="sidebar-link-content">
                                 <span class="sidebar-link-text">
@@ -2127,7 +2127,7 @@ if ($isAnalista) {
                                     <?php if ($notificacoesNaoLidas): ?>
                                         <?php foreach ($notificacoesNaoLidas as $notif): ?>
                                             <li class="notification-item-sidebar notification-unread">
-                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                <a href="<?= $adminBase ?>notificacao.php?id=<?= (int) $notif['id'] ?>">
                                                     <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
                                                         <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
                                                     </span>
@@ -2161,7 +2161,7 @@ if ($isAnalista) {
                                     <?php if ($notificacoesLidas): ?>
                                         <?php foreach ($notificacoesLidas as $notif): ?>
                                             <li class="notification-item-sidebar">
-                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                <a href="<?= $adminBase ?>notificacao.php?id=<?= (int) $notif['id'] ?>">
                                                     <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
                                                         <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
                                                     </span>

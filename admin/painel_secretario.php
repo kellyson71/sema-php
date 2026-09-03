@@ -17,7 +17,27 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $adminId = (int) $_SESSION['admin_id'];
-$tab = in_array($_GET['tab'] ?? 'dashboard', ['dashboard', 'fila', 'detalhe'], true) ? $_GET['tab'] : 'dashboard';
+$tabSolicitada = $_GET['tab'] ?? 'dashboard';
+$tab = in_array($tabSolicitada, ['dashboard', 'fila', 'detalhe'], true) ? $tabSolicitada : 'dashboard';
+
+// Retorno do fluxo_setor_handler.php (passo "Pronto" da modal de assinatura) —
+// sem isso, depois de decidir o processo o secretário só via a fila esvaziada,
+// sem confirmação nenhuma de que a ação foi de fato registrada.
+$acaoConcluidaLabel = [
+    'setor3_aprovado' => ['titulo' => 'Aprovado e devolvido ao Setor 2', 'texto' => 'O Setor 2 vai cuidar da entrega ao cidadão a partir daqui.'],
+    'devolver_setor2' => ['titulo' => 'Devolvido para ajuste', 'texto' => 'O processo voltou para análise no Setor 2.'],
+    'setor3_recusado' => ['titulo' => 'Processo recusado', 'texto' => 'O retorno foi registrado como recusado para o Setor 2.'],
+    'setor3_sem_decisao' => ['titulo' => 'Devolvido sem decisão', 'texto' => 'O processo voltou para o Setor 2.'],
+];
+$mensagemSucesso = null;
+if (($_GET['success'] ?? '') === 'fluxo_atualizado') {
+    $mensagemSucesso = $acaoConcluidaLabel[$_GET['acao_concluida'] ?? ''] ?? ['titulo' => 'Ação registrada', 'texto' => 'O processo foi atualizado.'];
+}
+$mensagemErro = null;
+if (($_GET['error'] ?? '') !== '') {
+    $mensagemErro = $_SESSION['fluxo_erro_msg'] ?? 'Não foi possível concluir a ação. Tente novamente.';
+    unset($_SESSION['fluxo_erro_msg']);
+}
 
 // ── Fila "Para assinar": lê exclusivamente solicitacoes_assinatura endereçada
 // a este secretário. Denúncias e triagem de setor1/2 não entram aqui — é
@@ -188,7 +208,7 @@ include 'header.php';
     <nav class="ps-tabs">
         <a class="ps-tab <?= $tab === 'dashboard' ? 'active' : '' ?>" href="painel_secretario.php?tab=dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
         <a class="ps-tab <?= $tab === 'fila' ? 'active' : '' ?>" href="painel_secretario.php?tab=fila"><i class="fas fa-file-signature"></i> Para assinar <?php if ($qtdFila > 0): ?><span class="badge-count"><?= $qtdFila ?></span><?php endif; ?></a>
-        <a class="ps-tab <?= $tab === 'detalhe' ? 'active' : '' ?>" href="requerimentos.php"><i class="fas fa-clipboard-list"></i> Processos do setor 3</a>
+        <a class="ps-tab" href="fila_revisao_secretario.php"><i class="fas fa-clipboard-list"></i> Processos do setor 3</a>
     </nav>
 
     <?php if ($tab === 'dashboard'): ?>
@@ -256,6 +276,17 @@ include 'header.php';
         </details>
 
     <?php elseif ($tab === 'fila'): ?>
+        <?php if ($mensagemSucesso): ?>
+            <div class="ps-alert ps-alert-info" style="background:#e6f2ea;border-color:#cfe6da;color:#14532d;">
+                <i class="fas fa-circle-check"></i>
+                <div><strong><?= htmlspecialchars($mensagemSucesso['titulo']) ?></strong><div style="margin-top:2px;"><?= htmlspecialchars($mensagemSucesso['texto']) ?></div></div>
+            </div>
+        <?php elseif ($mensagemErro): ?>
+            <div class="ps-alert" style="background:#fce7e7;border:1px solid #f3cccc;color:#b13232;">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div><strong>Não foi possível concluir</strong><div style="margin-top:2px;"><?= htmlspecialchars($mensagemErro) ?></div></div>
+            </div>
+        <?php endif; ?>
         <div>
             <h1 style="margin:0;font-size:1.3rem;font-weight:800;"><i class="fas fa-file-signature" style="color:var(--primary);margin-right:8px;"></i>Para assinar</h1>
             <p style="margin:4px 0 0;color:var(--muted);"><?= $qtdFila ?> <?= $qtdFila === 1 ? 'documento encaminhado' : 'documentos encaminhados' ?> pela Fiscalização de Obras.</p>
@@ -445,6 +476,7 @@ include 'header.php';
                             <input type="hidden" name="requerimento_id" value="<?= (int) $itemDetalhe['requerimento_id'] ?>">
                             <input type="hidden" name="fluxo_acao" id="psFluxoAcao" value="setor3_aprovado">
                             <input type="hidden" name="motivo" id="psMotivoHidden" value="">
+                            <input type="hidden" name="referer" value="painel_secretario">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;">
                                 <button type="button" class="ps-btn ps-btn-secondary" onclick="psVoltarPasso1()"><i class="fas fa-arrow-left"></i> Voltar</button>
