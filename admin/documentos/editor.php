@@ -5,6 +5,12 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../../includes/assinatura_workflow_helpers.php';
 verificaLogin();
 
+// Mesmo bloqueio de selecionar.php: secretário não edita/gera documento.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    header('Location: ../painel_secretario.php');
+    exit;
+}
+
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 $template        = filter_input(INPUT_GET, 'template', FILTER_DEFAULT);
 $label           = filter_input(INPUT_GET, 'label', FILTER_DEFAULT) ?: '';

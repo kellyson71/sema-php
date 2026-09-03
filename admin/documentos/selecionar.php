@@ -4,6 +4,13 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../conexao.php';
 verificaLogin();
 
+// O secretário (setor3) não gera documento — só assina o que o fiscal já
+// encaminhou. A tela dele pra isso é o painel dedicado, não este editor.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    header('Location: ../painel_secretario.php');
+    exit;
+}
+
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 if (!$requerimento_id) die("Acesso Negado: ID do requerimento não fornecido.");
 

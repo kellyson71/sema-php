@@ -1614,6 +1614,42 @@ if ($isAnalista) {
         <div class="sidebar-scroll sidebar-menu">
             <div class="sidebar-section">
                 <ul>
+                    <?php if ($nivelAtual === 'secretario'): ?>
+                    <li>
+                        <a href="<?= $adminBase ?>painel_secretario.php?tab=dashboard" class="sidebar-link <?= $currentPage === 'painel_secretario.php' && ($_GET['tab'] ?? 'dashboard') === 'dashboard' ? 'active' : '' ?>" title="Painel Inicial">
+                            <span class="sidebar-link-icon"><i class="fas fa-house"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Painel Inicial</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>painel_secretario.php?tab=fila" class="sidebar-link <?= $currentPage === 'painel_secretario.php' && ($_GET['tab'] ?? '') === 'fila' ? 'active' : '' ?>" title="Para assinar">
+                            <span class="sidebar-link-icon"><i class="fas fa-file-signature"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Para assinar</span>
+                                    <span class="sidebar-link-caption">Encaminhado pela Fiscalização</span>
+                                </span>
+                                <?php if ($assinaturasPendentes > 0): ?>
+                                    <span class="badge bg-danger sidebar-link-badge"><?= $assinaturasPendentes > 99 ? '99+' : $assinaturasPendentes ?></span>
+                                <?php endif; ?>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>requerimentos.php" class="sidebar-link <?= $currentPage === 'requerimentos.php' ? 'active' : '' ?>" title="Processos do setor 3">
+                            <span class="sidebar-link-icon"><i class="fas fa-clipboard-list"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Processos do setor 3</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <?php else: ?>
                     <li>
                         <a href="<?= $adminBase ?>index.php" class="sidebar-link <?= $currentPage === 'index.php' ? 'active' : '' ?>" title="Painel Inicial">
                             <span class="sidebar-link-icon"><i class="fas fa-house"></i></span>
@@ -1657,6 +1693,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php endif; ?>
                     <?php if ($isAdmin): ?>
                     <li>
                         <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
@@ -1670,6 +1707,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if ($nivelAtual !== 'secretario'): ?>
                     <li>
                         <a href="<?= $adminBase ?>denuncias.php" class="sidebar-link <?= in_array($currentPage, ['denuncias.php', 'nova_denuncia.php', 'visualizar_denuncia.php'], true) ? 'active' : '' ?>" title="Denúncias">
                             <span class="sidebar-link-icon"><i class="fas fa-bullhorn"></i></span>
@@ -1681,9 +1719,11 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
+            <?php if ($nivelAtual !== 'secretario'): ?>
             <div class="sidebar-section">
                 <div class="menu-header"><span>Acervo</span></div>
                 <ul>
@@ -1723,6 +1763,7 @@ if ($isAnalista) {
                     </li>
                 </ul>
             </div>
+            <?php endif; ?>
 
 
             <div class="sidebar-section">
