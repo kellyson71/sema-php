@@ -549,6 +549,15 @@
       `;
     }
 
+    if (tipo === 'licenca_previa_obras') {
+      return `
+        <div class="form-grid-2">
+          <input required name="area_construida" placeholder="Área construída do projeto (m²) *">
+          <input required name="descricao_atividade" placeholder="Finalidade da edificação *">
+        </div>
+      `;
+    }
+
     if (currentRules.ambiental || tipo === 'licenca_operacao' || tipo === 'licenca_instalacao_operacao' || tipo === 'licenca_operacional_corretiva') {
       return `
         <div class="form-grid-2">
