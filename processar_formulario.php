@@ -153,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $area_construcao = $area_construida;
     }
     $area_lote = trim($_POST['area_lote'] ?? '');
+    $area_empreendimento = trim($_POST['area_empreendimento'] ?? '');
     $responsavel_tecnico_nome = trim($_POST['responsavel_tecnico_nome'] ?? '');
     $responsavel_tecnico_registro = trim($_POST['responsavel_tecnico_registro'] ?? '');
     $responsavel_tecnico_tipo_documento = trim($_POST['responsavel_tecnico_tipo_documento'] ?? '');
@@ -407,6 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'tipo_edificacao' => $tipo_edificacao ?: null,
         'area_construida' => $area_construida ?: null,
         'area_lote' => $area_lote ?: null,
+        'area_empreendimento' => $area_empreendimento ?: null,
         'responsavel_tecnico_nome' => $responsavel_tecnico_nome ?: null,
         'responsavel_tecnico_registro' => $responsavel_tecnico_registro ?: null,
         'responsavel_tecnico_tipo_documento' => $responsavel_tecnico_tipo_documento ?: null,
