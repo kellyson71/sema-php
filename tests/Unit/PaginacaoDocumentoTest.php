@@ -126,4 +126,75 @@ final class PaginacaoDocumentoTest extends TestCase
         $this->assertStringContainsString('<p>Depois</p>', $limpo);
         $this->assertStringNotContainsString('page-gap', $limpo);
     }
+
+    #[Test]
+    public function documentoSemMarcaDeWordPassaIntacto(): void
+    {
+        $html = '<table><tr><td>célula</td></tr></table><img src="data:image/png;base64,QUJD">';
+
+        $this->assertSame($html, limparColagemWord($html));
+    }
+
+    #[Test]
+    public function imagemColadaDoWordComCaminhoLocalEhRemovida(): void
+    {
+        // O Word cola <img> apontando pro disco de quem colou (nunca existe
+        // no servidor). Sem isso, o TCPDF reserva o vão do width/height da
+        // tag mesmo sem conseguir abrir o arquivo.
+        $html = '<p style="mso-margin-top-alt:0">Antes</p>'
+            . '<img width="559" height="166" src="file:///C:/Users/Usuario/AppData/Local/Temp/msohtmlclip1/01/clip_image004.gif">'
+            . '<p>Depois</p>';
+
+        $limpo = limparColagemWord($html);
+
+        $this->assertStringNotContainsString('<img', $limpo);
+        $this->assertStringNotContainsString('file://', $limpo);
+        $this->assertStringContainsString('Antes', $limpo);
+        $this->assertStringContainsString('Depois', $limpo);
+    }
+
+    #[Test]
+    public function imagemBase64OuHttpDoWordEhPreservada(): void
+    {
+        $html = '<p class="MsoNormal">x</p>'
+            . '<img src="data:image/png;base64,QUJD">'
+            . '<img src="https://exemplo.gov.br/foto.jpg">';
+
+        $limpo = limparColagemWord($html);
+
+        $this->assertStringContainsString('data:image/png;base64,QUJD', $limpo);
+        $this->assertStringContainsString('https://exemplo.gov.br/foto.jpg', $limpo);
+    }
+
+    #[Test]
+    public function bordaPorLadoDoWordEhRemovidaParaOCssDoDocumentoValer(): void
+    {
+        // O Word manda border-width/-style/-color separados, um valor por
+        // lado (T R B L). O parser de CSS do TCPDF trata mal o valor "none"
+        // nesse formato e deixa risco solto onde não devia ter borda.
+        $html = '<table class="MsoTableGrid" style="mso-border-alt:solid black .5pt">'
+            . '<tr><td style="width:247.75pt;border-top:none;border-left:none;'
+            . 'border-bottom:solid black 1.0pt;border-right:solid black 1.0pt;'
+            . 'mso-border-top-alt:solid black .5pt;padding:0cm 5.4pt">x</td></tr></table>';
+
+        $limpo = limparColagemWord($html);
+
+        $this->assertStringNotContainsString('border-top', $limpo);
+        $this->assertStringNotContainsString('border-left', $limpo);
+        $this->assertStringNotContainsString('mso-', $limpo);
+        // Propriedades que não são de borda/mso continuam.
+        $this->assertStringContainsString('padding:0cm 5.4pt', $limpo);
+    }
+
+    #[Test]
+    public function tagOpDoWordEhDesembrulhadaSemPerderTexto(): void
+    {
+        $html = '<p class="MsoNormal">Trata o presente parecer<o:p></o:p></p>'
+            . '<p class="MsoNormal"><o:p>&nbsp;</o:p></p>';
+
+        $limpo = limparColagemWord($html);
+
+        $this->assertStringNotContainsString('o:p', $limpo);
+        $this->assertStringContainsString('Trata o presente parecer', $limpo);
+    }
 }

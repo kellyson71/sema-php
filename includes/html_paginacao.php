@@ -19,6 +19,101 @@ declare(strict_types=1);
 /** Classes que representam separadores visuais descartáveis. */
 const CLASSES_SEPARADOR_PAGINA = ['page-gap', 'page-cut', 'page-break-indicator'];
 
+/**
+ * Remove os resíduos de conteúdo colado do Microsoft Word que o TCPDF não
+ * sabe interpretar.
+ *
+ * Quando alguém cola um parecer redigido no Word direto no editor, o
+ * clipboard HTML do Word traz:
+ *  - <img src="file:///C:/Users/.../clip_image00X.gif">, um caminho no disco
+ *    de quem colou. Some sempre — nunca existe no servidor — mas o TCPDF
+ *    ainda reserva o espaço em branco do tamanho declarado (width/height do
+ *    próprio <img>), porque a leitura do atributo width/height acontece
+ *    antes da tentativa (fracassada) de abrir o arquivo. Resultado: um vão
+ *    em branco exatamente do tamanho da imagem que devia estar lá.
+ *  - bordas de célula em propriedades separadas (border-width/-style/-color
+ *    com 4 valores, um por lado) em vez do shorthand único "border". O
+ *    parser de CSS do TCPDF trata mal o valor 'none' nesse formato (não
+ *    limpa cor/largura já aplicadas por border-color/border-width, só pula
+ *    o traço) — na prática sobra risco solto onde o Word não queria borda
+ *    nenhuma. Sem essas declarações, quem desenha a grade é o CSS do
+ *    documento (td/th com borda única e consistente).
+ *  - propriedades mso-* e a tag <o:p>, que não têm efeito nenhum e só
+ *    poluem a árvore.
+ */
+function limparColagemWord(string $html): string
+{
+    $marcasWord = ['mso-', 'urn:schemas-microsoft-com', 'msohtmlclip', '<o:p', 'MsoNormal'];
+    $temMarcaWord = false;
+    foreach ($marcasWord as $marca) {
+        if (stripos($html, $marca) !== false) {
+            $temMarcaWord = true;
+            break;
+        }
+    }
+    if (!$temMarcaWord) {
+        // Sinal de que não é conteúdo colado do Word: nada a fazer.
+        return $html;
+    }
+
+    $dom = new DOMDocument();
+    $wrapped = '<?xml encoding="utf-8"?><div id="__wrap_word__">' . $html . '</div>';
+    libxml_use_internal_errors(true);
+    $dom->loadHTML($wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+
+    $wrapEl = $dom->getElementById('__wrap_word__');
+    if (!$wrapEl) {
+        return $html;
+    }
+
+    $xpath = new DOMXPath($dom);
+
+    // <img> sem origem que o TCPDF consiga abrir (file://, blob:, caminho
+    // relativo do computador de quem colou) — remove a tag inteira, em vez
+    // de deixar o TCPDF reservar um vão em branco do tamanho dela.
+    foreach ($xpath->query('.//img', $wrapEl) as $img) {
+        $src = (string) $img->getAttribute('src');
+        if (!preg_match('#^(data:image/|https?://)#i', $src)) {
+            $img->parentNode->removeChild($img);
+        }
+    }
+
+    // <o:p> do Word: sem função fora do Word, mantém só o texto de dentro.
+    // (busca por local-name(), não pelo prefixo "o:", que o XPath trataria
+    // como namespace não registrado e falharia a consulta inteira)
+    foreach ($xpath->query('.//*[local-name()="o:p"]', $wrapEl) as $op) {
+        while ($op->firstChild) {
+            $op->parentNode->insertBefore($op->firstChild, $op);
+        }
+        $op->parentNode->removeChild($op);
+    }
+
+    // Propriedades mso-* e as bordas por lado (border-width/-style/-color)
+    // de tabelas/células: o CSS do documento já define a borda da grade.
+    foreach ($xpath->query('.//*[@style]', $wrapEl) as $el) {
+        $declaracoes = array_filter(array_map('trim', explode(';', (string) $el->getAttribute('style'))));
+        $mantidas = array_filter($declaracoes, static function (string $decl): bool {
+            $prop = strtolower(trim(explode(':', $decl, 2)[0] ?? ''));
+            if (strpos($prop, 'mso-') === 0) return false;
+            if (in_array($prop, ['border', 'border-width', 'border-style', 'border-color',
+                'border-top', 'border-right', 'border-bottom', 'border-left'], true)) return false;
+            return true;
+        });
+        if ($mantidas === []) {
+            $el->removeAttribute('style');
+        } else {
+            $el->setAttribute('style', implode('; ', $mantidas));
+        }
+    }
+
+    $out = '';
+    foreach ($wrapEl->childNodes as $child) {
+        $out .= $dom->saveHTML($child);
+    }
+    return $out;
+}
+
 /** Classes de invólucros de folha: somem, mas o conteúdo dentro é preservado. */
 const CLASSES_ENVOLTORIO_PAGINA = ['doc-page-content'];
 
