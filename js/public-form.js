@@ -428,9 +428,13 @@
     }
 
     if (tipo === 'habite_se' || tipo === 'habite_se_simples' || tipo === 'habite_se_obras_publicas') {
+      const alvaraOpcional = tipo === 'habite_se';
       return `
         <div class="form-grid-2">
-          <input required name="alvara_construcao_numero" placeholder="Número do alvará de construção de origem *">
+          <label class="public-alvara-origem-field">
+            <input ${alvaraOpcional ? '' : 'required'} name="alvara_construcao_numero" placeholder="Número do alvará de construção de origem${alvaraOpcional ? '' : ' *'}">
+            ${alvaraOpcional ? '<span class="public-field-note" style="margin-top:4px;">Deixe em branco se a construção e o habite-se estão sendo solicitados juntos, sem alvará de construção anterior.</span>' : ''}
+          </label>
           <input required name="area_construida" placeholder="Área construída (m²) *" data-habite-preview-field>
         </div>
         <div class="form-grid-2">
@@ -1027,7 +1031,9 @@
         const rules = cfg().tipoRules?.[tipoAlvara] || {};
 
         if (['habite_se', 'habite_se_simples', 'habite_se_obras_publicas'].includes(tipoAlvara)) {
-          requireValue('input[name="alvara_construcao_numero"]', 'Informe o número do alvará de construção de origem.');
+          if (tipoAlvara !== 'habite_se') {
+            requireValue('input[name="alvara_construcao_numero"]', 'Informe o número do alvará de construção de origem.');
+          }
           requireValue('input[name="area_construida"]', 'Informe a área construída.');
           requireValue('input[name="cadastro_imobiliario"]', 'Informe o cadastro imobiliário (sequencial).');
           requireValue('select[name="habite_uso"]', 'Selecione o uso da edificação.');
