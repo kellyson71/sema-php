@@ -428,7 +428,7 @@
     }
 
     if (tipo === 'habite_se' || tipo === 'habite_se_simples' || tipo === 'habite_se_obras_publicas') {
-      const alvaraOpcional = tipo === 'habite_se';
+      const alvaraOpcional = tipo === 'habite_se' || tipo === 'habite_se_obras_publicas';
       return `
         <div class="form-grid-2">
           <label class="public-alvara-origem-field">
@@ -1031,7 +1031,7 @@
         const rules = cfg().tipoRules?.[tipoAlvara] || {};
 
         if (['habite_se', 'habite_se_simples', 'habite_se_obras_publicas'].includes(tipoAlvara)) {
-          if (tipoAlvara !== 'habite_se') {
+          if (tipoAlvara !== 'habite_se' && tipoAlvara !== 'habite_se_obras_publicas') {
             requireValue('input[name="alvara_construcao_numero"]', 'Informe o número do alvará de construção de origem.');
           }
           requireValue('input[name="area_construida"]', 'Informe a área construída.');
