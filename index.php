@@ -269,11 +269,15 @@ $maxPostSize = defined('MAX_POST_SIZE') ? MAX_POST_SIZE : 256 * 1024 * 1024;
                     <input type="hidden" name="mesmo_requerente" value="false">
                     <p class="public-field-note">Caso o requerente seja o próprio proprietário, repita aqui os mesmos dados informados em Dados do Requerente.</p>
                     <div class="form-part-2" id="proprietario-fields">
-                        <input id="proprietario_nome" name="proprietario[nome]"
-                            placeholder="Nome Completo do Proprietário *" autocomplete="name">
-                        <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
-                            id="proprietario_cpf_cnpj"
-                            placeholder="CPF ou CNPJ do Proprietário" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        <label class="public-habite-select-field">Nome completo do proprietário *
+                            <input id="proprietario_nome" name="proprietario[nome]"
+                                placeholder="Nome completo" autocomplete="name">
+                        </label>
+                        <label class="public-habite-select-field">CPF ou CNPJ do proprietário
+                            <input oninput="mascara(this)" type="text" name="proprietario[cpf_cnpj]"
+                                id="proprietario_cpf_cnpj"
+                                placeholder="000.000.000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        </label>
                     </div>
                 </div>
 
@@ -286,13 +290,23 @@ $maxPostSize = defined('MAX_POST_SIZE') ? MAX_POST_SIZE : 256 * 1024 * 1024;
                         <span>Você escolheu denúncia anônima na etapa 2. Estes dados não serão registrados nem enviados.</span>
                     </div>
                     <div class="form-part-2">
-                        <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome Completo *" autocomplete="name">
-                        <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
-                            placeholder="CPF ou CNPJ" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
-                        <input data-required="true" type="email" id="requerente_email" name="requerente[email]" placeholder="E-mail para receber as comunicações *" autocomplete="email" inputmode="email" maxlength="191">
-                        <input data-required="true" type="email" id="requerente_email_confirmacao" name="requerente[email_confirmacao]" placeholder="Confirme o e-mail *" autocomplete="email" inputmode="email" maxlength="191">
-                        <input class="public-field-wide" type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
-                            name="requerente[telefone]" id="phone" placeholder="Digite seu Telefone *" autocomplete="tel">
+                        <label class="public-habite-select-field">Nome completo *
+                            <input data-required="true" id="name" name="requerente[nome]" placeholder="Nome completo" autocomplete="name">
+                        </label>
+                        <label class="public-habite-select-field" data-cpf-requerente-wrap>CPF ou CNPJ
+                            <input oninput="mascara(this)" type="text" data-required="true" name="requerente[cpf_cnpj]" id="cpf"
+                                placeholder="000.000.000-00" maxlength="18" autocomplete="off" data-type="cpf-cnpj">
+                        </label>
+                        <label class="public-habite-select-field">E-mail para receber as comunicações *
+                            <input data-required="true" type="email" id="requerente_email" name="requerente[email]" placeholder="nome@exemplo.com" autocomplete="email" inputmode="email" maxlength="191">
+                        </label>
+                        <label class="public-habite-select-field" data-confirmacao-email-wrap>Confirme o e-mail *
+                            <input data-required="true" type="email" id="requerente_email_confirmacao" name="requerente[email_confirmacao]" placeholder="nome@exemplo.com" autocomplete="email" inputmode="email" maxlength="191">
+                        </label>
+                        <label class="public-habite-select-field public-field-wide">Digite seu telefone *
+                            <input type="tel" maxlength="15" onkeyup="handlePhone(event)" data-required="true"
+                                name="requerente[telefone]" id="phone" placeholder="(00) 00000-0000" autocomplete="tel">
+                        </label>
                     </div>
                 </div>
 
