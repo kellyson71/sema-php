@@ -433,7 +433,7 @@
         <div class="form-grid-2">
           <label class="public-alvara-origem-field">
             <input ${alvaraOpcional ? '' : 'required'} name="alvara_construcao_numero" placeholder="Número do alvará de construção de origem${alvaraOpcional ? '' : ' *'}">
-            ${alvaraOpcional ? '<span class="public-field-note" style="margin-top:4px;">Deixe em branco se a construção e o habite-se estão sendo solicitados juntos, sem alvará de construção anterior.</span>' : ''}
+            ${alvaraOpcional ? '<span class="public-field-note" style="margin-top:4px;">Deixe em branco caso não tenha.</span>' : ''}
           </label>
           <input required name="area_construida" placeholder="Área construída (m²) *" data-habite-preview-field>
         </div>
