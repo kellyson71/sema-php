@@ -193,21 +193,33 @@
         <div class="form-section-label">Responsável técnico${required ? ' <span style="color:#f87171">*</span>' : ', caso tenha'}</div>
         <p class="public-field-note">Informe os dados do profissional quando houver responsável técnico vinculado ao serviço.</p>
         <div class="form-grid-2">
-          <input ${req} name="responsavel_tecnico_nome" placeholder="Nome do responsável técnico${mark}">
-          <select ${req} name="responsavel_tecnico_tipo_documento" data-rt-conselho>
-            <option value="">Conselho / documento${mark}</option>
-            <option value="CREA">CREA</option>
-            <option value="CAU">CAU</option>
-            <option value="CTF">CTF</option>
-          </select>
+          <label class="public-habite-select-field">Nome do responsável técnico${mark}
+            <input ${req} name="responsavel_tecnico_nome" placeholder="Nome completo">
+          </label>
+          <label class="public-habite-select-field">Conselho / documento${mark}
+            <select ${req} name="responsavel_tecnico_tipo_documento" data-rt-conselho>
+              <option value="">Selecione${mark}</option>
+              <option value="CREA">CREA</option>
+              <option value="CAU">CAU</option>
+              <option value="CTF">CTF</option>
+            </select>
+          </label>
         </div>
         <div class="form-grid-2">
-          <input ${req} name="responsavel_tecnico_registro" placeholder="Registro profissional${mark}">
-          <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}" data-rt-numero>
+          <label class="public-habite-select-field">Registro profissional${mark}
+            <input ${req} name="responsavel_tecnico_registro" placeholder="Ex.: 123456-D">
+          </label>
+          <label class="public-habite-select-field">Número do documento${mark}
+            <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}" data-rt-numero>
+          </label>
         </div>
         <div class="form-grid-2">
-          <input type="email" name="responsavel_tecnico_email" placeholder="E-mail do responsável técnico">
-          <input name="responsavel_tecnico_telefone" placeholder="Telefone do responsável técnico">
+          <label class="public-habite-select-field">E-mail do responsável técnico
+            <input type="email" name="responsavel_tecnico_email" placeholder="nome@exemplo.com">
+          </label>
+          <label class="public-habite-select-field">Telefone do responsável técnico
+            <input name="responsavel_tecnico_telefone" placeholder="(00) 00000-0000">
+          </label>
         </div>
       </div>
     `;
@@ -349,7 +361,9 @@
           ${renderTiposOcorrenciaOptions('obras_urbanismo')}
         </div>
         <div id="bloco_outros" style="display:none;margin-top:10px;">
-          <input name="outros_descricao" placeholder="Descreva a ocorrência marcada como Outros *" style="width:100%">
+          <label class="public-habite-select-field">Descreva a ocorrência marcada como Outros *
+            <input name="outros_descricao" placeholder="Descreva aqui" style="width:100%">
+          </label>
         </div>
 
       `;
@@ -358,22 +372,30 @@
     if (tipo === 'construcao' || tipo === 'construcao_obras_publicas') {
       return `
         <div class="form-grid-2">
-          <select required name="tipo_edificacao" data-preview-field>
-            <option value="">Tipo de edificação *</option>
-            <option>Residencial unifamiliar</option>
-            <option>Residencial multifamiliar</option>
-            <option>Comercial</option>
-            <option>Mista</option>
-            <option>Industrial</option>
-            <option>Institucional</option>
-            <option>Muro e calçada</option>
-            <option>Reforma e ampliação</option>
-          </select>
-          <input required type="number" min="1" step="1" name="numero_pavimentos" value="1" placeholder="Pavimentos *" data-preview-field>
+          <label class="public-habite-select-field">Tipo de edificação *
+            <select required name="tipo_edificacao" data-preview-field>
+              <option value="">Selecione o tipo *</option>
+              <option>Residencial unifamiliar</option>
+              <option>Residencial multifamiliar</option>
+              <option>Comercial</option>
+              <option>Mista</option>
+              <option>Industrial</option>
+              <option>Institucional</option>
+              <option>Muro e calçada</option>
+              <option>Reforma e ampliação</option>
+            </select>
+          </label>
+          <label class="public-habite-select-field">Número de pavimentos *
+            <input required type="number" min="1" step="1" name="numero_pavimentos" value="1" placeholder="Ex.: 1" data-preview-field>
+          </label>
         </div>
         <div class="form-grid-2">
-          <input required name="area_construcao" placeholder="Área a ser construída (m²) *" data-preview-field>
-          <input required name="cadastro_imobiliario" placeholder="Cadastro imobiliário (sequencial) *">
+          <label class="public-habite-select-field">Área a ser construída (m²) *
+            <input required name="area_construcao" placeholder="Ex.: 120,00" data-preview-field>
+          </label>
+          <label class="public-habite-select-field">Cadastro imobiliário (sequencial) *
+            <input required name="cadastro_imobiliario" placeholder="Ex.: 1010844">
+          </label>
         </div>
         <div class="form-grid-2">
           <label>Início previsto<input type="date" name="inicio_obra"></label>
@@ -431,14 +453,18 @@
       const alvaraOpcional = tipo === 'habite_se' || tipo === 'habite_se_obras_publicas';
       return `
         <div class="form-grid-2">
-          <label class="public-alvara-origem-field">
-            <input ${alvaraOpcional ? '' : 'required'} name="alvara_construcao_numero" placeholder="Número do alvará de construção de origem${alvaraOpcional ? '' : ' *'}">
+          <label class="public-habite-select-field public-alvara-origem-field">Número do alvará de construção de origem${alvaraOpcional ? '' : ' *'}
+            <input ${alvaraOpcional ? '' : 'required'} name="alvara_construcao_numero" placeholder="Ex.: 123/2024">
             ${alvaraOpcional ? '<span class="public-field-note" style="margin-top:4px;">Deixe em branco caso não tenha.</span>' : ''}
           </label>
-          <input required name="area_construida" placeholder="Área construída (m²) *" data-habite-preview-field>
+          <label class="public-habite-select-field">Área construída (m²) *
+            <input required name="area_construida" placeholder="Ex.: 120,00" data-habite-preview-field>
+          </label>
         </div>
         <div class="form-grid-2">
-          <input required name="cadastro_imobiliario" placeholder="Cadastro imobiliário (sequencial) *">
+          <label class="public-habite-select-field">Cadastro imobiliário (sequencial) *
+            <input required name="cadastro_imobiliario" placeholder="Ex.: 1010844">
+          </label>
           <label class="public-habite-select-field">Uso da edificação *
             <select required name="habite_uso" data-habite-preview-field data-habite-other-select>
               <option value="">Selecione o uso *</option>
@@ -501,7 +527,9 @@
             <label class="public-choice-card"><input type="radio" name="bombeiro_possui" value="1" data-bombeiro-radio> Sim, possuo</label>
             <label class="public-choice-card"><input type="radio" name="bombeiro_possui" value="0" data-bombeiro-radio> Não possuo</label>
           </div>
-          <input type="text" name="bombeiro_numero" placeholder="Número do laudo/AVCB" data-bombeiro-numero hidden style="margin-top:10px;">
+          <label class="public-habite-select-field" data-bombeiro-numero hidden style="margin-top:10px;">Número do laudo/AVCB
+            <input type="text" name="bombeiro_numero" placeholder="Número do documento">
+          </label>
         </div>
         <div class="public-habite-rooms-heading">
           <strong>Ambientes — quantidade no imóvel</strong>
@@ -556,8 +584,12 @@
     if (tipo === 'licenca_previa_obras') {
       return `
         <div class="form-grid-2">
-          <input required name="area_construida" placeholder="Área construída do projeto (m²) *">
-          <input required name="descricao_atividade" placeholder="Finalidade da edificação *">
+          <label class="public-habite-select-field">Área construída do projeto (m²) *
+            <input required name="area_construida" placeholder="Ex.: 120,00">
+          </label>
+          <label class="public-habite-select-field">Finalidade da edificação *
+            <input required name="descricao_atividade" placeholder="Ex.: Residencial unifamiliar">
+          </label>
         </div>
       `;
     }
@@ -565,8 +597,12 @@
     if (currentRules.ambiental || tipo === 'licenca_operacao' || tipo === 'licenca_instalacao_operacao' || tipo === 'licenca_operacional_corretiva') {
       return `
         <div class="form-grid-2">
-          <input required name="descricao_atividade" placeholder="Atividade ou finalidade *">
-          <input name="area_empreendimento" placeholder="Área do empreendimento (m²/hectares)">
+          <label class="public-habite-select-field">Atividade ou finalidade *
+            <input required name="descricao_atividade" placeholder="Ex.: Comércio varejista">
+          </label>
+          <label class="public-habite-select-field">Área do empreendimento (m²/hectares)
+            <input name="area_empreendimento" placeholder="Ex.: 500,00">
+          </label>
         </div>
         <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; margin-bottom:12px; border-left:4px solid #009640;">
           <div style="font-weight:600; color:rgba(255,255,255,0.95); margin-bottom:8px; font-size:0.95rem;">Enquadramento Ambiental</div>
@@ -576,12 +612,20 @@
           </select>
         </div>
         <div class="form-grid-2">
-          <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Nº do CTF/IBAMA ${currentRules.exige_ctf ? '*' : '(quando exigido)'}">
-          <input ${currentRules.exige_licenca_anterior ? 'required' : ''} name="licenca_anterior_numero" placeholder="Licença anterior ${currentRules.exige_licenca_anterior ? '*' : '(quando exigida)'}">
+          <label class="public-habite-select-field">Nº do CTF/IBAMA${currentRules.exige_ctf ? ' *' : ' (quando exigido)'}
+            <input ${currentRules.exige_ctf ? 'required' : ''} name="ctf_numero" placeholder="Número do certificado">
+          </label>
+          <label class="public-habite-select-field">Licença anterior${currentRules.exige_licenca_anterior ? ' *' : ' (quando exigida)'}
+            <input ${currentRules.exige_licenca_anterior ? 'required' : ''} name="licenca_anterior_numero" placeholder="Número da licença">
+          </label>
         </div>
         <div class="form-grid-2">
-          <input ${currentRules.exige_diario_oficial ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Publicação em Diário Oficial${currentRules.exige_diario_oficial ? ' *' : ' (se aplicável)'}">
-          <input name="localizacao_google_maps" placeholder="Link do Google Maps (opcional)">
+          <label class="public-habite-select-field">Publicação em Diário Oficial${currentRules.exige_diario_oficial ? ' *' : ' (se aplicável)'}
+            <input ${currentRules.exige_diario_oficial ? 'required' : ''} name="publicacao_diario_oficial" placeholder="Data/edição da publicação">
+          </label>
+          <label class="public-habite-select-field">Link do Google Maps (opcional)
+            <input name="localizacao_google_maps" placeholder="https://maps.google.com/...">
+          </label>
         </div>
         <div class="public-environment-study">
           <div class="form-section-label">Estudo ambiental</div>
@@ -610,8 +654,12 @@
 
     return `
       <div class="form-grid-2">
-        <input required name="descricao_atividade" placeholder="Atividade ou finalidade *">
-        <input name="area_empreendimento" placeholder="Área do empreendimento (se aplicável)">
+        <label class="public-habite-select-field">Atividade ou finalidade *
+          <input required name="descricao_atividade" placeholder="Ex.: Comércio varejista">
+        </label>
+        <label class="public-habite-select-field">Área do empreendimento (se aplicável)
+          <input name="area_empreendimento" placeholder="Ex.: 500,00">
+        </label>
       </div>
     `;
   }
@@ -1294,8 +1342,8 @@
         const confirmacaoEmail = comumSection.querySelector('input[name="requerente[email_confirmacao]"]');
         const telefoneRequerente = comumSection.querySelector('input[name="requerente[telefone]"]');
         const identificacaoObrigatoria = denuncia && identificacaoEscolhida && !anonima;
-        updateHidden(cpfRequerente, denuncia && !identificacaoObrigatoria);
-        updateHidden(confirmacaoEmail, denuncia);
+        updateHidden(comumSection.querySelector('[data-cpf-requerente-wrap]'), denuncia && !identificacaoObrigatoria);
+        updateHidden(comumSection.querySelector('[data-confirmacao-email-wrap]'), denuncia);
         if (cpfRequerente) {
           cpfRequerente.required = denuncia ? identificacaoObrigatoria : step === 1;
           cpfRequerente.placeholder = denuncia ? 'CPF *' : 'CPF ou CNPJ';
@@ -1530,11 +1578,12 @@
     // Corpo de Bombeiros: opcional em todo o formulário — só revela o campo
     // de número quando o requerente confirma que já possui o laudo/AVCB.
     const bombeiroRadios = root.querySelectorAll('[data-bombeiro-radio]');
-    const bombeiroNumero = root.querySelector('[data-bombeiro-numero]');
-    if (bombeiroRadios.length && bombeiroNumero) {
+    const bombeiroNumeroWrap = root.querySelector('[data-bombeiro-numero]');
+    const bombeiroNumero = bombeiroNumeroWrap?.querySelector('input');
+    if (bombeiroRadios.length && bombeiroNumeroWrap && bombeiroNumero) {
       bombeiroRadios.forEach((radio) => radio.addEventListener('change', () => {
         const possui = radio.value === '1' && radio.checked;
-        bombeiroNumero.hidden = !possui;
+        bombeiroNumeroWrap.hidden = !possui;
         if (!possui) bombeiroNumero.value = '';
       }));
     }

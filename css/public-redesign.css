@@ -730,6 +730,9 @@ form > .form-section-alvara {
   color: var(--public-muted);
   font-size: .86rem;
   line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
 }
 
 .public-field-note[hidden],
@@ -1159,6 +1162,7 @@ form[data-public-tipo="denuncia"] .public-denuncia-evidencias {
   display: block;
   width: 100%;
   margin-top: 6px;
+  text-transform: none;
 }
 
 .public-habite-rooms-heading {
