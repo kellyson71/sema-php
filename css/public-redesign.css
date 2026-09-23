@@ -1557,11 +1557,19 @@ form textarea:focus {
   color: var(--public-green) !important;
 }
 
-#campos_dinamicos label,
 #campos_dinamicos .form-toggle,
-#campos_dinamicos .form-toggle > span,
-.form-grid-2 > label {
+#campos_dinamicos .form-toggle > span {
   color: var(--public-muted) !important;
+}
+
+/* Títulos de campo (o rótulo acima de um input/select) ficam sempre na
+   mesma cor forte, dentro ou fora de #campos_dinamicos — antes essa regra
+   cobria qualquer <label> e deixava os títulos dos campos dinâmicos
+   visivelmente mais claros que os das seções estáticas (Seus dados,
+   Responsável técnico etc.), uma inconsistência visível lado a lado. */
+#campos_dinamicos label,
+.form-grid-2 > label {
+  color: var(--public-ink) !important;
 }
 
 #campos_dinamicos label[style],

@@ -210,7 +210,7 @@
             <input ${req} name="responsavel_tecnico_registro" placeholder="Ex.: 123456-D">
           </label>
           <label class="public-habite-select-field">Número do documento${mark}
-            <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT${mark}" data-rt-numero>
+            <input ${req} name="responsavel_tecnico_numero" placeholder="Número da ART/RRT" data-rt-numero>
           </label>
         </div>
         <div class="form-grid-2">
@@ -860,10 +860,9 @@
       if (!event.target.matches('[data-rt-conselho]')) return;
       const numeroInput = responsavelComum.querySelector('[data-rt-numero]');
       if (!numeroInput) return;
-      const obrigatorio = numeroInput.required ? ' *' : '';
       numeroInput.placeholder = event.target.value === 'CTF'
-        ? `Número do Certificado de Registro${obrigatorio}`
-        : `Número da ART/RRT${obrigatorio}`;
+        ? 'Número do Certificado de Registro'
+        : 'Número da ART/RRT';
     });
     const denunciaModeSection = form.querySelector('.public-denuncia-mode-section');
     const anonimoWarning = form.querySelector('[data-anonimo-warning]');
@@ -1346,16 +1345,16 @@
         updateHidden(comumSection.querySelector('[data-confirmacao-email-wrap]'), denuncia);
         if (cpfRequerente) {
           cpfRequerente.required = denuncia ? identificacaoObrigatoria : step === 1;
-          cpfRequerente.placeholder = denuncia ? 'CPF *' : 'CPF ou CNPJ';
+          cpfRequerente.placeholder = '000.000.000-00';
           cpfRequerente.maxLength = denuncia ? 14 : 18;
         }
         if (confirmacaoEmail) confirmacaoEmail.required = denuncia ? false : step === 1;
         if (emailRequerente) {
-          emailRequerente.placeholder = denuncia ? 'E-mail *' : 'E-mail para receber as comunicações *';
+          emailRequerente.placeholder = 'nome@exemplo.com';
         }
         if (telefoneRequerente) {
           telefoneRequerente.required = denuncia ? false : step === 1;
-          telefoneRequerente.placeholder = denuncia ? 'Telefone para contato (opcional)' : 'Digite seu Telefone *';
+          telefoneRequerente.placeholder = denuncia ? '(00) 00000-0000 (opcional)' : '(00) 00000-0000';
         }
         comumSection.classList.toggle('is-descartado', anonima);
         updateHidden(comumSection.querySelector('[data-identificacao-anonimo]'), !anonima);
