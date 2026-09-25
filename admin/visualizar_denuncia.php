@@ -23,6 +23,11 @@ if (!$denuncia) {
     exit;
 }
 
+if (!podeVerDenuncia(escopoSetorDenunciaSessao($pdo), $denuncia['setor'] ?? null)) {
+    header("Location: denuncias.php?error=permissao");
+    exit;
+}
+
 // Buscar Anexos
 $stmtAnexos = $pdo->prepare("SELECT * FROM denuncia_anexos WHERE denuncia_id = ? ORDER BY data_upload ASC");
 $stmtAnexos->execute([$id]);

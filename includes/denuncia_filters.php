@@ -65,11 +65,53 @@ function filtrosSistemaDenuncia(string $setorAdmin): array
 {
     return [
         'setor' => in_array($setorAdmin, ['meio_ambiente', 'obras_urbanismo'], true) ? $setorAdmin : '',
-        'origem' => 'minhas',
+        'origem' => '',
         'status' => '',
         'anonimo' => '',
         'concluidas' => '0',
     ];
+}
+
+/**
+ * Setor que o usuário é obrigado a enxergar: '' significa acesso a todos.
+ * Admin, admin geral e secretário veem tudo; os demais ficam presos à equipe
+ * cadastrada em Gerenciar Usuários (quem está como "ambos" também vê tudo).
+ */
+function escopoSetorDenuncia(string $nivel, string $setorAdmin): string
+{
+    if (in_array($nivel, ['admin', 'admin_geral', 'secretario'], true)) {
+        return '';
+    }
+    return in_array($setorAdmin, ['meio_ambiente', 'obras_urbanismo'], true) ? $setorAdmin : '';
+}
+
+/** Equipe típica de cada cargo, usada quando um admin está simulando o perfil. */
+function setorTipicoDoCargo(string $nivel): string
+{
+    return match ($nivel) {
+        'fiscal' => 'obras_urbanismo',
+        'analista' => 'meio_ambiente',
+        default => 'ambos',
+    };
+}
+
+function escopoSetorDenunciaSessao(PDO $pdo): string
+{
+    $nivel = (string) ($_SESSION['admin_nivel'] ?? 'operador');
+    $setor = isset($_SESSION['admin_nivel_original'])
+        ? setorTipicoDoCargo($nivel)
+        : setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
+    return escopoSetorDenuncia($nivel, $setor);
+}
+
+function podeVerDenuncia(string $escopo, ?string $setorDenuncia): bool
+{
+    return $escopo === '' || $escopo === ($setorDenuncia ?: 'meio_ambiente');
+}
+
+function nomeSetorDenuncia(string $setor): string
+{
+    return $setor === 'obras_urbanismo' ? 'Obras e Urbanismo' : 'Meio Ambiente';
 }
 
 function filtrosLimposDenuncia(): array
