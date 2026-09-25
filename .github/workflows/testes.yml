@@ -1,0 +1,28 @@
+name: Testes
+
+# Roda a suíte unitária a cada push e pull request. O deploy continua automático no push
+# (webhook do servidor), então isto não bloqueia a publicação: quando falha, o GitHub marca
+# o commit com ❌ e avisa por e-mail quem fez o push.
+on:
+  push:
+    branches: [main, homologacao]
+  pull_request:
+    branches: [main, homologacao]
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, gd, zip, pdo_mysql, pdo_sqlite, dom, libxml
+          coverage: none
+
+      - name: Instalar dependências
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit --testsuite Unit --do-not-cache-result
