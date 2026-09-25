@@ -13,34 +13,25 @@ final class DenunciaFiltersTest extends TestCase
         self::assertSame('', filtrosSistemaDenuncia('ambos')['setor']);
     }
 
-    public function testAdminESecretarioVeemTodosOsSetores(): void
+    public function testAdminESecretarioAbremEmTodasAsEquipes(): void
     {
-        self::assertSame('', escopoSetorDenuncia('admin', 'meio_ambiente'));
-        self::assertSame('', escopoSetorDenuncia('admin_geral', 'obras_urbanismo'));
-        self::assertSame('', escopoSetorDenuncia('secretario', 'ambos'));
+        self::assertSame('', setorPadraoDenuncia('admin', 'meio_ambiente'));
+        self::assertSame('', setorPadraoDenuncia('admin_geral', 'obras_urbanismo'));
+        self::assertSame('', setorPadraoDenuncia('secretario', 'ambos'));
     }
 
-    public function testDemaisCargosFicamPresosAEquipe(): void
+    public function testDemaisCargosAbremNaPropriaEquipe(): void
     {
-        self::assertSame('meio_ambiente', escopoSetorDenuncia('analista', 'meio_ambiente'));
-        self::assertSame('obras_urbanismo', escopoSetorDenuncia('fiscal', 'obras_urbanismo'));
-        self::assertSame('', escopoSetorDenuncia('operador', 'ambos'));
-    }
-
-    public function testAcessoADenunciaRespeitaEquipe(): void
-    {
-        self::assertTrue(podeVerDenuncia('obras_urbanismo', 'obras_urbanismo'));
-        self::assertFalse(podeVerDenuncia('obras_urbanismo', 'meio_ambiente'));
-        self::assertFalse(podeVerDenuncia('meio_ambiente', 'obras_urbanismo'));
-        self::assertTrue(podeVerDenuncia('meio_ambiente', null));
-        self::assertTrue(podeVerDenuncia('', 'obras_urbanismo'));
+        self::assertSame('meio_ambiente', setorPadraoDenuncia('analista', 'meio_ambiente'));
+        self::assertSame('obras_urbanismo', setorPadraoDenuncia('fiscal', 'obras_urbanismo'));
+        self::assertSame('', setorPadraoDenuncia('operador', 'ambos'));
     }
 
     public function testSimulacaoDeCargoUsaEquipeTipica(): void
     {
-        self::assertSame('obras_urbanismo', escopoSetorDenuncia('fiscal', setorTipicoDoCargo('fiscal')));
-        self::assertSame('meio_ambiente', escopoSetorDenuncia('analista', setorTipicoDoCargo('analista')));
-        self::assertSame('', escopoSetorDenuncia('secretario', setorTipicoDoCargo('secretario')));
+        self::assertSame('obras_urbanismo', setorPadraoDenuncia('fiscal', setorTipicoDoCargo('fiscal')));
+        self::assertSame('meio_ambiente', setorPadraoDenuncia('analista', setorTipicoDoCargo('analista')));
+        self::assertSame('', setorPadraoDenuncia('secretario', setorTipicoDoCargo('secretario')));
     }
 
     public function testUrlTemPrioridadeSobrePreferenciaSalva(): void

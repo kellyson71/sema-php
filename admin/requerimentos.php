@@ -220,7 +220,7 @@ if ($filtroFonte !== 'requerimentos') {
             $whereDen[] = '1=0';
         }
     }
-    $setorDenunciaInicial = escopoSetorDenunciaSessao($pdo);
+    $setorDenunciaInicial = setorPadraoDenunciaSessao($pdo);
     if ($setorDenunciaInicial !== '') {
         $whereDen[] = 'd.setor = ?';
         $paramsDen[] = $setorDenunciaInicial;
@@ -313,7 +313,7 @@ if ($setorFiltro) {
     // Na visão unificada, os três indicadores compartilhados refletem os dois
     // tipos de processo. Indicadores sem equivalente em denúncias continuam
     // contando apenas requerimentos.
-    $setorDenStats = escopoSetorDenunciaSessao($pdo);
+    $setorDenStats = setorPadraoDenunciaSessao($pdo);
     $whereSetorDenStats = $setorDenStats === '' ? '' : ' AND setor = ?';
     $paramsSetorDenStats = $setorDenStats === '' ? [] : [$setorDenStats];
     $stmtDenStats = $pdo->prepare("SELECT
