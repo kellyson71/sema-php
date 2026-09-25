@@ -90,10 +90,20 @@ function limparColagemWord(string $html): string
     }
 
     // Propriedades mso-* e as bordas por lado (border-width/-style/-color)
-    // de tabelas/células: o CSS do documento já define a borda da grade.
+    // de tabelas/células coladas do Word: o CSS do documento já define a
+    // borda da grade. Só mexe em elementos que o próprio Word marcou (style
+    // com "mso-" ou algum ancestral com classe "Mso*") — um documento pode
+    // ter um trecho colado do Word ao lado de uma tabela criada direto no
+    // editor, e essa segunda não pode perder uma borda manual só porque o
+    // documento como um todo tem resíduo de Word em outro lugar.
     foreach ($xpath->query('.//*[@style]', $wrapEl) as $el) {
-        $declaracoes = array_filter(array_map('trim', explode(';', (string) $el->getAttribute('style'))));
-        $mantidas = array_filter($declaracoes, static function (string $decl): bool {
+        $estiloProprio = (string) $el->getAttribute('style');
+        $ehTrechoWord = stripos($estiloProprio, 'mso-') !== false
+            || $xpath->query('ancestor-or-self::*[contains(@class, "Mso")]', $el)->length > 0;
+
+        $declaracoes = array_filter(array_map('trim', explode(';', $estiloProprio)));
+        $mantidas = array_filter($declaracoes, static function (string $decl) use ($ehTrechoWord): bool {
+            if (!$ehTrechoWord) return true;
             $prop = strtolower(trim(explode(':', $decl, 2)[0] ?? ''));
             if (strpos($prop, 'mso-') === 0) return false;
             if (in_array($prop, ['border', 'border-width', 'border-style', 'border-color',

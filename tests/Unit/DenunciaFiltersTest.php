@@ -13,6 +13,18 @@ final class DenunciaFiltersTest extends TestCase
         self::assertSame('', filtrosSistemaDenuncia('ambos')['setor']);
     }
 
+    public function testPadraoDoSistemaMostraMinhasDenunciasPrimeiro(): void
+    {
+        self::assertSame('minhas', filtrosSistemaDenuncia('ambos')['origem']);
+    }
+
+    public function testPreferenciaSalvaDeTodasSobrepoeAtalhoDeMinhas(): void
+    {
+        $resolved = resolverFiltrosDenuncia([], ['origem' => 'publico'], 'ambos');
+
+        self::assertSame('publico', $resolved['origem']);
+    }
+
     public function testUrlTemPrioridadeSobrePreferenciaSalva(): void
     {
         $saved = ['setor' => 'meio_ambiente', 'origem' => 'publico', 'status' => 'pendente'];

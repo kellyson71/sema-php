@@ -187,6 +187,23 @@ final class PaginacaoDocumentoTest extends TestCase
     }
 
     #[Test]
+    public function bordaForaDoTrechoWordEhPreservadaEmDocumentoMisto(): void
+    {
+        // Documento misto: um trecho colado do Word (com mso-/borda por lado)
+        // ao lado de uma tabela criada direto no editor, com borda manual
+        // legítima. A limpeza não pode vazar do trecho do Word e apagar a
+        // borda intencional da tabela do editor.
+        $html = '<div class="MsoNormal" style="border:1px solid black;mso-border-alt:solid black .5pt">Trecho colado do Word</div>'
+            . '<table><tr><td style="border:2px solid red">Tabela criada no editor</td></tr></table>';
+
+        $limpo = limparColagemWord($html);
+
+        $this->assertStringNotContainsString('mso-', $limpo);
+        $this->assertStringNotContainsString('border:1px solid black', $limpo);
+        $this->assertStringContainsString('border:2px solid red', $limpo);
+    }
+
+    #[Test]
     public function tagOpDoWordEhDesembrulhadaSemPerderTexto(): void
     {
         $html = '<p class="MsoNormal">Trata o presente parecer<o:p></o:p></p>'
