@@ -83,8 +83,11 @@ if (!function_exists('notificarErroMonitorPorEmail')) {
 }
 
 (static function (): void {
+    // Só o domínio de produção alerta. Antes a regra era "não é Docker nem homologação",
+    // e qualquer PHP rodando localmente fora do Docker mandava e-mail de alerta.
+    $hostAtual = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
     $ehProducao = PHP_SAPI !== 'cli'
-        && defined('DOCKER_ENV') && !DOCKER_ENV
+        && in_array($hostAtual, ['sema.protocolosead.com', 'sema.paudosferros.rn.gov.br'], true)
         && defined('MODO_HOMOLOG') && !MODO_HOMOLOG;
 
     if (!$ehProducao) {
