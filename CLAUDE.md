@@ -137,7 +137,13 @@ qualquer usuário** quando alguém relata um erro. Para investigar, use a skill
 ⚠️ **LGPD:** por decisão de 2026-09-25, a gravação mascara só os **campos** (o que é
 digitado). O **texto das telas** — nomes e CPF de cidadão nas listas e detalhes — aparece
 na gravação e vai para o PostHog. Para esconder um trecho específico, coloque a classe
-`ph-no-capture` no elemento. No site público a gravação continua desligada.
+`ph-no-capture` no elemento.
+
+No site público, a gravação vale **só para o formulário** (`index.php` da raiz) e **só depois do
+"Entendi"** no aviso de cookies. Todo campo é mascarado, e também a prévia do endereço
+(`[data-location-preview]`) e o nome do arquivo anexado (`.upload-feedback`); para mascarar
+outro trecho que devolva dado digitado, use a classe `ph-mask`. Consulta, sucesso e pendência
+não são gravadas. A política de privacidade (`privacidade.php`) tem a seção "Medição de uso".
 
 ## Roles de administrador
 

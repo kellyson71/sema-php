@@ -57,6 +57,9 @@
             <h2>Uso das informações</h2>
             <p>Os dados informados são utilizados para identificação do usuário, tramitação de processos, envio de comunicações oficiais e reforço dos controles de segurança do sistema.</p>
 
+            <h2>Medição de uso</h2>
+            <p>Para melhorar o atendimento digital, medimos como o formulário de solicitação é usado: tempo em cada etapa, campos que geram dúvida e pontos em que o preenchimento é interrompido. Depois que você clica em "Entendi" no aviso de cookies, a navegação no formulário também pode ser gravada, com tudo o que é digitado mascarado — nome, CPF, endereço, contatos e arquivos não aparecem na gravação. Essas informações são processadas pela ferramenta PostHog e usadas apenas para identificar dificuldades e corrigir o serviço.</p>
+
             <h2>Segurança</h2>
             <p>Adotamos controles de autenticação, verificação em duas etapas e registro de acesso para reduzir riscos de uso indevido. O acesso é restrito a perfis autorizados.</p>
 
