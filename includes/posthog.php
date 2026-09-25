@@ -32,6 +32,11 @@ $posthogHost = $_SERVER['POSTHOG_HOST'] ?? getenv('POSTHOG_HOST') ?: 'https://us
 // o site público continua contando como visita pública normal (com autocapture).
 $posthogIsAdmin = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') !== false;
 
+// Formulário público (index.php da raiz): única página do site público que pode ser gravada,
+// para medir onde o cidadão trava. Consulta, sucesso e pendência mostram dados da pessoa e
+// ficam de fora. A gravação só começa depois do "Entendi" no aviso de cookies.
+$posthogGravaFormulario = !$posthogIsAdmin && ($_SERVER['SCRIPT_NAME'] ?? '') === '/index.php';
+
 $posthogAdmin = null;
 if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
     $posthogAdmin = [
@@ -72,9 +77,17 @@ if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
             maskInputOptions: { password: true }
         },
 <?php else: ?>
-        // O site é todo formulário com nome, CPF, e-mail e telefone: replay grava a tela
-        // (inclusive o que a pessoa digita) e perfil de anônimo criaria pessoa por visitante.
+        // O site é todo formulário com nome, CPF, e-mail e telefone. A gravação nasce desligada
+        // e só é iniciada no formulário, após o aceite (ver abaixo). Tudo o que é digitado fica
+        // mascarado, e também os trechos que devolvem na tela o que a pessoa informou: a prévia
+        // do endereço e o nome do arquivo anexado (costuma ter o nome da pessoa).
         disable_session_recording: true,
+<?php if ($posthogGravaFormulario): ?>
+        session_recording: {
+            maskAllInputs: true,
+            maskTextSelector: '[data-location-preview], .upload-feedback, .ph-mask'
+        },
+<?php endif; ?>
 <?php endif; ?>
         // Protocolo e CPF viajam na query string. Nunca viram propriedade de evento.
         sanitize_properties: function (properties) {
@@ -86,6 +99,26 @@ if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
             return properties;
         }
     });
+<?php if ($posthogGravaFormulario): ?>
+
+    (function () {
+        var iniciada = false;
+        function iniciarGravacao() {
+            if (iniciada) return;
+            iniciada = true;
+            posthog.startSessionRecording();
+        }
+        var aceito = false;
+        try { aceito = localStorage.getItem('sema:cookie_notice') === 'accepted'; } catch (e) {}
+        if (aceito) {
+            iniciarGravacao();
+        } else {
+            document.addEventListener('click', function (evento) {
+                if (evento.target.closest && evento.target.closest('#public-cookie-accept')) iniciarGravacao();
+            });
+        }
+    })();
+<?php endif; ?>
 <?php if ($posthogAdmin): ?>
 
     // Identifica a pessoa da equipe. Faz o browser falar o mesmo distinct_id que o SDK PHP
