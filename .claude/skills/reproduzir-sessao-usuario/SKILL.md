@@ -85,8 +85,10 @@ linha do tempo para quem não usa SQL.
 
 Pegue o `posthog_session_id` dos eventos do período.
 
-- **Gravação**: `https://us.posthog.com/replay/<session_id>` (o PostHog completa o projeto).
-  Todas as gravações de uma pessoa: `https://us.posthog.com/person/admin_<id>#activeTab=sessionRecordings`.
+- Projeto: **SEMA, id `509259`**. A mesma conta tem o projeto Curta PDF — com as ferramentas
+  MCP, rode `switch-project` para 509259 antes de consultar.
+- **Gravação**: `https://us.posthog.com/project/509259/replay/<session_id>`.
+  Todas as gravações de uma pessoa: `https://us.posthog.com/project/509259/person/admin_<id>#activeTab=sessionRecordings`.
   A tela de atividade já traz os dois links prontos.
 - **Com as ferramentas MCP do PostHog** (plugin `posthog`; autentique se pedir):
   - eventos da pessoa: `distinct_id = 'admin_12'` no intervalo (pageview, `$pageleave`, `$exception`);

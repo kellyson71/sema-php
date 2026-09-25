@@ -17,9 +17,9 @@ $metricas = [
 ];
 $metrica = array_key_exists($_GET['metrica'] ?? '', $metricas) ? $_GET['metrica'] : 'tempo';
 $adminSelecionado = (int) ($_GET['admin'] ?? 0);
-$posthogProjeto = (string) ($_SERVER['POSTHOG_PROJECT_ID'] ?? getenv('POSTHOG_PROJECT_ID') ?: '');
-// Sem o id do projeto, o PostHog redireciona o link para o projeto aberto na conta de quem clica.
-$posthogApp = 'https://us.posthog.com' . ($posthogProjeto !== '' ? '/project/' . rawurlencode($posthogProjeto) : '');
+// Projeto "SEMA" no PostHog (a conta também tem o Curta PDF, por isso o id é fixo no link).
+$posthogProjeto = (string) ($_SERVER['POSTHOG_PROJECT_ID'] ?? getenv('POSTHOG_PROJECT_ID') ?: '509259');
+$posthogApp = 'https://us.posthog.com/project/' . rawurlencode($posthogProjeto);
 
 $tabelasProntas = true;
 try {
