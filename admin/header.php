@@ -2006,7 +2006,8 @@ if ($isAnalista) {
     <script>
     (function () {
         var CURRENT = '<?= APP_VERSION ?>';
-        var HAS_SEEN = <?= $hasSeenCurrentRelease ? 'true' : 'false' ?>;
+        // Em produção o aviso de novidades não abre sozinho; continua acessível pelo botão da versão.
+        var HAS_SEEN = <?= ($hasSeenCurrentRelease || !(defined('MODO_HOMOLOG') && MODO_HOMOLOG)) ? 'true' : 'false' ?>;
         var MARK_URL = '<?= $adminBase ?>ajax/marcar_release_lida.php';
 
         document.addEventListener('DOMContentLoaded', function () {

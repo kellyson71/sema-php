@@ -18,6 +18,8 @@ $metricas = [
 $metrica = array_key_exists($_GET['metrica'] ?? '', $metricas) ? $_GET['metrica'] : 'tempo';
 $adminSelecionado = (int) ($_GET['admin'] ?? 0);
 $posthogProjeto = (string) ($_SERVER['POSTHOG_PROJECT_ID'] ?? getenv('POSTHOG_PROJECT_ID') ?: '');
+// Sem o id do projeto, o PostHog redireciona o link para o projeto aberto na conta de quem clica.
+$posthogApp = 'https://us.posthog.com' . ($posthogProjeto !== '' ? '/project/' . rawurlencode($posthogProjeto) : '');
 
 $tabelasProntas = true;
 try {
@@ -111,7 +113,7 @@ function linkEntidade(?string $entidade, ?int $id): ?string
 }
 
 $desde = $hoje->modify('-371 days')->format('Y-m-d');
-$usuarios = $pdo->query("SELECT id, nome, nivel, setor, ativo FROM administradores ORDER BY ativo DESC, nome")->fetchAll();
+$usuarios = $pdo->query("SELECT * FROM administradores ORDER BY ativo DESC, nome")->fetchAll();
 $usuariosPorId = array_column($usuarios, null, 'id');
 if ($adminSelecionado && !isset($usuariosPorId[$adminSelecionado])) {
     $adminSelecionado = 0;
@@ -198,7 +200,10 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
 .atv-tabela a{color:var(--primary);font-weight:750;text-decoration:none}
 .atv-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:800}
 .atv-pill.pagina{background:#eef3ef;color:#3d5446}.atv-pill.acao{background:#e7efff;color:#2c4f9e}.atv-pill.erro{background:#fbe7e5;color:#913f39}
+.atv-gravacao{display:inline-flex;align-items:center;gap:5px;color:var(--primary);font-size:.78rem;font-weight:750;text-decoration:none;white-space:nowrap}.atv-gravacao:hover{text-decoration:underline}
 .atv-sid{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--muted)}
+.atv-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 20px;font-size:.88rem;color:var(--ink);word-break:break-word}
+.atv-info small{display:block;margin-bottom:2px;color:var(--muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 .atv-aviso{padding:14px 16px;border-radius:12px;background:#fff7e6;border:1px solid #f0d9a8;color:#7a5a17;margin-bottom:18px}
 @media(max-width:760px){.atv-tabela .opcional{display:none}}
 </style>
@@ -211,14 +216,27 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
                 ? htmlspecialchars(($nomesNivel[$usuariosPorId[$adminSelecionado]['nivel']] ?? $usuariosPorId[$adminSelecionado]['nivel']) . ' · ' . ($nomesSetor[$usuariosPorId[$adminSelecionado]['setor'] ?? ''] ?? ''))
                 : 'Tempo ativo, ações e páginas de cada pessoa da equipe.' ?></p>
         </div>
-        <?php if ($adminSelecionado): ?><div class="page-toolbar"><a href="<?= htmlspecialchars(urlAtividade(['admin' => null])) ?>" class="toolbar-button"><i class="fas fa-arrow-left"></i> Toda a equipe</a></div><?php endif; ?>
+        <?php if ($adminSelecionado): ?><div class="page-toolbar">
+            <?php $podeGerenciar = ($_SESSION['admin_nivel'] ?? '') === 'admin'; ?>
+            <a href="<?= $podeGerenciar ? 'administradores.php' : htmlspecialchars(urlAtividade(['admin' => null])) ?>" class="toolbar-button"><i class="fas fa-arrow-left"></i> <?= $podeGerenciar ? 'Usuários' : 'Toda a equipe' ?></a>
+            <a href="<?= htmlspecialchars($posthogApp . '/person/' . rawurlencode('admin_' . $adminSelecionado) . '#activeTab=sessionRecordings') ?>" target="_blank" rel="noopener" class="toolbar-button"><i class="fas fa-circle-play"></i> Gravações no PostHog</a>
+            <?php if ($podeGerenciar): ?><a href="administradores.php?editar=<?= (int) $adminSelecionado ?>" class="toolbar-button toolbar-button-primary"><i class="fas fa-pen"></i> Editar usuário</a><?php endif; ?>
+        </div><?php endif; ?>
     </section>
 
     <?php if (!$tabelasProntas): ?>
         <div class="atv-aviso"><strong>Falta rodar a migration</strong> <code>database/2026-09-25_atividade_admin.sql</code> neste banco. Até lá, só a métrica "Ações no sistema" (que vem do histórico) aparece.</div>
     <?php endif; ?>
 
-    <?php if ($adminSelecionado): $r = $resumo[$adminSelecionado] ?? []; ?>
+    <?php if ($adminSelecionado): $r = $resumo[$adminSelecionado] ?? []; $u = $usuariosPorId[$adminSelecionado]; ?>
+        <section class="atv-panel atv-info">
+            <div><small>E-mail</small><?= htmlspecialchars($u['email']) ?></div>
+            <div><small>Cargo</small><?= htmlspecialchars($nomesNivel[$u['nivel']] ?? $u['nivel']) ?></div>
+            <div><small>Equipe</small><?= htmlspecialchars($nomesSetor[$u['setor'] ?? ''] ?? '—') ?></div>
+            <div><small>Situação</small><?= $u['ativo'] ? 'Ativo' : 'Inativo' ?><?= !empty($u['primeiro_acesso']) ? ' · ainda não trocou a senha inicial' : '' ?></div>
+            <div><small>Último login</small><?= !empty($u['ultimo_acesso']) ? date('d/m/Y H:i', strtotime($u['ultimo_acesso'])) : 'Nunca entrou' ?></div>
+            <div><small>Cadastrado em</small><?= !empty($u['data_cadastro']) ? date('d/m/Y', strtotime($u['data_cadastro'])) : '—' ?></div>
+        </section>
         <section class="atv-cards">
             <div class="atv-card"><small>Ativo hoje</small><strong><?= atividadeFormatarDuracao((int) ($r['hoje'] ?? 0)) ?></strong></div>
             <div class="atv-card"><small>Últimos 7 dias</small><strong><?= atividadeFormatarDuracao((int) ($r['semana'] ?? 0)) ?></strong></div>
@@ -289,12 +307,12 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
     <?php elseif ($tabelasProntas): ?>
         <section class="atv-panel" id="linha-do-tempo">
             <h2>Passo a passo de <?= date('d/m/Y', strtotime($diaTimeline)) ?></h2>
-            <p class="atv-panel-sub">Mais recente primeiro. A coluna Sessão liga o passo à gravação no PostHog (use a skill <code>reproduzir-sessao-usuario</code>).</p>
+            <p class="atv-panel-sub">Mais recente primeiro. "Ver gravação" abre no PostHog a gravação da sessão em que o passo aconteceu.</p>
             <?php if (!$eventos): ?>
                 <p class="atv-panel-sub">Nenhum registro neste dia.</p>
             <?php else: ?>
             <table class="atv-tabela">
-                <thead><tr><th>Hora</th><th>Tipo</th><th>Onde</th><th>Ação</th><th class="opcional">Registro</th><th class="opcional">Tempo</th><th class="opcional">Sessão</th></tr></thead>
+                <thead><tr><th>Hora</th><th>Tipo</th><th>Onde</th><th>Ação</th><th class="opcional">Registro</th><th class="opcional">Tempo</th><th class="opcional">Gravação</th></tr></thead>
                 <tbody>
                 <?php foreach ($eventos as $e): $link = linkEntidade($e['entidade'], $e['entidade_id'] !== null ? (int) $e['entidade_id'] : null); ?>
                     <tr>
@@ -304,7 +322,7 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
                         <td><?= htmlspecialchars((string) $e['acao']) ?><?php if ($e['erro']): ?><br><small style="color:#913f39"><?= htmlspecialchars($e['erro']) ?></small><?php endif; ?><?php if ((int) $e['status_http'] >= 400): ?> <small>HTTP <?= (int) $e['status_http'] ?></small><?php endif; ?></td>
                         <td class="opcional"><?php if ($e['entidade_id']): ?><?= $link ? '<a href="' . htmlspecialchars($link) . '">' : '' ?><?= htmlspecialchars($e['entidade'] . ' #' . $e['entidade_id']) ?><?= $link ? '</a>' : '' ?><?php else: ?>—<?php endif; ?></td>
                         <td class="opcional"><?= $e['duracao_ms'] !== null ? number_format((int) $e['duracao_ms'] / 1000, 2, ',', '') . ' s' : '' ?></td>
-                        <td class="opcional"><?php if ($e['posthog_session_id']): ?><?php if ($posthogProjeto !== ''): ?><a class="atv-sid" target="_blank" rel="noopener" href="https://us.posthog.com/project/<?= rawurlencode($posthogProjeto) ?>/replay/<?= rawurlencode($e['posthog_session_id']) ?>">ver gravação</a><?php else: ?><span class="atv-sid" title="<?= htmlspecialchars($e['posthog_session_id']) ?>"><?= htmlspecialchars(substr($e['posthog_session_id'], 0, 8)) ?>…</span><?php endif; ?><?php else: ?>—<?php endif; ?></td>
+                        <td class="opcional"><?php if ($e['posthog_session_id']): ?><a class="atv-gravacao" target="_blank" rel="noopener" title="Sessão <?= htmlspecialchars($e['posthog_session_id']) ?>" href="<?= htmlspecialchars($posthogApp . '/replay/' . rawurlencode($e['posthog_session_id'])) ?>"><i class="fas fa-circle-play"></i> Ver gravação</a><?php else: ?>—<?php endif; ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -313,4 +331,15 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
         </section>
     <?php endif; ?>
 </div>
+<script>
+// Em tela estreita o gráfico rola: mantém o mês atual à vista até a pessoa rolar sozinha.
+document.querySelectorAll('.atv-heat-wrap').forEach(function (el) {
+    var rolouManual = false;
+    el.addEventListener('pointerdown', function () { rolouManual = true; });
+    el.addEventListener('wheel', function () { rolouManual = true; }, { passive: true });
+    new ResizeObserver(function () {
+        if (!rolouManual) el.scrollLeft = el.scrollWidth;
+    }).observe(el);
+});
+</script>
 <?php include 'footer.php'; ?>

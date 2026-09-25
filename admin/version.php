@@ -1,7 +1,7 @@
 <?php
 if (!defined('APP_VERSION')) {
-    define('APP_VERSION', '3.7.0');
-    define('APP_VERSION_DATE', '01/09/2026');
+    define('APP_VERSION', '3.7.1');
+    define('APP_VERSION_DATE', '25/09/2026');
 
     $appChangelog = [
         [

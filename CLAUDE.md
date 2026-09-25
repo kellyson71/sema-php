@@ -126,8 +126,10 @@ qualquer usuário** quando alguém relata um erro. Para investigar, use a skill
   com logs de console e captura de exceções do navegador. O cookie `sema_ph_sid` leva o
   id da sessão ao servidor, que o grava em `admin_eventos.posthog_session_id` — assim cada
   passo no banco aponta para o trecho certo da gravação. Pessoa no PostHog = `admin_<id>`.
-  Link da gravação: `https://us.posthog.com/project/<POSTHOG_PROJECT_ID>/replay/<session_id>`
-  (defina `POSTHOG_PROJECT_ID` no `.htaccess` para a tela montar o link sozinha).
+  A tela de atividade tem "Ver gravação" em cada passo (`https://us.posthog.com/replay/<session_id>`)
+  e "Gravações no PostHog" na página da pessoa (`/person/admin_<id>`). Sem `POSTHOG_PROJECT_ID`
+  o PostHog redireciona para o projeto aberto na conta de quem clica; com ele (via `.htaccess`)
+  o link já sai com `/project/<id>/`.
 - Migration: `database/2026-09-25_atividade_admin.sql`. Eventos com mais de 180 dias são
   apagados pelo próprio ping (retenção LGPD).
 

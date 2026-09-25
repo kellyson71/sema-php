@@ -176,6 +176,8 @@ include 'header.php';
 .usr-lista{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .usr-linha{display:grid;grid-template-columns:minmax(220px,2.2fr) minmax(140px,1.2fr) minmax(140px,1.1fr) minmax(120px,1fr) auto;gap:16px;align-items:center;padding:14px 18px;border-top:1px solid #eef2ef}
 .usr-linha:first-child{border-top:0}.usr-cab{padding:10px 18px;background:#f7f9f8;color:var(--muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.usr-clicavel{cursor:pointer;transition:background .12s}.usr-clicavel:hover{background:#f6f9f7}
+.usr-nome a{color:inherit;text-decoration:none}.usr-nome a:hover{text-decoration:underline}
 .usr-linha.inativo{background:#fafafa}.usr-linha.inativo .usr-pessoa,.usr-linha.inativo .usr-col{opacity:.55}
 .usr-pessoa{display:flex;align-items:center;gap:12px;min-width:0}
 .usr-avatar{flex:0 0 38px;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3ece6;color:#2e5a3f;font-size:.8rem;font-weight:800;overflow:hidden}
@@ -229,11 +231,11 @@ include 'header.php';
             $souEu = (int) $u['id'] === (int) $_SESSION['admin_id'];
             $temFoto = !empty($u['foto_perfil']) && is_file('../uploads/perfil/' . basename($u['foto_perfil']));
         ?>
-            <div class="usr-linha <?= $u['ativo'] ? '' : 'inativo' ?>" data-setor="<?= htmlspecialchars($u['setor'] ?? 'meio_ambiente') ?>" data-ativo="<?= $u['ativo'] ? '1' : '0' ?>" data-busca="<?= htmlspecialchars(mb_strtolower($u['nome'] . ' ' . $u['email'])) ?>">
+            <div class="usr-linha usr-clicavel <?= $u['ativo'] ? '' : 'inativo' ?>" data-href="atividade_usuarios.php?admin=<?= (int) $u['id'] ?>" data-setor="<?= htmlspecialchars($u['setor'] ?? 'meio_ambiente') ?>" data-ativo="<?= $u['ativo'] ? '1' : '0' ?>" data-busca="<?= htmlspecialchars(mb_strtolower($u['nome'] . ' ' . $u['email'])) ?>">
                 <div class="usr-pessoa">
                     <span class="usr-avatar"><?php if ($temFoto): ?><img src="<?= htmlspecialchars('../' . urlArquivo('perfil/' . $u['foto_perfil'])) ?>" alt=""><?php else: ?><?= htmlspecialchars(iniciaisUsuario($u['nome'])) ?><?php endif; ?></span>
                     <div style="min-width:0">
-                        <div class="usr-nome"><?= htmlspecialchars($u['nome']) ?><?php if ($souEu): ?><span class="usr-voce">você</span><?php endif; ?></div>
+                        <div class="usr-nome"><a href="atividade_usuarios.php?admin=<?= (int) $u['id'] ?>"><?= htmlspecialchars($u['nome']) ?></a><?php if ($souEu): ?><span class="usr-voce">você</span><?php endif; ?></div>
                         <div class="usr-email"><?= htmlspecialchars($u['email']) ?></div>
                         <?php if (!$u['ativo']): ?><span class="usr-inativo-tag">Inativo</span><?php endif; ?>
                     </div>
@@ -351,6 +353,13 @@ document.addEventListener('DOMContentLoaded', function () {
     busca.addEventListener('input', aplicar);
     aplicar();
 
+    linhas.forEach(function (linha) {
+        linha.addEventListener('click', function (event) {
+            if (event.target.closest('button, a, .dropdown-menu')) return;
+            window.location.href = linha.dataset.href;
+        });
+    });
+
     var formAcao = document.getElementById('formAcaoUsuario');
     document.querySelectorAll('[data-acao]').forEach(function (botao) {
         botao.addEventListener('click', function () {
@@ -380,6 +389,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ativo.checked = d.ativo === '1';
         ativo.disabled = d.eu === '1';
     });
+
+    var editar = new URLSearchParams(window.location.search).get('editar');
+    if (editar) {
+        var botaoEditar = document.querySelector('.usr-btn[data-id="' + CSS.escape(editar) + '"]');
+        if (botaoEditar) bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUsuario')).show(botaoEditar);
+    }
 });
 </script>
 
