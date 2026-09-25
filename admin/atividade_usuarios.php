@@ -249,7 +249,7 @@ a.atv-cel:hover{outline:2px solid #1f6b3b;outline-offset:1px}
 
     <section class="atv-panel">
         <h2><?= $adminSelecionado ? 'Atividade no último ano' : 'Atividade da equipe no último ano' ?></h2>
-        <p class="atv-panel-sub"><?= htmlspecialchars(formatarValorMetrica($metrica, $totalPeriodo)) ?> em <?= $diasComAtividade ?> dia(s)<?= $metrica === 'acoes' ? ' · conta andamentos, mudanças de status, envios e demais ações que o sistema registra no histórico' : ($metrica === 'tempo' ? ' · só conta com a aba visível e mouse/teclado no último minuto' : '') ?><?= $adminSelecionado ? ' · clique num dia para ver o passo a passo' : '' ?></p>
+        <p class="atv-panel-sub"><?= htmlspecialchars(formatarValorMetrica($metrica, $totalPeriodo)) ?> em <?= $diasComAtividade ?> dia(s)<?= $metrica === 'acoes' ? ' · conta andamentos, mudanças de status, envios e demais ações que o sistema registra no histórico' : ($metrica === 'tempo' ? ' · só conta com a aba visível e mouse/teclado no último minuto; antes de 25/09/2026 é estimado pelo intervalo entre páginas' : ($metrica === 'paginas' ? ' · antes de 25/09/2026 vem do histórico do PostHog' : '')) ?><?= $adminSelecionado ? ' · clique num dia para ver o passo a passo' : '' ?></p>
         <nav class="atv-metricas">
             <?php foreach ($metricas as $chave => [$rotulo, $icone]): ?>
                 <a href="<?= htmlspecialchars(urlAtividade(['metrica' => $chave])) ?>" class="<?= $metrica === $chave ? 'active' : '' ?>"><i class="fas <?= $icone ?>"></i> <?= $rotulo ?></a>
