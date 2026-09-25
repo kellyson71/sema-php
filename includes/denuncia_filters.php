@@ -73,11 +73,12 @@ function filtrosSistemaDenuncia(string $setorAdmin): array
 }
 
 /**
- * Setor que o usuário é obrigado a enxergar: '' significa acesso a todos.
- * Admin, admin geral e secretário veem tudo; os demais ficam presos à equipe
- * cadastrada em Gerenciar Usuários (quem está como "ambos" também vê tudo).
+ * Equipe em que a listagem de denúncias abre por padrão ('' = todas).
+ * Não é restrição: todo usuário pode trocar de aba e ver as demais equipes.
+ * Admin, admin geral e secretário abrem em todas; os demais abrem na equipe
+ * cadastrada em Gerenciar Usuários (quem está como "ambos" abre em todas).
  */
-function escopoSetorDenuncia(string $nivel, string $setorAdmin): string
+function setorPadraoDenuncia(string $nivel, string $setorAdmin): string
 {
     if (in_array($nivel, ['admin', 'admin_geral', 'secretario'], true)) {
         return '';
@@ -95,18 +96,13 @@ function setorTipicoDoCargo(string $nivel): string
     };
 }
 
-function escopoSetorDenunciaSessao(PDO $pdo): string
+function setorPadraoDenunciaSessao(PDO $pdo): string
 {
     $nivel = (string) ($_SESSION['admin_nivel'] ?? 'operador');
     $setor = isset($_SESSION['admin_nivel_original'])
         ? setorTipicoDoCargo($nivel)
         : setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
-    return escopoSetorDenuncia($nivel, $setor);
-}
-
-function podeVerDenuncia(string $escopo, ?string $setorDenuncia): bool
-{
-    return $escopo === '' || $escopo === ($setorDenuncia ?: 'meio_ambiente');
+    return setorPadraoDenuncia($nivel, $setor);
 }
 
 function nomeSetorDenuncia(string $setor): string
