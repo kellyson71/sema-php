@@ -47,6 +47,12 @@ if ($filtros['anonimo'] !== '') {
     $where[] = 'd.anonimo = ?';
     $params[] = (int) $filtros['anonimo'];
 }
+// Última movimentação: último andamento registrado no histórico ou, sem nenhum, o registro.
+$ultimaMovSql = "(SELECT COALESCE(MAX(h.data_registro), d.data_registro) FROM denuncia_historico h WHERE h.denuncia_id = d.id AND h.acao <> 'Responsável')";
+if ($filtros['atribuidas'] === '1') {
+    $where[] = 'd.responsavel_id = ?';
+    $params[] = $adminId;
+}
 
 $statusSql = [
     'pendente' => "LOWER(TRIM(d.status)) = 'pendente'",
@@ -57,6 +63,10 @@ if ($filtros['status'] !== '') {
     $where[] = $statusSql[$filtros['status']];
 } elseif ($filtros['concluidas'] !== '1') {
     $where[] = 'NOT ' . $statusSql['concluida'];
+}
+$atrasoSql = "NOT {$statusSql['concluida']} AND {$ultimaMovSql} < NOW() - INTERVAL " . DENUNCIA_DIAS_ATRASO . ' DAY';
+if ($filtros['atrasadas'] === '1') {
+    $where[] = $atrasoSql;
 }
 
 $whereSql = implode(' AND ', $where);
@@ -70,9 +80,11 @@ $offset = ($paginaAtual - 1) * $itensPorPagina;
 $sql = "SELECT d.id, d.data_registro, d.infrator_nome, d.infrator_cpf_cnpj,
                d.infrator_endereco, d.observacoes, d.status, d.origem, d.setor,
                d.protocolo_publico, d.anonimo, d.tipo_denuncia, d.admin_id,
-               a.nome AS responsavel
+               a.nome AS responsavel, d.responsavel_id, r.nome AS atribuido_nome,
+               {$ultimaMovSql} AS ultima_movimentacao
         FROM denuncias d
         LEFT JOIN administradores a ON d.admin_id = a.id
+        LEFT JOIN administradores r ON d.responsavel_id = r.id
         WHERE {$whereSql}
         ORDER BY d.data_registro DESC, d.id DESC
         LIMIT {$itensPorPagina} OFFSET {$offset}";
@@ -87,9 +99,11 @@ $stmtStats = $pdo->prepare("SELECT
     SUM(CASE WHEN LOWER(TRIM(status)) = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
     SUM(CASE WHEN LOWER(TRIM(status)) IN ('em análise','em analise','em_analise') THEN 1 ELSE 0 END) AS em_analise,
     SUM(CASE WHEN {$concluidaSql} THEN 1 ELSE 0 END) AS concluidas,
-    SUM(CASE WHEN origem = 'admin' AND admin_id = ? THEN 1 ELSE 0 END) AS minhas
-    FROM denuncias" . ($filtros['setor'] !== '' ? ' WHERE setor = ?' : ''));
-$stmtStats->execute($filtros['setor'] !== '' ? [$adminId, $filtros['setor']] : [$adminId]);
+    SUM(CASE WHEN origem = 'admin' AND admin_id = ? THEN 1 ELSE 0 END) AS minhas,
+    SUM(CASE WHEN responsavel_id = ? AND NOT {$concluidaSql} THEN 1 ELSE 0 END) AS atribuidas,
+    SUM(CASE WHEN {$atrasoSql} THEN 1 ELSE 0 END) AS atrasadas
+    FROM denuncias d" . ($filtros['setor'] !== '' ? ' WHERE setor = ?' : ''));
+$stmtStats->execute($filtros['setor'] !== '' ? [$adminId, $adminId, $filtros['setor']] : [$adminId, $adminId]);
 $stats = $stmtStats->fetch() ?: [];
 
 $porSetor = [];
@@ -148,7 +162,8 @@ include 'header.php';
 <style>
 .den-list{display:grid;gap:12px}.den-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:18px 20px;background:#fff;border:1px solid var(--line);border-left:4px solid #538867;border-radius:16px;box-shadow:var(--card-shadow);color:inherit;text-decoration:none;transition:.16s ease}.den-card.obras{border-left-color:#c98b2e}.den-card:hover{color:inherit;transform:translateY(-1px);border-color:#b9cbc0;box-shadow:0 12px 28px rgba(24,54,37,.09)}.den-card-top,.den-card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.den-card-title{margin:9px 0 5px;color:var(--ink);font-size:1.02rem;font-weight:800}.den-card-subtitle{color:var(--muted);font-size:.84rem;line-height:1.45}.den-card-side{min-width:150px;text-align:right}.den-card-date{margin-bottom:10px;color:var(--muted);font-size:.78rem}.den-type-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#f6e9e8;color:#913f39;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.den-anon-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#302b36;color:#fff;font-size:.7rem;font-weight:800}.den-origin,.den-sector{color:var(--muted);font-size:.76rem;font-weight:650}.den-open{display:inline-flex;align-items:center;gap:7px;color:var(--primary);font-size:.82rem;font-weight:800}.den-filter-grid{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(135px,1fr));gap:12px;align-items:end}.den-filter-field label{display:block;margin-bottom:6px;color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.den-filter-field input,.den-filter-field select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:#fff;color:var(--ink)}.den-filter-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}.den-summary .summary-chip{min-width:145px}.den-toggle{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.82rem;font-weight:650}.den-empty{padding:50px 20px;background:#fff;border:1px dashed #cbd8cf;border-radius:18px;text-align:center;color:var(--muted)}.den-empty i{display:block;margin-bottom:12px;font-size:2rem;color:#a9baae}@media(max-width:1100px){.den-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.den-filter-search{grid-column:1/-1}}@media(max-width:680px){.den-filter-grid{grid-template-columns:1fr}.den-filter-search{grid-column:auto}.den-card{grid-template-columns:1fr;gap:12px}.den-card-side{display:flex;align-items:center;justify-content:space-between;text-align:left;min-width:0}.den-card-date{margin:0}}
 .den-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 16px;border-bottom:1px solid var(--line)}.den-tab{display:inline-flex;align-items:center;gap:8px;margin-bottom:-1px;padding:10px 16px;border-bottom:3px solid transparent;color:var(--muted);font-weight:750;text-decoration:none}.den-tab:hover{color:var(--ink)}.den-tab.active{color:var(--ink);border-bottom-color:var(--primary)}.den-tab-mine{padding:1px 7px;border-radius:999px;background:#e3f0e7;color:#1f5133;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.den-tab-count{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:#eef3ef;color:#3d5446;font-size:.72rem;font-weight:800;text-align:center}
-.den-search-form{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.den-search-form .den-search-wrap{flex:1 1 320px}.den-search-form input[type=search]{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:8px 11px 8px 34px;background:#fff;color:var(--ink)}.den-mine{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.86rem;font-weight:650;text-decoration:none}.den-mine:hover{color:var(--ink);border-color:#b9cbc0}.den-mine.active{background:#eaf3ed;border-color:#8fb89c;color:#1f5133}
+.den-search-form{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.den-search-form .den-search-wrap{flex:1 1 320px}.den-search-form input[type=search]{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:8px 11px 8px 34px;background:#fff;color:var(--ink)}.den-mine{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.86rem;font-weight:650;text-decoration:none}.den-mine:hover{color:var(--ink);border-color:#b9cbc0}.den-mine.active{background:#eaf3ed;border-color:#8fb89c;color:#1f5133}.den-mine-alerta.active{background:#fbe9e7;border-color:#e0a49c;color:#8f2f26}
+.den-atraso{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:.7rem;font-weight:800}.den-atraso.atencao{background:#fff4d6;color:#7a5a00}.den-atraso.atrasada{background:#fbe2df;color:#9b2c22}.den-resp.vazio{color:#b0785a}
 .den-search-wrap{position:relative}.den-search-wrap>i{position:absolute;z-index:2;left:12px;top:50%;transform:translateY(-50%);color:#8fa399;font-size:.8rem}.den-search-wrap input{padding-left:34px}.den-suggestions{display:none;position:absolute;z-index:50;top:calc(100% + 7px);left:0;right:0;overflow:hidden;padding:6px;background:#fff;border:1px solid #d9e3dc;border-radius:13px;box-shadow:0 18px 42px rgba(16,33,23,.16)}.den-suggestions.active{display:block}.den-suggestion{display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;color:inherit;text-decoration:none}.den-suggestion:hover{background:#f3f7f4;color:inherit}.den-suggestion-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:9px;background:#f6e9e8;color:#913f39}.den-suggestion-copy{min-width:0;flex:1}.den-suggestion-top{display:flex;align-items:center;gap:8px;min-width:0}.den-suggestion-protocol{font-family:ui-monospace,monospace;color:#52635a;font-size:.72rem}.den-suggestion-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102117;font-size:.84rem;font-weight:750}.den-suggestion-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:#7a8a81;font-size:.72rem}.den-suggestion-empty{padding:14px;text-align:center;color:#7a8a81;font-size:.78rem}
 </style>
 
@@ -173,6 +188,8 @@ if ($setorPadrao !== '') {
     $abasSetor = [$setorPadrao => $abasSetor[$setorPadrao]] + $abasSetor + ['' => $todas];
 }
 $soMinhas = $filtros['origem'] === 'minhas';
+$soAtribuidas = $filtros['atribuidas'] === '1';
+$soAtrasadas = $filtros['atrasadas'] === '1';
 ?>
     <section class="page-hero page-hero-compact">
         <div class="page-hero-copy">
@@ -202,12 +219,14 @@ $soMinhas = $filtros['origem'] === 'minhas';
         <form method="GET" class="den-search-form">
             <?php $setorParam = paramSetorUrl($filtros['setor'], $setorPadrao); ?>
             <?php if ($setorParam !== ''): ?><input type="hidden" name="setor" value="<?= htmlspecialchars($setorParam) ?>"><?php endif; ?>
-            <?php foreach (['status', 'concluidas', 'origem'] as $campo): ?>
+            <?php foreach (['status', 'concluidas', 'origem', 'atribuidas', 'atrasadas'] as $campo): ?>
                 <?php if ($filtros[$campo] !== ''): ?><input type="hidden" name="<?= $campo ?>" value="<?= htmlspecialchars($filtros[$campo]) ?>"><?php endif; ?>
             <?php endforeach; ?>
             <div class="den-search-wrap"><i class="fas fa-magnifying-glass"></i><input id="busca" name="busca" type="search" autocomplete="off" aria-label="Buscar denúncia" aria-autocomplete="list" aria-controls="denunciaSuggestions" aria-expanded="false" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Buscar por protocolo, nome do infrator, CPF/CNPJ ou endereço"><div id="denunciaSuggestions" class="den-suggestions" role="listbox"></div></div>
             <button type="submit" class="toolbar-button toolbar-button-primary">Buscar</button>
             <a href="<?= htmlspecialchars(buildDenunciaUrl(['origem' => $soMinhas ? '' : 'minhas', 'pagina' => 1])) ?>" class="den-mine <?= $soMinhas ? 'active' : '' ?>"><i class="<?= $soMinhas ? 'fas fa-square-check' : 'far fa-square' ?>"></i> Só as que eu registrei <span class="den-tab-count"><?= (int) ($stats['minhas'] ?? 0) ?></span></a>
+            <a href="<?= htmlspecialchars(buildDenunciaUrl(['atribuidas' => $soAtribuidas ? '' : '1', 'pagina' => 1])) ?>" class="den-mine <?= $soAtribuidas ? 'active' : '' ?>"><i class="<?= $soAtribuidas ? 'fas fa-square-check' : 'far fa-square' ?>"></i> Atribuídas a mim <span class="den-tab-count"><?= (int) ($stats['atribuidas'] ?? 0) ?></span></a>
+            <a href="<?= htmlspecialchars(buildDenunciaUrl(['atrasadas' => $soAtrasadas ? '' : '1', 'pagina' => 1])) ?>" class="den-mine den-mine-alerta <?= $soAtrasadas ? 'active' : '' ?>" title="Sem andamento há <?= DENUNCIA_DIAS_ATRASO ?> dias ou mais"><i class="<?= $soAtrasadas ? 'fas fa-square-check' : 'far fa-square' ?>"></i> Atrasadas <span class="den-tab-count"><?= (int) ($stats['atrasadas'] ?? 0) ?></span></a>
             <?php if ($filtroBusca !== ''): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['busca' => '', 'pagina' => 1])) ?>" class="toolbar-button toolbar-button-ghost">Limpar busca</a><?php endif; ?>
         </form>
     </section>
@@ -221,11 +240,13 @@ $soMinhas = $filtros['origem'] === 'minhas';
                 if ($subtitulo === '') $subtitulo = mb_strimwidth(trim((string) $denuncia['observacoes']), 0, 130, '…', 'UTF-8');
                 $protocolo = $denuncia['protocolo_publico'] ?: 'DEN-' . str_pad((string) $denuncia['id'], 6, '0', STR_PAD_LEFT);
                 $ehObras = ($denuncia['setor'] ?? '') === 'obras_urbanismo';
+                $diasParada = diasSemAndamento($denuncia['ultima_movimentacao'] ?? null);
+                $nivelAtraso = nivelAtrasoDenuncia($diasParada, (string) $denuncia['status']);
             ?>
                 <a class="den-card <?= $ehObras ? 'obras' : '' ?>" href="visualizar_denuncia.php?id=<?= (int) $denuncia['id'] ?>">
-                    <div><div class="den-card-top"><span class="den-type-pill"><i class="fas fa-bullhorn"></i> Denúncia</span><span class="req-protocol">#<?= htmlspecialchars($protocolo) ?></span><span class="badge badge-status <?= htmlspecialchars(denunciaStatusClass((string) $denuncia['status'])) ?>"><?= htmlspecialchars($denuncia['status']) ?></span><?php if (!empty($denuncia['anonimo'])): ?><span class="den-anon-pill"><i class="fas fa-user-secret"></i> Anônima</span><?php endif; ?></div>
+                    <div><div class="den-card-top"><span class="den-type-pill"><i class="fas fa-bullhorn"></i> Denúncia</span><span class="req-protocol">#<?= htmlspecialchars($protocolo) ?></span><span class="badge badge-status <?= htmlspecialchars(denunciaStatusClass((string) $denuncia['status'])) ?>"><?= htmlspecialchars($denuncia['status']) ?></span><?php if (!empty($denuncia['anonimo'])): ?><span class="den-anon-pill"><i class="fas fa-user-secret"></i> Anônima</span><?php endif; ?><?php if ($nivelAtraso !== ''): ?><span class="den-atraso <?= $nivelAtraso ?>"><i class="fas fa-hourglass-half"></i> <?= $diasParada ?> dias sem andamento</span><?php endif; ?></div>
                         <div class="den-card-title"><?= htmlspecialchars(tituloDenuncia($denuncia)) ?></div><div class="den-card-subtitle"><?= htmlspecialchars($subtitulo ?: 'Ocorrência sem local ou tipo informado') ?></div>
-                        <div class="den-card-meta" style="margin-top:9px;"><span class="den-sector"><i class="fas <?= $ehObras ? 'fa-hard-hat' : 'fa-leaf' ?>"></i> <?= $ehObras ? 'Obras e Urbanismo' : 'Meio Ambiente' ?></span><span class="den-origin"><i class="fas <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'fa-earth-americas' : 'fa-user-shield' ?>"></i> <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'Cidadão' : 'Interna' ?></span><?php if (($denuncia['origem'] ?? 'admin') === 'admin' && $denuncia['responsavel']): ?><span class="den-origin">Criada por <?= htmlspecialchars($denuncia['responsavel']) ?></span><?php endif; ?></div>
+                        <div class="den-card-meta" style="margin-top:9px;"><span class="den-sector"><i class="fas <?= $ehObras ? 'fa-hard-hat' : 'fa-leaf' ?>"></i> <?= $ehObras ? 'Obras e Urbanismo' : 'Meio Ambiente' ?></span><span class="den-origin"><i class="fas <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'fa-earth-americas' : 'fa-user-shield' ?>"></i> <?= ($denuncia['origem'] ?? 'admin') === 'publico' ? 'Cidadão' : 'Interna' ?></span><?php if (($denuncia['origem'] ?? 'admin') === 'admin' && $denuncia['responsavel']): ?><span class="den-origin">Criada por <?= htmlspecialchars($denuncia['responsavel']) ?></span><?php endif; ?><span class="den-origin den-resp <?= $denuncia['atribuido_nome'] ? '' : 'vazio' ?>"><i class="fas fa-user-tag"></i> <?= $denuncia['atribuido_nome'] ? 'Responsável: ' . htmlspecialchars($denuncia['atribuido_nome']) : 'Sem responsável' ?></span></div>
                     </div>
                     <div class="den-card-side"><div class="den-card-date"><?= date('d/m/Y \à\s H:i', strtotime($denuncia['data_registro'])) ?></div><span class="den-open">Abrir <i class="fas fa-arrow-right"></i></span></div>
                 </a>

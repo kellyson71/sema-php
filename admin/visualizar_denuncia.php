@@ -24,6 +24,26 @@ if (!$denuncia) {
 }
 
 // Buscar Anexos
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+// Quem pode ser responsável: usuários ativos, os da equipe da denúncia primeiro.
+$stmtEquipe = $pdo->prepare("SELECT id, nome, setor FROM administradores WHERE ativo = 1 OR id = ?
+    ORDER BY (setor = ? OR setor = 'ambos') DESC, nome");
+$stmtEquipe->execute([(int) ($denuncia['responsavel_id'] ?? 0), $denuncia['setor'] ?? 'meio_ambiente']);
+$possiveisResponsaveis = $stmtEquipe->fetchAll();
+$responsavelAtual = null;
+foreach ($possiveisResponsaveis as $pessoa) {
+    if ((int) $pessoa['id'] === (int) ($denuncia['responsavel_id'] ?? 0)) {
+        $responsavelAtual = $pessoa;
+    }
+}
+$stmtUltimaMov = $pdo->prepare("SELECT MAX(data_registro) FROM denuncia_historico WHERE denuncia_id = ? AND acao <> 'Responsável'");
+$stmtUltimaMov->execute([$id]);
+$ultimaMovimentacao = $stmtUltimaMov->fetchColumn() ?: $denuncia['data_registro'];
+$diasParada = diasSemAndamento($ultimaMovimentacao);
+$nivelAtraso = nivelAtrasoDenuncia($diasParada, (string) $denuncia['status']);
+
 $stmtAnexos = $pdo->prepare("SELECT * FROM denuncia_anexos WHERE denuncia_id = ? ORDER BY data_upload ASC");
 $stmtAnexos->execute([$id]);
 $anexos = $stmtAnexos->fetchAll();
@@ -34,6 +54,7 @@ if (isset($_GET['success'])) {
     if ($_GET['success'] == 'atualizada') $mensagem = "✅ Andamento registrado com sucesso!";
     if ($_GET['success'] == 'editada')    $mensagem = "✅ Denúncia atualizada com sucesso!";
     if ($_GET['success'] == 'anexo')      $mensagem = "✅ Anexos atualizados com sucesso!";
+    if ($_GET['success'] == 'responsavel') $mensagem = "✅ Responsável atualizado.";
 }
 $erroEdicao = '';
 if (isset($_GET['error']) && $_GET['error'] == 'vazio') $erroEdicao = "⚠️ Nome e relato são obrigatórios.";
@@ -151,9 +172,9 @@ include 'header.php';
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                             <select name="status" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                                <option value="Pendente" <?php echo $denuncia['status'] == 'Pendente' ? 'selected' : ''; ?>>Pendente</option>
-                                <option value="Em Análise" <?php echo $denuncia['status'] == 'Em Análise' ? 'selected' : ''; ?>>Em Análise</option>
-                                <option value="Concluída" <?php echo $denuncia['status'] == 'Concluída' ? 'selected' : ''; ?>>Concluída</option>
+                                <?php foreach (DENUNCIA_SITUACOES as $situacao): ?>
+                                    <option value="<?= htmlspecialchars($situacao) ?>" <?= $denuncia['status'] === $situacao ? 'selected' : '' ?>><?= htmlspecialchars($situacao) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -382,9 +403,32 @@ include 'header.php';
                             <span class="text-sm text-gray-500">Registrado em:</span>
                             <span class="text-sm font-medium text-gray-800"><?php echo date('d/m/Y H:i', strtotime($denuncia['data_registro'])); ?></span>
                         </li>
-                        <li class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">Por:</span>
+                        <li class="flex justify-between items-center pb-2 border-b border-dashed border-gray-200">
+                            <span class="text-sm text-gray-500">Registrado por:</span>
                             <span class="text-sm font-medium text-gray-800"><?php echo htmlspecialchars($denuncia['responsavel'] ?: ($origemCidadao ? 'Canal do cidadão' : 'Sistema')); ?></span>
+                        </li>
+                        <li class="flex justify-between items-center pb-2 border-b border-dashed border-gray-200">
+                            <span class="text-sm text-gray-500">Último andamento:</span>
+                            <span class="text-sm font-medium <?= $nivelAtraso === 'atrasada' ? 'text-red-700' : ($nivelAtraso === 'atencao' ? 'text-yellow-700' : 'text-gray-800') ?>">
+                                <?= $diasParada === 0 ? 'hoje' : ($diasParada === 1 ? 'há 1 dia' : 'há ' . $diasParada . ' dias') ?><?= $nivelAtraso === 'atrasada' ? ' · atrasada' : '' ?>
+                            </span>
+                        </li>
+                        <li>
+                            <form action="processar_denuncia.php" method="POST" class="flex flex-col gap-2">
+                                <input type="hidden" name="acao" value="atribuir_responsavel">
+                                <input type="hidden" name="id" value="<?= (int) $denuncia['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                <label for="responsavel_id" class="text-sm text-gray-500">Responsável:</label>
+                                <div class="flex gap-2">
+                                    <select id="responsavel_id" name="responsavel_id" class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                                        <option value="0">Sem responsável</option>
+                                        <?php foreach ($possiveisResponsaveis as $pessoa): ?>
+                                            <option value="<?= (int) $pessoa['id'] ?>" <?= $responsavelAtual && (int) $responsavelAtual['id'] === (int) $pessoa['id'] ? 'selected' : '' ?>><?= htmlspecialchars($pessoa['nome']) ?><?= (int) $pessoa['id'] === (int) ($_SESSION['admin_id'] ?? 0) ? ' (eu)' : '' ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="submit" class="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold">Salvar</button>
+                                </div>
+                            </form>
                         </li>
                     </ul>
                 </div>

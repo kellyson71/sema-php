@@ -1,5 +1,6 @@
 <?php
 require_once 'conexao.php';
+require_once __DIR__ . '/../includes/denuncia_filters.php';
 verificaLogin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !isset($_GET['acao'])) {
@@ -120,6 +121,31 @@ if ($acao === 'cadastrar') {
 
     header("Location: visualizar_denuncia.php?id=$denunciaId&success=editada");
     exit;
+} elseif ($acao === 'atribuir_responsavel') {
+    $denunciaId = (int) ($_POST['id'] ?? 0);
+    $csrf = (string) ($_POST['csrf_token'] ?? '');
+    if ($denunciaId <= 0 || $csrf === '' || !hash_equals((string) ($_SESSION['csrf_token'] ?? ''), $csrf)) {
+        header("Location: visualizar_denuncia.php?id=$denunciaId");
+        exit;
+    }
+    $responsavelId = (int) ($_POST['responsavel_id'] ?? 0);
+    $nomeResponsavel = null;
+    if ($responsavelId > 0) {
+        $stmt = $pdo->prepare('SELECT nome FROM administradores WHERE id = ? AND ativo = 1');
+        $stmt->execute([$responsavelId]);
+        $nomeResponsavel = $stmt->fetchColumn() ?: null;
+        if ($nomeResponsavel === null) {
+            header("Location: visualizar_denuncia.php?id=$denunciaId");
+            exit;
+        }
+    }
+    $pdo->prepare('UPDATE denuncias SET responsavel_id = ? WHERE id = ?')
+        ->execute([$responsavelId > 0 ? $responsavelId : null, $denunciaId]);
+    $pdo->prepare('INSERT INTO denuncia_historico (denuncia_id, admin_id, acao, detalhes, visivel_denunciante) VALUES (?, ?, ?, ?, 0)')
+        ->execute([$denunciaId, $_SESSION['admin_id'] ?? null, 'Responsável',
+            $nomeResponsavel !== null ? "Responsável definido: $nomeResponsavel" : 'Responsável removido']);
+    header("Location: visualizar_denuncia.php?id=$denunciaId&success=responsavel");
+    exit;
 } elseif ($acao === 'alterar_status') {
     $denunciaId = (int)$_POST['id'];
     $novoStatus = $_POST['status'];
@@ -128,9 +154,7 @@ if ($acao === 'cadastrar') {
     // A caixa vem marcada; desmarcar deixa o registro só interno.
     $visivel    = isset($_POST['visivel_denunciante']) ? 1 : 0;
 
-    $statusValidos = ['Pendente', 'Em Análise', 'Concluída'];
-
-    if (in_array($novoStatus, $statusValidos)) {
+    if (in_array($novoStatus, DENUNCIA_SITUACOES, true)) {
         $stmt = $pdo->prepare("UPDATE denuncias SET status = ? WHERE id = ?");
         $stmt->execute([$novoStatus, $denunciaId]);
 
