@@ -33,20 +33,22 @@ test.describe('Modernização de denúncias', () => {
     await login(page);
   });
 
-  test('lista filtros, anonimato e preferência persistente', async ({ page }) => {
-    await page.goto('/admin/denuncias.php?limpar=1');
+  test('admin vê abas de equipe e filtra por situação', async ({ page }) => {
+    await page.goto('/admin/denuncias.php');
     await dismissRelease(page);
     await expect(page.locator('.page-title', { hasText: 'Denúncias' })).toBeVisible();
-    await expect(page.locator('select[name="origem"] option[value="minhas"]')).toHaveText('Criadas por mim');
-    await expect(page.getByText('Denúncia anônima').first()).toBeVisible();
+    await expect(page.locator('.den-tab.active')).toContainText('Todas as equipes');
+    await expect(page.locator('.summary-chip.active')).toContainText('Em aberto');
 
-    await page.selectOption('select[name="setor"]', 'obras_urbanismo');
-    await page.selectOption('select[name="origem"]', 'publico');
-    await page.getByRole('button', { name: 'Aplicar filtros' }).click();
-    await page.getByRole('button', { name: 'Salvar como padrão' }).click();
-    await expect(page.getByText('Os filtros atuais foram salvos como seu padrão.')).toBeVisible();
-    await expect(page.locator('select[name="setor"]')).toHaveValue('obras_urbanismo');
-    await expect(page.locator('select[name="origem"]')).toHaveValue('publico');
+    await page.locator('.den-tab', { hasText: 'Obras e Urbanismo' }).click();
+    await expect(page.locator('.den-tab.active')).toContainText('Obras e Urbanismo');
+    for (const card of await page.locator('.den-card').all()) {
+      await expect(card).toContainText('Obras e Urbanismo');
+    }
+
+    await page.locator('.summary-chip', { hasText: 'Todas' }).click();
+    await expect(page.locator('.summary-chip.active')).toContainText('Todas');
+    await expect(page.locator('.den-tab.active')).toContainText('Obras e Urbanismo');
   });
 
   test('feed principal mistura tipos e encaminha para a rota correta', async ({ page }) => {

@@ -6,30 +6,14 @@ verificaLogin();
 
 $adminId = (int) ($_SESSION['admin_id'] ?? 0);
 $setorAdmin = setorAdministrador($pdo, $adminId);
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+$escopoSetor = escopoSetorDenunciaSessao($pdo);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_preferencia') {
-    $csrf = (string) ($_POST['csrf_token'] ?? '');
-    if ($csrf === '' || !hash_equals((string) $_SESSION['csrf_token'], $csrf)) {
-        header('Location: denuncias.php?error=csrf');
-        exit;
-    }
-    try {
-        salvarPreferenciaDenuncia($pdo, $adminId, $_POST);
-        header('Location: denuncias.php?success=padrao_salvo');
-    } catch (InvalidArgumentException $e) {
-        header('Location: denuncias.php?error=filtros_invalidos');
-    } catch (Throwable $e) {
-        error_log('[denuncias] Falha ao salvar preferência: ' . $e->getMessage());
-        header('Location: denuncias.php?error=preferencia');
-    }
-    exit;
+$filtros = resolverFiltrosDenuncia($_GET, null, $setorAdmin);
+if ($escopoSetor !== '') {
+    $filtros['setor'] = $escopoSetor;
+} elseif (!isset($_GET['setor'])) {
+    $filtros['setor'] = '';
 }
-
-$preferenciaSalva = carregarPreferenciaDenuncia($pdo, $adminId);
-$filtros = resolverFiltrosDenuncia($_GET, $preferenciaSalva, $setorAdmin);
 $filtroBusca = trim((string) ($_GET['busca'] ?? ''));
 $paginaAtual = max(1, (int) ($_GET['pagina'] ?? 1));
 $itensPorPagina = 20;
@@ -94,31 +78,39 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $denuncias = $stmt->fetchAll();
 
+$concluidaSql = "LOWER(TRIM(status)) IN ('concluída','concluida','concluído','concluido','finalizado','finalizada')";
 $stmtStats = $pdo->prepare("SELECT
-    COUNT(*) AS total,
+    COUNT(*) AS todas,
+    SUM(CASE WHEN NOT {$concluidaSql} THEN 1 ELSE 0 END) AS abertas,
     SUM(CASE WHEN LOWER(TRIM(status)) = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
     SUM(CASE WHEN LOWER(TRIM(status)) IN ('em análise','em analise','em_analise') THEN 1 ELSE 0 END) AS em_analise,
-    SUM(CASE WHEN anonimo = 1 THEN 1 ELSE 0 END) AS anonimas,
+    SUM(CASE WHEN {$concluidaSql} THEN 1 ELSE 0 END) AS concluidas,
     SUM(CASE WHEN origem = 'admin' AND admin_id = ? THEN 1 ELSE 0 END) AS minhas
-    FROM denuncias");
-$stmtStats->execute([$adminId]);
+    FROM denuncias" . ($filtros['setor'] !== '' ? ' WHERE setor = ?' : ''));
+$stmtStats->execute($filtros['setor'] !== '' ? [$adminId, $filtros['setor']] : [$adminId]);
 $stats = $stmtStats->fetch() ?: [];
+
+$porSetor = [];
+if ($escopoSetor === '') {
+    foreach ($pdo->query("SELECT setor, COUNT(*) n FROM denuncias WHERE NOT {$concluidaSql} GROUP BY setor") as $row) {
+        $porSetor[$row['setor'] ?: 'meio_ambiente'] = (int) $row['n'];
+    }
+}
 
 $mensagem = match ($_GET['success'] ?? '') {
     'registrada' => 'Denúncia registrada com sucesso.',
     'atualizada' => 'Denúncia atualizada com sucesso.',
     'excluida' => 'Denúncia removida corretamente.',
-    'padrao_salvo' => 'Os filtros atuais foram salvos como seu padrão.',
     default => '',
 };
 $mensagemErro = match ($_GET['error'] ?? '') {
     'criacao' => 'Não foi possível registrar a denúncia.',
     'nao_encontrado' => 'Denúncia não encontrada.',
-    'csrf' => 'A sessão expirou. Atualize a página e tente novamente.',
-    'filtros_invalidos' => 'Um dos filtros enviados não é permitido.',
-    'preferencia' => 'Não foi possível salvar a preferência. Verifique se a migration foi aplicada.',
+    'permissao' => 'Você não tem acesso a essa denúncia — ela é de outra equipe.',
     default => '',
 };
+
+$statusAtivo = $filtros['status'] !== '' ? $filtros['status'] : ($filtros['concluidas'] === '1' ? 'todas' : 'abertas');
 
 function buildDenunciaUrl(array $overrides = []): string
 {
@@ -147,51 +139,63 @@ include 'header.php';
 <link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
 <style>
 .den-list{display:grid;gap:12px}.den-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:18px 20px;background:#fff;border:1px solid var(--line);border-left:4px solid #538867;border-radius:16px;box-shadow:var(--card-shadow);color:inherit;text-decoration:none;transition:.16s ease}.den-card.obras{border-left-color:#c98b2e}.den-card:hover{color:inherit;transform:translateY(-1px);border-color:#b9cbc0;box-shadow:0 12px 28px rgba(24,54,37,.09)}.den-card-top,.den-card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.den-card-title{margin:9px 0 5px;color:var(--ink);font-size:1.02rem;font-weight:800}.den-card-subtitle{color:var(--muted);font-size:.84rem;line-height:1.45}.den-card-side{min-width:150px;text-align:right}.den-card-date{margin-bottom:10px;color:var(--muted);font-size:.78rem}.den-type-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#f6e9e8;color:#913f39;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.den-anon-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#302b36;color:#fff;font-size:.7rem;font-weight:800}.den-origin,.den-sector{color:var(--muted);font-size:.76rem;font-weight:650}.den-open{display:inline-flex;align-items:center;gap:7px;color:var(--primary);font-size:.82rem;font-weight:800}.den-filter-grid{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(135px,1fr));gap:12px;align-items:end}.den-filter-field label{display:block;margin-bottom:6px;color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.den-filter-field input,.den-filter-field select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:#fff;color:var(--ink)}.den-filter-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}.den-summary .summary-chip{min-width:145px}.den-toggle{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.82rem;font-weight:650}.den-empty{padding:50px 20px;background:#fff;border:1px dashed #cbd8cf;border-radius:18px;text-align:center;color:var(--muted)}.den-empty i{display:block;margin-bottom:12px;font-size:2rem;color:#a9baae}@media(max-width:1100px){.den-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.den-filter-search{grid-column:1/-1}}@media(max-width:680px){.den-filter-grid{grid-template-columns:1fr}.den-filter-search{grid-column:auto}.den-card{grid-template-columns:1fr;gap:12px}.den-card-side{display:flex;align-items:center;justify-content:space-between;text-align:left;min-width:0}.den-card-date{margin:0}}
+.den-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 16px;border-bottom:1px solid var(--line)}.den-tab{display:inline-flex;align-items:center;gap:8px;margin-bottom:-1px;padding:10px 16px;border-bottom:3px solid transparent;color:var(--muted);font-weight:750;text-decoration:none}.den-tab:hover{color:var(--ink)}.den-tab.active{color:var(--ink);border-bottom-color:var(--primary)}.den-tab-count{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:#eef3ef;color:#3d5446;font-size:.72rem;font-weight:800;text-align:center}
+.den-search-form{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.den-search-form .den-search-wrap{flex:1 1 320px}.den-search-form input[type=search]{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:8px 11px 8px 34px;background:#fff;color:var(--ink)}.den-mine{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.86rem;font-weight:650;text-decoration:none}.den-mine:hover{color:var(--ink);border-color:#b9cbc0}.den-mine.active{background:#eaf3ed;border-color:#8fb89c;color:#1f5133}
 .den-search-wrap{position:relative}.den-search-wrap>i{position:absolute;z-index:2;left:12px;top:50%;transform:translateY(-50%);color:#8fa399;font-size:.8rem}.den-search-wrap input{padding-left:34px}.den-suggestions{display:none;position:absolute;z-index:50;top:calc(100% + 7px);left:0;right:0;overflow:hidden;padding:6px;background:#fff;border:1px solid #d9e3dc;border-radius:13px;box-shadow:0 18px 42px rgba(16,33,23,.16)}.den-suggestions.active{display:block}.den-suggestion{display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;color:inherit;text-decoration:none}.den-suggestion:hover{background:#f3f7f4;color:inherit}.den-suggestion-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:9px;background:#f6e9e8;color:#913f39}.den-suggestion-copy{min-width:0;flex:1}.den-suggestion-top{display:flex;align-items:center;gap:8px;min-width:0}.den-suggestion-protocol{font-family:ui-monospace,monospace;color:#52635a;font-size:.72rem}.den-suggestion-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102117;font-size:.84rem;font-weight:750}.den-suggestion-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:#7a8a81;font-size:.72rem}.den-suggestion-empty{padding:14px;text-align:center;color:#7a8a81;font-size:.78rem}
 </style>
 
 <div class="admin-page-shell denuncias-page">
+<?php
+$nomeSetorAtual = $filtros['setor'] !== '' ? nomeSetorDenuncia($filtros['setor']) : '';
+$chipsStatus = [
+    'abertas' => ['Em aberto', 'fa-folder-open', ['status' => '', 'concluidas' => '0'], $stats['abertas'] ?? 0],
+    'pendente' => ['Pendentes', 'fa-clock', ['status' => 'pendente', 'concluidas' => '0'], $stats['pendentes'] ?? 0],
+    'em_analise' => ['Em análise', 'fa-magnifying-glass', ['status' => 'em_analise', 'concluidas' => '0'], $stats['em_analise'] ?? 0],
+    'concluida' => ['Concluídas', 'fa-circle-check', ['status' => 'concluida', 'concluidas' => '0'], $stats['concluidas'] ?? 0],
+    'todas' => ['Todas', 'fa-layer-group', ['status' => '', 'concluidas' => '1'], $stats['todas'] ?? 0],
+];
+$abasSetor = [
+    '' => ['Todas as equipes', 'fa-layer-group', array_sum($porSetor)],
+    'meio_ambiente' => ['Meio Ambiente', 'fa-leaf', $porSetor['meio_ambiente'] ?? 0],
+    'obras_urbanismo' => ['Obras e Urbanismo', 'fa-hard-hat', $porSetor['obras_urbanismo'] ?? 0],
+];
+$soMinhas = $filtros['origem'] === 'minhas';
+?>
     <section class="page-hero page-hero-compact">
-        <div class="page-hero-copy"><h1 class="page-title">Denúncias</h1><p class="page-subtitle">Acompanhe ocorrências encaminhadas pelos cidadãos e pela fiscalização.</p></div>
+        <div class="page-hero-copy">
+            <h1 class="page-title">Denúncias<?= $escopoSetor !== '' ? ' · ' . htmlspecialchars($nomeSetorAtual) : '' ?></h1>
+            <p class="page-subtitle"><?= $escopoSetor !== ''
+                ? 'Denúncias da equipe de ' . htmlspecialchars($nomeSetorAtual) . '.'
+                : 'Você tem acesso às denúncias de todas as equipes.' ?></p>
+        </div>
         <div class="page-toolbar"><a href="nova_denuncia.php" class="toolbar-button toolbar-button-primary"><i class="fas fa-plus"></i> Registrar denúncia</a></div>
     </section>
     <?php if ($mensagem): ?><div class="alert alert-success" role="status"><?= htmlspecialchars($mensagem) ?></div><?php endif; ?>
     <?php if ($mensagemErro): ?><div class="alert alert-danger" role="alert"><?= htmlspecialchars($mensagemErro) ?></div><?php endif; ?>
 
-    <section class="req-summary-strip den-summary" aria-label="Indicadores de denúncias">
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['origem' => '', 'status' => '', 'anonimo' => '', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['origem'] === '' && $filtros['status'] === '' && $filtros['anonimo'] === '' ? 'active' : '' ?>"><span><i class="fas fa-layer-group"></i>Total</span><strong><?= (int) ($stats['total'] ?? 0) ?></strong></a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['origem' => $filtros['origem'] === 'minhas' ? '' : 'minhas', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['origem'] === 'minhas' ? 'active' : '' ?>"><span><i class="fas fa-user-check"></i>Minhas denúncias</span><strong><?= (int) ($stats['minhas'] ?? 0) ?></strong></a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['status' => 'pendente', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['status'] === 'pendente' ? 'active' : '' ?>"><span><i class="fas fa-clock"></i>Pendentes</span><strong><?= (int) ($stats['pendentes'] ?? 0) ?></strong></a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['status' => 'em_analise', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['status'] === 'em_analise' ? 'active' : '' ?>"><span><i class="fas fa-magnifying-glass"></i>Em análise</span><strong><?= (int) ($stats['em_analise'] ?? 0) ?></strong></a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['anonimo' => '1', 'pagina' => 1])) ?>" class="summary-chip <?= $filtros['anonimo'] === '1' ? 'active' : '' ?>"><span><i class="fas fa-user-secret"></i>Anônimas</span><strong><?= (int) ($stats['anonimas'] ?? 0) ?></strong></a>
-    </section>
+    <?php if ($escopoSetor === ''): ?>
+    <nav class="den-tabs" aria-label="Equipe">
+        <?php foreach ($abasSetor as $valor => [$rotulo, $icone, $qtd]): ?>
+            <a href="<?= htmlspecialchars(buildDenunciaUrl(['setor' => $valor, 'pagina' => 1])) ?>" class="den-tab <?= $filtros['setor'] === $valor ? 'active' : '' ?>"><i class="fas <?= $icone ?>"></i> <?= $rotulo ?><span class="den-tab-count" title="Em aberto"><?= (int) $qtd ?></span></a>
+        <?php endforeach; ?>
+    </nav>
+    <?php endif; ?>
 
-    <section class="den-sector-tabs" aria-label="Filtrar por setor" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['setor' => '', 'pagina' => 1])) ?>" class="toolbar-button <?= $filtros['setor'] === '' ? 'toolbar-button-primary' : '' ?>">Todos os setores</a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['setor' => 'meio_ambiente', 'pagina' => 1])) ?>" class="toolbar-button <?= $filtros['setor'] === 'meio_ambiente' ? 'toolbar-button-primary' : '' ?>"><i class="fas fa-leaf"></i> Meio Ambiente</a>
-        <a href="<?= htmlspecialchars(buildDenunciaUrl(['setor' => 'obras_urbanismo', 'pagina' => 1])) ?>" class="toolbar-button <?= $filtros['setor'] === 'obras_urbanismo' ? 'toolbar-button-primary' : '' ?>"><i class="fas fa-hard-hat"></i> Obras e Urbanismo</a>
+    <section class="req-summary-strip den-summary" aria-label="Situação">
+        <?php foreach ($chipsStatus as $chave => [$rotulo, $icone, $params, $qtd]): ?>
+            <a href="<?= htmlspecialchars(buildDenunciaUrl($params + ['pagina' => 1])) ?>" class="summary-chip <?= $statusAtivo === $chave ? 'active' : '' ?>"><span><i class="fas <?= $icone ?>"></i><?= $rotulo ?></span><strong><?= (int) $qtd ?></strong></a>
+        <?php endforeach; ?>
     </section>
 
     <section class="req-filter-bar">
-        <form method="GET">
-            <input type="hidden" name="setor" value="<?= htmlspecialchars($filtros['setor']) ?>">
-            <div class="den-filter-grid">
-                <div class="den-filter-field den-filter-search"><label for="busca">Busca</label><div class="den-search-wrap"><i class="fas fa-magnifying-glass"></i><input id="busca" name="busca" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="denunciaSuggestions" aria-expanded="false" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Protocolo, infrator ou CPF/CNPJ"><div id="denunciaSuggestions" class="den-suggestions" role="listbox"></div></div></div>
-                <div class="den-filter-field"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option><option value="pendente" <?= $filtros['status'] === 'pendente' ? 'selected' : '' ?>>Pendente</option><option value="em_analise" <?= $filtros['status'] === 'em_analise' ? 'selected' : '' ?>>Em análise</option><option value="concluida" <?= $filtros['status'] === 'concluida' ? 'selected' : '' ?>>Concluída</option></select></div>
-                <div class="den-filter-field"><label for="origem">Quem registrou</label><select id="origem" name="origem"><option value="">Todas</option><option value="publico" <?= $filtros['origem'] === 'publico' ? 'selected' : '' ?>>Pelo site (cidadão)</option><option value="interno" <?= $filtros['origem'] === 'interno' ? 'selected' : '' ?>>Pela equipe</option><option value="minhas" <?= $filtros['origem'] === 'minhas' ? 'selected' : '' ?>>Minhas denúncias</option></select></div>
-                <div class="den-filter-field"><label for="anonimo">Identificação do denunciante</label><select id="anonimo" name="anonimo"><option value="">Todos</option><option value="1" <?= $filtros['anonimo'] === '1' ? 'selected' : '' ?>>Denúncia anônima</option><option value="0" <?= $filtros['anonimo'] === '0' ? 'selected' : '' ?>>Denunciante identificado</option></select></div>
-            </div>
-            <div class="den-filter-actions">
-                <input type="hidden" name="concluidas" value="0"><label class="den-toggle"><input type="checkbox" name="concluidas" value="1" <?= $filtros['concluidas'] === '1' ? 'checked' : '' ?>> Incluir concluídas</label>
-                <button type="submit" class="toolbar-button toolbar-button-primary">Aplicar filtros</button>
-                <a href="denuncias.php?limpar=1" class="toolbar-button">Limpar filtros</a>
-                <a href="denuncias.php" class="toolbar-button toolbar-button-ghost"><i class="fas fa-rotate-left"></i> Restaurar padrão</a>
-            </div>
-        </form>
-        <form method="POST" class="den-filter-actions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
-            <input type="hidden" name="acao" value="salvar_preferencia"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-            <?php foreach ($filtros as $key => $value): ?><input type="hidden" name="<?= htmlspecialchars($key) ?>" value="<?= htmlspecialchars($value) ?>"><?php endforeach; ?>
-            <button type="submit" class="toolbar-button"><i class="fas fa-bookmark"></i> Salvar como padrão</button>
+        <form method="GET" class="den-search-form">
+            <?php foreach (['setor', 'status', 'concluidas', 'origem'] as $campo): ?>
+                <?php if ($filtros[$campo] !== ''): ?><input type="hidden" name="<?= $campo ?>" value="<?= htmlspecialchars($filtros[$campo]) ?>"><?php endif; ?>
+            <?php endforeach; ?>
+            <div class="den-search-wrap"><i class="fas fa-magnifying-glass"></i><input id="busca" name="busca" type="search" autocomplete="off" aria-label="Buscar denúncia" aria-autocomplete="list" aria-controls="denunciaSuggestions" aria-expanded="false" value="<?= htmlspecialchars($filtroBusca) ?>" placeholder="Buscar por protocolo, nome do infrator, CPF/CNPJ ou endereço"><div id="denunciaSuggestions" class="den-suggestions" role="listbox"></div></div>
+            <button type="submit" class="toolbar-button toolbar-button-primary">Buscar</button>
+            <a href="<?= htmlspecialchars(buildDenunciaUrl(['origem' => $soMinhas ? '' : 'minhas', 'pagina' => 1])) ?>" class="den-mine <?= $soMinhas ? 'active' : '' ?>"><i class="<?= $soMinhas ? 'fas fa-square-check' : 'far fa-square' ?>"></i> Só as que eu registrei <span class="den-tab-count"><?= (int) ($stats['minhas'] ?? 0) ?></span></a>
+            <?php if ($filtroBusca !== ''): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['busca' => '', 'pagina' => 1])) ?>" class="toolbar-button toolbar-button-ghost">Limpar busca</a><?php endif; ?>
         </form>
     </section>
 
@@ -219,7 +223,7 @@ include 'header.php';
             <?php for ($i = max(1, $paginaAtual - 2); $i <= min($totalPaginas, $paginaAtual + 2); $i++): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $i])) ?>" class="req-page-link <?= $i === $paginaAtual ? 'active' : '' ?>"><?= $i ?></a><?php endfor; ?>
             <?php if ($paginaAtual < $totalPaginas): ?><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $paginaAtual + 1])) ?>" class="req-page-link">›</a><a href="<?= htmlspecialchars(buildDenunciaUrl(['pagina' => $totalPaginas])) ?>" class="req-page-link">»</a><?php endif; ?>
         </div></section>
-    <?php else: ?><div class="den-empty"><i class="fas fa-inbox"></i><strong>Nenhuma denúncia encontrada.</strong><p class="mb-0 mt-1">Ajuste os filtros ou registre uma nova ocorrência.</p></div><?php endif; ?>
+    <?php else: ?><div class="den-empty"><i class="fas fa-inbox"></i><strong><?= $soMinhas ? 'Você ainda não registrou denúncias nesta situação.' : 'Nenhuma denúncia nesta situação.' ?></strong><p class="mb-0 mt-1"><?= $filtroBusca !== '' ? 'Nenhum resultado para a busca.' : 'Escolha outra situação acima ou registre uma nova ocorrência.' ?></p></div><?php endif; ?>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {

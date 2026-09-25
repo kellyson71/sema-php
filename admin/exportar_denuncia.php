@@ -20,6 +20,12 @@ if (!$d) {
     exit;
 }
 
+require_once __DIR__ . '/../includes/denuncia_filters.php';
+if (!podeVerDenuncia(escopoSetorDenunciaSessao($pdo), $d['setor'] ?? null)) {
+    header("Location: denuncias.php?error=permissao");
+    exit;
+}
+
 $stmtHist = $pdo->prepare("SELECT h.*, a.nome AS admin_nome, a.cargo AS admin_cargo
                             FROM denuncia_historico h
                             LEFT JOIN administradores a ON h.admin_id = a.id

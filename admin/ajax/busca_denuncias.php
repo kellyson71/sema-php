@@ -19,6 +19,10 @@ $filtros = array_merge(filtrosLimposDenuncia(), validarFiltrosDenuncia($_GET));
 if ($filtros['status'] === 'concluida') {
     $filtros['concluidas'] = '1';
 }
+$escopoSetor = escopoSetorDenunciaSessao($pdo);
+if ($escopoSetor !== '') {
+    $filtros['setor'] = $escopoSetor;
+}
 
 $where = ['(d.protocolo_publico LIKE ? OR d.infrator_nome LIKE ? OR d.infrator_cpf_cnpj LIKE ? OR d.infrator_endereco LIKE ?)'];
 $curinga = '%' . $termo . '%';

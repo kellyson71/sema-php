@@ -220,8 +220,8 @@ if ($filtroFonte !== 'requerimentos') {
             $whereDen[] = '1=0';
         }
     }
-    $setorDenunciaInicial = setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
-    if ($setorDenunciaInicial !== 'ambos') {
+    $setorDenunciaInicial = escopoSetorDenunciaSessao($pdo);
+    if ($setorDenunciaInicial !== '') {
         $whereDen[] = 'd.setor = ?';
         $paramsDen[] = $setorDenunciaInicial;
     }
@@ -313,9 +313,9 @@ if ($setorFiltro) {
     // Na visão unificada, os três indicadores compartilhados refletem os dois
     // tipos de processo. Indicadores sem equivalente em denúncias continuam
     // contando apenas requerimentos.
-    $setorDenStats = setorAdministrador($pdo, (int) ($_SESSION['admin_id'] ?? 0));
-    $whereSetorDenStats = $setorDenStats === 'ambos' ? '' : ' AND setor = ?';
-    $paramsSetorDenStats = $setorDenStats === 'ambos' ? [] : [$setorDenStats];
+    $setorDenStats = escopoSetorDenunciaSessao($pdo);
+    $whereSetorDenStats = $setorDenStats === '' ? '' : ' AND setor = ?';
+    $paramsSetorDenStats = $setorDenStats === '' ? [] : [$setorDenStats];
     $stmtDenStats = $pdo->prepare("SELECT
         SUM(CASE WHEN LOWER(TRIM(status)) NOT IN ('concluída','concluida','concluído','concluido','finalizado','finalizada') THEN 1 ELSE 0 END) AS total,
         SUM(CASE WHEN LOWER(TRIM(status)) = 'pendente' THEN 1 ELSE 0 END) AS pendentes,

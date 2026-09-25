@@ -13,16 +13,34 @@ final class DenunciaFiltersTest extends TestCase
         self::assertSame('', filtrosSistemaDenuncia('ambos')['setor']);
     }
 
-    public function testPadraoDoSistemaMostraMinhasDenunciasPrimeiro(): void
+    public function testAdminESecretarioVeemTodosOsSetores(): void
     {
-        self::assertSame('minhas', filtrosSistemaDenuncia('ambos')['origem']);
+        self::assertSame('', escopoSetorDenuncia('admin', 'meio_ambiente'));
+        self::assertSame('', escopoSetorDenuncia('admin_geral', 'obras_urbanismo'));
+        self::assertSame('', escopoSetorDenuncia('secretario', 'ambos'));
     }
 
-    public function testPreferenciaSalvaDeTodasSobrepoeAtalhoDeMinhas(): void
+    public function testDemaisCargosFicamPresosAEquipe(): void
     {
-        $resolved = resolverFiltrosDenuncia([], ['origem' => 'publico'], 'ambos');
+        self::assertSame('meio_ambiente', escopoSetorDenuncia('analista', 'meio_ambiente'));
+        self::assertSame('obras_urbanismo', escopoSetorDenuncia('fiscal', 'obras_urbanismo'));
+        self::assertSame('', escopoSetorDenuncia('operador', 'ambos'));
+    }
 
-        self::assertSame('publico', $resolved['origem']);
+    public function testAcessoADenunciaRespeitaEquipe(): void
+    {
+        self::assertTrue(podeVerDenuncia('obras_urbanismo', 'obras_urbanismo'));
+        self::assertFalse(podeVerDenuncia('obras_urbanismo', 'meio_ambiente'));
+        self::assertFalse(podeVerDenuncia('meio_ambiente', 'obras_urbanismo'));
+        self::assertTrue(podeVerDenuncia('meio_ambiente', null));
+        self::assertTrue(podeVerDenuncia('', 'obras_urbanismo'));
+    }
+
+    public function testSimulacaoDeCargoUsaEquipeTipica(): void
+    {
+        self::assertSame('obras_urbanismo', escopoSetorDenuncia('fiscal', setorTipicoDoCargo('fiscal')));
+        self::assertSame('meio_ambiente', escopoSetorDenuncia('analista', setorTipicoDoCargo('analista')));
+        self::assertSame('', escopoSetorDenuncia('secretario', setorTipicoDoCargo('secretario')));
     }
 
     public function testUrlTemPrioridadeSobrePreferenciaSalva(): void
