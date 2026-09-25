@@ -180,20 +180,20 @@ ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
   "mysql -h srv1844.hstgr.io -u USUARIO -pSENHA BANCO -e 'SUA QUERY;'"
 ```
 
-Deploy manual (quando o painel falhar):
-```bash
-ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "cd ~/domains/sema.protocolosead.com/public_html && git pull"
-```
+SSH serve para o que o git não leva — consultas e migrations no banco, arquivos fora do git.
+Não é caminho de deploy de código (ver "Deploy").
 
 ## Deploy
 
-Ao concluir alterações, **sempre fazer commit e push automaticamente** (sem perguntar). O servidor de produção faz `git pull` via SSH:
+Ao concluir alterações, **sempre fazer commit e push automaticamente** (sem perguntar).
 
-```bash
-ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "cd ~/domains/sema.protocolosead.com/public_html && git pull"
-```
+⚠️ **O deploy é automático no push** — push em `main` publica em produção, push em
+`homologacao` publica em homologação. **Não rodar `git pull` via SSH para publicar código**,
+nem ficar consultando o servidor esperando o deploy.
+
+SSH/FTP só para o que **não é rastreado pelo git**:
+- migrations e consultas no banco (`database/*.sql`) — rodar no banco do ambiente antes ou junto do push;
+- arquivos no `.gitignore` (`includes/config.php`, `admin/conexao.php`), via FTP (abaixo).
 
 **Arquivos no `.gitignore`** (como `includes/config.php` e `admin/conexao.php`) não vão pelo git. Se forem modificados, atualizar via FTP (credenciais em `ACESSOS.md`):
 
@@ -219,8 +219,4 @@ O servidor tem dois ambientes em domínios separados:
 > ⚠️ A pasta `sema.protocolosead.com/public_html/homologacao/` existe mas NÃO é o ambiente de homologação ativo.  
 > O ambiente real de homologação é **semaholog.protocolosead.com**.
 
-Deploy da branch `homologacao`:
-```bash
-ssh -p 65002 -i ~/.ssh/id_ed25519 u492577848@46.202.145.215 \
-  "cd ~/domains/semaholog.protocolosead.com/public_html && git pull"
-```
+Cada pasta acompanha sua branch sozinha a cada push (deploy automático) — não há passo manual.
