@@ -54,14 +54,27 @@ if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
     posthog.init(<?= json_encode($posthogKey) ?>, {
         api_host: <?= json_encode($posthogHost, JSON_UNESCAPED_SLASHES) ?>,
         defaults: '2025-05-24',
-        // O site é todo formulário com nome, CPF, e-mail e telefone: replay grava a tela
-        // (inclusive o que a pessoa digita) e perfil de anônimo criaria pessoa por visitante.
-        disable_session_recording: true,
         person_profiles: 'identified_only',
 <?php if ($posthogIsAdmin): ?>
         // Painel: o texto dos elementos contém nome e CPF de cidadão. Sem autocapture.
         autocapture: false,
         capture_pageview: true,
+        capture_pageleave: true,
+        capture_exceptions: true,
+        // Gravação de sessão para reproduzir erro da equipe. Decisão de 2026-09-25:
+        // mascara o que é digitado, mas o TEXTO das telas (nome/CPF nas listas) aparece
+        // na gravação — é dado pessoal indo para o PostHog (ver CLAUDE.md, LGPD).
+        // Para esconder um trecho específico, adicione a classe ph-no-capture no elemento.
+        disable_session_recording: false,
+        enable_recording_console_log: true,
+        session_recording: {
+            maskAllInputs: true,
+            maskInputOptions: { password: true }
+        },
+<?php else: ?>
+        // O site é todo formulário com nome, CPF, e-mail e telefone: replay grava a tela
+        // (inclusive o que a pessoa digita) e perfil de anônimo criaria pessoa por visitante.
+        disable_session_recording: true,
 <?php endif; ?>
         // Protocolo e CPF viajam na query string. Nunca viram propriedade de evento.
         sanitize_properties: function (properties) {
@@ -78,5 +91,11 @@ if ($posthogIsAdmin && !empty($_SESSION['admin_id'])) {
     // Identifica a pessoa da equipe. Faz o browser falar o mesmo distinct_id que o SDK PHP
     // usa nos erros — é isso que liga "quem estava na sessão" ao "quem se deparou com o erro".
     posthog.identify(<?= json_encode($posthogAdmin['distinct_id']) ?>, <?= json_encode($posthogAdmin['props'], JSON_UNESCAPED_UNICODE) ?>);
+
+    // O servidor grava este id em admin_eventos.posthog_session_id: cada passo registrado
+    // no banco aponta para o trecho certo da gravação da sessão.
+    posthog.onSessionId(function (sessionId) {
+        document.cookie = 'sema_ph_sid=' + encodeURIComponent(sessionId) + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    });
 <?php endif; ?>
 </script>

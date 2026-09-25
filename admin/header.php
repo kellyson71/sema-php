@@ -41,6 +41,7 @@ $pageTitles = [
     'visualizar_requerimento.php' => 'Detalhes do Requerimento',
     'perfil.php' => 'Meu Perfil',
     'administradores.php' => 'Gerenciar Usuários',
+    'atividade_usuarios.php' => 'Atividade dos usuários',
     'denuncias.php' => 'Denúncias',
     'nova_denuncia.php' => 'Nova Denúncia',
     'visualizar_denuncia.php' => 'Detalhes da Denúncia',
@@ -90,6 +91,7 @@ if ($isAdmin) {
     $searchItems[] = ['label' => 'Filas por Setor', 'caption' => 'Visão administrativa das filas S1, S2 e S3', 'url' => $adminBase . 'fila_setor.php', 'icon' => 'fa-layer-group'];
     $searchItems[] = ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'];
     $searchItems[] = ['label' => 'Gerenciar Usuários', 'caption' => 'Administradores e acessos', 'url' => $adminBase . 'administradores.php', 'icon' => 'fa-users-gear'];
+    $searchItems[] = ['label' => 'Atividade dos usuários', 'caption' => 'Tempo ativo, ações e passo a passo', 'url' => $adminBase . 'atividade_usuarios.php', 'icon' => 'fa-chart-simple'];
 }
 if ($isAnalista) {
     $searchItems[] = [
@@ -1584,6 +1586,42 @@ if ($isAnalista) {
         }
     </style>
     <?php include dirname(__DIR__) . '/includes/posthog.php'; ?>
+    <script>
+    // Tempo ativo: soma só quando a aba está visível e houve mouse/teclado no último minuto.
+    (function () {
+        var URL_PING = <?= json_encode($adminBase . 'ajax/atividade_ping.php') ?>;
+        var TICK = 15, LIMITE_INATIVO_MS = 60000, INTERVALO_ENVIO = 60;
+        var ultimaInteracao = Date.now(), pendente = 0, desdeEnvio = 0;
+        ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'].forEach(function (ev) {
+            window.addEventListener(ev, function () { ultimaInteracao = Date.now(); }, { passive: true, capture: true });
+        });
+        function enviar(viaBeacon) {
+            if (pendente <= 0) return;
+            var corpo = JSON.stringify({ segundos: pendente });
+            pendente = 0;
+            desdeEnvio = 0;
+            if (viaBeacon && navigator.sendBeacon) {
+                navigator.sendBeacon(URL_PING, new Blob([corpo], { type: 'application/json' }));
+                return;
+            }
+            fetch(URL_PING, {
+                method: 'POST', credentials: 'same-origin', keepalive: true, body: corpo,
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }
+            }).catch(function () {});
+        }
+        setInterval(function () {
+            if (document.visibilityState === 'visible' && Date.now() - ultimaInteracao < LIMITE_INATIVO_MS) {
+                pendente += TICK;
+            }
+            desdeEnvio += TICK;
+            if (desdeEnvio >= INTERVALO_ENVIO) enviar(false);
+        }, TICK * 1000);
+        window.addEventListener('pagehide', function () { enviar(true); });
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') enviar(true);
+        });
+    })();
+    </script>
 </head>
 <body class="<?= (defined('MODO_HOMOLOG') && MODO_HOMOLOG) ? 'env-homolog' : '' ?>">
     <aside class="sidebar" id="adminSidebar">
@@ -1719,6 +1757,17 @@ if ($isAnalista) {
                                     <span class="sidebar-link-text">
                                         <span class="sidebar-link-title">Gerenciar Usuários</span>
                                         <span class="sidebar-link-caption">Perfis, acessos e equipe</span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= $adminBase ?>atividade_usuarios.php" class="sidebar-link <?= $currentPage === 'atividade_usuarios.php' ? 'active' : '' ?>" title="Atividade dos usuários">
+                                <span class="sidebar-link-icon"><i class="fas fa-chart-simple"></i></span>
+                                <span class="sidebar-link-content">
+                                    <span class="sidebar-link-text">
+                                        <span class="sidebar-link-title">Atividade dos usuários</span>
+                                        <span class="sidebar-link-caption">Tempo ativo e passo a passo</span>
                                     </span>
                                 </span>
                             </a>

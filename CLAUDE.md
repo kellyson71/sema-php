@@ -106,6 +106,36 @@ Eventos emitidos: `form_iniciado`, `form_servico_selecionado`, `form_etapa_concl
 tempos, extensões e tamanhos de arquivo — nome de arquivo fica de fora de propósito, porque
 costuma conter o nome da pessoa. Toda propriedade nova tem que passar por essa mesma régua.
 
+## Atividade dos usuários e reprodução de erros
+
+Todo uso do painel admin fica registrado para dar para **reproduzir o passo a passo de
+qualquer usuário** quando alguém relata um erro. Para investigar, use a skill
+`reproduzir-sessao-usuario` ou o agente `sema-investigador-sessao` (ambos em `.claude/`).
+
+- `includes/atividade_admin.php` — carregado por `includes/error_monitoring.php` (que o
+  `config.php` de cada ambiente já inclui, então não precisa de FTP). No fim de cada
+  requisição em `/admin/` grava uma linha em `admin_eventos`: página, nome da ação
+  (`acao`/`action`), id do registro, status HTTP, duração, cargo e o id da sessão do PostHog.
+  **Nunca grava valor enviado em formulário** — mantenha assim ao mexer nele.
+- `admin/ajax/atividade_ping.php` + script no `admin/header.php` — soma o **tempo ativo**
+  (aba visível e mouse/teclado no último minuto) em `admin_atividade_diaria`, no máximo
+  120 s por envio.
+- `admin/atividade_usuarios.php` — só `admin`/`admin_geral`: gráfico estilo GitHub por
+  pessoa (tempo ativo, ações do histórico, páginas), resumo da equipe e linha do tempo do dia.
+- `includes/posthog.php` — no painel, a **gravação de sessão do PostHog está ligada**,
+  com logs de console e captura de exceções do navegador. O cookie `sema_ph_sid` leva o
+  id da sessão ao servidor, que o grava em `admin_eventos.posthog_session_id` — assim cada
+  passo no banco aponta para o trecho certo da gravação. Pessoa no PostHog = `admin_<id>`.
+  Link da gravação: `https://us.posthog.com/project/<POSTHOG_PROJECT_ID>/replay/<session_id>`
+  (defina `POSTHOG_PROJECT_ID` no `.htaccess` para a tela montar o link sozinha).
+- Migration: `database/2026-09-25_atividade_admin.sql`. Eventos com mais de 180 dias são
+  apagados pelo próprio ping (retenção LGPD).
+
+⚠️ **LGPD:** por decisão de 2026-09-25, a gravação mascara só os **campos** (o que é
+digitado). O **texto das telas** — nomes e CPF de cidadão nas listas e detalhes — aparece
+na gravação e vai para o PostHog. Para esconder um trecho específico, coloque a classe
+`ph-no-capture` no elemento. No site público a gravação continua desligada.
+
 ## Roles de administrador
 
 `admin`, `admin_geral`, `secretario`, `analista`, `fiscal`, `operador` — definidos no enum da tabela `administradores`. O menu lateral em `admin/header.php` exibe itens condicionalmente por role.
