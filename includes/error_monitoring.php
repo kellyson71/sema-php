@@ -1,9 +1,9 @@
 <?php
 /**
- * Monitoramento de erros por e-mail — avisa pmpfestagio@gmail.com de qualquer
- * erro do PHP em produção, mesmo os pequenos (como observação). Não é alarme:
- * é um aviso de baixo perfil, pra ficar sabendo que algo aconteceu sem
- * precisar abrir o PostHog.
+ * Monitoramento de erros por e-mail — avisa pmpfestagio@gmail.com quando um erro
+ * grave (fatal ou exceção) acontece no domínio de produção. O mesmo erro só volta
+ * a avisar depois de 6 h; avisos e observações ficam só no log do servidor.
+ * Picos e reincidências chegam pelos alertas do PostHog, que abrem issue no GitHub.
  *
  * Complementa includes/error_tracking.php (PostHog) — aquele existe pra
  * investigar depois com contexto de sessão; este é só pra notificar rápido.
@@ -57,8 +57,13 @@ if (!function_exists('deveNotificarErroMonitor')) {
 if (!function_exists('notificarErroMonitorPorEmail')) {
     function notificarErroMonitorPorEmail(string $severidade, string $mensagem, string $arquivo, int $linha): void
     {
+        // Só erro grave vira e-mail; aviso e observação ficam no log do servidor. Picos e
+        // reincidências já chegam pelos alertas do PostHog (issue no GitHub).
+        if ($severidade !== 'alto') {
+            return;
+        }
         $chave = $arquivo . ':' . $linha . ':' . $mensagem;
-        if (!deveNotificarErroMonitor($chave)) {
+        if (!deveNotificarErroMonitor($chave, 360)) {
             return;
         }
 
