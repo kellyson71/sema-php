@@ -1,0 +1,7 @@
+# O código entra no container pelo volume do docker-compose (.:/var/www/html), não pela
+# imagem. Por isso o build só precisa destes arquivos — e não pode tentar ler o resto:
+# o container grava como www-data (no host aparece como "http") e arquivos como
+# includes/keys/private.pem ficavam ilegíveis, quebrando o build.
+*
+!php-upload.ini
+!composer.json

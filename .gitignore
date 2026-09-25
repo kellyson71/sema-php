@@ -187,13 +187,10 @@ build/
 !documentacao/*.pdf
 
 # ===== FERRAMENTAS DE BUILD E CI/CD =====
-.github/
+# .github/ (testes no push), Dockerfile e .dockerignore (ambiente local) são versionados.
 .gitlab-ci.yml
 .travis.yml
 .circleci/
-Dockerfile
-docker-compose.yml
-.dockerignore
 
 !docker-compose.yml
 

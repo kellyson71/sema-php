@@ -17,8 +17,8 @@ Sistema de protocolo eletrônico de alvará ambiental para a Secretaria Municipa
 
 Portas locais após `start.sh`:
 - **App PHP** → http://localhost:8090
-- **phpMyAdmin** → http://localhost:8091
-- **MariaDB** → localhost:3307 (root/root)
+- **phpMyAdmin** → http://localhost:8099
+- **MariaDB** → localhost:3319 (root/root)
 
 O `includes/config.php` detecta `DOCKER_ENV=1` (passado pelo docker-compose) e troca automaticamente para as credenciais locais. Em produção usa as credenciais do Hostinger.
 

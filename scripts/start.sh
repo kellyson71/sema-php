@@ -15,11 +15,16 @@ until docker compose exec -T db mysqladmin ping -u root -proot --silent 2>/dev/n
     sleep 2
 done
 
+if [ ! -f vendor/autoload.php ]; then
+    echo "[INFO] vendor/ ausente — instalando dependências no container..."
+    docker compose exec -T web composer install --no-interaction --no-progress --prefer-dist
+fi
+
 echo ""
 echo "✔  Serviços disponíveis:"
 echo "   Aplicação PHP → http://localhost:8090"
-echo "   phpMyAdmin    → http://localhost:8091"
-echo "   MariaDB       → localhost:3307  (user: root / pass: root)"
+echo "   phpMyAdmin    → http://localhost:8099"
+echo "   MariaDB       → localhost:3319  (user: root / pass: root)"
 echo ""
 echo "   Banco de dados: u492577848_SEMA"
 echo ""

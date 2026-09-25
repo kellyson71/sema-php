@@ -35,8 +35,8 @@ são fixas**, pois esse arquivo é frequentemente ajustado localmente
 docker compose ps
 ```
 
-Os valores documentados no `CLAUDE.md` (8090 app / 8091 phpMyAdmin /
-3307 MariaDB) são o padrão, mas trate-os como referência, não verdade
+Os valores documentados no `CLAUDE.md` (8090 app / 8099 phpMyAdmin /
+3319 MariaDB) são o padrão, mas trate-os como referência, não verdade
 absoluta — confira `docker compose ps` antes de acessar.
 
 ## Validar que subiu
