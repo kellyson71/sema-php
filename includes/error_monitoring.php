@@ -113,3 +113,6 @@ if (!function_exists('notificarErroMonitorPorEmail')) {
         }
     });
 })();
+
+// Rastro de uso do painel (tempo ativo, páginas, ações). Vale em todos os ambientes.
+require_once __DIR__ . '/atividade_admin.php';
