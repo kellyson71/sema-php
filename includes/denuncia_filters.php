@@ -9,6 +9,13 @@
 
 const DENUNCIA_PREFERENCE_PAGE = 'denuncias';
 
+/** Únicos valores aceitos em denuncias.status (a coluna é ENUM desde 2026-09-25). */
+const DENUNCIA_SITUACOES = ['Pendente', 'Em Análise', 'Concluída'];
+
+/** Dias sem andamento a partir dos quais a denúncia aparece em amarelo e em vermelho (atrasada). */
+const DENUNCIA_DIAS_ATENCAO = 7;
+const DENUNCIA_DIAS_ATRASO = 15;
+
 function denunciaFilterOptions(): array
 {
     return [
@@ -17,7 +24,32 @@ function denunciaFilterOptions(): array
         'status' => ['', 'pendente', 'em_analise', 'concluida'],
         'anonimo' => ['', '1', '0'],
         'concluidas' => ['0', '1'],
+        'atribuidas' => ['', '1'],
+        'atrasadas' => ['', '1'],
     ];
+}
+
+/** Dias inteiros desde a última movimentação (andamento no histórico ou registro). */
+function diasSemAndamento(?string $ultimaMovimentacao, ?DateTimeImmutable $agora = null): int
+{
+    if ($ultimaMovimentacao === null || trim($ultimaMovimentacao) === '') {
+        return 0;
+    }
+    $agora ??= new DateTimeImmutable();
+    $inicio = new DateTimeImmutable($ultimaMovimentacao);
+    return max(0, (int) $inicio->setTime(0, 0)->diff($agora->setTime(0, 0))->days);
+}
+
+/** '' (em dia), 'atencao' ou 'atrasada'. Denúncia concluída nunca está atrasada. */
+function nivelAtrasoDenuncia(int $dias, string $status): string
+{
+    if (normalizarStatusProcesso($status) === 'concluida') {
+        return '';
+    }
+    if ($dias >= DENUNCIA_DIAS_ATRASO) {
+        return 'atrasada';
+    }
+    return $dias >= DENUNCIA_DIAS_ATENCAO ? 'atencao' : '';
 }
 
 function normalizarStatusProcesso(string $status): string
@@ -69,6 +101,8 @@ function filtrosSistemaDenuncia(string $setorAdmin): array
         'status' => '',
         'anonimo' => '',
         'concluidas' => '0',
+        'atribuidas' => '',
+        'atrasadas' => '',
     ];
 }
 
@@ -118,6 +152,8 @@ function filtrosLimposDenuncia(): array
         'status' => '',
         'anonimo' => '',
         'concluidas' => '0',
+        'atribuidas' => '',
+        'atrasadas' => '',
     ];
 }
 

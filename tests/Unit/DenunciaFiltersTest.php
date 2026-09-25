@@ -66,6 +66,30 @@ final class DenunciaFiltersTest extends TestCase
         validarFiltrosDenuncia(['setor' => 'financeiro'], true);
     }
 
+    public function testDiasSemAndamentoContaDiasInteiros(): void
+    {
+        $agora = new DateTimeImmutable('2026-09-25 09:00');
+        self::assertSame(0, diasSemAndamento('2026-09-25 01:00', $agora));
+        self::assertSame(1, diasSemAndamento('2026-09-24 23:59', $agora));
+        self::assertSame(15, diasSemAndamento('2026-09-10 08:00', $agora));
+        self::assertSame(0, diasSemAndamento(null, $agora));
+    }
+
+    public function testNivelDeAtraso(): void
+    {
+        self::assertSame('', nivelAtrasoDenuncia(6, 'Pendente'));
+        self::assertSame('atencao', nivelAtrasoDenuncia(7, 'Em Análise'));
+        self::assertSame('atrasada', nivelAtrasoDenuncia(15, 'Pendente'));
+        self::assertSame('', nivelAtrasoDenuncia(40, 'Concluída'));
+    }
+
+    public function testSituacoesAceitasCasamComOsFiltros(): void
+    {
+        self::assertSame(['Pendente', 'Em Análise', 'Concluída'], DENUNCIA_SITUACOES);
+        $normalizadas = array_map('normalizarStatusProcesso', DENUNCIA_SITUACOES);
+        self::assertSame(['pendente', 'em_analise', 'concluida'], $normalizadas);
+    }
+
     public function testStatusEquivalentesSaoNormalizados(): void
     {
         self::assertSame('em_analise', normalizarStatusProcesso('Em Análise'));
