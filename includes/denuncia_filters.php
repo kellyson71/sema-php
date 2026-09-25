@@ -65,7 +65,7 @@ function filtrosSistemaDenuncia(string $setorAdmin): array
 {
     return [
         'setor' => in_array($setorAdmin, ['meio_ambiente', 'obras_urbanismo'], true) ? $setorAdmin : '',
-        'origem' => '',
+        'origem' => 'minhas',
         'status' => '',
         'anonimo' => '',
         'concluidas' => '0',
