@@ -14,6 +14,20 @@ $setorFiltro = match($nivelAdmin) {
     default      => null,
 };
 
+// Setor "dono" de quem está olhando a lista — só usado pra decidir se o status
+// livre (texto que cada setor escreve pra si mesmo) pode aparecer no card. O
+// analista (Setor 1) é o único que enxerga o pipeline inteiro sem $setorFiltro
+// (precisa acompanhar o processo até o fim), então sem isso ele via o status
+// que o Setor 2 escreveu pra uso interno dele — mesmo texto ('Pendente') que
+// o Setor 1 usa pra outra coisa. admin/admin_geral seguem sem "dono": atuam
+// nos três setores, então continuam vendo o status literal de qualquer um.
+$setorDonoStatus = match($nivelAdmin) {
+    'analista'   => 'setor1',
+    'fiscal'     => 'setor2',
+    'secretario' => 'setor3',
+    default      => null,
+};
+
 require_once 'includes/alertas.php';
 
 $categoriasDisponiveis = [
@@ -395,7 +409,7 @@ function buildReqUrl(array $overrides = []): string
 
 include 'header.php';
 
-$statusOperacionais = adminStatusFluxoPrincipal();
+$statusOperacionais = adminStatusOpcoesModal($nivelAdmin);
 ?>
 <link rel="stylesheet" href="<?= adminAssetUrl('includes/admin-styles.css') ?>">
 <style>
@@ -722,6 +736,8 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                     'aguardando boleto' => 'status-aguardando-boleto',
                     'boleto pago' => 'status-boleto-pago',
                     'cancelado' => 'status-cancelado',
+                    'aguardando visita técnica', 'aguardando visita tecnica',
+                    'aguardando parecer técnico', 'aguardando parecer tecnico' => 'status-setor2-espera',
                     default => 'status-pendente',
                 };
                 $short = $tipoSiglas[$req['tipo_alvara']] ?? 'ALV';
@@ -733,6 +749,12 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                     'retorno_recusado' => 'retorno-recusado',
                     default => '',
                 };
+                // O status livre é vocabulário interno de quem está com o processo —
+                // quem não é dono desse setor não deve ler o texto específico (mesmo
+                // texto pode significar coisas diferentes em setores diferentes).
+                // Sem isso, o Setor 1 (único sem $setorFiltro que enxerga o pipeline
+                // inteiro) via literalmente o status que o Setor 2 escreveu pra si.
+                $statusEhDeOutroSetor = $setorDonoStatus !== null && ($req['setor_atual'] ?? null) !== $setorDonoStatus;
                 // Preview do que é específico deste requerimento — sem isso, todo
                 // registro do mesmo tipo mostra exatamente o mesmo texto na lista.
                 $previewReq = trim((string) ($req['especificacao'] ?? ''));
@@ -772,7 +794,7 @@ $buscaCruzaSetor = $setorFiltro && $filtroBusca !== '';
                                 <span class="badge badge-retorno-recusado" title="<?= htmlspecialchars($req['motivo_devolucao'] ?? '') ?>">
                                     <i class="fas fa-circle-xmark" style="font-size:.6rem;opacity:.7;"></i>Retorno — Secretário não aprovou
                                 </span>
-                            <?php elseif ($setorFiltro && !empty($acaoAtual) && $acaoAtual !== 'concluido'): ?>
+                            <?php elseif (($setorFiltro || $statusEhDeOutroSetor) && !empty($acaoAtual) && $acaoAtual !== 'concluido'): ?>
                                 <span class="badge <?= htmlspecialchars(acaoClass($acaoAtual)) ?>" style="font-size:.7rem;">
                                     <?= htmlspecialchars(acaoLabel($acaoAtual)) ?>
                                 </span>

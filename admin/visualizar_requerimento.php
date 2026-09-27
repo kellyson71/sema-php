@@ -832,7 +832,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status']) && isset($_
     $novoStatus = $_POST['status'];
     $observacoes = $_POST['observacoes'];
 
-    if (!adminStatusPermitidoParaOperacao($novoStatus)) {
+    if (!adminStatusPermitidoParaOperacao($novoStatus, $_SESSION['admin_nivel'] ?? null)) {
         $mensagem = "Este status não está disponível na operação atual.";
         $mensagemTipo = "danger";
     } else {
@@ -4920,12 +4920,8 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
                     <div class="mb-3">
                         <label for="modal_status" class="form-label fw-semibold">Novo Status</label>
                         <?php
-                        // Status disponíveis por role
-                        if ($isFiscalPuro) {
-                            $statusModalOpcoes = ['Em análise', 'Pendente', 'Finalizado'];
-                        } else {
-                            $statusModalOpcoes = ['Em análise','Aprovado','Reprovado','Pendente','Aguardando boleto','Boleto pago','Cancelado','Finalizado','Indeferido'];
-                        }
+                        // Status disponíveis por role — cada setor tem seu próprio vocabulário.
+                        $statusModalOpcoes = adminStatusOpcoesModal($nivelAtual);
                         ?>
                         <select class="form-select" id="modal_status" name="status" required>
                             <?php foreach ($statusModalOpcoes as $opt): ?>

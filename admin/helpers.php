@@ -68,10 +68,45 @@ if (!function_exists('adminStatusFluxoExtra')) {
     }
 }
 
-if (!function_exists('adminStatusPermitidoParaOperacao')) {
-    function adminStatusPermitidoParaOperacao(string $status): bool
+if (!function_exists('adminStatusSetor2')) {
+    /**
+     * Vocabulário de espera próprio do Setor 2 (Fiscalização de Obras).
+     * Antes o fiscal só tinha 'Pendente' genérico — o mesmo texto que o
+     * Setor 1 usa pra pendência dele — e isso confundia as duas filas.
+     */
+    function adminStatusSetor2(): array
     {
-        return in_array($status, adminStatusFluxoPrincipal(), true);
+        return [
+            'Em análise',
+            'Aguardando visita técnica',
+            'Aguardando parecer técnico',
+            'Finalizado',
+        ];
+    }
+}
+
+if (!function_exists('adminStatusOpcoesModal')) {
+    /**
+     * Lista de status oferecida a quem está agindo, de acordo com o setor
+     * dele. Cada setor escreve o motivo de espera com o próprio vocabulário
+     * em vez de todo mundo cair em 'Pendente'.
+     */
+    function adminStatusOpcoesModal(string $nivelAtual): array
+    {
+        if ($nivelAtual === 'fiscal') {
+            return adminStatusSetor2();
+        }
+        return adminStatusFluxoPrincipal();
+    }
+}
+
+if (!function_exists('adminStatusPermitidoParaOperacao')) {
+    function adminStatusPermitidoParaOperacao(string $status, ?string $nivelAtual = null): bool
+    {
+        $permitidos = $nivelAtual !== null
+            ? adminStatusOpcoesModal($nivelAtual)
+            : array_unique(array_merge(adminStatusFluxoPrincipal(), adminStatusSetor2()));
+        return in_array($status, $permitidos, true);
     }
 }
 
