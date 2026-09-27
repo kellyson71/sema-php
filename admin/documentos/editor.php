@@ -1606,6 +1606,19 @@ foreach ($blocosProcesso as $titulo => $linhas):
         art_numero: 'ART/RRT',
         observacoes: 'Observações',
         data_atual: 'Data de emissão',
+        data_recebimento_processo: 'Data de recebimento do processo',
+        data_validade_licenca: 'Validade da licença',
+        nome_empreendedor: 'Empreendedor',
+        cpf_cnpj_empreendedor: 'CPF/CNPJ do empreendedor',
+        endereco_empreendedor: 'Endereço do empreendedor',
+        endereco_empreendimento: 'Endereço do empreendimento',
+        caracterizacao_empreendimento: 'Caracterização do empreendimento',
+        assinante_secretario_nome: 'Secretário (assinatura)',
+        assinante_secretario_matricula: 'Portaria do secretário',
+        assinante_eng_ambiental_nome: 'Eng. ambiental (assinatura)',
+        assinante_eng_ambiental_matricula: 'Matrícula do eng. ambiental',
+        assinante_fiscal_ambiental_nome: 'Fiscal ambiental (assinatura)',
+        assinante_fiscal_ambiental_matricula: 'Matrícula do fiscal ambiental',
     };
 
     const ORDEM_CAMPO = [
@@ -1618,7 +1631,10 @@ foreach ($blocosProcesso as $titulo => $linhas):
         'desmembramento_area_lotes', 'area_remanescente', 'desmembramento_lotes_numeros',
         'cadastro_imobiliario', 'especificacao',
         'inicio_obra', 'termino_obra', 'alvara_construcao_numero',
-        'eng_fiscal_nome', 'eng_fiscal_registro', 'data_atual'
+        'eng_fiscal_nome', 'eng_fiscal_registro',
+        'data_recebimento_processo', 'data_validade_licenca', 'nome_empreendedor',
+        'cpf_cnpj_empreendedor', 'endereco_empreendedor', 'endereco_empreendimento',
+        'caracterizacao_empreendimento', 'data_atual'
     ];
 
     const PLACEHOLDERS_VAZIOS = [

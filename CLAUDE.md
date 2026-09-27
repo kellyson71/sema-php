@@ -90,6 +90,15 @@ Variáveis disponíveis nos templates (todas preenchidas por `ParecerService::pr
 - **Construção / habite-se / desmembramento**: `{{especificacao}}` / `{{detalhes_imovel}}`, `{{inicio_obra}}`, `{{termino_obra}}`, `{{alvara_construcao_numero}}`, `{{desmembramento_lotes_numeros}}`, `{{desmembramento_area_lotes}}`, `{{desmembramento_lotes_html}}`
 - **Ambiental**: `{{atividade}}`, `{{cnae_descricao}}`, `{{eng_fiscal_nome}}`, `{{eng_fiscal_registro}}` (padrão configurável por `admin/configuracoes.php`, só no `carta_habite_se`)
 - **Administrativas (quando `$adminData` é passado)**: `{{admin_nome_completo}}`, `{{admin_cargo}}`, `{{admin_matricula_portaria}}`, `{{observacoes}}`
+- **Licenciamento ambiental** (LAU, parecer de pendências e placa): `{{data_recebimento_processo}}`, `{{data_validade_licenca}}` (recebimento + 5 anos, regra fixa), `{{nome_empreendedor}}`, `{{cpf_cnpj_empreendedor}}`, `{{endereco_empreendedor}}`, `{{endereco_empreendimento}}`, `{{caracterizacao_empreendimento}}`, `{{assinante_<papel>_nome|rotulo|matricula}}` (papel = `secretario`, `eng_ambiental`, `fiscal_ambiental`), e só no parecer `{{titulo_parecer_pendencias}}` e `{{tabela_analise_documentos_html}}`
+
+### Modelos ambientais (LAU e parecer de pendências)
+
+- `licenca_ambiental_unica` e `parecer_tecnico_pendencias_ambiental` são definições em `admin/templates/definitions/`; o `.html` de mesmo nome em `admin/templates/` só serve para a listagem e é gerado a partir da definição (`DocumentStyles::styleTag()` + `DocumentBuilder::render()`) — ao mudar a definição, gere o `.html` de novo.
+- Data de recebimento, endereço do empreendedor e caracterização são preenchidos em "Editar dados do processo" (só aparecem nos tipos de `DocumentoRegras::tiposAmbientais()`).
+- Quem assina é configurado em `admin/assinantes_modelos.php` (tabela `configuracoes`, chaves `modelo_assinante_*`). Ao assinar um desses modelos, `processa_assinatura.php` já pede a coassinatura dos demais (LAU: secretário + eng. + fiscal; parecer: eng. + fiscal).
+- O 2º parecer de pendências **emitido** no mesmo processo sai com o título "PARECER TÉCNICO FINAL" (`DocumentoRegras::tituloParecerPendencias`; versões retificadas não contam).
+- Placa de licenciamento: `admin/documentos/placa_licenca.php` (mPDF, A4 paisagem), botão "Gerar placa" no processo. Telefone do disque-denúncia na chave `placa_disque_denuncia`.
 
 ## Métricas do formulário público (PostHog)
 

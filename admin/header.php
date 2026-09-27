@@ -64,6 +64,7 @@ $pageTitles = [
     'perfil.php' => 'Meu Perfil',
     'administradores.php' => 'Gerenciar Usuários',
     'atividade_usuarios.php' => 'Atividade dos usuários',
+    'assinantes_modelos.php' => 'Assinantes dos modelos',
     'denuncias.php' => 'Denúncias',
     'nova_denuncia.php' => 'Nova Denúncia',
     'visualizar_denuncia.php' => 'Detalhes da Denúncia',
@@ -117,6 +118,7 @@ if ($isAdmin) {
     $searchItems[] = ['label' => 'Sugestões', 'caption' => 'Melhorias enviadas pelos cidadãos', 'url' => $adminBase . 'sugestoes.php', 'icon' => 'fa-lightbulb'];
     $searchItems[] = ['label' => 'Gerenciar Usuários', 'caption' => 'Administradores e acessos', 'url' => $adminBase . 'administradores.php', 'icon' => 'fa-users-gear'];
     $searchItems[] = ['label' => 'Atividade dos usuários', 'caption' => 'Tempo ativo, ações e passo a passo', 'url' => $adminBase . 'atividade_usuarios.php', 'icon' => 'fa-chart-simple'];
+    $searchItems[] = ['label' => 'Assinantes dos modelos', 'caption' => 'Quem assina a LAU e o parecer de pendências', 'url' => $adminBase . 'assinantes_modelos.php', 'icon' => 'fa-signature'];
 }
 if ($isAnalista) {
     $searchItems[] = [
@@ -1855,6 +1857,17 @@ if ($isAnalista) {
                                     <span class="sidebar-link-text">
                                         <span class="sidebar-link-title">Atividade dos usuários</span>
                                         <span class="sidebar-link-caption">Tempo ativo e passo a passo</span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?= $adminBase ?>assinantes_modelos.php" class="sidebar-link <?= $currentPage === 'assinantes_modelos.php' ? 'active' : '' ?>" title="Assinantes dos modelos">
+                                <span class="sidebar-link-icon"><i class="fas fa-signature"></i></span>
+                                <span class="sidebar-link-content">
+                                    <span class="sidebar-link-text">
+                                        <span class="sidebar-link-title">Assinantes dos modelos</span>
+                                        <span class="sidebar-link-caption">LAU e parecer de pendências</span>
                                     </span>
                                 </span>
                             </a>

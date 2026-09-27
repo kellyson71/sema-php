@@ -89,6 +89,8 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> 'Análise ambiental para emissão do Habite-se.',
                 'licenca_previa_projeto'             => 'Licença prévia de projeto com campos obrigatórios e condicionantes.',
                 'licenca_atividade_economica'        => 'Viabilidade ambiental para Licença de Atividade Econômica (Lei 311/1972).',
+                'licenca_ambiental_unica'            => 'Licença Ambiental Única com condicionantes, validade de 5 anos e assinaturas da equipe ambiental.',
+                'parecer_tecnico_pendencias_ambiental' => 'Pendências documentais do processo ambiental; o 2º parecer do processo sai como Parecer Técnico Final.',
                 'carta_habite_se'                    => 'Carta de Habite-se para edificação concluída (documento final de conclusão de obra).',
                 'alvara_de_construcao'               => 'Alvará de Construção com dados do proprietário, responsável técnico e especificação da obra.',
                 'alvara_de_desmembramento'           => 'Alvará de Desmembramento com autorização formal e fundamentação na Lei 6.766/1979.',
@@ -105,6 +107,8 @@ try {
                 'carta_habite_se'                    => 'Carta de Habite-se',
                 'licenca_previa_projeto'             => 'Licença Prévia de Projeto',
                 'licenca_atividade_economica'        => 'Licença de Atividade Econômica',
+                'licenca_ambiental_unica'            => 'Licença Ambiental Única (LAU)',
+                'parecer_tecnico_pendencias_ambiental' => 'Parecer Técnico Ambiental - Pendências',
                 'parecer_tecnico_alvara_construcao'  => 'Parecer Técnico - Alvará de Construção',
                 'parecer_tecnico_alvara_construcao_ambiental' => 'Parecer Técnico Ambiental - Construção',
                 'parecer_tecnico_desmembramento'     => 'Parecer Técnico - Desmembramento',
@@ -129,6 +133,8 @@ try {
                 'parecer_tecnico_habite_se_ambiental'=> ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'licenca_previa_projeto'             => ['icon' => 'fa-clipboard-check', 'cor' => 'text-primary',   'badge' => 'Licença'],
                 'licenca_atividade_economica'        => ['icon' => 'fa-store',           'cor' => 'text-warning',   'badge' => 'Econômico'],
+                'licenca_ambiental_unica'            => ['icon' => 'fa-leaf',            'cor' => 'text-success',   'badge' => 'Licença'],
+                'parecer_tecnico_pendencias_ambiental' => ['icon' => 'fa-list-check',    'cor' => 'text-success',   'badge' => 'Ambiental'],
                 'carta_habite_se'                    => ['icon' => 'fa-house',           'cor' => 'text-primary',   'badge' => 'Habite-se'],
                 'alvara_de_construcao'               => ['icon' => 'fa-hard-hat',        'cor' => 'text-warning',   'badge' => 'Construção'],
                 'alvara_de_desmembramento'           => ['icon' => 'fa-map-marked-alt',  'cor' => 'text-info',      'badge' => 'Desmembramento'],
@@ -487,6 +493,13 @@ try {
                             'licenca_atividade_economica',
                         ],
                     ];
+                    foreach (DocumentoRegras::tiposAmbientais() as $tipoAmbiental) {
+                        $mapaTemplatesRecomendados[$tipoAmbiental] = array_values(array_unique(array_merge(
+                            $tipoAmbiental === 'licenca_ambiental_unica' ? ['licenca_ambiental_unica'] : [],
+                            ['parecer_tecnico_pendencias_ambiental'],
+                            $mapaTemplatesRecomendados[$tipoAmbiental] ?? []
+                        )));
+                    }
 
                     $templatesExatos = $mapaTemplatesRecomendados[$tipoAlvaraReq] ?? [];
                     $templateRecomendadoObj = null;

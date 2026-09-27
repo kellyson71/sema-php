@@ -578,7 +578,8 @@ include '../header.php';
         if (['notificacao_fiscal', 'auto_de_infracao', 'laudo_relatorio_tecnico',
              'comunicados_orientacoes'].indexOf(n) !== -1 || n.indexOf('denuncia_') === 0) return 'fiscal';
         if (['alvara_de_construcao', 'carta_habite_se', 'alvara_de_desmembramento',
-             'licenca_previa_projeto', 'licenca_atividade_economica'].indexOf(n) !== -1) return 'final';
+             'licenca_previa_projeto', 'licenca_atividade_economica',
+             'licenca_ambiental_unica'].indexOf(n) !== -1) return 'final';
         return 'outros';
     }
 

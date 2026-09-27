@@ -94,7 +94,8 @@ $camposEditaveisProcesso = [
     'inicio_obra', 'termino_obra', 'alvara_construcao_numero', 'habite_uso', 'habite_pavimento',
     'habite_tipo_construcao', 'habite_padrao', 'eng_fiscal_nome', 'eng_fiscal_registro',
     'ctf_numero', 'licenca_anterior_numero', 'publicacao_diario_oficial',
-    'tipo_estudo_ambiental', 'possui_estudo_ambiental', 'notificado_fiscal_obras', 'observacoes'
+    'tipo_estudo_ambiental', 'possui_estudo_ambiental', 'notificado_fiscal_obras', 'observacoes',
+    'data_recebimento_processo', 'endereco_empreendedor', 'caracterizacao_empreendimento'
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_processo'])) {
@@ -2744,6 +2745,14 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="cmd-bar">
         <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>" class="cmd-btn-primary" style="order:1;"><i class="fas fa-file-pen"></i>Gerar Documento</a>
 
+        <?php if (DocumentoRegras::tipoAmbiental((string) ($requerimento['tipo_alvara'] ?? ''))): ?>
+        <a href="documentos/placa_licenca.php?requerimento_id=<?= $id ?>" target="_blank" rel="noopener" class="cmd-btn tt" style="order:2;"
+            data-bs-toggle="tooltip" data-bs-placement="top"
+            data-bs-title="Placa de licenciamento para afixar no empreendimento (PDF A4 paisagem). Usa a data de recebimento do processo para a validade.">
+            <i class="fas fa-sign-hanging cmd-ic"></i>Gerar placa
+        </a>
+        <?php endif; ?>
+
         <?php if ($isSetor3): ?>
         <a href="visualizar_documento.php?requerimento_id=<?= $id ?>" class="cmd-btn tt" style="order:4;"
             data-bs-toggle="tooltip" data-bs-placement="top"
@@ -4293,6 +4302,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             'notificado_fiscal_obras' => ['Notificado pelo Fiscal de Obras', 'select', ''],
                             'observacoes' => ['Observações internas do processo', 'textarea', 'Não aparece para o cidadão'],
                         ];
+                        // Licenciamento ambiental: entram na LAU, no parecer de pendências e na placa.
+                        if (DocumentoRegras::tipoAmbiental((string) ($requerimento['tipo_alvara'] ?? ''))) {
+                            $camposEdicaoVisual += [
+                                'data_recebimento_processo' => ['Data de recebimento do processo (validade da licença = +5 anos)', 'date', ''],
+                                'endereco_empreendedor' => ['Endereço do empreendedor', 'text', 'Endereço do requerente/empresa'],
+                                'caracterizacao_empreendimento' => ['Caracterização do empreendimento', 'textarea', 'Descrição do empreendimento que vai na LAU'],
+                            ];
+                        }
                         foreach ($camposEdicaoVisual as $campo => [$rotulo, $tipoCampo, $placeholder]):
                             $valorAtual = $requerimento[$campo] ?? '';
                             $temOriginal = array_key_exists($campo, $valoresOriginaisProcesso);
