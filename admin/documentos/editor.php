@@ -1291,6 +1291,7 @@ foreach ($blocosProcesso as $titulo => $linhas):
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Paginação visual da folha A4, compartilhada com o editor de denúncias -->
     <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_paginacao.js"></script>
+    <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_colagem.js"></script>
     <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
          Usamos um carregador dinâmico que aguarda o jQuery estar pronto. -->
     <script>
@@ -1538,7 +1539,7 @@ foreach ($blocosProcesso as $titulo => $linhas):
                     ['color',    ['color']],
                     ['para',     ['ul', 'ol', 'paragraph']],
                     ['table',    ['table']],
-                    ['insert',   ['link']],
+                    ['insert',   ['link', 'picture']],
                     ['view',     ['codeview', 'fullscreen']]
                 ],
                 callbacks: {
@@ -1547,6 +1548,11 @@ foreach ($blocosProcesso as $titulo => $linhas):
                         montarPainelCampos();
                         iniciarSincronizacaoDocumento();
                         iniciarAutosave();
+                        SemaColagem.ligar($editor, { aoColar: avisarColagemWord });
+                    },
+                    // Botão Imagem e imagem colada (print/arquivo): entra reduzida, em base64.
+                    onImageUpload: function(arquivos) {
+                        SemaColagem.inserirArquivos($editor, arquivos);
                     },
                     onChange: function() {
                         sincronizarDoDocumentoParaPainel();
@@ -1554,6 +1560,24 @@ foreach ($blocosProcesso as $titulo => $linhas):
                 }
             });
         });
+    }
+
+    // Resultado da colagem do Word: diz quantas imagens vieram e quantas não.
+    function avisarColagemWord(r) {
+        sincronizarDoDocumentoParaPainel();
+        if (!r || (!r.recuperadas && !r.perdidas) || typeof Swal === 'undefined') return;
+        if (r.perdidas) {
+            Swal.fire({
+                icon: 'warning',
+                title: r.perdidas === 1 ? '1 imagem do Word não veio' : r.perdidas + ' imagens do Word não vieram',
+                html: 'O Word não mandou essas imagens na colagem. No lugar de cada uma ficou um aviso laranja: '
+                    + 'insira a imagem pelo botão <b>Imagem</b> da barra e apague o aviso. '
+                    + (r.recuperadas ? r.recuperadas + ' outra(s) imagem(ns) vieram normalmente.' : ''),
+            });
+        } else {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', timer: 3500, showConfirmButton: false,
+                title: r.recuperadas === 1 ? '1 imagem do Word colada' : r.recuperadas + ' imagens do Word coladas' });
+        }
     }
 
     /* ─── Painel "Campos do documento" ─────────────────────

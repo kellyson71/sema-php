@@ -135,6 +135,8 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     // colou, nunca existe no servidor) e bordas de tabela em formato que o
     // TCPDF interpreta mal — normaliza antes de render.
     $html = limparColagemWord($html);
+    // Tabela mais larga que a folha, imagem em % ou por caminho relativo.
+    $html = ajustarImagensETabelasParaPdf($html);
 
     return $html;
 }

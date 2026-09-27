@@ -100,6 +100,12 @@ Variáveis disponíveis nos templates (todas preenchidas por `ParecerService::pr
 - O 2º parecer de pendências **emitido** no mesmo processo sai com o título "PARECER TÉCNICO FINAL" (`DocumentoRegras::tituloParecerPendencias`; versões retificadas não contam).
 - Placa de licenciamento: `admin/documentos/placa_licenca.php` (mPDF, A4 paisagem), botão "Gerar placa" no processo. Telefone do disque-denúncia na chave `placa_disque_denuncia`.
 
+### Imagens e tabelas no editor → PDF
+
+- Colar do Word: o HTML da área de transferência só traz `file:///...clip_imageNNN` (arquivo no PC de quem colou). `js/editor_colagem.js` recupera as imagens da versão RTF do Word (mesma ordem) e as insere em base64; a que não der vira aviso laranja `.img-colagem-pendente` no editor, que o PDF descarta. Fotos grandes entram reduzidas (lado maior 1600 px, JPEG).
+- Botão **Imagem** na barra do editor (Summernote `onImageUpload`): também insere em base64, reduzida.
+- No PDF, `ajustarImagensETabelasParaPdf()` (`includes/html_paginacao.php`, chamada em `admin/assinatura/gerar_pdf.php`): tabela com largura fixa (px/pt/cm — o TCPDF lê px como 1/72 pol e estourava a margem) vira 100% com colunas proporcionais; `<img>` com largura em % vira mm; imagem maior que a folha é limitada a 180 mm; caminho do sistema (`/assets/...`) vira arquivo no servidor.
+
 ## Métricas do formulário público (PostHog)
 
 `js/form-analytics.js` expõe `window.SEMA_FORM_METRICS`; `js/public-form.js` chama os hooks
