@@ -1,0 +1,49 @@
+<style>
+    .texto-parecer p { margin-bottom: 12px; line-height: 1.6; text-align: justify; }
+    .titulo-doc { font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 16px; }
+    .tabela-dados { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .tabela-dados td { padding: 5px 8px; border: 1px solid #999; vertical-align: top; font-size: 11pt; }
+    .tabela-dados .label { font-weight: bold; background-color: #f2f2f2; width: 28%; white-space: nowrap; }
+    .secao-titulo { font-weight: bold; font-size: 11pt; margin-top: 16px; margin-bottom: 6px; }
+    .lista-artigos { margin: 6px 0 10px 0; line-height: 1.6; font-size: 10.5pt; }
+    .assinaturas { width: 100%; margin-top: 30px; }
+    .assinaturas td { text-align: center; padding-top: 30px; border-top: 1px solid #000; font-size: 10.5pt; width: 50%; }
+    .ciencia { margin-top: 26px; font-size: 11pt; }
+</style>
+
+<div class="titulo-doc">{{titulo_documento}} Nº {{numero_documento_ano}}</div>
+
+<table class="tabela-dados">
+    <tr>
+        <td class="label">Proprietário:</td>
+        <td>{{notificado_nome}}</td>
+        <td class="label" style="width:18%">CPF/CNPJ:</td>
+        <td>{{notificado_cpf_cnpj}}</td>
+    </tr>
+    <tr>
+        <td class="label">Bairro:</td>
+        <td>{{bairro}}</td>
+        <td class="label">Nº:</td>
+        <td>{{numero_imovel}}</td>
+    </tr>
+    <tr>
+        <td class="label">Rua:</td>
+        <td colspan="3">{{endereco}}</td>
+    </tr>
+</table>
+
+<div class="secao-titulo">DESCRIÇÃO DO FATO</div>
+<div class="texto-parecer"><p>{{descricao_fato}}</p></div>
+
+<div class="texto-parecer">
+    <p>Prazo para regularização: {{prazo_dias}} dias úteis, a contar da ciência desta notificação.</p>
+</div>
+
+<table class="assinaturas">
+    <tr>
+        <td>Fiscal de Serv. Urbanos</td>
+        <td>Fiscal de Obras</td>
+    </tr>
+</table>
+
+<div class="ciencia">Ciência do(a) Contribuinte: _________________________________________________ Data: ___ / ___ / {{ano_atual}}</div>

@@ -127,7 +127,7 @@ include 'header.php';
             <?php if ($items): ?>
                 <?php foreach ($items as $item): ?>
                     <li class="notifications-item <?= $item['foi_lida'] ? '' : 'is-unread' ?>">
-                        <a href="notificacao_ir.php?id=<?= (int) $item['id'] ?>">
+                        <a href="notificacao.php?id=<?= (int) $item['id'] ?>">
                             <span class="notifications-icon <?= htmlspecialchars($item['accent_class']) ?>">
                                 <i class="fas <?= htmlspecialchars($item['icon']) ?>"></i>
                             </span>

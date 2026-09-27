@@ -46,6 +46,10 @@ $salvar_banco    = filter_var($_POST['salvar_banco'] ?? false, FILTER_VALIDATE_B
 $template_salvo  = $_POST['template_salvo'] ?? 'Documento Eletrônico';
 $nomeCurto_template = preg_replace('/\.html$/i', '', basename((string) $template_salvo));
 $numeroDocumentoInformado = trim((string) ($_POST['numero_documento'] ?? ''));
+// Retificação: documento_id da versão que está sendo corrigida. Quando vem
+// preenchido, a reemissão mantém o número original e aposenta a versão anterior.
+$retificaDocumentoId = preg_replace('/[^a-f0-9]/i', '', (string) ($_POST['retifica_documento_id'] ?? ''));
+$motivoRetificacao = mb_substr(trim((string) ($_POST['motivo_retificacao'] ?? '')), 0, 500);
 
 // Modo de assinatura: 'assinar' (padrão), 'sem_assinar', 'assinar_e_requisitar'
 $modoAssinatura = $_POST['modo_assinatura'] ?? 'assinar';
@@ -259,6 +263,11 @@ if ($salvar_banco && $requerimento_id) {
             respostaJson(['success' => false, 'error' => 'A biblioteca PDF falhou ao gravar o arquivo físico.']);
         }
 
+        // Guarda o HTML que gerou este PDF. É o que permite reabrir um documento
+        // já assinado para retificação — sem isto, só sobra o PDF, e o texto
+        // teria que ser redigitado do zero.
+        @file_put_contents($dirDestino . '/' . $documentoId . '.html', $conteudo);
+
         // 2. Metadados
         $hashDocumento = hash_file('sha256', $caminhoFisico);
         $tipoAssinatura    = $ehAssinaturaDigital ? 'digital_sema' : 'sem_assinatura';
@@ -283,15 +292,51 @@ if ($salvar_banco && $requerimento_id) {
             if (!$numeroInterpretado || $numeroInterpretado['numero'] < 1) {
                 throw new RuntimeException('Informe o número do documento no formato número/ano.');
             }
-            $pdo->prepare('INSERT INTO document_numbers
-                (template_key, ano, numero, requerimento_id, documento_id, criado_por_id)
-                VALUES (?, ?, ?, ?, ?, ?)')
-                ->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero'],
-                    $requerimento_id, $documentoId, $admin_id]);
+
+            // O número já pertence a este mesmo processo e tipo de documento?
+            // Então isto é uma retificação: o número continua o mesmo e a versão
+            // anterior é aposentada. Número de outro processo segue bloqueado.
+            $stmtNumero = $pdo->prepare('SELECT id, requerimento_id, documento_id FROM document_numbers
+                WHERE template_key = ? AND ano = ? AND numero = ? LIMIT 1');
+            $stmtNumero->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero']]);
+            $numeroExistente = $stmtNumero->fetch(PDO::FETCH_ASSOC);
+
+            if ($numeroExistente && (int) $numeroExistente['requerimento_id'] === (int) $requerimento_id) {
+                $documentoSubstituido = (string) $numeroExistente['documento_id'];
+                $pdo->prepare('UPDATE document_numbers SET documento_id = ?, criado_por_id = ?, criado_em = NOW()
+                    WHERE id = ?')
+                    ->execute([$documentoId, $admin_id, $numeroExistente['id']]);
+
+                if ($documentoSubstituido !== '' && $documentoSubstituido !== $documentoId) {
+                    $pdo->prepare('UPDATE assinaturas_digitais
+                        SET substituido_por_documento_id = ?, substituido_em = NOW(),
+                            substituido_por_admin_id = ?, motivo_substituicao = ?
+                        WHERE documento_id = ? AND substituido_por_documento_id IS NULL')
+                        ->execute([$documentoId, $admin_id, ($motivoRetificacao !== '' ? $motivoRetificacao : null), $documentoSubstituido]);
+                }
+            } else {
+                $pdo->prepare('INSERT INTO document_numbers
+                    (template_key, ano, numero, requerimento_id, documento_id, criado_por_id)
+                    VALUES (?, ?, ?, ?, ?, ?)')
+                    ->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero'],
+                        $requerimento_id, $documentoId, $admin_id]);
+            }
+
             $pdo->prepare('INSERT INTO document_number_sequences (template_key, ano, ultimo_numero)
                 VALUES (?, ?, ?)
                 ON DUPLICATE KEY UPDATE ultimo_numero = GREATEST(ultimo_numero, VALUES(ultimo_numero))')
                 ->execute([$nomeCurto_template, $numeroInterpretado['ano'], $numeroInterpretado['numero']]);
+        }
+
+        // Retificação pedida explicitamente (reabrindo um documento assinado):
+        // aposenta a versão anterior mesmo em documento sem numeração própria.
+        if ($retificaDocumentoId !== '' && $retificaDocumentoId !== $documentoId) {
+            $pdo->prepare('UPDATE assinaturas_digitais
+                SET substituido_por_documento_id = ?, substituido_em = NOW(),
+                    substituido_por_admin_id = ?, motivo_substituicao = ?
+                WHERE documento_id = ? AND requerimento_id = ? AND substituido_por_documento_id IS NULL')
+                ->execute([$documentoId, $admin_id, ($motivoRetificacao !== '' ? $motivoRetificacao : null),
+                    $retificaDocumentoId, $requerimento_id]);
         }
 
         // 3. Persistência — assinatura_criptografada agora é a assinatura RSA

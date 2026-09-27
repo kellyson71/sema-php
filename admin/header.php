@@ -31,13 +31,35 @@ $totalNotificacoes = $notificationCounts['total'];
 $notificationTotal = $notificationCounts['unread'];
 $notificacoesNaoLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'unread', 20, 0);
 $notificacoesLidas = fetchAdminNotifications($pdo, (int) $_SESSION['admin_id'], 'read', 20, 0);
-$assinaturasPendentes = contarAssinaturasPendentesPara($pdo, (int) $_SESSION['admin_id']);
+$assinaturasPendentes = contarAssinaturasPendentesPara(
+    $pdo,
+    (int) $_SESSION['admin_id'],
+    ($_SESSION['admin_nivel'] ?? '') === 'secretario'
+);
+
+// Para o secretário (setor3), o que importa é o que chega pra ele decidir/assinar —
+// eventos de setor1/setor2 que não tocam a fila dele viram ruído. Não muda o schema,
+// só reordena o que já foi buscado, priorizando os tipos relevantes ao papel.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    $tiposRelevantesSecretario = [
+        'encaminhado_setor3', 'assinatura_solicitada', 'coassinatura_solicitada',
+        'coassinatura_recusada', 'coassinatura_concluida', 'setor3_aprovado',
+    ];
+    $ordenaRelevanciaSecretario = static function (array $a, array $b) use ($tiposRelevantesSecretario): int {
+        $pa = in_array($a['tipo'], $tiposRelevantesSecretario, true) ? 0 : 1;
+        $pb = in_array($b['tipo'], $tiposRelevantesSecretario, true) ? 0 : 1;
+        return $pa <=> $pb;
+    };
+    usort($notificacoesNaoLidas, $ordenaRelevanciaSecretario);
+    usort($notificacoesLidas, $ordenaRelevanciaSecretario);
+}
 
 $pageTitles = [
     'index.php' => 'Painel Inicial',
     'requerimentos.php' => 'Requerimentos',
     'documentos_assinados.php' => 'Documentos Assinados',
     'estatisticas.php' => 'Estatísticas',
+    'estatisticas_setores.php' => 'Estatísticas dos setores',
     'visualizar_requerimento.php' => 'Detalhes do Requerimento',
     'perfil.php' => 'Meu Perfil',
     'administradores.php' => 'Gerenciar Usuários',
@@ -71,7 +93,7 @@ $isAnalista = ($nivelAtual === 'analista' || $isAdmin);
 $isSecretario = ($nivelAtual === 'secretario' || $isAdmin);
 $isHomologHost = isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'sematst') !== false;
 $avatarPath = !empty($adminData['foto_perfil']) ? $adminBase . '../' . urlArquivo('perfil/' . $adminData['foto_perfil']) : null;
-$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'logs_email.php', 'responsaveis_tecnicos.php'], true);
+$isDataSectionOpen = in_array($currentPage, ['requerimentos_arquivados.php', 'documentos_assinados.php', 'estatisticas.php', 'estatisticas_setores.php', 'logs_email.php', 'responsaveis_tecnicos.php'], true);
 $isOperacaoSectionOpen = $currentPage === 'requerimentos.php' && isset($_GET['status']) && $_GET['status'] === 'Pendente';
 
 $searchItems = [
@@ -86,6 +108,9 @@ $searchItems = [
     ['label' => 'Responsáveis Técnicos', 'caption' => 'Catálogo de engenheiros/arquitetos', 'url' => $adminBase . 'responsaveis_tecnicos.php', 'icon' => 'fa-hard-hat'],
     ['label' => 'Meu Perfil', 'caption' => 'Dados do usuário logado', 'url' => $adminBase . 'perfil.php', 'icon' => 'fa-user-gear'],
 ];
+if ($isSecretario) {
+    $searchItems[] = ['label' => 'Estatísticas dos setores', 'caption' => 'Carga, tempos, retrabalho e gargalos', 'url' => $adminBase . 'estatisticas_setores.php', 'icon' => 'fa-chart-line'];
+}
 
 if ($isAdmin) {
     $searchItems[] = ['label' => 'Filas por Setor', 'caption' => 'Visão administrativa das filas S1, S2 e S3', 'url' => $adminBase . 'fila_setor.php', 'icon' => 'fa-layer-group'];
@@ -1635,6 +1660,42 @@ if ($isAnalista) {
         <div class="sidebar-scroll sidebar-menu">
             <div class="sidebar-section">
                 <ul>
+                    <?php if ($nivelAtual === 'secretario'): ?>
+                    <li>
+                        <a href="<?= $adminBase ?>painel_secretario.php?tab=dashboard" class="sidebar-link <?= $currentPage === 'painel_secretario.php' && ($_GET['tab'] ?? 'dashboard') === 'dashboard' ? 'active' : '' ?>" title="Painel Inicial">
+                            <span class="sidebar-link-icon"><i class="fas fa-house"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Painel Inicial</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>painel_secretario.php?tab=fila" class="sidebar-link <?= $currentPage === 'painel_secretario.php' && ($_GET['tab'] ?? '') === 'fila' ? 'active' : '' ?>" title="Para assinar">
+                            <span class="sidebar-link-icon"><i class="fas fa-file-signature"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Para assinar</span>
+                                    <span class="sidebar-link-caption">Encaminhado pela Fiscalização</span>
+                                </span>
+                                <?php if ($assinaturasPendentes > 0): ?>
+                                    <span class="badge bg-danger sidebar-link-badge"><?= $assinaturasPendentes > 99 ? '99+' : $assinaturasPendentes ?></span>
+                                <?php endif; ?>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= $adminBase ?>estatisticas_setores.php" class="sidebar-link <?= $currentPage === 'estatisticas_setores.php' ? 'active' : '' ?>" title="Estatísticas dos setores">
+                            <span class="sidebar-link-icon"><i class="fas fa-chart-line"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Estatísticas dos setores</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <?php else: ?>
                     <li>
                         <a href="<?= $adminBase ?>index.php" class="sidebar-link <?= $currentPage === 'index.php' ? 'active' : '' ?>" title="Painel Inicial">
                             <span class="sidebar-link-icon"><i class="fas fa-house"></i></span>
@@ -1678,6 +1739,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php endif; ?>
                     <?php if ($isAdmin): ?>
                     <li>
                         <a href="<?= $adminBase ?>fila_setor.php" class="sidebar-link <?= $currentPage === 'fila_setor.php' ? 'active' : '' ?>" title="Filas por Setor">
@@ -1691,6 +1753,7 @@ if ($isAnalista) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if ($nivelAtual !== 'secretario'): ?>
                     <li>
                         <a href="<?= $adminBase ?>denuncias.php" class="sidebar-link <?= in_array($currentPage, ['denuncias.php', 'nova_denuncia.php', 'visualizar_denuncia.php'], true) ? 'active' : '' ?>" title="Denúncias">
                             <span class="sidebar-link-icon"><i class="fas fa-bullhorn"></i></span>
@@ -1702,9 +1765,24 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if ($nivelAtual === 'fiscal' || $isAdmin): $emFiscalizacaoObras = strpos($_SERVER['PHP_SELF'] ?? '', '/fiscalizacao_obras/') !== false; ?>
+                    <li>
+                        <a href="<?= $adminBase ?>fiscalizacao_obras/index.php" class="sidebar-link <?= $emFiscalizacaoObras ? 'active' : '' ?>" title="Notificações de Obras">
+                            <span class="sidebar-link-icon"><i class="fas fa-triangle-exclamation"></i></span>
+                            <span class="sidebar-link-content">
+                                <span class="sidebar-link-text">
+                                    <span class="sidebar-link-title">Notificações de Obras</span>
+                                    <span class="sidebar-link-caption">Prazos de fiscalização</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
+            <?php if ($nivelAtual !== 'secretario'): ?>
             <div class="sidebar-section">
                 <div class="menu-header"><span>Acervo</span></div>
                 <ul>
@@ -1732,6 +1810,14 @@ if ($isAnalista) {
                             </span>
                         </a>
                     </li>
+                    <?php if ($isAdmin): ?>
+                    <li>
+                        <a href="<?= $adminBase ?>estatisticas_setores.php" class="sidebar-link <?= $currentPage === 'estatisticas_setores.php' ? 'active' : '' ?>" title="Estatísticas dos setores">
+                            <span class="sidebar-link-icon"><i class="fas fa-chart-line"></i></span>
+                            <span class="sidebar-link-content"><span class="sidebar-link-text"><span class="sidebar-link-title">Estatísticas dos setores</span></span></span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <li>
                         <a href="<?= $adminBase ?>responsaveis_tecnicos.php" class="sidebar-link <?= $currentPage === 'responsaveis_tecnicos.php' ? 'active' : '' ?>" title="Responsáveis Técnicos">
                             <span class="sidebar-link-icon"><i class="fas fa-hard-hat"></i></span>
@@ -1744,12 +1830,13 @@ if ($isAnalista) {
                     </li>
                 </ul>
             </div>
+            <?php endif; ?>
 
 
+            <?php if ($isAdmin): ?>
             <div class="sidebar-section">
                 <div class="menu-header"><span>Administração</span></div>
                 <ul>
-                    <?php if ($isAdmin): ?>
                         <li>
                             <a href="<?= $adminBase ?>administradores.php" class="sidebar-link <?= $currentPage === 'administradores.php' ? 'active' : '' ?>" title="Gerenciar Usuários">
                                 <span class="sidebar-link-icon"><i class="fas fa-users-gear"></i></span>
@@ -1772,9 +1859,9 @@ if ($isAnalista) {
                                 </span>
                             </a>
                         </li>
-                    <?php endif; ?>
                 </ul>
             </div>
+            <?php endif; ?>
 
         </div>
 
@@ -2119,7 +2206,7 @@ if ($isAnalista) {
                                     <?php if ($notificacoesNaoLidas): ?>
                                         <?php foreach ($notificacoesNaoLidas as $notif): ?>
                                             <li class="notification-item-sidebar notification-unread">
-                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                <a href="<?= $adminBase ?>notificacao.php?id=<?= (int) $notif['id'] ?>">
                                                     <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
                                                         <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
                                                     </span>
@@ -2153,7 +2240,7 @@ if ($isAnalista) {
                                     <?php if ($notificacoesLidas): ?>
                                         <?php foreach ($notificacoesLidas as $notif): ?>
                                             <li class="notification-item-sidebar">
-                                                <a href="<?= $adminBase ?>notificacao_ir.php?id=<?= (int) $notif['id'] ?>">
+                                                <a href="<?= $adminBase ?>notificacao.php?id=<?= (int) $notif['id'] ?>">
                                                     <span class="notification-icon-badge <?= htmlspecialchars($notif['accent_class']) ?>">
                                                         <i class="fas <?= htmlspecialchars($notif['icon']) ?>"></i>
                                                     </span>

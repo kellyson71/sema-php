@@ -4,11 +4,17 @@ require_once __DIR__ . '/../includes/functions.php';
 
 verificaLogin();
 
-// Restrição de setor para fiscal (setor2) e secretario (setor3)
+// O secretário tem painel dedicado (fila baseada em solicitacoes_assinatura,
+// sem denúncias, sem geração de documento) — ele nunca usa este arquivo.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    header('Location: painel_secretario.php');
+    exit;
+}
+
+// Restrição de setor para fiscal (setor2)
 $nivelAdmin = $_SESSION['admin_nivel'] ?? '';
 $setorFiltro = match($nivelAdmin) {
     'fiscal'    => 'setor2',
-    'secretario' => 'setor3',
     default     => null,
 };
 
@@ -306,6 +312,7 @@ $barrasSemana = [
     .week-days { display:flex; justify-content:space-between; margin-top:6px; font-size:.68rem; color:#c0cbc4; }
     @media (max-width:1199px) { .home-body { flex-direction:column; } .home-main, .home-rail { width:100%; } }
     @media (max-width:767px) { .home-shell { gap:14px; } .home-title { font-size:1.35rem; } .home-panel-head { align-items:flex-start; } .home-all { margin-left:0; } .home-row { align-items:flex-start; } .home-action { display:none; } .week-stats { justify-content:space-between; } }
+
 </style>
 
 <div class="home-shell">

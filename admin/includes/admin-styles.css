@@ -788,6 +788,14 @@
   border-color: #c7d7fb;
 }
 
+/* Espera própria do Setor 2 — cor distinta de .status-pendente (Setor 1)
+   pra não confundir as duas filas de "processo parado". */
+.status-setor2-espera {
+  background: #fdf0e8;
+  color: #9a4a1f;
+  border-color: #f2c8a8;
+}
+
 .status-finalizado,
 .status-aprovado {
   background: var(--req-success-soft);

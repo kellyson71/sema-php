@@ -213,6 +213,10 @@
 .doc-rail-meta { display:block; font-size:.73rem; color:#8fa399; margin-top:2px; }
 .doc-rail-usar { display:inline-block; margin-top:6px; font-size:.72rem; font-weight:700; color:#14532d; }
 .doc-rail-vazio { padding:14px 15px; font-size:.8rem; color:#8fa399; }
+/* Documento assinado vigente: entrada da retificação, destacada do histórico */
+.doc-rail-item.doc-rail-retificar { background:#fffaf1; }
+.doc-rail-item.doc-rail-retificar:hover { background:#fff4e2; }
+.doc-rail-item.doc-rail-retificar .doc-rail-usar { color:#8a5a00; }
 
 .doc-rail-branco { background:#f7f9f7; border:1px dashed #cfdad3; border-radius:16px; padding:15px; }
 .doc-rail-branco-tit { font-size:.8rem; font-weight:700; color:#21372b; margin-bottom:5px; }

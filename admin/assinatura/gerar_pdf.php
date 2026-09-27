@@ -131,6 +131,10 @@ function normalizarHtmlParaParecerPdf(string $conteudo_html): string
     // para o PDF bater com a preview.
     $html = preg_replace('/<p[^>]*>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $html);
     $html = preg_replace('/<div[^>]*>(?:\s|&nbsp;|<br\s*\/?>)*<\/div>/i', '', $html);
+    // Conteúdo colado do Word traz <img src="file://..."> (caminho de quem
+    // colou, nunca existe no servidor) e bordas de tabela em formato que o
+    // TCPDF interpreta mal — normaliza antes de render.
+    $html = limparColagemWord($html);
 
     return $html;
 }
@@ -197,6 +201,7 @@ function montarCssParecerPdf(array $layout): string
             line-height: ' . $bodyLineHeight . ';
             padding: ' . $tableCellVPad . 'px ' . $tableCellHPad . 'px;
             font-size: 11pt;
+            border: 1px solid #aaa;
         }
 
         ul, ol {

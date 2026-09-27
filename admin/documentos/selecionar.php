@@ -4,6 +4,13 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../conexao.php';
 verificaLogin();
 
+// O secretário (setor3) não gera documento — só assina o que o fiscal já
+// encaminhou. A tela dele pra isso é o painel dedicado, não este editor.
+if (($_SESSION['admin_nivel'] ?? '') === 'secretario') {
+    header('Location: ../painel_secretario.php');
+    exit;
+}
+
 $requerimento_id = filter_input(INPUT_GET, 'requerimento_id', FILTER_VALIDATE_INT);
 if (!$requerimento_id) die("Acesso Negado: ID do requerimento não fornecido.");
 
@@ -745,21 +752,23 @@ include '../header.php';
     /* ─── Montar HTML de um card de histórico ───────────────── */
     function buildHistCard(h, idx) {
         // Formato de rail: linha compacta, não mais card em grade de 4 colunas.
-        const nome      = h.label || h.nome || 'Documento';
-        const isDb      = h.origem === 'db';
-        const icone     = isDb ? 'fa-pen-to-square' : 'fa-file-pdf';
-        const cor       = isDb ? '#3762d9' : '#b13232';
-        const selo      = isDb ? 'Rascunho' : 'Assinado';
-        const labelEnc  = encodeURIComponent(h.label || h.nome || 'Documento');
+        const nome        = h.label || h.nome || 'Documento';
+        const isDb        = h.origem === 'db';
+        const isAssinado  = h.origem === 'assinado';
+        const icone       = isAssinado ? 'fa-rotate' : (isDb ? 'fa-pen-to-square' : 'fa-file-pdf');
+        const cor         = isAssinado ? '#b7791f' : (isDb ? '#3762d9' : '#b13232');
+        const selo        = isAssinado ? 'Documento vigente' : (isDb ? 'Rascunho' : 'Assinado');
+        const acao        = isAssinado ? 'Corrigir e reemitir' : 'Usar como base';
+        const labelEnc    = encodeURIComponent(h.label || h.nome || 'Documento');
 
         return `
         <a href="editor.php?requerimento_id=${reqId}&template=${encodeURIComponent(h.id)}&label=${labelEnc}"
-           class="doc-rail-item" title="${escaparAttr(nome)}">
+           class="doc-rail-item${isAssinado ? ' doc-rail-retificar' : ''}" title="${escaparAttr(nome)}">
             <i class="fas ${icone} doc-rail-ic" style="color:${cor}"></i>
             <span class="doc-rail-corpo">
                 <span class="doc-rail-nome">${escapeHtml(nome)}</span>
                 <span class="doc-rail-meta">${selo} · ${escapeHtml(h.data || '')}</span>
-                <span class="doc-rail-usar">Usar como base</span>
+                <span class="doc-rail-usar">${acao}</span>
             </span>
         </a>`;
     }
@@ -935,8 +944,11 @@ include '../header.php';
             aplicarFiltros();
 
             // ── Histórico ────────────────────────────────────
-            if (ret.historico_recente && ret.historico_recente.length > 0) {
-                listHist.innerHTML = ret.historico_recente.map((h, i) => buildHistCard(h, i)).join('');
+            // Documentos vigentes primeiro: é por eles que se entra na
+            // retificação de um alvará já entregue.
+            const itensHistorico = [].concat(ret.documentos_assinados || [], ret.historico_recente || []);
+            if (itensHistorico.length > 0) {
+                listHist.innerHTML = itensHistorico.map((h, i) => buildHistCard(h, i)).join('');
             } else {
                 listHist.innerHTML = `<div class="col-12"><div class="text-muted py-2 d-flex align-items-center gap-2">
                     <i class="fas fa-inbox text-secondary"></i>

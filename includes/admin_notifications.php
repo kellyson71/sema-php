@@ -324,6 +324,16 @@ if (!function_exists('markAdminNotificationAsRead')) {
     }
 }
 
+if (!function_exists('markAdminNotificationAsUnread')) {
+    function markAdminNotificationAsUnread(PDO $pdo, int $notificationId, int $adminId): void
+    {
+        ensureAdminNotificationTables($pdo);
+
+        $stmt = $pdo->prepare("DELETE FROM admin_notification_reads WHERE notification_id = ? AND admin_id = ?");
+        $stmt->execute([$notificationId, $adminId]);
+    }
+}
+
 if (!function_exists('markAllAdminNotificationsAsRead')) {
     function markAllAdminNotificationsAsRead(PDO $pdo, int $adminId): int
     {

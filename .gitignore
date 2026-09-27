@@ -21,6 +21,10 @@ homolog
 
 # Manter estrutura mas ignorar conteúdo das pastas de upload
 uploads/20*/
+
+# PDFs assinados e o HTML que os gerou: dado de processo, não de código.
+admin/pareceres/
+admin/pareceres_denuncia/
 uploads/fotos_perfil/*
 !uploads/fotos_perfil/.gitkeep
 uploads/perfil/*

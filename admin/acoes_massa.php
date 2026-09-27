@@ -50,7 +50,7 @@ try {
             if (empty($novoStatus)) {
                 throw new Exception('Status não informado');
             }
-            if (!adminStatusPermitidoParaOperacao($novoStatus)) {
+            if (!adminStatusPermitidoParaOperacao($novoStatus, $_SESSION['admin_nivel'] ?? null)) {
                 throw new Exception('Status não disponível na operação atual');
             }
 
