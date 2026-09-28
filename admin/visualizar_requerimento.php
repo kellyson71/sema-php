@@ -4136,22 +4136,6 @@ document.addEventListener('DOMContentLoaded', function() {
          a lista inteira continua indo na aba.
     ══════════════════════════════════════════════════ -->
     <div class="proc-resumos">
-        <div class="proc-resumo-card proc-resumo-card--historico">
-            <div class="proc-resumo-head">
-                <span class="proc-resumo-titulo"><i class="fas fa-clock-rotate-left me-1"></i>Últimas movimentações</span>
-                <a href="?id=<?= (int) $id ?>&tab=historico#historico-lista" class="proc-resumo-link">Ver histórico completo (<?= count($historico) ?>)</a>
-            </div>
-            <?php if (empty($historico)): ?>
-                <div class="proc-resumo-vazio">Nenhuma movimentação registrada.</div>
-            <?php else: ?>
-                <div class="hist-lista">
-                    <?php $ultimos = array_slice($historico, 0, 6); ?>
-                    <?php foreach ($ultimos as $ti => $h): ?>
-                        <?= itemHistoricoHtml($h, true, $ti === count($ultimos) - 1) ?>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </div>
 
         <div class="proc-resumo-card">
             <div class="proc-resumo-head">
