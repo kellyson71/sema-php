@@ -1,0 +1,81 @@
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #000;
+    }
+    .titulo, .titulo-licenca {
+        font-size: 15pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 24px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        letter-spacing: 1px;
+    }
+    .subtitulo-doc {
+        font-size: 10pt;
+        text-align: center;
+        font-style: italic;
+        margin-bottom: 20px;
+        color: #555;
+    }
+    .dados-interessado {
+        margin-bottom: 24px;
+        line-height: 1.8;
+    }
+    .dados-interessado .linha {
+        margin-bottom: 4px;
+    }
+    .dados-interessado .label {
+        font-weight: bold;
+    }
+    .secao-titulo {
+        font-weight: bold;
+        margin: 20px 0 12px 0;
+        text-transform: uppercase;
+    }
+    .texto-parecer {
+        margin-bottom: 30px;
+    }
+    .texto-parecer p {
+        margin-bottom: 18px;
+        text-indent: 2.5cm;
+        line-height: 1.7;
+        text-align: justify;
+        font-size: 12pt;
+    }
+    .data-local {
+        margin-top: 40px;
+        margin-bottom: 60px;
+        text-align: right;
+        font-weight: normal;
+    }
+    .linha-assinatura {
+        border-top: 1px solid #000;
+        margin-top: 40px;
+        padding-top: 8px;
+        text-align: center;
+        width: 60%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .nome-assinante {
+        font-weight: bold;
+        font-size: 11pt;
+        text-transform: uppercase;
+    }
+    .cargo-assinante {
+        font-size: 10pt;
+        display: block;
+    }
+    .condicionantes {
+        font-size: 9pt;
+        border: 1px solid #000;
+        padding: 8px 10px;
+    }
+</style>
+
+<p style="font-weight:bold; text-decoration:underline; font-size:12pt;">{{titulo_parecer_pendencias}} – PROCESSO {{protocolo}}</p><br><p style="font-weight:bold; font-size:12pt;"><u>SETOR</u>: ENG. AMBIENTAL/FISCALIZAÇÃO AMBIENTAL<br><u>ASSUNTO DO PARECER</u>: PENDÊNCIAS DOCUMENTAIS DO PROCESSO {{nome_licenca}} – {{nome_empreendedor}}.</p><br><p style="font-weight:bold; font-size:12pt;"><u>EQUIPE DE ANÁLISE</u>:<br>{{assinante_eng_ambiental_rotulo}}: {{assinante_eng_ambiental_nome}}<br>{{assinante_fiscal_ambiental_rotulo}}: {{assinante_fiscal_ambiental_nome}}</p><br><p style="font-weight:bold;"><u>DO OBJETO</u>:</p><div class="texto-parecer"><p style="text-align:justify; font-size:12pt; line-height:1.7; text-indent:2.5cm; margin:0 0 18px 0;">Trata o presente parecer técnico das pendências documentais do Processo {{protocolo}} referente à {{nome_licenca}} de {{nome_empreendedor}}, situado em {{endereco_empreendimento}}</p></div><p style="font-weight:bold;"><u>DA ANÁLISE DOS DOCUMENTOS ANEXADOS</u></p>{{tabela_analise_documentos_html}}<br><br><p style="font-weight:bold;"><u>CONSIDERAÇÕES DO PARECER</u></p><div class="texto-parecer"><p style="text-align:justify; font-size:12pt; line-height:1.7; text-indent:2.5cm; margin:0 0 18px 0;">Do exposto, fica a continuidade do processo condicionada ao atendimento das pendências acima elencadas.</p></div><div class="data-local" style="text-align:right; font-size:11pt; margin-top:40px; margin-bottom:60px;">Pau dos Ferros/RN, {{data_atual}}.</div><table nobr="true" width="100%" border="0" cellpadding="2" cellspacing="0" style="font-size:11pt; border:none;"><tr><td width="50%" style="text-align:center; border:none;"><br><br>______________________________<br><strong>{{assinante_eng_ambiental_nome}}</strong><br>{{assinante_eng_ambiental_cargo_linha}}</td><td width="50%" style="text-align:center; border:none;"><br><br>______________________________<br><strong>{{assinante_fiscal_ambiental_nome}}</strong><br>{{assinante_fiscal_ambiental_cargo_linha}}</td></tr></table>

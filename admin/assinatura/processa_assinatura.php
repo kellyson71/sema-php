@@ -106,6 +106,16 @@ if (!empty($_POST['coassinatura_destinatarios']) && is_array($_POST['coassinatur
 }
 $destinatarios = array_values(array_unique(array_filter($destinatarios, fn($d) => $d > 0 && $d !== (int) $admin_id)));
 
+// LAU e parecer de pendências ambiental: quem assina é fixo (admin/assinantes_modelos.php).
+// Ao assinar, o sistema já pede a coassinatura dos demais — ninguém precisa escolher.
+if ($ehAssinaturaDigital) {
+    $coassinantesFixos = idsCoassinantesModelo($pdo, $nomeCurto_template, (int) $admin_id);
+    if ($coassinantesFixos) {
+        $destinatarios = array_values(array_unique(array_merge($destinatarios, $coassinantesFixos)));
+        $modoAssinatura = 'assinar_e_requisitar';
+    }
+}
+
 if ($modoAssinatura === 'assinar_e_requisitar' && empty($destinatarios)) {
     $erroDestinatarios = 'Selecione ao menos um servidor para co-assinar o documento.';
     if ($salvar_banco) respostaJson(['success' => false, 'error' => $erroDestinatarios]);

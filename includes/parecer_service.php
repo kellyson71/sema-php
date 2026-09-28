@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/documento_regras.php';
+require_once __DIR__ . '/assinantes_modelos.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/database.php';
 
@@ -240,6 +241,25 @@ class ParecerService
             'protocolo_oficial' => $protocoloOficial,
         ];
 
+        // Licenciamento ambiental (LAU, parecer de pendências e placa)
+        $dados['data_recebimento_processo'] = ($d = DocumentoRegras::interpretarData($requerimento['data_recebimento_processo'] ?? null))
+            ? $d->format('d/m/Y')
+            : '';
+        $dados['data_validade_licenca'] = DocumentoRegras::validadeLicenca($requerimento['data_recebimento_processo'] ?? null);
+        $dados['nome_licenca'] = DocumentoRegras::nomeLicenca((string) ($requerimento['tipo_alvara'] ?? ''), $dados['tipo_alvara']);
+        $dados['nome_empreendedor'] = $nomeInteressado;
+        $dados['cpf_cnpj_empreendedor'] = $cpfInteressado;
+        $dados['endereco_empreendedor'] = trim((string) ($requerimento['endereco_empreendedor'] ?? ''));
+        $dados['endereco_empreendimento'] = $enderecoDocumento;
+        $dados['caracterizacao_empreendimento'] = trim((string) ($requerimento['caracterizacao_empreendimento'] ?? ''));
+        $dados += variaveisAssinantesModelo($pdo);
+        if ($templateNome === DocumentoRegras::TEMPLATE_PARECER_PENDENCIAS) {
+            $dados['titulo_parecer_pendencias'] = DocumentoRegras::tituloParecerPendencias($pdo, (int) ($requerimento['id'] ?? 0));
+            $dados['tabela_analise_documentos_html'] = DocumentoRegras::tabelaAnaliseDocumentosHtml(
+                $this->nomesDocumentosDoRequerimento($requerimento, $pdo)
+            );
+        }
+
         if ($adminData !== null) {
             $dados['admin_nome_completo'] = $adminData['nome_completo'] ?? $adminData['nome'] ?? '';
             $dados['admin_cargo'] = $adminData['cargo'] ?? '';
@@ -260,6 +280,24 @@ class ParecerService
         $dados['ano_atual'] = (string) $anoAtual;
 
         return $dados;
+    }
+
+    private function nomesDocumentosDoRequerimento(array $requerimento, ?PDO $pdo): array
+    {
+        if (!$pdo || empty($requerimento['id'])) {
+            return [];
+        }
+        try {
+            $stmt = $pdo->prepare('SELECT campo_formulario FROM documentos WHERE requerimento_id = ? ORDER BY id');
+            $stmt->execute([(int) $requerimento['id']]);
+            $campos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Throwable $e) {
+            return [];
+        }
+        $tipos_alvara = [];
+        include dirname(__DIR__) . '/tipos_alvara.php';
+        $lista = $tipos_alvara[$requerimento['tipo_alvara'] ?? '']['documentos'] ?? [];
+        return DocumentoRegras::nomesDocumentosAnexados($campos, is_array($lista) ? $lista : []);
     }
 
     public function substituirVariaveisDocx($templatePath, $dados)

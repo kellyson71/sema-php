@@ -214,4 +214,86 @@ final class PaginacaoDocumentoTest extends TestCase
         $this->assertStringNotContainsString('o:p', $limpo);
         $this->assertStringContainsString('Trata o presente parecer', $limpo);
     }
+
+    #[Test]
+    public function tabelaComLarguraFixaDoWordPassaA100PorCentoComColunasProporcionais(): void
+    {
+        // Processo 932: width="614" e células em pt passavam da margem no TCPDF.
+        $html = '<table class="MsoNormalTable" width="614"><tbody><tr>'
+            . '<td width="236" style="width: 176.95pt; padding: 0cm 5.4pt;">Documento</td>'
+            . '<td width="378" style="width:10.0cm;padding:0cm 5.4pt">Análise Técnica</td>'
+            . '</tr></tbody></table>';
+
+        $ajustado = ajustarImagensETabelasParaPdf($html);
+
+        $this->assertStringContainsString('<table class="MsoNormalTable" width="100%">', $ajustado);
+        $this->assertMatchesRegularExpression('/<td width="38\.\d+%" style="padding: 0cm 5\.4pt">Documento/', $ajustado);
+        $this->assertMatchesRegularExpression('/<td width="61\.\d+%" style="padding:0cm 5\.4pt">An/', $ajustado);
+    }
+
+    #[Test]
+    public function tabelaEmPorcentagemPassaIntacta(): void
+    {
+        $html = '<table width="100%"><tr><td width="40%">a</td><td width="60%">b</td></tr></table>';
+
+        $this->assertSame($html, ajustarImagensETabelasParaPdf($html));
+    }
+
+    #[Test]
+    public function imagemComLarguraEmPorcentagemViraMilimetros(): void
+    {
+        // "Redimensionar 50%" do editor: o TCPDF não entende % em <img>.
+        $png = base64_encode((string) file_get_contents(dirname(__DIR__, 2) . '/assets/img/logo-prefeitura-sema-horizontal.png'));
+        $html = '<p><img style="width: 50%;" src="data:image/png;base64,' . $png . '"></p>';
+
+        $ajustado = ajustarImagensETabelasParaPdf($html, 180.0);
+
+        $this->assertStringContainsString('width="90mm"', $ajustado);
+        $this->assertStringNotContainsString('50%', $ajustado);
+    }
+
+    #[Test]
+    public function imagemSemLarguraMaiorQueAFolhaEhLimitada(): void
+    {
+        // 1400 px a 96 dpi = 370 mm: tem que caber nos 180 mm úteis.
+        $png = base64_encode((string) file_get_contents(dirname(__DIR__, 2) . '/assets/img/logo-prefeitura-sema-horizontal.png'));
+
+        $ajustado = ajustarImagensETabelasParaPdf('<img src="data:image/png;base64,' . $png . '">', 180.0);
+
+        $this->assertStringContainsString('width="180mm"', $ajustado);
+    }
+
+    #[Test]
+    public function imagemPorCaminhoDoSistemaViraArquivoEAInexistenteSai(): void
+    {
+        $raiz = dirname(__DIR__, 2);
+        $html = '<img src="/assets/img/Logo_sema.png" style="width:200px">'
+            . '<img src="/sema-php/assets/img/Logo_sema.png">'
+            . '<img src="/assets/img/nao-existe.png"><img src="/../../etc/passwd">';
+
+        $ajustado = ajustarImagensETabelasParaPdf($html, 180.0, $raiz);
+
+        $this->assertSame(2, substr_count($ajustado, 'src="' . realpath($raiz . '/assets/img/Logo_sema.png') . '"'));
+        $this->assertStringNotContainsString('nao-existe', $ajustado);
+        $this->assertStringNotContainsString('passwd', $ajustado);
+    }
+
+    #[Test]
+    public function avisoDeImagemNaoColadaNaoVaiProPdf(): void
+    {
+        $html = '<p>Antes</p><p class="img-colagem-pendente" contenteditable="false">[Imagem do Word não veio]</p><p>Depois</p>';
+
+        $ajustado = ajustarImagensETabelasParaPdf($html);
+
+        $this->assertStringNotContainsString('Imagem do Word', $ajustado);
+        $this->assertStringContainsString('<p>Antes</p><p>Depois</p>', $ajustado);
+    }
+
+    #[Test]
+    public function imagemComCaminhoDoSistemaNaoEhApagadaPelaLimpezaDoWord(): void
+    {
+        $limpo = limparColagemWord('<p class="MsoNormal">x</p><img src="/assets/img/Logo_sema.png">');
+
+        $this->assertStringContainsString('/assets/img/Logo_sema.png', $limpo);
+    }
 }

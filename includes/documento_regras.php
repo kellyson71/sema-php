@@ -8,9 +8,139 @@ final class DocumentoRegras
         'carta_habite_se',
     ];
 
+    /** Tipos de alvará do licenciamento ambiental (LAU, parecer de pendências e placa). */
+    private const TIPOS_AMBIENTAIS = [
+        'licenca_ambiental_unica',
+        'licenca_previa_ambiental',
+        'licenca_instalacao_operacao',
+        'licenca_operacao',
+        'licenca_ampliacao',
+        'licenca_operacional_corretiva',
+        'lac',
+    ];
+
+    /** Modelos que já saem com os blocos do Secretário/Eng. Ambiental/Fiscal e pedem a coassinatura deles. */
+    private const TEMPLATES_ASSINANTES_FIXOS = [
+        'licenca_ambiental_unica',
+        'parecer_tecnico_pendencias_ambiental',
+    ];
+
+    public const TEMPLATE_PARECER_PENDENCIAS = 'parecer_tecnico_pendencias_ambiental';
+
     public static function templateNumerado(string $template): bool
     {
         return in_array($template, self::TEMPLATES_NUMERADOS, true);
+    }
+
+    /** Nome da licença para usar no meio do texto e na placa ("Licença Ambiental Única (LAU)"). */
+    public static function nomeLicenca(string $tipoAlvara, string $nomeCadastro = ''): string
+    {
+        $nomes = [
+            'licenca_ambiental_unica' => 'Licença Ambiental Única (LAU)',
+            'licenca_previa_ambiental' => 'Licença Prévia (LP)',
+            'licenca_instalacao_operacao' => 'Licença de Instalação e Operação (LIO)',
+            'licenca_operacao' => 'Licença de Operação (LO)',
+            'licenca_ampliacao' => 'Licença de Ampliação',
+            'licenca_operacional_corretiva' => 'Licença de Operação Corretiva (LOC)',
+            'lac' => 'Licença Ambiental por Adesão e Compromisso (LAC)',
+        ];
+        return $nomes[$tipoAlvara] ?? ($nomeCadastro !== '' ? $nomeCadastro : ucwords(str_replace('_', ' ', $tipoAlvara)));
+    }
+
+    public static function tiposAmbientais(): array
+    {
+        return self::TIPOS_AMBIENTAIS;
+    }
+
+    public static function tipoAmbiental(string $tipoAlvara): bool
+    {
+        return in_array($tipoAlvara, self::TIPOS_AMBIENTAIS, true);
+    }
+
+    public static function templateComAssinantesFixos(string $template): bool
+    {
+        return in_array($template, self::TEMPLATES_ASSINANTES_FIXOS, true);
+    }
+
+    /** Validade da licença ambiental: recebimento do processo + 5 anos (regra fixa, reunião de 25/09/2026). */
+    public static function validadeLicenca(?string $dataRecebimento): string
+    {
+        $data = self::interpretarData($dataRecebimento);
+        return $data ? $data->modify('+5 years')->format('d/m/Y') : '';
+    }
+
+    public static function interpretarData(?string $valor): ?DateTimeImmutable
+    {
+        $valor = trim((string) $valor);
+        if ($valor === '' || str_starts_with($valor, '0000-00-00')) {
+            return null;
+        }
+        $data = DateTimeImmutable::createFromFormat('!Y-m-d', substr($valor, 0, 10))
+            ?: DateTimeImmutable::createFromFormat('!d/m/Y', $valor);
+        return $data ?: null;
+    }
+
+    /**
+     * O 2º parecer de pendências emitido no mesmo processo vira "Parecer Técnico Final".
+     * Conta só os já assinados/emitidos e ainda vigentes — rascunho não conta, e a
+     * retificação reabre o HTML original, então o 1º continua com o título dele.
+     */
+    public static function tituloParecerPendencias(?PDO $pdo, int $requerimentoId): string
+    {
+        return self::pareceresPendenciasEmitidos($pdo, $requerimentoId) >= 1
+            ? 'PARECER TÉCNICO FINAL'
+            : 'PARECER TÉCNICO – PENDÊNCIAS';
+    }
+
+    public static function pareceresPendenciasEmitidos(?PDO $pdo, int $requerimentoId): int
+    {
+        if (!$pdo || $requerimentoId <= 0) {
+            return 0;
+        }
+        try {
+            $stmt = $pdo->prepare('SELECT COUNT(DISTINCT documento_id) FROM assinaturas_digitais
+                WHERE requerimento_id = ? AND tipo_documento = ? AND substituido_por_documento_id IS NULL');
+            $stmt->execute([$requerimentoId, self::TEMPLATE_PARECER_PENDENCIAS]);
+            return (int) $stmt->fetchColumn();
+        } catch (Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Nome legível de cada documento anexado, a partir do campo do formulário
+     * (doc_{tipo}_{índice} → item {índice} da lista do tipo em tipos_alvara.php).
+     */
+    public static function nomesDocumentosAnexados(array $camposFormulario, array $listaDocumentosTipo): array
+    {
+        $nomes = [];
+        foreach ($camposFormulario as $campo) {
+            if (!preg_match('/_(\d+)$/', (string) $campo, $m) || !isset($listaDocumentosTipo[(int) $m[1]])) {
+                continue;
+            }
+            $nome = preg_replace('/^\s*\d+\.\s*/', '', (string) $listaDocumentosTipo[(int) $m[1]]);
+            $nome = rtrim(trim((string) $nome), ';.');
+            $nomes[(int) $m[1]] = $nome;
+        }
+        ksort($nomes);
+        return array_values($nomes);
+    }
+
+    /** Tabela "Documento | Análise Técnica" do parecer de pendências, com uma linha por documento. */
+    public static function tabelaAnaliseDocumentosHtml(array $nomesDocumentos): string
+    {
+        if (!$nomesDocumentos) {
+            $nomesDocumentos = ['Requerimento'];
+        }
+        $td = 'border:1px solid #000; padding:4px 6px; vertical-align:top;';
+        $html = '<table width="100%" border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse; font-size:11pt;">'
+            . '<tr><td width="40%" style="' . $td . '"><strong>Documento</strong></td>'
+            . '<td width="60%" style="' . $td . '"><strong>Análise Técnica</strong></td></tr>';
+        foreach ($nomesDocumentos as $nome) {
+            $html .= '<tr><td width="40%" style="' . $td . '">' . htmlspecialchars((string) $nome, ENT_QUOTES, 'UTF-8') . '</td>'
+                . '<td width="60%" style="' . $td . '">Documento Aceito / Aceito parcialmente / Pendente</td></tr>';
+        }
+        return $html . '</table>';
     }
 
     public static function proximoNumero(PDO $pdo, string $template, ?int $ano = null): string

@@ -74,7 +74,9 @@ function limparColagemWord(string $html): string
     // de deixar o TCPDF reservar um vão em branco do tamanho dela.
     foreach ($xpath->query('.//img', $wrapEl) as $img) {
         $src = (string) $img->getAttribute('src');
-        if (!preg_match('#^(data:image/|https?://)#i', $src)) {
+        // Caminho do próprio sistema (/assets/...) fica: quem resolve (ou tira,
+        // se não existir) é ajustarImagensETabelasParaPdf().
+        if (!preg_match('#^(data:image/|https?://|/(?!/))#i', $src)) {
             $img->parentNode->removeChild($img);
         }
     }
@@ -122,6 +124,193 @@ function limparColagemWord(string $html): string
         $out .= $dom->saveHTML($child);
     }
     return $out;
+}
+
+/**
+ * Encaixa imagens e tabelas na largura útil da folha antes do TCPDF.
+ *
+ * Problemas que isso resolve (relatados em 09/2026, doc do processo 932):
+ *  - tabela colada do Word traz largura fixa (width="614", células em pt):
+ *    no TCPDF isso passava da margem e o texto da coluna da direita saía
+ *    cortado. Tabela com largura fixa passa a 100%, e as colunas viram
+ *    porcentagem, na mesma proporção do original;
+ *  - imagem com largura em % (o "Redimensionar 50%" do editor grava assim):
+ *    o TCPDF não entende % em <img> e desenhava um pontinho. Vira mm;
+ *  - imagem sem largura, maior que a folha: é limitada à largura útil;
+ *  - imagem por caminho do próprio sistema (/assets/...): o TCPDF não abre
+ *    caminho relativo e deixava um vão. Vira caminho de arquivo no servidor;
+ *    se o arquivo não existe, a tag sai (em vez do vão em branco);
+ *  - aviso de "imagem do Word não colada" que o editor deixa no lugar da
+ *    imagem perdida (.img-colagem-pendente): é só para quem está editando.
+ */
+function ajustarImagensETabelasParaPdf(string $html, float $larguraUtilMm = 180.0, ?string $raizProjeto = null): string
+{
+    if (stripos($html, '<img') === false && stripos($html, '<table') === false
+        && stripos($html, 'img-colagem-pendente') === false) {
+        return $html;
+    }
+    $raizProjeto ??= dirname(__DIR__);
+
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $dom->loadHTML('<?xml encoding="utf-8"?><div id="__wrap_pdf__">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    $wrap = $dom->getElementById('__wrap_pdf__');
+    if (!$wrap) {
+        return $html;
+    }
+    $xpath = new DOMXPath($dom);
+
+    foreach (iterator_to_array($xpath->query('.//*[contains(concat(" ", normalize-space(@class), " "), " img-colagem-pendente ")]', $wrap)) as $aviso) {
+        $aviso->parentNode->removeChild($aviso);
+    }
+
+    foreach (iterator_to_array($xpath->query('.//img', $wrap)) as $img) {
+        /** @var DOMElement $img */
+        $src = trim((string) $img->getAttribute('src'));
+        $larguraNatural = null;
+
+        if (preg_match('#^data:image/[^;]+;base64,(.+)$#is', $src, $m)) {
+            $info = @getimagesizefromstring((string) base64_decode($m[1]));
+            $larguraNatural = $info ? (float) $info[0] : null;
+        } elseif (!preg_match('#^https?://#i', $src)) {
+            $arquivo = resolverImagemLocalParaPdf($src, $raizProjeto);
+            if ($arquivo === null) {
+                $img->parentNode->removeChild($img);
+                continue;
+            }
+            $img->setAttribute('src', $arquivo);
+            $info = @getimagesize($arquivo);
+            $larguraNatural = $info ? (float) $info[0] : null;
+        }
+
+        $estilo = (string) $img->getAttribute('style');
+        $largura = null;
+        if (preg_match('/(?:^|;)\s*width\s*:\s*([\d.]+)\s*(%|px|pt|mm)?/i', $estilo, $m)) {
+            $largura = [(float) $m[1], strtolower($m[2] ?? 'px')];
+        } elseif (preg_match('/^\s*([\d.]+)\s*(%|px)?\s*$/', (string) $img->getAttribute('width'), $m)) {
+            $largura = [(float) $m[1], strtolower($m[2] ?? 'px')];
+        }
+
+        $mm = match (true) {
+            $largura === null => $larguraNatural !== null ? $larguraNatural * 25.4 / 96 : null,
+            $largura[1] === '%' => $larguraUtilMm * $largura[0] / 100,
+            $largura[1] === 'pt' => $largura[0] * 25.4 / 72,
+            $largura[1] === 'mm' => $largura[0],
+            default => $largura[0] * 25.4 / 96,
+        };
+        if ($mm === null) {
+            continue;
+        }
+        $mm = min($mm, $larguraUtilMm);
+        // Só a largura: o TCPDF calcula a altura mantendo a proporção.
+        $img->setAttribute('width', round($mm, 2) . 'mm');
+        $img->removeAttribute('height');
+        $estiloSemTamanho = preg_replace('/(?:^|;)\s*(?:max-|min-)?(?:width|height)\s*:[^;]*/i', '', $estilo);
+        if (trim((string) $estiloSemTamanho, " ;") === '') {
+            $img->removeAttribute('style');
+        } else {
+            $img->setAttribute('style', trim((string) $estiloSemTamanho, " ;"));
+        }
+    }
+
+    foreach (iterator_to_array($xpath->query('.//table', $wrap)) as $tabela) {
+        /** @var DOMElement $tabela */
+        // Largura fixa (px/pt/cm) em tabela ou célula: o TCPDF lê px como 1/72 pol,
+        // então até uma tabela "menor" que a folha no navegador estoura a margem
+        // no PDF (width="614" ≈ 216 mm). Tabela com largura fixa vira 100%.
+        $temLarguraFixa = larguraCssEmPx((string) $tabela->getAttribute('width'), (string) $tabela->getAttribute('style')) > 0;
+        if (!$temLarguraFixa) {
+            foreach ($xpath->query('./tr/td|./tr/th|./*/tr/td|./*/tr/th', $tabela) as $c) {
+                if (larguraCssEmPx((string) $c->getAttribute('width'), (string) $c->getAttribute('style')) > 0) {
+                    $temLarguraFixa = true;
+                    break;
+                }
+            }
+        }
+        if (!$temLarguraFixa) {
+            continue;
+        }
+        $tabela->setAttribute('width', '100%');
+        $tabela->setAttribute('style', trim((string) preg_replace('/(?:^|;)\s*width\s*:[^;]*/i', '', (string) $tabela->getAttribute('style')), " ;"));
+        if ($tabela->getAttribute('style') === '') {
+            $tabela->removeAttribute('style');
+        }
+
+        // Colunas proporcionais, a partir da linha com mais células.
+        $linhas = iterator_to_array($xpath->query('./tr|./thead/tr|./tbody/tr|./tfoot/tr', $tabela));
+        foreach ($linhas as $tr) {
+            $celulas = iterator_to_array($xpath->query('./td|./th', $tr));
+            $larguras = array_map(
+                static fn(DOMElement $c): float => larguraCssEmPx((string) $c->getAttribute('width'), (string) $c->getAttribute('style')),
+                $celulas
+            );
+            $total = array_sum($larguras);
+            foreach ($celulas as $i => $celula) {
+                $celula->setAttribute('style', trim((string) preg_replace('/(?:^|;)\s*width\s*:[^;]*/i', '', (string) $celula->getAttribute('style')), " ;"));
+                if ($total > 0 && $larguras[$i] > 0) {
+                    $celula->setAttribute('width', round($larguras[$i] / $total * 100, 2) . '%');
+                } else {
+                    $celula->removeAttribute('width');
+                }
+                if ($celula->getAttribute('style') === '') {
+                    $celula->removeAttribute('style');
+                }
+            }
+        }
+    }
+
+    $out = '';
+    foreach ($wrap->childNodes as $child) {
+        $out .= $dom->saveHTML($child);
+    }
+    return $out;
+}
+
+/** Largura declarada (atributo width ou CSS width) em px; 0 quando não há ou é %. */
+function larguraCssEmPx(string $atributo, string $estilo): float
+{
+    if (preg_match('/(?:^|;)\s*width\s*:\s*([\d.]+)\s*(px|pt|cm|mm|in)?/i', $estilo, $m)) {
+        [$valor, $unidade] = [(float) $m[1], strtolower($m[2] ?? 'px')];
+    } elseif (preg_match('/^\s*([\d.]+)\s*(px)?\s*$/i', $atributo, $m)) {
+        [$valor, $unidade] = [(float) $m[1], 'px'];
+    } else {
+        return 0.0;
+    }
+    return match ($unidade) {
+        'pt' => $valor * 96 / 72,
+        'cm' => $valor * 96 / 2.54,
+        'mm' => $valor * 96 / 25.4,
+        'in' => $valor * 96,
+        default => $valor,
+    };
+}
+
+/**
+ * Caminho de imagem do próprio sistema (/assets/img/x.png, assets/..., ou URL
+ * do mesmo host já cortada) → arquivo no servidor. Só aceita arquivo dentro do
+ * projeto; qualquer outra coisa (file://, blob:, C:\...) volta null.
+ */
+function resolverImagemLocalParaPdf(string $src, string $raizProjeto): ?string
+{
+    if ($src === '' || preg_match('#^(?:file|blob|about|javascript):#i', $src) || preg_match('#^[a-z]:[\\\\/]#i', $src)) {
+        return null;
+    }
+    $caminho = rawurldecode((string) parse_url($src, PHP_URL_PATH));
+    $raiz = realpath($raizProjeto);
+    if ($caminho === '' || $raiz === false) {
+        return null;
+    }
+    // Instalação em subpasta (/sema-php/assets/...): tenta cortando prefixos.
+    $partes = array_values(array_filter(explode('/', $caminho), 'strlen'));
+    for ($i = 0; $i < count($partes); $i++) {
+        $candidato = realpath($raiz . '/' . implode('/', array_slice($partes, $i)));
+        if ($candidato !== false && is_file($candidato) && str_starts_with($candidato, $raiz . DIRECTORY_SEPARATOR)
+            && preg_match('/\.(png|jpe?g|gif)$/i', $candidato)) {
+            return $candidato;
+        }
+    }
+    return null;
 }
 
 /** Classes de invólucros de folha: somem, mas o conteúdo dentro é preservado. */

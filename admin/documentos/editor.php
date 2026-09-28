@@ -1291,6 +1291,7 @@ foreach ($blocosProcesso as $titulo => $linhas):
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Paginação visual da folha A4, compartilhada com o editor de denúncias -->
     <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_paginacao.js"></script>
+    <script src="<?= rtrim(BASE_URL, '/') ?>/js/editor_colagem.js"></script>
     <!-- Summernote PRECISA do jQuery, que só está disponível após o footer.php.
          Usamos um carregador dinâmico que aguarda o jQuery estar pronto. -->
     <script>
@@ -1538,7 +1539,7 @@ foreach ($blocosProcesso as $titulo => $linhas):
                     ['color',    ['color']],
                     ['para',     ['ul', 'ol', 'paragraph']],
                     ['table',    ['table']],
-                    ['insert',   ['link']],
+                    ['insert',   ['link', 'picture']],
                     ['view',     ['codeview', 'fullscreen']]
                 ],
                 callbacks: {
@@ -1547,6 +1548,11 @@ foreach ($blocosProcesso as $titulo => $linhas):
                         montarPainelCampos();
                         iniciarSincronizacaoDocumento();
                         iniciarAutosave();
+                        SemaColagem.ligar($editor, { aoColar: avisarColagemWord });
+                    },
+                    // Botão Imagem e imagem colada (print/arquivo): entra reduzida, em base64.
+                    onImageUpload: function(arquivos) {
+                        SemaColagem.inserirArquivos($editor, arquivos);
                     },
                     onChange: function() {
                         sincronizarDoDocumentoParaPainel();
@@ -1554,6 +1560,24 @@ foreach ($blocosProcesso as $titulo => $linhas):
                 }
             });
         });
+    }
+
+    // Resultado da colagem do Word: diz quantas imagens vieram e quantas não.
+    function avisarColagemWord(r) {
+        sincronizarDoDocumentoParaPainel();
+        if (!r || (!r.recuperadas && !r.perdidas) || typeof Swal === 'undefined') return;
+        if (r.perdidas) {
+            Swal.fire({
+                icon: 'warning',
+                title: r.perdidas === 1 ? '1 imagem do Word não veio' : r.perdidas + ' imagens do Word não vieram',
+                html: 'O Word não mandou essas imagens na colagem. No lugar de cada uma ficou um aviso laranja: '
+                    + 'insira a imagem pelo botão <b>Imagem</b> da barra e apague o aviso. '
+                    + (r.recuperadas ? r.recuperadas + ' outra(s) imagem(ns) vieram normalmente.' : ''),
+            });
+        } else {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', timer: 3500, showConfirmButton: false,
+                title: r.recuperadas === 1 ? '1 imagem do Word colada' : r.recuperadas + ' imagens do Word coladas' });
+        }
     }
 
     /* ─── Painel "Campos do documento" ─────────────────────
@@ -1606,6 +1630,19 @@ foreach ($blocosProcesso as $titulo => $linhas):
         art_numero: 'ART/RRT',
         observacoes: 'Observações',
         data_atual: 'Data de emissão',
+        data_recebimento_processo: 'Data de recebimento do processo',
+        data_validade_licenca: 'Validade da licença',
+        nome_empreendedor: 'Empreendedor',
+        cpf_cnpj_empreendedor: 'CPF/CNPJ do empreendedor',
+        endereco_empreendedor: 'Endereço do empreendedor',
+        endereco_empreendimento: 'Endereço do empreendimento',
+        caracterizacao_empreendimento: 'Caracterização do empreendimento',
+        assinante_secretario_nome: 'Secretário (assinatura)',
+        assinante_secretario_matricula: 'Portaria do secretário',
+        assinante_eng_ambiental_nome: 'Eng. ambiental (assinatura)',
+        assinante_eng_ambiental_matricula: 'Matrícula do eng. ambiental',
+        assinante_fiscal_ambiental_nome: 'Fiscal ambiental (assinatura)',
+        assinante_fiscal_ambiental_matricula: 'Matrícula do fiscal ambiental',
     };
 
     const ORDEM_CAMPO = [
@@ -1618,7 +1655,10 @@ foreach ($blocosProcesso as $titulo => $linhas):
         'desmembramento_area_lotes', 'area_remanescente', 'desmembramento_lotes_numeros',
         'cadastro_imobiliario', 'especificacao',
         'inicio_obra', 'termino_obra', 'alvara_construcao_numero',
-        'eng_fiscal_nome', 'eng_fiscal_registro', 'data_atual'
+        'eng_fiscal_nome', 'eng_fiscal_registro',
+        'data_recebimento_processo', 'data_validade_licenca', 'nome_empreendedor',
+        'cpf_cnpj_empreendedor', 'endereco_empreendedor', 'endereco_empreendimento',
+        'caracterizacao_empreendimento', 'data_atual'
     ];
 
     const PLACEHOLDERS_VAZIOS = [

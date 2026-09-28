@@ -8,6 +8,7 @@ require_once '../includes/notas_internas_helpers.php';
 require_once '../includes/admin_notifications.php';
 require_once '../includes/coassinatura_helper.php';
 require_once '../includes/documento_regras.php';
+require_once '../includes/historico_helpers.php';
 require_once '../tipos_alvara.php';
 verificaLogin();
 
@@ -94,7 +95,8 @@ $camposEditaveisProcesso = [
     'inicio_obra', 'termino_obra', 'alvara_construcao_numero', 'habite_uso', 'habite_pavimento',
     'habite_tipo_construcao', 'habite_padrao', 'eng_fiscal_nome', 'eng_fiscal_registro',
     'ctf_numero', 'licenca_anterior_numero', 'publicacao_diario_oficial',
-    'tipo_estudo_ambiental', 'possui_estudo_ambiental', 'notificado_fiscal_obras', 'observacoes'
+    'tipo_estudo_ambiental', 'possui_estudo_ambiental', 'notificado_fiscal_obras', 'observacoes',
+    'data_recebimento_processo', 'endereco_empreendedor', 'caracterizacao_empreendimento'
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_dados_processo'])) {
@@ -2744,6 +2746,14 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="cmd-bar">
         <a href="documentos/selecionar.php?requerimento_id=<?= $id ?>" class="cmd-btn-primary" style="order:1;"><i class="fas fa-file-pen"></i>Gerar Documento</a>
 
+        <?php if (DocumentoRegras::tipoAmbiental((string) ($requerimento['tipo_alvara'] ?? ''))): ?>
+        <a href="documentos/placa_licenca.php?requerimento_id=<?= $id ?>" target="_blank" rel="noopener" class="cmd-btn tt" style="order:2;"
+            data-bs-toggle="tooltip" data-bs-placement="top"
+            data-bs-title="Placa de licenciamento para afixar no empreendimento (PDF A4 paisagem). Usa a data de recebimento do processo para a validade.">
+            <i class="fas fa-sign-hanging cmd-ic"></i>Gerar placa
+        </a>
+        <?php endif; ?>
+
         <?php if ($isSetor3): ?>
         <a href="visualizar_documento.php?requerimento_id=<?= $id ?>" class="cmd-btn tt" style="order:4;"
             data-bs-toggle="tooltip" data-bs-placement="top"
@@ -3492,75 +3502,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-            <?php if (false): // Histórico de ações e e-mails ficam disponíveis nas telas de auditoria e logs. ?>
-            <div class="modern-card mb-3">
-                <div class="modern-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-history icon"></i>
-                        <h6 class="mb-0">Histórico de Ações</h6>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <?php if (count($historico) > 0): ?>
-                        <span class="badge bg-secondary" id="historico-total-badge"><?php echo count($historico); ?> registro(s)</span>
-                        <?php endif; ?>
-                        <a href="logs_email.php<?= !empty($requerimento['requerente_email']) ? '?email=' . urlencode($requerimento['requerente_email']) : '' ?>"
-                           target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;"
-                           title="Abrir histórico completo de emails do sistema">
-                            <i class="fas fa-arrow-up-right-from-square me-1"></i>Ver todos os emails
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <?php if (count($historico) > 0): ?>
-                        <?php
-                        // Para secretário puro, limitar histórico a 3 itens mais recentes
-                        $limitHistorico = $isSecretarioPuro ? 3 : PHP_INT_MAX;
-                        $historicoExibido = $isSecretarioPuro ? array_slice($historico, 0, $limitHistorico) : $historico;
-                        ?>
-                        <?php foreach ($historicoExibido as $idx => $h): ?>
-                            <div class="data-row" data-historico-item="<?php echo $idx; ?>">
-                                <div class="data-label" style="min-width: 140px;">
-                                    <div class="fw-semibold text-dark"><?php echo htmlspecialchars($h['admin_nome'] ?? 'Sistema'); ?></div>
-                                    <div class="text-muted small"><?php echo formataData($h['data_acao']); ?></div>
-                                </div>
-                                <div class="data-value">
-                                    <?php echo htmlspecialchars($h['acao']); ?>
-                                </div>
-                                <div class="data-actions">
-                                    <button class="copy-btn" onclick="copyToClipboard('<?php echo addslashes(htmlspecialchars($h['acao'])); ?>', this)" title="Copiar ação">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                            </div>
+            <!-- Histórico do processo: linha do tempo completa, com tipo, ícone e detalhe de cada ação -->
+            <?php
+            // Secretário vê só as movimentações mais recentes (regra anterior da tela).
+            $historicoAba = $isSecretarioPuro ? array_slice($historico, 0, 3) : $historico;
+            $contagemTipos = [];
+            foreach ($historicoAba as $hAba) {
+                $tAba = classificarAcaoHistorico((string) $hAba['acao'])['tipo'];
+                $contagemTipos[$tAba] = ($contagemTipos[$tAba] ?? 0) + 1;
+            }
+            ?>
+            <div class="hist-card mb-3" id="historico-lista">
+                <div class="hist-card-head">
+                    <div class="hist-card-titulo"><i class="fas fa-clock-rotate-left"></i><span>Histórico do processo</span>
+                        <span class="hist-card-total"><?= count($historico) ?> registro(s)</span></div>
+                    <?php if (count($contagemTipos) > 1): ?>
+                    <div class="hist-filtros" role="group" aria-label="Filtrar histórico">
+                        <button type="button" class="hist-filtro ativo" data-hist-filtro="">Tudo</button>
+                        <?php foreach (categoriasHistorico() as $tipoCat => [$rotuloCat, $iconeCat]): if (empty($contagemTipos[$tipoCat])) continue; ?>
+                        <button type="button" class="hist-filtro" data-hist-filtro="<?= $tipoCat ?>"><i class="fas <?= $iconeCat ?>"></i><?= htmlspecialchars($rotuloCat) ?> <span><?= $contagemTipos[$tipoCat] ?></span></button>
                         <?php endforeach; ?>
-                        <?php if ($isSecretarioPuro && count($historico) > $limitHistorico): ?>
-                        <div class="px-3 py-2 border-top text-center">
-                            <span class="text-muted small">Exibindo os <?= $limitHistorico ?> registros mais recentes de <?= count($historico) ?> total.</span>
-                        </div>
-                        <?php endif; ?>
-
-                        <!-- Paginação do Histórico (apenas para não-secretário) -->
-                        <?php if (!$isSecretarioPuro && count($historico) > 10): ?>
-                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light" id="historico-pagination">
-                            <button class="btn btn-sm btn-outline-secondary" id="historico-prev" onclick="historicoChangePage(-1)" disabled>
-                                <i class="fas fa-chevron-left me-1"></i>Anterior
-                            </button>
-                            <span class="text-muted small" id="historico-page-info">Página 1 de <?php echo ceil(count($historico)/10); ?></span>
-                            <button class="btn btn-sm btn-outline-secondary" id="historico-next" onclick="historicoChangePage(1)">
-                                Próximo<i class="fas fa-chevron-right ms-1"></i>
-                            </button>
-                        </div>
-                        <?php endif; ?>
-
-                    <?php else: ?>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Nenhuma ação registrada.
-                            </div>
-                        </div>
+                    </div>
                     <?php endif; ?>
                 </div>
+                <?php if (!$historicoAba): ?>
+                    <div class="proc-resumo-vazio">Nenhuma ação registrada neste processo.</div>
+                <?php else: ?>
+                    <div class="hist-lista">
+                        <?php foreach ($historicoAba as $iAba => $hAba): ?>
+                            <?= itemHistoricoHtml($hAba, false, $iAba === count($historicoAba) - 1) ?>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if (count($historicoAba) > 15): ?>
+                    <button type="button" class="hist-mais" id="hist-mais">Mostrar histórico completo (<?= count($historicoAba) ?>)</button>
+                    <?php endif; ?>
+                    <?php if ($isSecretarioPuro && count($historico) > count($historicoAba)): ?>
+                    <div class="proc-resumo-vazio">Exibindo as <?= count($historicoAba) ?> movimentações mais recentes de <?= count($historico) ?>.</div>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
 
             <!-- Emails do processo: lista única e compacta, todos os tipos e status -->
@@ -3589,7 +3568,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php endforeach; ?>
                 </div>
             </div>
-            <?php endif; ?>
             <?php endif; ?>
 
         </div>
@@ -4158,6 +4136,23 @@ document.addEventListener('DOMContentLoaded', function() {
          a lista inteira continua indo na aba.
     ══════════════════════════════════════════════════ -->
     <div class="proc-resumos">
+        <div class="proc-resumo-card proc-resumo-card--historico">
+            <div class="proc-resumo-head">
+                <span class="proc-resumo-titulo"><i class="fas fa-clock-rotate-left me-1"></i>Últimas movimentações</span>
+                <a href="?id=<?= (int) $id ?>&tab=historico#historico-lista" class="proc-resumo-link">Ver histórico completo (<?= count($historico) ?>)</a>
+            </div>
+            <?php if (empty($historico)): ?>
+                <div class="proc-resumo-vazio">Nenhuma movimentação registrada.</div>
+            <?php else: ?>
+                <div class="hist-lista">
+                    <?php $ultimos = array_slice($historico, 0, 6); ?>
+                    <?php foreach ($ultimos as $ti => $h): ?>
+                        <?= itemHistoricoHtml($h, true, $ti === count($ultimos) - 1) ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
         <div class="proc-resumo-card">
             <div class="proc-resumo-head">
                 <span class="proc-resumo-titulo">Comunicação com o cidadão</span>
@@ -4178,34 +4173,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         </span>
                     </a>
                 <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-
-        <div class="proc-resumo-card">
-            <div class="proc-resumo-head">
-                <span class="proc-resumo-titulo">Últimas movimentações</span>
-                <a href="?id=<?= (int) $id ?>&tab=historico" class="proc-resumo-link">Ver todas</a>
-            </div>
-            <?php if (empty($historico)): ?>
-                <div class="proc-resumo-vazio">Nenhuma movimentação registrada.</div>
-            <?php else: ?>
-                <div class="proc-timeline">
-                    <?php $ultimos = array_slice($historico, 0, 4); $totalUlt = count($ultimos); ?>
-                    <?php foreach ($ultimos as $ti => $h): ?>
-                        <div class="proc-timeline-linha">
-                            <div class="proc-timeline-marca">
-                                <span class="proc-timeline-dot"></span>
-                                <?php if ($ti < $totalUlt - 1): ?><span class="proc-timeline-fio"></span><?php endif; ?>
-                            </div>
-                            <div class="proc-timeline-conteudo">
-                                <span class="proc-resumo-assunto"><?= htmlspecialchars($h['acao']) ?></span>
-                                <span class="proc-resumo-meta">
-                                    <?= htmlspecialchars($h['admin_nome'] ?? 'Sistema') ?> · <?= formataData($h['data_acao']) ?>
-                                </span>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -4293,6 +4260,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             'notificado_fiscal_obras' => ['Notificado pelo Fiscal de Obras', 'select', ''],
                             'observacoes' => ['Observações internas do processo', 'textarea', 'Não aparece para o cidadão'],
                         ];
+                        // Licenciamento ambiental: entram na LAU, no parecer de pendências e na placa.
+                        if (DocumentoRegras::tipoAmbiental((string) ($requerimento['tipo_alvara'] ?? ''))) {
+                            $camposEdicaoVisual += [
+                                'data_recebimento_processo' => ['Data de recebimento do processo (validade da licença = +5 anos)', 'date', ''],
+                                'endereco_empreendedor' => ['Endereço do empreendedor', 'text', 'Endereço do requerente/empresa'],
+                                'caracterizacao_empreendimento' => ['Caracterização do empreendimento', 'textarea', 'Descrição do empreendimento que vai na LAU'],
+                            ];
+                        }
                         foreach ($camposEdicaoVisual as $campo => [$rotulo, $tipoCampo, $placeholder]):
                             $valorAtual = $requerimento[$campo] ?? '';
                             $temOriginal = array_key_exists($campo, $valoresOriginaisProcesso);
@@ -5340,47 +5315,37 @@ $tipoAlvaraNome    = $tipos_alvara[$requerimento['tipo_alvara']]['nome']
         });
     }
 
-    // === Paginação do Histórico de Ações ===
+    // === Histórico do processo: filtro por tipo e "mostrar tudo" ===
     (function () {
-        const PER_PAGE = 10;
-        let currentPage = 0;
-
-        function getItems() {
-            return document.querySelectorAll('[data-historico-item]');
-        }
-
-        function getTotalPages() {
-            return Math.ceil(getItems().length / PER_PAGE);
-        }
-
-        function renderPage(page) {
-            const items = getItems();
-            if (!items.length) return;
-
-            const total = Math.ceil(items.length / PER_PAGE);
-            currentPage = Math.max(0, Math.min(page, total - 1));
-
-            items.forEach(function (el, idx) {
-                const start = currentPage * PER_PAGE;
-                el.style.display = (idx >= start && idx < start + PER_PAGE) ? '' : 'none';
-            });
-
-            const info = document.getElementById('historico-page-info');
-            const prev = document.getElementById('historico-prev');
-            const next = document.getElementById('historico-next');
-
-            if (info) info.textContent = 'Página ' + (currentPage + 1) + ' de ' + total;
-            if (prev) prev.disabled = currentPage === 0;
-            if (next) next.disabled = currentPage >= total - 1;
-        }
-
-        window.historicoChangePage = function (delta) {
-            renderPage(currentPage + delta);
-        };
-
-        // Inicializar ao carregar
+        const LIMITE = 15;
         document.addEventListener('DOMContentLoaded', function () {
-            renderPage(0);
+            const card = document.getElementById('historico-lista');
+            if (!card) return;
+            const itens = Array.from(card.querySelectorAll('.hist-lista > .hist-item'));
+            const mais = document.getElementById('hist-mais');
+            let filtro = '';
+            let tudo = itens.length <= LIMITE;
+
+            function aplicar() {
+                let visiveis = 0;
+                itens.forEach(function (el) {
+                    const passa = !filtro || el.dataset.histTipo === filtro;
+                    const mostra = passa && (tudo || filtro || visiveis < LIMITE);
+                    el.hidden = !mostra;
+                    if (mostra) visiveis++;
+                });
+                if (mais) mais.hidden = tudo || !!filtro;
+            }
+
+            card.querySelectorAll('[data-hist-filtro]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    filtro = btn.dataset.histFiltro;
+                    card.querySelectorAll('[data-hist-filtro]').forEach(b => b.classList.toggle('ativo', b === btn));
+                    aplicar();
+                });
+            });
+            if (mais) mais.addEventListener('click', function () { tudo = true; aplicar(); });
+            aplicar();
         });
     })();
 
