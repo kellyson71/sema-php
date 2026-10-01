@@ -686,7 +686,7 @@ $maxPostSize = defined('MAX_POST_SIZE') ? MAX_POST_SIZE : 256 * 1024 * 1024;
                         'descricao' => 'Mapeamento e diagnóstico ambiental das Áreas de Preservação Permanente na malha urbana do município.',
                         'icone'     => 'fa-map-location-dot',
                         'cor'       => '#16a085',
-                        'url'       => './assets/estudos/diagnostico-apps-urbanas-2026.pdf',
+                        'url'       => './assets/estudos/diagnostico-apps-urbanas-2026-10-01.pdf',
                     ],
                 ];
                 foreach ($estudos as $estudo): ?>
