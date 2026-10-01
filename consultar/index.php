@@ -473,15 +473,6 @@ if (!headers_sent()) {
                                 </div>
                             <?php endif; ?>
 
-                            <?php if (!empty($requerimento['observacoes'])): ?>
-                                <div class="mt-6">
-                                    <div class="section-title"><i class="fas fa-comment-alt mr-2"></i> Observações</div>
-                                    <div class="bg-white p-3 rounded-lg border border-gray-200">
-                                        <?php echo nl2br(sanitize($requerimento['observacoes'])); ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-
                             <?php if ($requerente): ?>
                                 <div class="mt-6">
                                     <div class="section-title"><i class="fas fa-user mr-2"></i> Dados do Requerente</div>
