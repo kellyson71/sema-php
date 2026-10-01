@@ -5,7 +5,7 @@
  * O denunciante digita o protocolo (DEN-AAAAMMDD-XXXXX) e vê apenas o que a
  * fiscalização liberou: status, as medidas marcadas como visíveis e as fotos
  * marcadas como visíveis. NUNCA expõe dados do infrator nem do denunciante,
- * observações internas ou anexos internos.
+ * observações internas, anexos internos ou o texto livre dos comentários de status.
  */
 require_once __DIR__ . '/includes/config.php';
 
@@ -178,7 +178,14 @@ $cor = $denuncia ? corStatus($denuncia['status']) : corStatus('');
                                 <?php foreach (array_reverse($historico) as $item): ?>
                                     <div class="dc-tl-item">
                                         <div class="dc-tl-data"><?= date('d/m/Y \à\s H:i', strtotime($item['data_registro'])) ?></div>
-                                        <div class="dc-tl-texto"><?= htmlspecialchars($item['detalhes']) ?></div>
+                                        <?php
+                                            // Comentário livre da fiscalização não é exibido ao público:
+                                            // só a troca de status ou um aviso genérico de atualização.
+                                            $textoPublico = preg_match('/^Status alterado para: (.+)$/u', $item['detalhes'], $m)
+                                                ? 'Status alterado para: ' . $m[1]
+                                                : 'A fiscalização registrou uma atualização neste processo.';
+                                        ?>
+                                        <div class="dc-tl-texto"><?= htmlspecialchars($textoPublico) ?></div>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
